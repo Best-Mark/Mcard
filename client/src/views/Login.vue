@@ -44,7 +44,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
 import { setAuth, showToast, siteConfig } from '../store'
@@ -69,22 +69,43 @@ onMounted(() => {
   const err = route.query.err
   if (err) errMsg.value = ERR_TEXT[err] || '微信登录失败，请重试'
   const hash = new URLSearchParams(location.hash.replace(/^#/, ''))
-  if (hash.get('bind')) {
-    bindTicket.value = hash.get('bind')
-    wxNickname.value = hash.get('nickname') || ''
-    wxAvatar.value = hash.get('avatar') || ''
-    history.replaceState(null, '', location.pathname)
+  const ticket = hash.get('bind')
+  if (ticket) {
+    // 时序护栏：ticket 10 分钟有效，进页面先本地判过期，别让用户填完手机号才被后端拒绝
+    let expired = false
+    try {
+      const payload = JSON.parse(atob(ticket.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+      expired = !!payload.exp && Date.now() >= payload.exp * 1000
+    } catch { expired = true }
+    if (expired) {
+      errMsg.value = '微信绑定凭证已过期，请重新发起微信登录'
+    } else {
+      bindTicket.value = ticket
+      wxNickname.value = hash.get('nickname') || ''
+      wxAvatar.value = hash.get('avatar') || ''
+    }
+    // 用 router.replace 清 hash，URL 状态完全交给 vue-router，避免裸 history 操作与路由守卫竞态
+    router.replace({ path: route.path, query: route.query })
   }
 })
 
+let wxJumpTimer = null
 async function startWxLogin() {
-  if (wxBusy.value) return
+  if (wxBusy.value || busy.value) return
   wxBusy.value = true
+  errMsg.value = ''
   try {
     const { data } = await api.get('/api/auth/wechat/url', { params: { redirect: route.query.redirect || '' } })
+    if (!data?.data?.url) throw new Error('未获取到微信授权地址')
+    // 时序护栏：跳转若被微信拦截/失败，8 秒后恢复按钮，用户可重试而不是永久卡「正在跳转…」
+    clearTimeout(wxJumpTimer)
+    wxJumpTimer = setTimeout(() => {
+      if (wxBusy.value) { wxBusy.value = false; showToast('授权页打开较慢，请再点一次重试', 'error') }
+    }, 8000)
     location.href = data.data.url
   } catch (e) { showToast(e.message, 'error'); wxBusy.value = false }
 }
+onBeforeUnmount(() => clearTimeout(wxJumpTimer))
 
 async function submit() {
   if (!/^1\d{10}$/.test(phone.value)) return showToast('请输入 11 位手机号', 'error')

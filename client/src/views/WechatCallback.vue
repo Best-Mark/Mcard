@@ -28,26 +28,38 @@ const route = useRoute()
 const failed = ref(false)
 const msg = ref('')
 
-onMounted(() => {
+let handled = false // 防重入：onMounted 只处理一次，避免热重载/重复触发重复 setAuth
+onMounted(async () => {
+  if (handled) return
+  handled = true
   const hash = new URLSearchParams(location.hash.replace(/^#/, ''))
   const token = hash.get('token') || ''
   const raw = hash.get('user') || ''
-  if (!token) {
+  if (!token || !raw) {
     failed.value = true
     msg.value = '未获取到登录凭证，请重新发起微信登录'
     return
   }
+  let user
   try {
     // URLSearchParams 已完成一次解码，这里绝不能再 decodeURIComponent（昵称含 % 会抛 URIError）
-    const user = JSON.parse(raw)
+    user = JSON.parse(raw)
     if (!user || typeof user !== 'object' || !user.id) throw new Error('bad user')
-    setAuth(token, user)
-    showToast('微信登录成功', 'success')
-    history.replaceState(null, '', import.meta.env.BASE_URL || '/')
-    router.replace(route.query.redirect || '/me')
   } catch (e) {
     failed.value = true
-    msg.value = '登录信息解析失败，请重试'
+    msg.value = '登录信息解析失败，请重新发起微信登录'
+    return
+  }
+  // 时序：先同步落地 token（localStorage + 响应式 store），再让路由守卫看到凭证，
+  // 最后用 router.replace 由 vue-router 自身清理 URL（不再裸调 history.replaceState 与之竞态）。
+  setAuth(token, user)
+  const target = route.query.redirect || '/me'
+  try {
+    await router.replace(target)
+    showToast('微信登录成功', 'success')
+  } catch (e) {
+    failed.value = true
+    msg.value = '登录已完成，但页面跳转失败，请点击返回登录'
   }
 })
 </script>

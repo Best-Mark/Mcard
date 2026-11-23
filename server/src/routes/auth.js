@@ -11,28 +11,40 @@ const { sign, signBind, verifyBind, authRequired } = require('../utils/auth')
 const router = express.Router()
 
 // ---------- 微信网页授权（公众号 H5 快捷登录）----------
-const WECHAT_STATE_COOKIE = 'mcard_wx_state'
-const stateStore = new Map() // state -> { createdAt }，短 TTL 防重放
+const STATE_TTL = 5 * 60 * 1000
 const API = 'https://api.weixin.qq.com'
 // 授权页用官方标准域名 open.weixin.qq.com（手机微信只对该域名渲染授权页；api 域名用于服务端接口）
 const OAUTH_PAGE = 'https://open.weixin.qq.com'
 
 function wxa() { return settings.wechatOauthConfig() }
 function enabled() { return settings.wechatLoginEnabled() }
+
+// 时序铁律：state 必须跨进程重启存活。后台自动更新 process.exit(0) 重启时，
+// 用户在微信授权流程中拿到的 state 若只存内存会丢失，回调误判 err=state。
+// 用 site_config 持久化（带 createdAt）；消费走「删除时确认命中」保证一次性防重放。
+const STATE_PREFIX = 'wx_oauth_state_'
+function saveState(state) {
+  db.prepare("INSERT INTO site_config (key, value, updated_at) VALUES (?,?,datetime('now')) ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=datetime('now')")
+    .run(STATE_PREFIX + state, JSON.stringify({ createdAt: Date.now() }))
+}
+function consumeState(state) {
+  if (!state) return false
+  const key = STATE_PREFIX + state
+  const row = db.prepare('SELECT value FROM site_config WHERE key = ?').get(key)
+  if (!row) return false
+  db.prepare('DELETE FROM site_config WHERE key = ?').run(key) // 先删 = 原子消费，防重放
+  try {
+    const v = JSON.parse(row.value)
+    return !!v && Date.now() - v.createdAt <= STATE_TTL
+  } catch { return false }
+}
 function cleanStates() {
-  const now = Date.now()
-  for (const [k, v] of stateStore) if (now - v > 5 * 60 * 1000) stateStore.delete(k)
-}
-function setStateCookie(res, state) {
-  res.cookie(WECHAT_STATE_COOKIE, state, { httpOnly: true, sameSite: 'lax', maxAge: 5 * 60 * 1000, path: '/' })
-}
-function readStateCookie(req) {
-  const raw = req.headers.cookie || ''
-  for (const part of raw.split(';')) {
-    const [k, v] = part.trim().split('=')
-    if (k === WECHAT_STATE_COOKIE) return decodeURIComponent(v || '')
+  const cutoff = Date.now() - STATE_TTL
+  const rows = db.prepare('SELECT key, value FROM site_config WHERE key LIKE ?').all(STATE_PREFIX + '%')
+  const del = db.prepare('DELETE FROM site_config WHERE key = ?')
+  for (const r of rows) {
+    try { if (JSON.parse(r.value).createdAt < cutoff) del.run(r.key) } catch { del.run(r.key) }
   }
-  return ''
 }
 async function wxFetch(url) {
   const res = await fetch(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(10000) })
@@ -45,8 +57,7 @@ router.get('/wechat/url', wrap((req, res) => {
   cleanStates()
   const c = wxa()
   const state = crypto.randomBytes(16).toString('hex')
-  stateStore.set(state, Date.now())
-  setStateCookie(res, state)
+  saveState(state)
   const redirectUri = requestUrl(req, '/api/auth/wechat/callback')
   const url = `${OAUTH_PAGE}/connect/oauth2/authorize?appid=${encodeURIComponent(c.appId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=snsapi_userinfo&state=${state}#wechat_redirect`
   ok(res, { url })
@@ -56,10 +67,10 @@ router.get('/wechat/url', wrap((req, res) => {
 router.get('/wechat/callback', wrap(async (req, res) => {
   cleanStates()
   const state = String(req.query.state || '')
-  const cached = stateStore.get(state)
-  const cookieState = readStateCookie(req)
-  stateStore.delete(state) // 一次性，防重放
-  if (!state || !cached || !cookieState || cookieState !== state) return res.redirect(`${requestUrl(req, '/login')}?err=state`)
+  // 原子消费 DB 中的 state（一次性防重放）。state 为 128bit 随机且 DB 命中即证明本服务发起，
+  // 不依赖 cookie —— 手机微信回调不保证带回 cookie，也不该被并发登录覆盖的 cookie 误伤。
+  const valid = consumeState(state)
+  if (!valid) return res.redirect(`${requestUrl(req, '/login')}?err=state`)
   const code = String(req.query.code || '')
   if (!code) return res.redirect(`${requestUrl(req, '/login')}?err=denied`)
 
