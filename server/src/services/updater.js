@@ -110,31 +110,29 @@ async function check(cfg = getConfig()) {
     if (!latest) throw new Error('Release 未标注版本号')
   } catch (e) {
     apiError = e.message
-    let file = null
-    let fileError = ''
-    for (const base of [
-      `https://raw.githubusercontent.com/${cfg.repo}/${cfg.branch}/version.json?t=${Date.now()}`,
-      `https://github.com/${cfg.repo}/raw/${cfg.branch}/version.json?t=${Date.now()}`
-    ]) {
-      try { file = await fetchJson(base); break } catch (e2) { fileError = e2.message }
-    }
-    let source = 'version.json'
-    if (!file) {
-      try {
-        await git(['fetch', 'origin', cfg.branch])
-        const text = (await git(['show', `origin/${cfg.branch}:version.json`])).stdout
-        file = JSON.parse(text)
-        source = 'git 远端'
-      } catch (e3) {
-        throw Object.assign(new Error(`检查更新失败：GitHub Release(${apiError})；version.json(${fileError})；git 远端(${e3.message})`), { status: 502 })
+    try {
+      await git(['fetch', 'origin', cfg.branch])
+      const pkg = JSON.parse((await git(['show', `origin/${cfg.branch}:package.json`])).stdout)
+      latest = String(pkg.version || '').replace(/^v/i, '')
+      notes = (await git(['log', '-1', '--pretty=%B', `origin/${cfg.branch}`])).stdout.trim()
+      url = `https://github.com/${cfg.repo}`
+      if (!latest) throw new Error('远端 package.json 缺少 version 字段')
+      apiError = 'git 远端'
+    } catch (e2) {
+      const cached = readCfg('update_last_result', '')
+      if (cached && cached.latest) {
+        const result = {
+          kind: 'check', current: currentVersion(), latest: cached.latest,
+          hasUpdate: compareVersion(cached.latest, currentVersion()) > 0,
+          notes: cached.notes || '', publishedAt: cached.publishedAt || '', url: cached.url || '',
+          source: '缓存（网络不可用）', stale: true,
+          error: `GitHub Release(${apiError})；git 远端(${e2.message})`
+        }
+        result.checkedAt = remember(result)
+        return result
       }
+      throw Object.assign(new Error(`检查更新失败：GitHub Release(${apiError})；git 远端(${e2.message})`), { status: 502 })
     }
-    latest = String(file.version || '').replace(/^v/i, '')
-    notes = String(file.notes || '')
-    publishedAt = file.publishedAt || ''
-    url = file.url || `https://github.com/${cfg.repo}`
-    if (!latest) throw badRequest('version.json 缺少 version 字段')
-    apiError = source
   }
 
   const result = {
@@ -143,7 +141,7 @@ async function check(cfg = getConfig()) {
     latest,
     hasUpdate: compareVersion(latest, currentVersion()) > 0,
     notes, publishedAt, url,
-    source: apiError ? 'version.json' : 'GitHub Release'
+    source: apiError === 'git 远端' ? 'git 远端' : (apiError ? 'GitHub Release(字段异常)' : 'GitHub Release')
   }
   result.checkedAt = remember(result)
   return result

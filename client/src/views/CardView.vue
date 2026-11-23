@@ -48,6 +48,7 @@
           <button @click="sms(card.mobile || card.phone)"><i>✎</i><span>发短信</span></button>
           <button @click="mailto(card.email)"><i>✉</i><span>写邮件</span></button>
           <button @click="copy(card.wechat || card.whatsapp, '微信号')"><i>微</i><span>微信</span></button>
+          <button @click="copy(card.alipay, '支付宝账号')"><i>支</i><span>支付宝</span></button>
         </div>
 
         <div v-if="card.bio" class="card card-pad cv-block">
@@ -66,6 +67,33 @@
               <b>{{ l.label || '链接' }}</b><span>{{ shortUrl(l.url) }} ↗</span>
             </a>
           </div>
+        </div>
+
+        <div v-if="siteLinks.length" class="card card-pad cv-block">
+          <h3>主页与店铺</h3>
+          <div v-for="l in siteLinks" :key="l.key" class="cv-site">
+            <div><b>{{ l.label }}</b><span class="small muted">{{ shortUrl(l.url) }}</span></div>
+            <div class="btn-row">
+              <a :href="safeUrl(l.url)" target="_blank" rel="noopener" class="btn btn-sm btn-primary">打开</a>
+              <button class="btn btn-sm btn-ghost" @click="copy(l.url, l.label)">复制</button>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="hasAnyQr" class="card card-pad cv-block">
+          <h3>加好友 / 收付款</h3>
+          <div class="qr-grid">
+            <div v-for="q in contactQrs" :key="q.key" class="qr-tile">
+              <img :src="fullUrl(q.url)" :alt="q.label" @click="previewQr(q)" />
+              <b>{{ q.label }}</b>
+              <span class="small muted">{{ qrHint(q.platform) }}</span>
+              <div class="btn-row">
+                <button v-if="q.account" class="btn btn-sm btn-ghost" @click="copy(q.account, q.accountLabel)">复制账号</button>
+                <button class="btn btn-sm btn-ghost" @click="saveQrFile(q)">保存二维码</button>
+              </div>
+            </div>
+          </div>
+          <p class="small muted" style="margin-top:10px">付款前请核对收款方与金额；二维码由名片主人自行上传。</p>
         </div>
 
         <div v-if="card.address" class="card card-pad cv-block">
@@ -127,7 +155,7 @@
       <div class="modal">
         <h3>{{ guide === 'contact' ? '保存到通讯录' : '保存二维码' }}</h3>
         <p>微信内置浏览器限制文件下载。请点右上角「···」→ 在浏览器中打开，再点击保存；或长按下方二维码图片保存。</p>
-        <img :src="qrApi + '/qr.svg?size=520'" style="width:200px;height:200px;margin:10px auto" alt="二维码" />
+        <img :src="guideImage || (qrApi + '/qr.svg?size=520')" style="width:200px;height:200px;margin:10px auto;object-fit:contain" alt="二维码" />
         <div class="btn-row">
           <button class="btn btn-primary" @click="openVcf">打开名片文件</button>
           <button class="btn btn-ghost" @click="guide = ''">知道了</button>
@@ -156,7 +184,7 @@ import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
 import { showToast, auth, siteConfig } from '../store'
 import { THEMES, themeOf, themeVars } from '../utils/themes'
-import { isWeChat, saveImageUrl, saveText } from '../utils/save-image'
+import { isWeChat, saveImageUrl } from '../utils/save-image'
 import { shareOrCopy, mapLinks } from '../utils/share'
 
 const route = useRoute(); const router = useRouter()
@@ -165,16 +193,49 @@ const qrApi = `/api/cards/public/${slug}`
 const vcfApi = `${qrApi}/card.vcf`
 const card = ref(null); const loading = ref(true); const error = ref('')
 const currentTheme = ref('ocean'); const isOwner = ref(false)
-const qrModal = ref(false); const guide = ref(''); const exchangeOpen = ref(false)
+const qrModal = ref(false); const guide = ref(''); const guideImage = ref(''); const exchangeOpen = ref(false)
 const mySlug = ref(''); const exchanging = ref(false)
 
 const t = computed(() => themeOf({ theme: currentTheme.value, accent: card.value?.accent }))
 const vars = computed(() => themeVars(t.value))
 const maps = computed(() => mapLinks(card.value?.address || ''))
 const windowRef = window
+const isAlipay = () => /AlipayClient/i.test(navigator.userAgent || '')
+const fullUrl = u => (u ? new URL(u, windowRef.location.origin).href : '')
+
+const contactQrs = computed(() => {
+  const c = card.value || {}
+  return [
+    { key: 'wechat_qr', url: c.wechat_qr, label: '微信 · 加好友', platform: 'wechat', account: c.wechat, accountLabel: '微信号' },
+    { key: 'alipay_qr', url: c.alipay_qr, label: '支付宝 · 加好友', platform: 'alipay', account: c.alipay, accountLabel: '支付宝账号' },
+    { key: 'wechat_pay_qr', url: c.wechat_pay_qr, label: '微信 · 收款码', platform: 'wechat', account: '', accountLabel: '' },
+    { key: 'alipay_pay_qr', url: c.alipay_pay_qr, label: '支付宝 · 收款码', platform: 'alipay', account: '', accountLabel: '' }
+  ].filter(q => q.url)
+})
+const hasAnyQr = computed(() => contactQrs.value.length > 0)
+const siteLinks = computed(() => {
+  const c = card.value || {}
+  const arr = []
+  if (c.website) arr.push({ key: 'website', label: '公司主页', url: c.website })
+  if (c.shop_url) arr.push({ key: 'shop', label: '店铺主页', url: c.shop_url })
+  return arr
+})
 
 function shortUrl(u) { return String(u || '').replace(/^https?:\/\//, '').slice(0, 30) }
 function safeUrl(u) { try { const x = new URL(u); return ['http:', 'https:'].includes(x.protocol) ? x.href : '#' } catch { return '#' } }
+function qrHint(platform) {
+  const env = isWeChat() ? 'wechat' : isAlipay() ? 'alipay' : 'other'
+  if (env === platform) return '长按图片即可识别'
+  if (env === 'other') return '保存后用对应 App 扫一扫'
+  return `保存图片后用${platform === 'wechat' ? '微信' : '支付宝'}扫一扫`
+}
+function previewQr(q) { guideImage.value = fullUrl(q.url); guide.value = 'qr' }
+async function saveQrFile(q) {
+  guideImage.value = fullUrl(q.url)
+  const r = await saveImageUrl(guideImage.value, `${q.label.replace(' · ', '-')}.png`)
+  if (r.kind === 'longpress') { guide.value = 'qr'; return }
+  showToast(r.kind === 'downloaded' ? '二维码已开始下载' : '已打开二维码，请长按保存', 'success')
+}
 
 async function load() {
   loading.value = true; error.value = ''
@@ -200,6 +261,7 @@ async function copy(v, label) {
   catch { showToast(v) }
 }
 async function saveQr() {
+  guideImage.value = ''
   const r = await saveImageUrl(`${qrApi}/qr.png?size=900`, `${slug}-二维码.png`)
   if (r.kind === 'longpress') { guide.value = 'qr'; return }
   showToast(r.kind === 'downloaded' ? '二维码已开始下载' : '已打开二维码，请长按保存', 'success')
@@ -255,7 +317,7 @@ async function doExchange() {
 .cv-tags span { font-size: 11px; padding: 3px 9px; border-radius: 999px; background: color-mix(in srgb, var(--t-accent) 12%, transparent); color: var(--t-accent); font-weight: 600; }
 .cv-status { position: absolute; right: 14px; bottom: 12px; }
 .notice-card { margin-top: 12px; border-color: #fcd34d; background: #fffbeb; color: #92400e; }
-.cv-actions { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 12px; padding: 8px 0; background: var(--t-surface); }
+.cv-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(58px, 1fr)); margin-top: 12px; padding: 8px 0; background: var(--t-surface); }
 .cv-actions button { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: var(--t-muted); }
 .cv-actions i { font-style: normal; width: 38px; height: 38px; border-radius: 50%; background: color-mix(in srgb, var(--t-accent) 12%, transparent); color: var(--t-accent); display: grid; place-items: center; font-size: 17px; font-weight: 700; }
 .cv-block { margin-top: 12px; background: var(--t-surface); }
@@ -265,6 +327,14 @@ async function doExchange() {
 .cv-links a { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; background: var(--t-bg); }
 .cv-links b { font-size: 13px; }
 .cv-links span { font-size: 10px; color: var(--t-muted); }
+.cv-site { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.cv-site:last-child { border-bottom: 0; }
+.cv-site > div:first-child { display: flex; flex-direction: column; min-width: 0; }
+.qr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.qr-tile { border: 1px solid var(--line); border-radius: 12px; padding: 12px; text-align: center; background: var(--t-bg); display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.qr-tile img { width: 116px; height: 116px; object-fit: contain; background: #fff; border-radius: 8px; cursor: zoom-in; }
+.qr-tile b { font-size: 13px; }
+.qr-tile .btn-row { justify-content: center; margin-top: 4px; }
 .cv-address { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
 .cv-maps { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .cv-maps a { font-size: 12px; padding: 6px 10px; border-radius: 8px; background: color-mix(in srgb, var(--t-accent) 12%, transparent); color: var(--t-accent); font-weight: 600; }

@@ -19,7 +19,8 @@ function cardLogo(row, asDataUrl = false) {
 }
 
 const EDITABLE = ['name', 'name_en', 'title', 'company', 'company_intro', 'department', 'phone', 'mobile', 'email',
-  'wechat', 'whatsapp', 'address', 'address_detail', 'website', 'avatar', 'cover', 'logo', 'bio',
+  'wechat', 'alipay', 'whatsapp', 'wechat_qr', 'alipay_qr', 'wechat_pay_qr', 'alipay_pay_qr',
+  'address', 'address_detail', 'website', 'shop_url', 'avatar', 'cover', 'logo', 'bio',
   'tags', 'links', 'theme', 'accent', 'qr_fg', 'qr_bg', 'qr_logo']
 
 const parseJson = (v, fallback) => { try { const x = JSON.parse(v); return x ?? fallback } catch { return fallback } }
@@ -34,8 +35,12 @@ function publicView(row) {
     name: row.name, name_en: row.name_en, title: row.title, company: row.company,
     company_intro: row.company_intro || '',
     department: row.department, phone: row.phone, mobile: row.mobile, email: row.email,
-    wechat: row.wechat, whatsapp: row.whatsapp, address: row.address, address_detail: row.address_detail,
-    website: row.website, avatar: row.avatar, cover: row.cover, logo: row.logo, bio: row.bio,
+    wechat: row.wechat, alipay: row.alipay, whatsapp: row.whatsapp,
+    wechat_qr: row.wechat_qr, alipay_qr: row.alipay_qr,
+    wechat_pay_qr: row.wechat_pay_qr, alipay_pay_qr: row.alipay_pay_qr,
+    address: row.address, address_detail: row.address_detail,
+    website: row.website, shop_url: row.shop_url,
+    avatar: row.avatar, cover: row.cover, logo: row.logo, bio: row.bio,
     tags: parseJson(row.tags, []), links: parseJson(row.links, []),
     theme: row.theme, accent: row.accent, qr_fg: row.qr_fg, qr_bg: row.qr_bg, qr_logo: !!row.qr_logo,
     active: row.status === 'active' && !expired,

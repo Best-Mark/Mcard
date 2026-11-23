@@ -24,8 +24,10 @@ function build(card, baseUrl) {
     card.phone ? `TEL;TYPE=WORK,VOICE:${esc(card.phone)}` : '',
     card.email ? `EMAIL;TYPE=INTERNET,WORK:${esc(card.email)}` : '',
     card.address || card.address_detail ? `ADR;TYPE=WORK:;;${esc(card.address_detail)};${esc(card.address)};;;` : '',
-    card.website ? `URL:${esc(card.website)}` : '',
+    card.website ? `URL;TYPE=WORK:${esc(card.website)}` : '',
+    card.shop_url ? `X-SHOP-URL:${esc(card.shop_url)}` : '',
     card.wechat ? `X-WECHAT:${esc(card.wechat)}` : '',
+    card.alipay ? `X-ALIPAY:${esc(card.alipay)}` : '',
     `URL;TYPE=HOME:${esc(url)}`,
     card.bio || card.company_intro
       ? `NOTE:${esc([card.bio, card.company_intro ? `公司简介：${card.company_intro}` : ''].filter(Boolean).join('\\n'))}`

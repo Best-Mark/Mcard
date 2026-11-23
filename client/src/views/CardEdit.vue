@@ -38,7 +38,8 @@
               <div class="field"><label>职位</label><input v-model="form.title" class="input" maxlength="60" /></div>
               <div class="field"><label>公司</label><input v-model="form.company" class="input" maxlength="60" /></div>
               <div class="field"><label>部门</label><input v-model="form.department" class="input" maxlength="40" /></div>
-              <div class="field"><label>个人网站</label><input v-model="form.website" class="input" placeholder="https://" /></div>
+              <div class="field"><label>公司主页 URL</label><input v-model="form.website" class="input" placeholder="https://" /></div>
+              <div class="field"><label>店铺 URL</label><input v-model="form.shop_url" class="input" placeholder="https:// 淘宝 / 抖音 / 微店等" /></div>
             </div>
             <div class="field"><label>个人简介</label><textarea v-model="form.bio" class="textarea" maxlength="600" placeholder="一句话介绍自己，展示在名片首页"></textarea></div>
             <div class="field"><label>公司简介</label><textarea v-model="form.company_intro" class="textarea" maxlength="1000" placeholder="介绍公司业务、优势与服务，展示在名片「公司简介」区块，并写入通讯录备注"></textarea></div>
@@ -52,10 +53,25 @@
               <div class="field"><label>座机</label><input v-model="form.phone" class="input" /></div>
               <div class="field"><label>邮箱</label><input v-model="form.email" class="input" type="email" /></div>
               <div class="field"><label>微信号</label><input v-model="form.wechat" class="input" /></div>
+              <div class="field"><label>支付宝账号</label><input v-model="form.alipay" class="input" /></div>
               <div class="field"><label>WhatsApp</label><input v-model="form.whatsapp" class="input" /></div>
             </div>
             <div class="field"><label>地址（用于一键导航）</label><input v-model="form.address" class="input" placeholder="省市区 + 街道门牌，越详细导航越准" /></div>
             <div class="field"><label>门牌 / 楼层补充</label><input v-model="form.address_detail" class="input" /></div>
+          </div>
+
+          <div class="card card-pad" style="margin-top:14px">
+            <div class="section-title" style="margin-top:0">加好友 / 收付款二维码</div>
+            <p class="small muted" style="margin-bottom:12px">上传微信 / 支付宝的「加好友码」或「收款码」原图，访客在自己常用的 App 环境里可长按识别或保存后扫码。请只上传自己本人的二维码。</p>
+            <div v-for="q in qrFields" :key="q.key" class="qr-upload-row">
+              <div v-if="form[q.key]" class="qr-thumb"><img :src="form[q.key]" :alt="q.label" /></div>
+              <div class="qr-upload-info">
+                <b>{{ q.label }}</b>
+                <label class="btn btn-sm btn-ghost upload-btn">{{ form[q.key] ? '更换' : '上传' }}
+                  <input type="file" accept="image/*" @change="e => upload(e, q.key)" />
+                </label>
+              </div>
+            </div>
           </div>
 
           <div class="card card-pad" style="margin-top:14px">
@@ -123,12 +139,20 @@ import LogoUploader from '../components/LogoUploader.vue'
 
 const router = useRouter()
 const blank = {
-  slug: '', name: '', name_en: '', title: '', company: '', company_intro: '', department: '', website: '',
-  mobile: '', phone: '', email: '', wechat: '', whatsapp: '', address: '', address_detail: '',
+  slug: '', name: '', name_en: '', title: '', company: '', company_intro: '', department: '', website: '', shop_url: '',
+  mobile: '', phone: '', email: '', wechat: '', alipay: '', whatsapp: '',
+  wechat_qr: '', alipay_qr: '', wechat_pay_qr: '', alipay_pay_qr: '',
+  address: '', address_detail: '',
   avatar: '', logo: '', bio: '', tags: [], links: [], theme: 'ocean', accent: THEMES.ocean.accent,
   qr_fg: '#0f172a', qr_bg: '#ffffff', qr_logo: true
 }
 const form = ref({ ...blank })
+const qrFields = [
+  { key: 'wechat_qr', label: '微信 · 加好友码' },
+  { key: 'alipay_qr', label: '支付宝 · 加好友码' },
+  { key: 'wechat_pay_qr', label: '微信 · 收款码' },
+  { key: 'alipay_pay_qr', label: '支付宝 · 收款码' }
+]
 const tagsText = ref('')
 const saving = ref(false)
 const tagList = computed(() => tagsText.value.split(/[,，]/).map(s => s.trim()).filter(Boolean).slice(0, 8))
@@ -185,6 +209,12 @@ async function save() {
 .avatar-preview img { width: 100%; height: 100%; object-fit: cover; }
 .upload-btn { position: relative; overflow: hidden; }
 .upload-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.qr-upload-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.qr-upload-row:last-child { border-bottom: 0; }
+.qr-thumb { width: 56px; height: 56px; border: 1px solid var(--line); border-radius: 8px; padding: 3px; background: #fff; flex-shrink: 0; }
+.qr-thumb img { width: 100%; height: 100%; object-fit: contain; }
+.qr-upload-info { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.qr-upload-info b { font-size: 13px; }
 .link-row { display: grid; grid-template-columns: 1fr 1.5fr auto; gap: 8px; margin-bottom: 8px; }
 .theme-list { display: flex; flex-wrap: wrap; gap: 8px; }
 .theme-item { border: 1px solid var(--line); border-radius: 10px; padding: 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; }

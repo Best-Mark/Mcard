@@ -37,6 +37,7 @@
           <button class="act" @tap="copyText(card.mobile || card.phone, '手机号已复制')"><text class="ico">✎</text><text>存号码</text></button>
           <button class="act" @tap="copyText(card.email, '邮箱已复制')"><text class="ico">✉</text><text>存邮箱</text></button>
           <button class="act" @tap="copyText(card.wechat || card.whatsapp, '微信号已复制')"><text class="ico">微</text><text>存微信</text></button>
+          <button class="act" @tap="copyText(card.alipay, '支付宝账号已复制')"><text class="ico">支</text><text>存支付宝</text></button>
         </view>
 
         <view v-if="card.bio" class="card block">
@@ -55,6 +56,31 @@
             <text class="b">{{ l.label || '链接' }}</text>
             <text class="muted small">{{ l.url }}</text>
           </view>
+        </view>
+
+        <view v-if="siteLinks.length" class="card block">
+          <view class="section">主页与店铺</view>
+          <view v-for="l in siteLinks" :key="l.key" class="link" @tap="copyText(l.url, l.label + '已复制')">
+            <text class="b">{{ l.label }}</text>
+            <text class="muted small">{{ l.url }}</text>
+            <text class="small" style="color:#2563eb">点击复制 ↗</text>
+          </view>
+        </view>
+
+        <view v-if="contactQrs.length" class="card block">
+          <view class="section">加好友 / 收付款</view>
+          <view v-for="q in contactQrs" :key="q.key" class="qr-tile">
+            <image :src="baseUrl + q.url" mode="aspectFit" @tap="previewQr(q)" />
+            <view class="qr-meta">
+              <text class="b">{{ q.label }}</text>
+              <text class="muted small">{{ qrHint(q.platform) }}</text>
+              <view class="btn-row">
+                <button v-if="q.account" class="btn tiny" @tap="copyText(q.account, q.accountLabel + '已复制')">复制账号</button>
+                <button class="btn tiny" @tap="saveQrTile(q)">保存二维码</button>
+              </view>
+            </view>
+          </view>
+          <view class="muted small" style="margin-top:12rpx">付款前请核对收款方与金额；二维码由名片主人自行上传。</view>
         </view>
 
         <view v-if="card.address" class="card block">
@@ -89,6 +115,18 @@
         <view class="foot">由 MCard 提供技术支持 · 资料可改 · 二维码不变</view>
       </view>
 
+      <view v-if="qrPreview" class="modal-mask" @tap="qrPreview = ''">
+        <view class="modal" @tap.stop>
+          <view class="section">{{ qrPreview.label }}</view>
+          <image :src="baseUrl + qrPreview.url" mode="aspectFit" class="modal-qr" />
+          <view class="muted small">{{ qrHint(qrPreview.platform) }}</view>
+          <view class="btn-row">
+            <button class="btn primary" @tap="saveQrTile(qrPreview)">保存到相册</button>
+            <button class="btn" @tap="qrPreview = ''">关闭</button>
+          </view>
+        </view>
+      </view>
+
       <view class="dock">
         <button class="btn primary" open-type="share">分享名片</button>
         <button class="btn" @tap="copyContact">复制名片信息</button>
@@ -100,7 +138,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad, onShareAppMessage } from '@dcloudio/uni-app'
-import { api, baseUrl, toast, copyText, callPhone, saveQrImage, parseSlug } from '../../utils/request'
+import { api, baseUrl, toast, copyText, callPhone, saveQrImage, saveImageByUrl, currentPlatform, parseSlug } from '../../utils/request'
 
 const slug = ref('')
 const card = ref(null)
@@ -108,11 +146,37 @@ const loading = ref(true)
 const error = ref('')
 const mySlug = ref('')
 const exchanging = ref(false)
+const qrPreview = ref('')
 
 const coverBg = computed(() => {
   const c = card.value?.accent || '#2563eb'
   return `linear-gradient(135deg, ${c}, #0f172a)`
 })
+const contactQrs = computed(() => {
+  const c = card.value || {}
+  return [
+    { key: 'wechat_qr', url: c.wechat_qr, label: '微信 · 加好友', platform: 'wechat', account: c.wechat, accountLabel: '微信号' },
+    { key: 'alipay_qr', url: c.alipay_qr, label: '支付宝 · 加好友', platform: 'alipay', account: c.alipay, accountLabel: '支付宝账号' },
+    { key: 'wechat_pay_qr', url: c.wechat_pay_qr, label: '微信 · 收款码', platform: 'wechat', account: '', accountLabel: '' },
+    { key: 'alipay_pay_qr', url: c.alipay_pay_qr, label: '支付宝 · 收款码', platform: 'alipay', account: '', accountLabel: '' }
+  ].filter(q => q.url)
+})
+const siteLinks = computed(() => {
+  const c = card.value || {}
+  const arr = []
+  if (c.website) arr.push({ key: 'website', label: '公司主页', url: c.website })
+  if (c.shop_url) arr.push({ key: 'shop', label: '店铺主页', url: c.shop_url })
+  return arr
+})
+
+function qrHint(platform) {
+  const env = currentPlatform()
+  if (env === platform) return '当前环境可长按识别二维码'
+  if (env === 'toutiao' || env === 'other') return '保存到相册后用对应 App 扫一扫'
+  return `保存图片后用${platform === 'wechat' ? '微信' : '支付宝'}扫一扫`
+}
+function previewQr(q) { qrPreview.value = q }
+function saveQrTile(q) { saveImageByUrl(baseUrl + q.url) }
 
 async function load() {
   loading.value = true; error.value = ''
@@ -133,6 +197,9 @@ function copyContact() {
     c.mobile ? `手机：${c.mobile}` : '',
     c.email ? `邮箱：${c.email}` : '',
     c.wechat ? `微信：${c.wechat}` : '',
+    c.alipay ? `支付宝：${c.alipay}` : '',
+    c.website ? `公司主页：${c.website}` : '',
+    c.shop_url ? `店铺：${c.shop_url}` : '',
     c.address ? `地址：${c.address} ${c.address_detail || ''}` : '',
     c.company_intro ? `公司简介：${c.company_intro}` : '',
     `电子名片：${c.url || baseUrl + '/c/' + c.slug}`
@@ -176,7 +243,7 @@ onShareAppMessage(() => ({
 .title { font-size: 24rpx; color: #6b7688; margin-top: 6rpx; }
 .tags { width: 100%; display: flex; gap: 10rpx; flex-wrap: wrap; }
 .tags text { font-size: 20rpx; color: #2563eb; background: #eff6ff; padding: 4rpx 14rpx; border-radius: 999rpx; }
-.actions { display: flex; padding: 16rpx 0; }
+.actions { display: grid; grid-template-columns: repeat(5, 1fr); padding: 16rpx 0; }
 .act { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8rpx; font-size: 22rpx; color: #6b7688; background: transparent; padding: 0; line-height: 1.3; }
 .act::after { border: 0; }
 .ico { width: 68rpx; height: 68rpx; border-radius: 50%; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 30rpx; font-weight: 700; }
@@ -184,6 +251,13 @@ onShareAppMessage(() => ({
 .content { font-size: 26rpx; color: #475569; line-height: 1.7; }
 .link { display: flex; flex-direction: column; padding: 14rpx 0; border-bottom: 2rpx solid #f1f5f9; }
 .link .b { font-size: 26rpx; font-weight: 600; }
+.qr-tile { display: flex; gap: 18rpx; align-items: center; padding: 16rpx 0; border-bottom: 2rpx solid #f1f5f9; }
+.qr-tile:last-of-type { border-bottom: 0; }
+.qr-tile image { width: 150rpx; height: 150rpx; background: #fff; border: 2rpx solid #e8edf4; border-radius: 12rpx; flex-shrink: 0; }
+.qr-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6rpx; }
+.modal-mask { position: fixed; inset: 0; background: rgba(15,23,42,.55); z-index: 900; display: flex; align-items: center; justify-content: center; padding: 30rpx; }
+.modal { background: #fff; border-radius: 24rpx; padding: 28rpx; width: 100%; }
+.modal-qr { width: 460rpx; height: 460rpx; display: block; margin: 20rpx auto; background: #fff; border: 2rpx solid #e8edf4; border-radius: 16rpx; }
 .addr { display: flex; align-items: flex-start; justify-content: space-between; gap: 16rpx; }
 .hint { font-size: 22rpx; color: #94a3b8; margin-top: 14rpx; line-height: 1.6; }
 .qr-card { display: flex; gap: 20rpx; align-items: center; }

@@ -94,6 +94,27 @@ export function saveTempImage(path) {
   saveImage(path)
 }
 
+export function saveImageByUrl(url) {
+  uni.downloadFile({
+    url,
+    success: res => { if (res.statusCode === 200) saveImage(res.tempFilePath); else toast('图片下载失败') },
+    fail: () => toast('网络异常')
+  })
+}
+
+export function currentPlatform() {
+  // #ifdef MP-WEIXIN
+  return 'wechat'
+  // #endif
+  // #ifdef MP-ALIPAY
+  return 'alipay'
+  // #endif
+  // #ifdef MP-TOUTIAO
+  return 'toutiao'
+  // #endif
+  return 'other'
+}
+
 export function saveQrImage(slug) {
   const url = `${API_BASE}/api/cards/public/${slug}/qr.png?size=720`
   uni.downloadFile({

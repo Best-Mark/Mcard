@@ -37,10 +37,16 @@ CREATE TABLE IF NOT EXISTS cards (
   mobile TEXT NOT NULL DEFAULT '',
   email TEXT NOT NULL DEFAULT '',
   wechat TEXT NOT NULL DEFAULT '',
+  alipay TEXT NOT NULL DEFAULT '',
   whatsapp TEXT NOT NULL DEFAULT '',
+  wechat_qr TEXT NOT NULL DEFAULT '',
+  alipay_qr TEXT NOT NULL DEFAULT '',
+  wechat_pay_qr TEXT NOT NULL DEFAULT '',
+  alipay_pay_qr TEXT NOT NULL DEFAULT '',
   address TEXT NOT NULL DEFAULT '',
   address_detail TEXT NOT NULL DEFAULT '',
   website TEXT NOT NULL DEFAULT '',
+  shop_url TEXT NOT NULL DEFAULT '',
   avatar TEXT NOT NULL DEFAULT '',
   cover TEXT NOT NULL DEFAULT '',
   logo TEXT NOT NULL DEFAULT '',
@@ -68,6 +74,9 @@ function addColumnIfMissing(table, column, definition) {
   if (!exists) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`)
 }
 addColumnIfMissing('cards', 'company_intro', "TEXT NOT NULL DEFAULT ''")
+for (const col of ['alipay', 'wechat_qr', 'alipay_qr', 'wechat_pay_qr', 'alipay_pay_qr', 'shop_url']) {
+  addColumnIfMissing('cards', col, "TEXT NOT NULL DEFAULT ''")
+}
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS packages (

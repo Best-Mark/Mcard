@@ -145,8 +145,9 @@
               <button class="btn btn-primary" :disabled="updBusy" @click="checkUpdate">{{ updBusy ? '处理中…' : '检查更新' }}</button>
               <button v-if="checkResult?.hasUpdate" class="btn btn-ok" :disabled="updBusy" @click="applyOpen = true">立即更新</button>
               <span v-if="checkResult && !checkResult.hasUpdate" class="badge ok">已是最新版本</span>
+              <span v-if="checkResult?.stale" class="badge warn">网络不可用 · 缓存结果</span>
             </div>
-            <p class="small muted" style="margin-top:12px">更新来源：GitHub Release（无 Release 时读取仓库 version.json）。更新会拉取代码、按变更重建前端并按需重启服务。</p>
+            <p class="small muted" style="margin-top:12px">更新来源：GitHub Release（无 Release 时读取远端仓库 package.json 的 version）。更新会拉取代码、按变更重建前端并按需重启服务。</p>
           </div>
 
           <div v-if="checkResult" class="card card-pad" style="margin-top:14px">
@@ -305,7 +306,11 @@ async function loadUpdate() {
 }
 async function checkUpdate() {
   updBusy.value = true
-  try { checkResult.value = await api.post('/api/admin/update/check'); showToast(checkResult.value.hasUpdate ? `发现新版本 v${checkResult.value.latest}` : '已是最新版本', 'success'); await loadUpdate() }
+  try {
+    checkResult.value = await api.post('/api/admin/update/check')
+    showToast(checkResult.value.stale ? '远端不可用，已显示上次检查结果' : (checkResult.value.hasUpdate ? `发现新版本 v${checkResult.value.latest}` : '已是最新版本'), checkResult.value.stale ? 'error' : 'success')
+    await loadUpdate()
+  }
   catch (e) { showToast(e.message, 'error') } finally { updBusy.value = false }
 }
 async function applyUpdate() {
