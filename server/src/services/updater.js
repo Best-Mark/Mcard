@@ -9,6 +9,22 @@ const ROOT = path.resolve(__dirname, '../../..')
 const PKG = path.join(ROOT, 'package.json')
 let busy = false
 let timer = null
+// 异步任务进度：前端轮询 /update/status 显示进度条，避免 axios 20s 超时误判
+let progress = { kind: '', step: '', pct: 0, detail: '', startedAt: 0, updatedAt: 0, done: false, error: '' }
+
+function setProgress(patch) {
+  progress = { ...progress, ...patch, updatedAt: Date.now() }
+}
+function getProgress() { return { ...progress, busy } }
+function startProgress(kind) {
+  progress = { kind, step: '准备中', pct: 0, detail: '', startedAt: Date.now(), updatedAt: Date.now(), done: false, error: '' }
+  busy = true
+}
+function finishProgress(result, error = '') {
+  progress = { ...progress, pct: 100, step: error ? '失败' : '完成', detail: error || progress.detail, done: true, error, updatedAt: Date.now() }
+  busy = false
+  return result
+}
 
 const badRequest = msg => Object.assign(new Error(msg), { status: 400 })
 // 自愈/健壮：子进程必须有超时，否则 git fetch / npm install 异常挂起会让 busy 永久为 true、更新功能死锁
@@ -113,8 +129,9 @@ function remember(result) {
 }
 
 async function check(cfg = getConfig()) {
-  let latest = '', notes = '', publishedAt = '', url = ''
+  let latest = '', notes = '', publishedAt = '', url = '', remoteCommit = ''
   let apiError = ''
+  setProgress({ step: '连接 GitHub 检查版本', pct: 10 })
   try {
     const rel = await fetchJson(`https://api.github.com/repos/${cfg.repo}/releases/latest`)
     latest = String(rel.tag_name || '').replace(/^v/i, '')
@@ -122,13 +139,17 @@ async function check(cfg = getConfig()) {
     publishedAt = rel.published_at || ''
     url = rel.html_url || ''
     if (!latest) throw new Error('Release 未标注版本号')
+    setProgress({ step: '已获取 Release 信息', pct: 45 })
   } catch (e) {
     apiError = e.message
+    setProgress({ step: 'GitHub 不可用，改用 git 远端', pct: 20 })
     try {
       await git(['fetch', 'origin', cfg.branch])
+      setProgress({ step: 'git 拉取完成，读取远端信息', pct: 55 })
       const pkg = JSON.parse((await git(['show', `origin/${cfg.branch}:package.json`])).stdout)
       latest = String(pkg.version || '').replace(/^v/i, '')
       notes = (await git(['log', '-1', '--pretty=%B', `origin/${cfg.branch}`])).stdout.trim()
+      remoteCommit = (await git(['rev-parse', `origin/${cfg.branch}`])).stdout.trim().slice(0, 7)
       url = `https://github.com/${cfg.repo}`
       if (!latest) throw new Error('远端 package.json 缺少 version 字段')
       apiError = 'git 远端'
@@ -137,7 +158,8 @@ async function check(cfg = getConfig()) {
       if (cached && cached.latest) {
         const result = {
           kind: 'check', current: currentVersion(), latest: cached.latest,
-          hasUpdate: compareVersion(cached.latest, currentVersion()) > 0,
+          hasUpdate: compareVersion(cached.latest, currentVersion()) > 0 || !!(cached.remoteCommit && cached.remoteCommit !== currentCommit()),
+          remoteCommit: cached.remoteCommit || '', currentCommit: currentCommit(),
           notes: cached.notes || '', publishedAt: cached.publishedAt || '', url: cached.url || '',
           source: '缓存（网络不可用）', stale: true,
           error: `GitHub Release(${apiError})；git 远端(${e2.message})`
@@ -149,11 +171,19 @@ async function check(cfg = getConfig()) {
     }
   }
 
+  // 兼容：没有 Release 时 version 常年不变；用 commit 比对兜底，避免永远显示「已是最新版本」
+  // GitHub Release 分支也尝试读一次本地已知的 remote commit（fetch 过就有）
+  if (!remoteCommit) {
+    try { remoteCommit = (await git(['rev-parse', `origin/${cfg.branch}`])).stdout.trim().slice(0, 7) } catch { /* 未 fetch 过则留空 */ }
+  }
+  setProgress({ step: '对比版本', pct: 75 })
+  const versionAhead = compareVersion(latest, currentVersion()) > 0
+  const commitAhead = !!remoteCommit && !!currentCommit() && remoteCommit !== currentCommit()
   const result = {
     kind: 'check',
-    current: currentVersion(),
-    latest,
-    hasUpdate: compareVersion(latest, currentVersion()) > 0,
+    current: currentVersion(), currentCommit: currentCommit(),
+    latest, remoteCommit,
+    hasUpdate: versionAhead || commitAhead,
     notes, publishedAt, url,
     source: apiError === 'git 远端' ? 'git 远端' : (apiError ? 'GitHub Release(字段异常)' : 'GitHub Release')
   }
@@ -164,32 +194,43 @@ async function check(cfg = getConfig()) {
 async function performUpdate(cfg = getConfig()) {
   if (busy) throw Object.assign(new Error('已有更新任务正在执行，请稍候'), { status: 409 })
   if (!fs.existsSync(path.join(ROOT, '.git'))) throw badRequest('当前目录不是 Git 仓库，无法自动更新')
-  busy = true
+  startProgress('apply')
   try {
+    setProgress({ step: '检查 Git 远端', pct: 8 })
     try { await git(['remote', 'get-url', 'origin']) } catch { throw badRequest('未配置 origin 远端，无法自动更新') }
     const before = (await git(['rev-parse', 'HEAD'])).stdout.trim()
+    setProgress({ step: '拉取远端代码（git fetch）', pct: 18 })
     await git(['fetch', 'origin', cfg.branch])
     const after = (await git(['rev-parse', `origin/${cfg.branch}`])).stdout.trim()
     if (before === after) {
       const result = { kind: 'apply', updated: false, message: '已是最新版本', log: [] }
       result.checkedAt = remember(result)
-      return result
+      return finishProgress(result)
     }
+    setProgress({ step: '合并代码（git pull）', pct: 32 })
     await git(['pull', '--ff-only', 'origin', cfg.branch])
     const files = (await git(['diff', '--name-only', before, after])).stdout
       .split('\n').map(s => s.trim()).filter(Boolean)
     const log = []
+    const needServer = files.some(p => /^server\/package(-lock)?\.json$/.test(p))
+    const needClient = files.some(p => p.startsWith('client/'))
+    const needMiniapp = files.some(p => p.startsWith('miniapp/'))
+    const totalJobs = [needServer, needClient, needMiniapp].filter(Boolean).length || 1
+    let doneJobs = 0
 
     try {
-      if (files.some(p => /^server\/package(-lock)?\.json$/.test(p))) {
+      if (needServer) {
+        setProgress({ step: '更新 server 依赖', pct: 40 + Math.round(50 * (++doneJobs / totalJobs)) })
         await npm(['--prefix', 'server', 'install'])
         log.push('server 依赖已更新')
       }
-      if (files.some(p => p.startsWith('client/'))) {
+      if (needClient) {
+        setProgress({ step: '重新构建 H5 前端', pct: 40 + Math.round(50 * (++doneJobs / totalJobs)) })
         await npm(['--prefix', 'client', 'run', 'build'])
         log.push('H5 前端已重新构建')
       }
-      if (files.some(p => p.startsWith('miniapp/'))) {
+      if (needMiniapp) {
+        setProgress({ step: '重新构建小程序三端', pct: 40 + Math.round(50 * (++doneJobs / totalJobs)) })
         await npm(['--prefix', 'miniapp', 'run', 'build:all'])
         log.push('小程序三端已重新构建')
       }
@@ -209,10 +250,14 @@ async function performUpdate(cfg = getConfig()) {
     result.checkedAt = remember(result)
     if (restartRequired && process.env.pm_id) {
       result.restartScheduled = true
+      setProgress({ step: '服务即将重启', pct: 98, detail: '服务端有变更，2 秒后自动重启（页面会短暂断连，重启后自动恢复）' })
       setTimeout(() => process.exit(0), 2000)
     }
-    return result
-  } finally { busy = false }
+    return finishProgress(result)
+  } finally {
+    // busy 由 finishProgress 统一释放；异常抛出时也要释放，避免死锁
+    if (busy && !progress.done) { busy = false; setProgress({ step: '失败', done: true, error: progress.error || '更新失败', updatedAt: Date.now() }) }
+  }
 }
 
 async function tick() {
@@ -234,7 +279,23 @@ function startAutoUpdateLoop() {
   setTimeout(tick, 30 * 1000).unref?.()
 }
 
+// 异步启动：接口立即返回，前端轮询进度，彻底绕开 axios 20s 超时
+function startCheck() {
+  if (busy) throw Object.assign(new Error('已有更新任务正在执行，请稍候'), { status: 409 })
+  startProgress('check')
+  Promise.resolve().then(() => check()).then(r => finishProgress(r)).catch(e => finishProgress(null, e.message || '检查失败'))
+  return getProgress()
+}
+function startApply() {
+  if (busy) throw Object.assign(new Error('已有更新任务正在执行，请稍候'), { status: 409 })
+  // performUpdate 内部会 startProgress('apply') 并置 busy，这里不预置，否则它自己的 busy 检查会误报 409
+  const p = performUpdate() // 同步执行到第一个 await 前即已 startProgress，busy 已置位
+  Promise.resolve(p).then(r => finishProgress(r)).catch(e => finishProgress(null, e.message || '更新失败'))
+  return getProgress()
+}
+
 module.exports = {
   currentVersion, currentCommit, getConfig, updateConfig, check, performUpdate,
+  startCheck, startApply, getProgress,
   startAutoUpdateLoop, isBusy: () => busy
 }

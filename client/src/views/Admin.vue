@@ -260,15 +260,27 @@
           <div class="card panel">
             <div class="ver-grid">
               <div><span>当前版本</span><b>v{{ updateInfo.current || '-' }}<small v-if="updateInfo.commit" style="display:block;font-size:11px;color:var(--muted)">#{{ updateInfo.commit }}</small></b></div>
-              <div><span>最新版本</span><b :class="{ hot: checkResult?.hasUpdate }">{{ checkResult ? 'v' + checkResult.latest : '未检查' }}</b></div>
+              <div><span>最新版本</span><b :class="{ hot: checkResult?.hasUpdate }">{{ checkResult ? 'v' + checkResult.latest : '未检查' }}<small v-if="checkResult?.remoteCommit" style="display:block;font-size:11px;color:var(--muted)">#{{ checkResult.remoteCommit }}</small></b></div>
               <div><span>检查时间</span><b class="small">{{ fmtTime(updateInfo.config?.lastCheck) }}</b></div>
-              <div><span>任务状态</span><b class="small">{{ updateInfo.busy ? '更新中…' : '空闲' }}</b></div>
-            </div>
-            <div class="btn-row" style="margin-top:14px">
-              <button class="btn btn-primary" :disabled="updBusy" @click="checkUpdate">{{ updBusy ? '处理中…' : '检查更新' }}</button>
+              <div><span>任务状态</span><b class="small" :class="{ hot: updateInfo.busy }">{{ updateInfo.busy ? '执行中…' : '空闲' }}</b></div>
+              </div>
+
+              <div v-if="progressVisible" class="upd-progress">
+              <div class="upd-progress-head">
+                <b>{{ progress.step }}</b>
+                <span class="small muted">{{ progress.pct }}%</span>
+              </div>
+              <div class="upd-progress-track"><i :style="{ width: Math.max(2, progress.pct) + '%' }"></i></div>
+              <p v-if="progress.detail" class="small muted" style="margin-top:8px">{{ progress.detail }}</p>
+              <p v-if="progress.error" class="small" style="margin-top:8px;color:#b91c1c">{{ progress.error }}</p>
+              </div>
+
+              <div class="btn-row" style="margin-top:14px">
+              <button class="btn btn-primary" :disabled="updBusy" @click="checkUpdate">{{ updBusy ? '检查中…' : '检查更新' }}</button>
               <button v-if="checkResult?.hasUpdate" class="btn btn-ok" :disabled="updBusy" @click="applyOpen = true">立即更新</button>
               <span v-if="checkResult && !checkResult.hasUpdate" class="badge ok">已是最新版本</span>
               <span v-if="checkResult?.stale" class="badge warn">网络不可用 · 缓存结果</span>
+              <span v-if="checkResult?.remoteCommit && checkResult.remoteCommit !== updateInfo.commit && !checkResult.hasUpdate" class="badge warn">commit 不一致</span>
             </div>
             <p class="small muted" style="margin-top:12px">更新来源：GitHub Release（无 Release 时读取远端仓库 package.json 的 version）。更新会拉取代码、按变更重建前端并按需重启服务。</p>
           </div>
@@ -380,8 +392,10 @@ const cardQ = ref(''); const cardStatus = ref(''); const orderStatus = ref('')
 const pkgModal = ref(false); const pkgForm = ref({}); const pkgFeatures = ref('')
 const updateInfo = ref({}); const checkResult = ref(null); const updCfg = ref({})
 const updBusy = ref(false); const applyOpen = ref(false); const sideOpen = ref(false)
+const progress = ref({ kind: '', step: '', pct: 0, detail: '', done: false, error: '' })
+const progressVisible = computed(() => updBusy.value || (progress.value.kind && !progress.value.done))
 const now = ref(new Date()); const shown = ref({ users: 0, cards: 0, activeCards: 0, paidOrders: 0, revenueCents: 0, todayViews: 0 })
-let clockTimer = 0; let kpiRaf = 0
+let clockTimer = 0; let kpiRaf = 0; let pollTimer = 0
 
 const fmtTime = v => v ? new Date(v).toLocaleString('zh-CN', { hour12: false }) : '从未检查'
 const clockText = computed(() => now.value.toLocaleTimeString('zh-CN', { hour12: false }) + ' · ' + now.value.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit', weekday: 'short' }))
@@ -502,7 +516,7 @@ onMounted(() => {
     api.get('/api/admin/update/status').then(r => { const d = r.data.data; updateInfo.value = d; updCfg.value = { ...(d.config || {}) } }).catch(() => {})
   }
 })
-onBeforeUnmount(() => { clearInterval(clockTimer); cancelAnimationFrame(kpiRaf) })
+onBeforeUnmount(() => { clearInterval(clockTimer); clearInterval(pollTimer); cancelAnimationFrame(kpiRaf) })
 
 function openPkg(p) {
   pkgForm.value = p ? { ...p } : { name: '', price_cents: 1900, duration_days: 30, features: [], sort: 0, enabled: true }
@@ -566,27 +580,70 @@ async function loadUpdate() {
   const d = (await api.get('/api/admin/update/status')).data.data
   updateInfo.value = d
   updCfg.value = { ...(d.config || {}) }
+  if (d.progress) progress.value = d.progress
   if (d.config?.lastResult?.kind === 'check') checkResult.value = d.config.lastResult
 }
+
+// 轮询：异步任务在后端跑，前端每 1s 拉一次进度；重启导致短暂断连时继续重试，不误判失败
+function startPolling(kind, onDone) {
+  clearInterval(pollTimer)
+  let misses = 0
+  let doneCalled = false
+  const tick = async () => {
+    try {
+      misses = 0
+      const d = (await api.get('/api/admin/update/status')).data.data
+      updateInfo.value = d
+      if (d.progress) progress.value = d.progress
+      if (d.config?.lastResult?.kind === 'check') checkResult.value = d.config.lastResult
+      if (d.progress && d.progress.done) {
+        if (doneCalled) return
+        doneCalled = true
+        clearInterval(pollTimer)
+        updBusy.value = false
+        onDone(d.progress)
+        // 完成后刷新版本/检查时间（apply 重启场景稍等再拉，避免又撞上重启窗口）
+        setTimeout(() => loadUpdate().catch(() => {}), kind === 'apply' ? 3500 : 200)
+      }
+    } catch (e) {
+      misses++
+      // 重启窗口期接口 502/超时属预期，连续 30 次（30s）才判定为失联
+      if (misses >= 30) {
+        clearInterval(pollTimer)
+        updBusy.value = false
+        progress.value = { ...progress.value, done: true, error: '更新服务失联，请稍后刷新页面查看结果' }
+      }
+    }
+  }
+  pollTimer = setInterval(tick, 1000)
+  tick()
+}
+
 async function checkUpdate() {
   if (updBusy.value) return
   updBusy.value = true
+  progress.value = { kind: 'check', step: '正在启动检查…', pct: 2, detail: '', done: false, error: '' }
   try {
-    checkResult.value = (await api.post('/api/admin/update/check')).data.data
-    showToast(checkResult.value.stale ? '远端不可用，已显示上次检查结果' : (checkResult.value.hasUpdate ? `发现新版本 v${checkResult.value.latest}` : '已是最新版本'), checkResult.value.stale ? 'error' : 'success')
-    await loadUpdate()
-  } catch (e) { showToast(e.message, 'error') } finally { updBusy.value = false }
+    await api.post('/api/admin/update/check') // 立即返回，不再等后端跑完
+    startPolling('check', p => {
+      if (p.error) showToast(`检查失败：${p.error}`, 'error')
+      else if (checkResult.value?.stale) showToast('远端不可用，已显示上次检查结果', 'error')
+      else showToast(checkResult.value?.hasUpdate ? `发现新版本 v${checkResult.value.latest}` : '已是最新版本', 'success')
+    })
+  } catch (e) { updBusy.value = false; showToast(e.message, 'error') }
 }
 async function applyUpdate() {
   if (updBusy.value) return
+  applyOpen.value = false
   updBusy.value = true
+  progress.value = { kind: 'apply', step: '正在启动更新…', pct: 2, detail: '', done: false, error: '' }
   try {
-    const r = (await api.post('/api/admin/update/apply')).data.data
-    showToast(r.updated ? '更新完成' : (r.message || '无需更新'), 'success')
-    applyOpen.value = false
-    await loadUpdate()
-    if (r.restartRequired) showToast(r.restartScheduled ? '服务端变更已更新，正在自动重启' : '服务端已更新，请手动重启 Node 进程', 'success')
-  } catch (e) { showToast(e.message, 'error') } finally { updBusy.value = false }
+    await api.post('/api/admin/update/apply')
+    startPolling('apply', p => {
+      if (p.error) showToast(`更新失败：${p.error}`, 'error')
+      else showToast('更新完成', 'success')
+    })
+  } catch (e) { updBusy.value = false; showToast(e.message, 'error') }
 }
 async function saveUpdateConfig() {
   if (updBusy.value) return
@@ -597,6 +654,12 @@ async function saveUpdateConfig() {
 </script>
 
 <style scoped>
+/* 更新进度条 */
+.upd-progress { margin-top: 16px; padding: 14px; border-radius: 12px; background: #eff6ff; border: 1px solid #dbeafe; }
+.upd-progress-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 13px; }
+.upd-progress-track { height: 8px; border-radius: 6px; background: #dbeafe; overflow: hidden; }
+.upd-progress-track i { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, #60a5fa, #2563eb); transition: width .5s ease; }
+
 /* 登录 */
 .login-page { min-height: 100vh; display: grid; place-items: center; padding: 20px; position: relative; overflow: hidden; background: radial-gradient(900px 500px at 20% 10%, #1e3a8a, transparent 60%), linear-gradient(135deg, #0b1224, #131e3a 60%, #0f172a); }
 .login-bg { position: absolute; inset: 0; opacity: .8; }

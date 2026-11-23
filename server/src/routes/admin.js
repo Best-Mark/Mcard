@@ -144,15 +144,19 @@ router.post('/sms/test', adminRequired, wrap(async (req, res) => {
 
 // ---------- 版本检查与更新 ----------
 router.get('/update/status', adminRequired, wrap((_req, res) => {
-  ok(res, { current: updater.currentVersion(), commit: updater.currentCommit(), config: updater.getConfig(), busy: updater.isBusy() })
+  ok(res, {
+    current: updater.currentVersion(), commit: updater.currentCommit(),
+    config: updater.getConfig(), busy: updater.isBusy(), progress: updater.getProgress()
+  })
 }))
 
-router.post('/update/check', adminRequired, wrap(async (_req, res) => {
-  ok(res, await updater.check())
+// 异步启动，立即返回；前端轮询 /update/status 拿进度，不再受 axios 20s 超时限制
+router.post('/update/check', adminRequired, wrap((_req, res) => {
+  ok(res, updater.startCheck())
 }))
 
-router.post('/update/apply', superRequired, wrap(async (_req, res) => {
-  ok(res, await updater.performUpdate())
+router.post('/update/apply', superRequired, wrap((_req, res) => {
+  ok(res, updater.startApply())
 }))
 
 router.put('/update/config', superRequired, wrap((req, res) => {
