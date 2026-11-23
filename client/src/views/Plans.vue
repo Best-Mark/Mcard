@@ -14,11 +14,12 @@
       </div>
       <div v-else-if="!loading && !packages.length" class="card card-pad center">暂无可选套餐</div>
       <div class="plan-grid">
-        <div v-for="p in packages" :key="p.id" class="card plan" :class="{ hot: p.sort === 3 }">
+        <div v-for="p in packages" :key="p.id" class="card plan" :class="{ hot: p.sort === 3 || p.duration_days === 0 }">
           <span v-if="p.sort === 3" class="plan-hot">推荐</span>
+          <span v-else-if="p.duration_days === 0" class="plan-hot">终身</span>
           <h3>{{ p.name }}</h3>
           <p class="small muted">{{ p.description }}</p>
-          <div class="price"><small>¥</small>{{ (p.price_cents / 100).toFixed(p.price_cents % 100 ? 2 : 0) }}<span>/ {{ p.duration_days }} 天</span></div>
+          <div class="price"><small>¥</small>{{ (p.price_cents / 100).toFixed(p.price_cents % 100 ? 2 : 0) }}<span>/ {{ p.duration_days === 0 ? '永久' : p.duration_days + ' 天' }}</span></div>
           <ul><li v-for="f in p.features" :key="f">✓ {{ f }}</li></ul>
           <button class="btn btn-block" :class="p.sort === 3 ? 'btn-primary' : 'btn-ghost'" :disabled="busy === p.id" @click="buy(p)">
             {{ busy === p.id ? '下单中…' : '立即开通' }}

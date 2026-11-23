@@ -166,7 +166,9 @@ const seedPackages = [
   { name: '体验卡', description: '7 天试用，完整功能', price_cents: 100, duration_days: 7, features: JSON.stringify(['全部模板', '永久二维码', '一键存通讯录', '实体名片版式下载']), sort: 1 },
   { name: '月度会员', description: '30 天，持续展示', price_cents: 1900, duration_days: 30, features: JSON.stringify(['全部模板', '永久二维码', '一键存通讯录', '实体名片版式下载', '访问数据统计']), sort: 2 },
   { name: '季度会员', description: '90 天，推荐之选', price_cents: 4900, duration_days: 90, features: JSON.stringify(['全部模板', '永久二维码', '一键存通讯录', '实体名片版式下载', '访问数据统计', '交换名片']), sort: 3 },
-  { name: '年度会员', description: '365 天，长期商务首选', price_cents: 9900, duration_days: 365, features: JSON.stringify(['全部模板', '永久二维码', '一键存通讯录', '实体名片版式下载', '访问数据统计', '交换名片', '自定义主题']), sort: 4 }
+  { name: '年度会员', description: '365 天，长期商务首选', price_cents: 9900, duration_days: 365, features: JSON.stringify(['全部模板', '永久二维码', '一键存通讯录', '实体名片版式下载', '访问数据统计', '交换名片', '自定义主题']), sort: 4 },
+  // 终身套餐：duration_days = 0（唯一口径，勿用负数或魔法天数表示）
+  { name: '终身会员', description: '一次开通，永久有效', price_cents: 29900, duration_days: 0, features: JSON.stringify(['全部模板', '永久二维码', '一键存通讯录', '实体名片版式下载', '访问数据统计', '交换名片', '自定义主题', '终身有效']), sort: 5 }
 ]
 // 自愈但幂等：用标记键做种子，避免运营删光套餐/降级管理员后下次启动被「复活」
 const insertSeedFlag = db.prepare("INSERT OR IGNORE INTO site_config (key, value) VALUES (?, ?)")
@@ -174,6 +176,12 @@ const seeded = key => !!db.prepare('SELECT 1 FROM site_config WHERE key = ?').ge
 if (!seeded('seed_packages_v1')) {
   const insert = db.prepare('INSERT INTO packages (name, description, price_cents, duration_days, features, sort) VALUES (@name,@description,@price_cents,@duration_days,@features,@sort)')
   db.transaction(rows => { rows.forEach(r => insert.run(r)); insertSeedFlag.run('seed_packages_v1', '1') })(seedPackages)
+}
+
+// 自愈补丁：存量库已有 seed_packages_v1 标记，新增终身套餐不会随原种子插入；按「有无终身套餐」幂等补齐
+if (!db.prepare('SELECT 1 FROM packages WHERE duration_days = 0 LIMIT 1').get()) {
+  const lifetime = seedPackages.find(p => p.duration_days === 0)
+  db.prepare('INSERT INTO packages (name, description, price_cents, duration_days, features, sort) VALUES (@name,@description,@price_cents,@duration_days,@features,@sort)').run(lifetime)
 }
 
 if (!seeded('seed_admin_v1')) {

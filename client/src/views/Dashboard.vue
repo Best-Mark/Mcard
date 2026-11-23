@@ -54,7 +54,7 @@
         <div class="stat-grid">
           <div class="stat"><b>{{ stats.views }}</b><span>累计浏览</span></div>
           <div class="stat"><b>{{ stats.exchanges }}</b><span>交换名片</span></div>
-          <div class="stat"><b>{{ card.active ? expireDays : 0 }}</b><span>剩余有效天数</span></div>
+          <div class="stat"><b>{{ card.active ? (card.expires_at ? expireDays : '永久') : 0 }}</b><span>剩余有效天数</span></div>
           <div class="stat"><b>{{ card.active ? '已开通' : '待开通' }}</b><span>当前状态</span></div>
         </div>
 

@@ -21,16 +21,26 @@ function activateOrder(orderId, payNo = '') {
         .run(order.user_id, slug, user?.nickname || '我的名片', 'draft')
       card = db.prepare('SELECT * FROM cards WHERE user_id = ?').get(order.user_id)
     }
+    // 终身套餐：duration_days = 0 → expires_at = NULL（永不过期）
+    // 关键防降级：已是终身（expires_at 为 NULL 且 active）的用户再买有限套餐，必须保持终身，不能把 NULL 覆盖成有限到期日
+    const lifetime = Number(pkg.duration_days) === 0
+    const alreadyLifetime = !card.expires_at && card.status === 'active'
+    if (lifetime || alreadyLifetime) {
+      db.prepare("UPDATE cards SET status = 'active', expires_at = NULL, updated_at = datetime('now') WHERE id = ?").run(card.id)
+      const fresh = db.prepare('SELECT * FROM orders WHERE id = ?').get(order.id)
+      return { changed: true, order: fresh, cardId: card.id, expiresAt: null, lifetime: true }
+    }
+
     // 续期从「当前到期时间」和「现在」中取较晚者叠加，避免重复购买吃亏
     const now = new Date()
     const current = card.expires_at ? new Date(String(card.expires_at).replace(' ', 'T') + 'Z') : now
     const base = current > now ? current : now
-    const expires = new Date(base.getTime() + pkg.duration_days * 86400000)
+    const expires = new Date(base.getTime() + Number(pkg.duration_days) * 86400000)
     db.prepare("UPDATE cards SET status = 'active', expires_at = ?, updated_at = datetime('now') WHERE id = ?")
       .run(toSqlTime(expires), card.id)
 
     const fresh = db.prepare('SELECT * FROM orders WHERE id = ?').get(order.id)
-    return { changed: true, order: fresh, cardId: card.id, expiresAt: toSqlTime(expires) }
+    return { changed: true, order: fresh, cardId: card.id, expiresAt: toSqlTime(expires), lifetime: false }
   })
   return tx()
 }

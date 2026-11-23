@@ -145,7 +145,7 @@
             <div class="table-wrap"><table><thead><tr><th>名称</th><th>价格</th><th>天数</th><th>权益</th><th>排序</th><th>状态</th><th>操作</th></tr></thead>
               <tbody><tr v-for="p in packages" :key="p.id">
                 <td><b>{{ p.name }}</b><div class="small muted">{{ p.description }}</div></td>
-                <td>¥{{ (p.price_cents / 100).toFixed(2) }}</td><td>{{ p.duration_days }} 天</td>
+                <td>¥{{ (p.price_cents / 100).toFixed(2) }}</td><td>{{ p.duration_days === 0 ? '终身' : p.duration_days + ' 天' }}</td>
                 <td class="small muted">{{ (p.features || []).join(' / ') }}</td><td>{{ p.sort }}</td>
                 <td><span class="badge" :class="p.enabled ? 'ok' : 'off'">{{ p.enabled ? '上架' : '下架' }}</span></td>
                 <td><button class="btn btn-sm btn-ghost" :disabled="busy" @click="openPkg(p)">编辑</button>
@@ -167,7 +167,7 @@
                 <td><router-link :to="`/c/${c.slug}`" target="_blank" class="mono">{{ c.slug }}</router-link></td>
                 <td>{{ c.name }}</td><td>{{ c.company }}</td><td>{{ c.user_phone }}</td>
                 <td><span class="badge" :class="c.status === 'active' ? 'ok' : 'off'">{{ c.status }}</span></td>
-                <td>{{ c.views }}</td><td>{{ c.expires_at || '-' }}</td>
+                <td>{{ c.views }}</td><td>{{ c.expires_at || '终身' }}</td>
                 <td><button class="btn btn-sm btn-ghost" :disabled="busy" @click="setCardStatus(c, 'disabled')">停用</button>
                     <button class="btn btn-sm btn-ok" :disabled="busy" @click="setCardStatus(c, 'active')">启用</button></td>
               </tr></tbody></table></div>
@@ -317,7 +317,7 @@
         <div class="grid2">
           <div class="field"><label>名称</label><input v-model="pkgForm.name" class="input" /></div>
           <div class="field"><label>价格（元）</label><input v-model.number="pkgPrice" class="input" type="number" min="0" step="0.01" /></div>
-          <div class="field"><label>有效天数</label><input v-model.number="pkgForm.duration_days" class="input" type="number" min="1" /></div>
+          <div class="field"><label>有效天数（填 0 表示终身套餐）</label><input v-model.number="pkgForm.duration_days" class="input" type="number" min="0" /></div>
           <div class="field"><label>排序</label><input v-model.number="pkgForm.sort" class="input" type="number" /></div>
         </div>
         <div class="field"><label>说明</label><input v-model="pkgForm.description" class="input" /></div>
