@@ -143,7 +143,7 @@ router.post('/sms/test', adminRequired, wrap(async (req, res) => {
 
 // ---------- 版本检查与更新 ----------
 router.get('/update/status', adminRequired, wrap((_req, res) => {
-  ok(res, { current: updater.currentVersion(), config: updater.getConfig(), busy: updater.isBusy() })
+  ok(res, { current: updater.currentVersion(), commit: updater.currentCommit(), config: updater.getConfig(), busy: updater.isBusy() })
 }))
 
 router.post('/update/check', adminRequired, wrap(async (_req, res) => {

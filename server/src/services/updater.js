@@ -33,6 +33,17 @@ function currentVersion() {
   try { return JSON.parse(fs.readFileSync(PKG, 'utf8')).version || '0.0.0' } catch { return '0.0.0' }
 }
 
+function currentCommit() {
+  try {
+    const head = fs.readFileSync(path.join(ROOT, '.git', 'HEAD'), 'utf8').trim()
+    if (head.startsWith('ref:')) {
+      const ref = head.slice(5).trim()
+      return fs.readFileSync(path.join(ROOT, '.git', ref), 'utf8').trim().slice(0, 7)
+    }
+    return head.slice(0, 7)
+  } catch { return '' }
+}
+
 function getConfig() {
   return {
     repo: String(readCfg('update_repo', 'Best-Mark/Mcard')),
@@ -215,6 +226,6 @@ function startAutoUpdateLoop() {
 }
 
 module.exports = {
-  currentVersion, getConfig, updateConfig, check, performUpdate,
+  currentVersion, currentCommit, getConfig, updateConfig, check, performUpdate,
   startAutoUpdateLoop, isBusy: () => busy
 }

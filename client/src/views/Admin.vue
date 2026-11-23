@@ -21,7 +21,7 @@
     <aside class="side" :class="{ open: sideOpen }">
       <div class="side-brand">
         <span class="side-logo">M</span>
-        <div>M<em>Card</em><small>管理控制台 · v{{ updateInfo.current || '—' }}</small></div>
+        <div>M<em>Card</em><small>管理控制台 · v{{ updateInfo.current || '—' }}{{ updateInfo.commit ? ' #' + updateInfo.commit : '' }}</small></div>
       </div>
       <div class="side-label">工作台</div>
       <button v-for="m in mainMenus" :key="m.k" :class="{ on: tab === m.k }" @click="switchTab(m.k)">
@@ -259,7 +259,7 @@
           <div class="panel-head stand-alone"><h2>版本更新</h2><span class="small muted">检查 / 自动更新</span></div>
           <div class="card panel">
             <div class="ver-grid">
-              <div><span>当前版本</span><b>v{{ updateInfo.current || '-' }}</b></div>
+              <div><span>当前版本</span><b>v{{ updateInfo.current || '-' }}<small v-if="updateInfo.commit" style="display:block;font-size:11px;color:var(--muted)">#{{ updateInfo.commit }}</small></b></div>
               <div><span>最新版本</span><b :class="{ hot: checkResult?.hasUpdate }">{{ checkResult ? 'v' + checkResult.latest : '未检查' }}</b></div>
               <div><span>检查时间</span><b class="small">{{ fmtTime(updateInfo.config?.lastCheck) }}</b></div>
               <div><span>任务状态</span><b class="small">{{ updateInfo.busy ? '更新中…' : '空闲' }}</b></div>
@@ -492,7 +492,10 @@ async function loadOrders() { orders.value = (await api.get('/api/admin/orders',
 
 onMounted(() => {
   clockTimer = setInterval(() => { now.value = new Date() }, 1000)
-  if (logged.value) loadTab('overview')
+  if (logged.value) {
+    loadTab('overview')
+    api.get('/api/admin/update/status').then(r => { const d = r.data.data; updateInfo.value = d; updCfg.value = { ...(d.config || {}) } }).catch(() => {})
+  }
 })
 onBeforeUnmount(() => { clearInterval(clockTimer); cancelAnimationFrame(kpiRaf) })
 
@@ -555,16 +558,16 @@ async function testSms() {
   catch (e) { showToast(e.message, 'error') } finally { smsBusy.value = false }
 }
 async function loadUpdate() {
-  const d = await api.get('/api/admin/update/status')
-  updateInfo.value = d.data
-  updCfg.value = { ...d.data.config }
-  if (d.data.config?.lastResult?.kind === 'check') checkResult.value = d.data.config.lastResult
+  const d = (await api.get('/api/admin/update/status')).data.data
+  updateInfo.value = d
+  updCfg.value = { ...(d.config || {}) }
+  if (d.config?.lastResult?.kind === 'check') checkResult.value = d.config.lastResult
 }
 async function checkUpdate() {
   if (updBusy.value) return
   updBusy.value = true
   try {
-    checkResult.value = await api.post('/api/admin/update/check')
+    checkResult.value = (await api.post('/api/admin/update/check')).data.data
     showToast(checkResult.value.stale ? '远端不可用，已显示上次检查结果' : (checkResult.value.hasUpdate ? `发现新版本 v${checkResult.value.latest}` : '已是最新版本'), checkResult.value.stale ? 'error' : 'success')
     await loadUpdate()
   } catch (e) { showToast(e.message, 'error') } finally { updBusy.value = false }
@@ -573,7 +576,7 @@ async function applyUpdate() {
   if (updBusy.value) return
   updBusy.value = true
   try {
-    const r = await api.post('/api/admin/update/apply')
+    const r = (await api.post('/api/admin/update/apply')).data.data
     showToast(r.updated ? '更新完成' : (r.message || '无需更新'), 'success')
     applyOpen.value = false
     await loadUpdate()
