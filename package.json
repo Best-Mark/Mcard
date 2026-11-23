@@ -1,0 +1,22 @@
+{
+  "name": "mcard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "电子名片系统：稳定二维码、一键保存、多端导航、实体名片版式下载、时段套餐",
+  "scripts": {
+    "setup": "npm install && npm --prefix server install && npm --prefix client install && npm --prefix miniapp install",
+    "dev": "concurrently -k -n api,web -c cyan,magenta \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "node server/src/app.js",
+    "dev:client": "npm --prefix client run dev",
+    "build": "npm --prefix client run build",
+    "build:miniapp": "npm --prefix miniapp run build:all",
+    "build:all": "npm run build && npm run build:miniapp",
+    "start": "node server/src/app.js"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

@@ -1,0 +1,161 @@
+const express = require('express')
+const bcrypt = require('bcryptjs')
+const db = require('../db')
+const { ok, fail, wrap } = require('../utils/response')
+const { sign, adminRequired, superRequired } = require('../utils/auth')
+const updater = require('../services/updater')
+
+const router = express.Router()
+const parseJson = (v, f) => { try { return JSON.parse(v) ?? f } catch { return f } }
+
+router.post('/login', wrap((req, res) => {
+  const user = db.prepare('SELECT * FROM users WHERE phone = ?').get(String(req.body?.phone || '').trim())
+  if (!user || !bcrypt.compareSync(String(req.body?.password || ''), user.password_hash)) return fail(res, 400, '账号或密码不正确')
+  if (!['admin', 'super_admin'].includes(user.role)) return fail(res, 403, '该账号无后台权限')
+  if (user.status !== 'active') return fail(res, 403, '账号已停用')
+  ok(res, { token: sign(user), user: { id: user.id, phone: user.phone, nickname: user.nickname, role: user.role } })
+}))
+
+router.get('/overview', adminRequired, wrap((_req, res) => {
+  const count = (sql, ...args) => db.prepare(sql).get(...args).n
+  const revenue = db.prepare("SELECT COALESCE(SUM(amount_cents),0) AS n FROM orders WHERE status = 'paid'").get().n
+  const recentOrders = db.prepare(`SELECT o.id, o.order_no, o.amount_cents, o.status, o.created_at, p.name AS package_name, u.phone
+    FROM orders o JOIN packages p ON p.id = o.package_id JOIN users u ON u.id = o.user_id
+    ORDER BY o.id DESC LIMIT 6`).all()
+  const recentCards = db.prepare(`SELECT c.id, c.slug, c.name, c.company, c.status, c.views, u.phone, c.created_at
+    FROM cards c JOIN users u ON u.id = c.user_id ORDER BY c.id DESC LIMIT 6`).all()
+  const todayViews = count("SELECT COUNT(*) AS n FROM card_views WHERE date(created_at) = date('now')")
+  const trend = db.prepare("SELECT date(created_at) AS day, COUNT(*) AS n FROM card_views GROUP BY day ORDER BY day DESC LIMIT 14").all()
+  ok(res, {
+    users: count('SELECT COUNT(*) AS n FROM users WHERE role = ?', 'user'),
+    cards: count('SELECT COUNT(*) AS n FROM cards'),
+    activeCards: count("SELECT COUNT(*) AS n FROM cards WHERE status = 'active'"),
+    paidOrders: count("SELECT COUNT(*) AS n FROM orders WHERE status = 'paid'"),
+    revenueCents: revenue, todayViews,
+    recentOrders, recentCards, trend
+  })
+}))
+
+// ---------- 时段套餐 ----------
+router.get('/packages', adminRequired, wrap((_req, res) => {
+  const rows = db.prepare('SELECT * FROM packages ORDER BY sort ASC, id ASC').all()
+  ok(res, rows.map(r => ({ ...r, features: parseJson(r.features, []) })))
+}))
+
+router.post('/packages', adminRequired, wrap((req, res) => {
+  const { name, description = '', price_cents, duration_days, features = [], sort = 0, enabled = 1 } = req.body || {}
+  if (!name || !(Number(price_cents) >= 0) || !(Number(duration_days) > 0)) return fail(res, 400, '请填写套餐名称、价格与有效天数')
+  const r = db.prepare('INSERT INTO packages (name, description, price_cents, duration_days, features, sort, enabled) VALUES (?,?,?,?,?,?,?)')
+    .run(String(name).slice(0, 60), String(description).slice(0, 200), Math.round(Number(price_cents)), Math.round(Number(duration_days)),
+      JSON.stringify(Array.isArray(features) ? features.slice(0, 12) : []), Number(sort) || 0, enabled ? 1 : 0)
+  ok(res, { id: Number(r.lastInsertRowid) })
+}))
+
+router.put('/packages/:id', adminRequired, wrap((req, res) => {
+  const row = db.prepare('SELECT * FROM packages WHERE id = ?').get(req.params.id)
+  if (!row) return fail(res, 404, '套餐不存在')
+  const b = req.body || {}
+  const v = {
+    name: b.name ?? row.name,
+    description: b.description ?? row.description,
+    price_cents: b.price_cents !== undefined ? Math.round(Number(b.price_cents)) : row.price_cents,
+    duration_days: b.duration_days !== undefined ? Math.round(Number(b.duration_days)) : row.duration_days,
+    features: JSON.stringify(Array.isArray(b.features) ? b.features.slice(0, 12) : parseJson(row.features, [])),
+    sort: b.sort !== undefined ? Number(b.sort) || 0 : row.sort,
+    enabled: b.enabled !== undefined ? (b.enabled ? 1 : 0) : row.enabled
+  }
+  if (!v.name || v.price_cents < 0 || v.duration_days <= 0) return fail(res, 400, '套餐参数不合法')
+  db.prepare('UPDATE packages SET name=@name, description=@description, price_cents=@price_cents, duration_days=@duration_days, features=@features, sort=@sort, enabled=@enabled, updated_at=datetime(\'now\') WHERE id=@id')
+    .run({ ...v, id: row.id })
+  ok(res, { updated: true })
+}))
+
+router.delete('/packages/:id', adminRequired, wrap((req, res) => {
+  const used = db.prepare('SELECT COUNT(*) AS n FROM orders WHERE package_id = ?').get(req.params.id).n
+  if (used) {
+    db.prepare('UPDATE packages SET enabled = 0 WHERE id = ?').run(req.params.id)
+    return ok(res, { disabled: true, message: '已有订单关联，已下架而非删除' })
+  }
+  db.prepare('DELETE FROM packages WHERE id = ?').run(req.params.id)
+  ok(res, { deleted: true })
+}))
+
+// ---------- 名片 ----------
+router.get('/cards', adminRequired, wrap((req, res) => {
+  const q = `%${String(req.query.q || '').slice(0, 50)}%`
+  const status = String(req.query.status || '')
+  const rows = db.prepare(`SELECT c.*, u.phone AS user_phone FROM cards c JOIN users u ON u.id = c.user_id
+    WHERE (@q = '%' OR c.name LIKE @q OR c.company LIKE @q OR c.slug LIKE @q OR u.phone LIKE @q)
+      AND (@status = '' OR c.status = @status)
+    ORDER BY c.id DESC LIMIT 200`).all({ q, status })
+  ok(res, rows.map(r => ({ ...r, tags: parseJson(r.tags, []), links: parseJson(r.links, []) })))
+}))
+
+router.put('/cards/:id/status', adminRequired, wrap((req, res) => {
+  const s = String(req.body?.status || '')
+  if (!['draft', 'active', 'expired', 'disabled'].includes(s)) return fail(res, 400, '状态不合法')
+  const r = db.prepare("UPDATE cards SET status = ?, updated_at = datetime('now') WHERE id = ?").run(s, req.params.id)
+  if (!r.changes) return fail(res, 404, '名片不存在')
+  ok(res, { updated: true })
+}))
+
+// ---------- 订单 ----------
+router.get('/orders', adminRequired, wrap((req, res) => {
+  const status = String(req.query.status || '')
+  const rows = db.prepare(`SELECT o.*, p.name AS package_name, u.phone AS user_phone, c.slug
+    FROM orders o JOIN packages p ON p.id = o.package_id JOIN users u ON u.id = o.user_id
+    LEFT JOIN cards c ON c.id = o.card_id
+    WHERE (@status = '' OR o.status = @status) ORDER BY o.id DESC LIMIT 200`).all({ status })
+  ok(res, rows)
+}))
+
+// ---------- 用户 ----------
+router.get('/users', adminRequired, wrap((_req, res) => {
+  const rows = db.prepare(`SELECT u.id, u.phone, u.nickname, u.role, u.status, u.created_at,
+    (SELECT COUNT(*) FROM cards c WHERE c.user_id = u.id) AS card_count,
+    (SELECT COUNT(*) FROM orders o WHERE o.user_id = u.id AND o.status = 'paid') AS paid_orders
+    FROM users u ORDER BY u.id DESC LIMIT 300`).all()
+  ok(res, rows)
+}))
+
+router.put('/users/:id/status', superRequired, wrap((req, res) => {
+  const s = req.body?.status ? 'active' : 'disabled'
+  const r = db.prepare("UPDATE users SET status = ?, updated_at = datetime('now') WHERE id = ?").run(s, req.params.id)
+  if (!r.changes) return fail(res, 404, '用户不存在')
+  ok(res, { updated: true })
+}))
+
+// ---------- 站点配置 ----------
+router.get('/config', adminRequired, wrap((_req, res) => {
+  const rows = db.prepare('SELECT key, value FROM site_config').all()
+  ok(res, Object.fromEntries(rows.map(r => [r.key, parseJson(r.value, '')])))
+}))
+
+// ---------- 版本检查与更新 ----------
+router.get('/update/status', adminRequired, wrap((_req, res) => {
+  ok(res, { current: updater.currentVersion(), config: updater.getConfig(), busy: updater.isBusy() })
+}))
+
+router.post('/update/check', adminRequired, wrap(async (_req, res) => {
+  ok(res, await updater.check())
+}))
+
+router.post('/update/apply', superRequired, wrap(async (_req, res) => {
+  ok(res, await updater.performUpdate())
+}))
+
+router.put('/update/config', superRequired, wrap((req, res) => {
+  ok(res, updater.updateConfig(req.body || {}))
+}))
+
+router.put('/config', adminRequired, wrap((req, res) => {
+  const allowed = ['site_name', 'site_desc', 'contact', 'notice', 'qr_brand']
+  const stmt = db.prepare("INSERT INTO site_config (key, value, updated_at) VALUES (?,?,datetime('now')) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')")
+  const tx = db.transaction(() => {
+    for (const k of allowed) if (k in (req.body || {})) stmt.run(k, JSON.stringify(String(req.body[k] ?? '').slice(0, 1000)))
+  })
+  tx()
+  ok(res, { updated: true })
+}))
+
+module.exports = router

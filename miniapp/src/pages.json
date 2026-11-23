@@ -1,0 +1,18 @@
+{
+  "pages": [
+    { "path": "pages/index/index", "style": { "navigationBarTitleText": "MCard 电子名片", "enablePullDownRefresh": false } },
+    { "path": "pages/login/login", "style": { "navigationBarTitleText": "登录" } },
+    { "path": "pages/card/card", "style": { "navigationBarTitleText": "电子名片" } },
+    { "path": "pages/me/me", "style": { "navigationBarTitleText": "我的名片" } },
+    { "path": "pages/edit/edit", "style": { "navigationBarTitleText": "编辑资料" } },
+    { "path": "pages/plans/plans", "style": { "navigationBarTitleText": "开通套餐" } },
+    { "path": "pages/pay/pay", "style": { "navigationBarTitleText": "支付" } },
+    { "path": "pages/print/print", "style": { "navigationBarTitleText": "实体名片版式" } }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f5f7fb"
+  },
+  "condition": {}
+}

@@ -1,0 +1,12 @@
+{
+  "name": "MCard 电子名片",
+  "short_name": "MCard",
+  "description": "一扫即存，永久有效的数字名片",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
