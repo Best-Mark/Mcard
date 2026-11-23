@@ -146,6 +146,7 @@ router.post('/sms/test', adminRequired, wrap(async (req, res) => {
 router.get('/update/status', adminRequired, wrap((_req, res) => {
   ok(res, {
     current: updater.currentVersion(), commit: updater.currentCommit(),
+    runningCommit: updater.runningCommit(), needsRestart: updater.needsRestart(),
     config: updater.getConfig(), busy: updater.isBusy(), progress: updater.getProgress()
   })
 }))
@@ -157,6 +158,11 @@ router.post('/update/check', adminRequired, wrap((_req, res) => {
 
 router.post('/update/apply', superRequired, wrap((_req, res) => {
   ok(res, updater.startApply())
+}))
+
+router.post('/update/restart', superRequired, wrap((_req, res) => {
+  ok(res, { scheduled: true, message: '服务将在 1 秒后重启，页面会短暂断连后自动恢复' })
+  updater.scheduleRestart()
 }))
 
 router.put('/update/config', superRequired, wrap((req, res) => {

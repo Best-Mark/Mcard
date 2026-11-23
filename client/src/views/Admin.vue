@@ -273,6 +273,11 @@
               <div><span>任务状态</span><b class="small" :class="{ hot: updateInfo.busy }">{{ updateInfo.busy ? '执行中…' : '空闲' }}</b></div>
               </div>
 
+              <div v-if="updateInfo.needsRestart" class="upd-restart-tip">
+                <b>代码已更新，但运行中的服务还是旧版本</b>
+                <span class="small muted">运行进程 #{{ updateInfo.runningCommit }} → 磁盘代码 #{{ updateInfo.commit }}。git 拉取不会重载已启动的进程，需重启后才能生效。</span>
+              </div>
+
               <div v-if="progressVisible" class="upd-progress">
               <div class="upd-progress-head">
                 <b>{{ progress.step }}</b>
@@ -286,7 +291,10 @@
               <div class="btn-row" style="margin-top:14px">
               <button class="btn btn-primary" :disabled="updBusy" @click="checkUpdate">{{ updBusy ? '检查中…' : '检查更新' }}</button>
               <button v-if="checkResult?.hasUpdate" class="btn btn-ok" :disabled="updBusy" @click="applyOpen = true">立即更新</button>
-              <span v-if="checkResult && !checkResult.hasUpdate" class="badge ok">已是最新版本</span>
+              <button v-if="updateInfo.needsRestart" class="btn btn-warn" :disabled="restartBusy || updBusy" @click="restartService">
+                {{ restartBusy ? '重启中…' : '重启服务使新代码生效' }}
+              </button>
+              <span v-if="checkResult && !checkResult.hasUpdate && !updateInfo.needsRestart" class="badge ok">已是最新版本</span>
               <span v-if="checkResult?.stale" class="badge warn">网络不可用 · 缓存结果</span>
               <span v-if="checkResult?.remoteCommit && checkResult.remoteCommit !== updateInfo.commit && !checkResult.hasUpdate" class="badge warn">commit 不一致</span>
             </div>
@@ -399,7 +407,7 @@ const smsPhone = ref(''); const smsBusy = ref(false)
 const cardQ = ref(''); const cardStatus = ref(''); const orderStatus = ref('')
 const pkgModal = ref(false); const pkgForm = ref({}); const pkgFeatures = ref('')
 const updateInfo = ref({}); const checkResult = ref(null); const updCfg = ref({})
-const updBusy = ref(false); const applyOpen = ref(false); const sideOpen = ref(false)
+const updBusy = ref(false); const applyOpen = ref(false); const sideOpen = ref(false); const restartBusy = ref(false)
 const progress = ref({ kind: '', step: '', pct: 0, detail: '', done: false, error: '' })
 const progressVisible = computed(() => updBusy.value || (progress.value.kind && !progress.value.done))
 const now = ref(new Date()); const shown = ref({ users: 0, cards: 0, activeCards: 0, paidOrders: 0, revenueCents: 0, todayViews: 0 })
@@ -678,6 +686,28 @@ async function applyUpdate() {
     })
   } catch (e) { updBusy.value = false; showToast(e.message, 'error') }
 }
+async function restartService() {
+  if (restartBusy.value || updBusy.value) return
+  restartBusy.value = true
+  try {
+    await api.post('/api/admin/update/restart')
+    showToast('正在重启服务，页面会短暂断连…', 'success')
+    // 重启后重新拉状态：needsRestart 消失即生效；断连期重试
+    let retried = 0
+    const recheck = setInterval(async () => {
+      try {
+        const d = (await api.get('/api/admin/update/status')).data.data
+        updateInfo.value = d
+        if (!d.needsRestart) {
+          clearInterval(recheck); restartBusy.value = false
+          showToast('服务已重启，新代码已生效', 'success')
+        }
+      } catch (e) {
+        if (++retried > 30) { clearInterval(recheck); restartBusy.value = false; showToast('重启超时，请刷新页面确认', 'error') }
+      }
+    }, 1500)
+  } catch (e) { restartBusy.value = false; showToast(e.message, 'error') }
+}
 async function saveUpdateConfig() {
   if (updBusy.value) return
   updBusy.value = true
@@ -688,6 +718,8 @@ async function saveUpdateConfig() {
 
 <style scoped>
 /* 更新进度条 */
+.upd-restart-tip { margin-top: 16px; padding: 12px 14px; border-radius: 10px; background: #fff7ed; border: 1px solid #fed7aa; display: flex; flex-direction: column; gap: 4px; }
+.upd-restart-tip b { color: #c2410c; font-size: 13px; }
 .upd-progress { margin-top: 16px; padding: 14px; border-radius: 12px; background: #eff6ff; border: 1px solid #dbeafe; }
 .upd-progress-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 13px; }
 .upd-progress-track { height: 8px; border-radius: 6px; background: #dbeafe; overflow: hidden; }

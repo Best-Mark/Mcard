@@ -57,6 +57,7 @@ img { display: block; max-width: 100%; }
 .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 .btn-primary { background: linear-gradient(135deg, var(--primary), var(--primary-2)); color: #fff; box-shadow: 0 4px 14px rgba(37,99,235,.24); }
 .btn-ok { background: var(--ok); color: #fff; }
+.btn-warn { background: #ea580c; color: #fff; }
 .btn-danger { background: #fee2e2; color: var(--danger); }
 .btn-ghost { background: transparent; border-color: var(--line); }
 .btn-block { width: 100%; }

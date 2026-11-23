@@ -63,6 +63,22 @@ function currentCommit() {
   } catch { return '' }
 }
 
+// 进程启动时锁定的 commit：git pull 只改磁盘文件，不会重载已运行进程的内存代码。
+// 用「磁盘 commit ≠ 启动 commit」判定「代码已更新但需重启才生效」，避免版本页误报「已是最新版本」。
+const BOOT_COMMIT = currentCommit()
+function runningCommit() { return BOOT_COMMIT }
+function needsRestart() {
+  const disk = currentCommit()
+  return !!BOOT_COMMIT && !!disk && disk !== BOOT_COMMIT
+}
+
+// 主动重启（供后台「重启服务」按钮调用）：先让响应发出，再退出由 pm2 自动拉起。
+function scheduleRestart() {
+  if (!process.env.pm_id) throw badRequest('当前进程非 pm2 托管，无法自动重启；请在服务器执行 pm2 restart mcard')
+  setTimeout(() => process.exit(0), 1200)
+  return true
+}
+
 function getConfig() {
   return {
     repo: String(readCfg('update_repo', 'Best-Mark/Mcard')),
@@ -295,7 +311,8 @@ function startApply() {
 }
 
 module.exports = {
-  currentVersion, currentCommit, getConfig, updateConfig, check, performUpdate,
+  currentVersion, currentCommit, runningCommit, needsRestart, scheduleRestart,
+  getConfig, updateConfig, check, performUpdate,
   startCheck, startApply, getProgress,
   startAutoUpdateLoop, isBusy: () => busy
 }
