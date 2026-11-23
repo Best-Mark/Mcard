@@ -264,65 +264,96 @@
 
         <!-- 版本更新 -->
         <section v-if="tab === 'update'">
-          <div class="panel-head stand-alone"><h2>版本更新</h2><span class="small muted">检查 / 自动更新</span></div>
-          <div class="card panel">
-            <div class="ver-grid">
-              <div><span>当前版本</span><b>v{{ updateInfo.current || '-' }}<small v-if="updateInfo.commit" style="display:block;font-size:11px;color:var(--muted)">#{{ updateInfo.commit }}</small></b></div>
-              <div><span>最新版本</span><b :class="{ hot: checkResult?.hasUpdate }">{{ checkResult ? 'v' + checkResult.latest : '未检查' }}<small v-if="checkResult?.remoteCommit" style="display:block;font-size:11px;color:var(--muted)">#{{ checkResult.remoteCommit }}</small></b></div>
-              <div><span>检查时间</span><b class="small">{{ fmtTime(updateInfo.config?.lastCheck) }}</b></div>
-              <div><span>任务状态</span><b class="small" :class="{ hot: updateInfo.busy }">{{ updateInfo.busy ? '执行中…' : '空闲' }}</b></div>
-              </div>
+          <div class="panel-head stand-alone"><h2>版本更新</h2><span class="small muted">检查版本 · 自动更新 · 服务管理</span></div>
 
-              <div v-if="updateInfo.needsRestart" class="upd-restart-tip">
-                <b>代码已更新，但运行中的服务还是旧版本</b>
-                <span class="small muted">运行进程 #{{ updateInfo.runningCommit }} → 磁盘代码 #{{ updateInfo.commit }}。git 拉取不会重载已启动的进程，需重启后才能生效。</span>
+          <!-- 状态总览：版本对比 + 状态标识 + 操作 -->
+          <div class="upd-overview card">
+            <div class="upd-overview-main">
+              <div class="upd-ver">
+                <span class="upd-ver-label">当前运行</span>
+                <div class="upd-ver-num">v{{ updateInfo.current || '—' }}</div>
+                <div class="upd-ver-hash mono">#{{ updateInfo.runningCommit || updateInfo.commit || '—' }}</div>
               </div>
-
-              <div v-if="progressVisible" class="upd-progress">
-              <div class="upd-progress-head">
-                <b>{{ progress.step }}</b>
-                <span class="small muted">{{ progress.pct }}%</span>
+              <div class="upd-ver-arrow">→</div>
+              <div class="upd-ver">
+                <span class="upd-ver-label">最新版本</span>
+                <div class="upd-ver-num" :class="{ 'is-new': checkResult?.hasUpdate }">{{ checkResult ? 'v' + checkResult.latest : '—' }}</div>
+                <div class="upd-ver-hash mono">{{ checkResult?.remoteCommit ? '#' + checkResult.remoteCommit : '未检查' }}</div>
               </div>
-              <div class="upd-progress-track"><i :style="{ width: Math.max(2, progress.pct) + '%' }"></i></div>
-              <p v-if="progress.detail" class="small muted" style="margin-top:8px">{{ progress.detail }}</p>
-              <p v-if="progress.error" class="small" style="margin-top:8px;color:#b91c1c">{{ progress.error }}</p>
+              <div class="upd-status">
+                <span v-if="updateInfo.needsRestart" class="upd-pill warn">需重启生效</span>
+                <span v-else-if="checkResult?.hasUpdate" class="upd-pill new">发现新版本</span>
+                <span v-else-if="checkResult" class="upd-pill ok">已是最新版本</span>
+                <span v-else class="upd-pill idle">未检查</span>
+                <div class="upd-status-meta">
+                  <span>检查于 {{ fmtTime(updateInfo.config?.lastCheck) }}</span>
+                  <span>任务 {{ updateInfo.busy ? '执行中…' : '空闲' }}</span>
+                </div>
               </div>
-
-              <div class="btn-row" style="margin-top:14px">
-              <button class="btn btn-primary" :disabled="updBusy" @click="checkUpdate">{{ updBusy ? '检查中…' : '检查更新' }}</button>
-              <button v-if="checkResult?.hasUpdate" class="btn btn-ok" :disabled="updBusy" @click="applyOpen = true">立即更新</button>
-              <button v-if="updateInfo.needsRestart" class="btn btn-warn" :disabled="restartBusy || updBusy" @click="restartService">
-                {{ restartBusy ? '重启中…' : '重启服务使新代码生效' }}
-              </button>
-              <span v-if="checkResult && !checkResult.hasUpdate && !updateInfo.needsRestart" class="badge ok">已是最新版本</span>
-              <span v-if="checkResult?.stale" class="badge warn">网络不可用 · 缓存结果</span>
-              <span v-if="checkResult?.remoteCommit && checkResult.remoteCommit !== updateInfo.commit && !checkResult.hasUpdate" class="badge warn">commit 不一致</span>
             </div>
-            <p class="small muted" style="margin-top:12px">更新来源：GitHub Release（无 Release 时读取远端仓库 package.json 的 version）。更新会拉取代码、按变更重建前端并按需重启服务。</p>
-          </div>
 
-          <div v-if="checkResult" class="card panel" style="margin-top:14px">
-            <div class="panel-head inner"><h3>更新说明</h3><span class="small muted">来源 {{ checkResult.source }}</span></div>
-            <pre class="notes">{{ checkResult.notes || '无更新说明' }}</pre>
-            <a v-if="checkResult.url" :href="checkResult.url" target="_blank" class="small" style="color:var(--primary)">查看发布页 ↗</a>
-          </div>
-
-          <div class="card panel config-card" style="margin-top:14px">
-            <div class="panel-head inner"><h3>自动更新设置</h3></div>
-            <div class="field"><label>GitHub 仓库（所有者/仓库名）</label><input v-model="updCfg.repo" class="input" /></div>
-            <div class="field"><label>分支</label><input v-model="updCfg.branch" class="input" /></div>
-            <div class="grid2">
-              <label class="check"><input type="checkbox" v-model="updCfg.autoCheck" /> 定时自动检查</label>
-              <label class="check"><input type="checkbox" v-model="updCfg.autoApply" /> 发现新版本自动更新</label>
+            <div class="upd-ops">
+              <div class="upd-ops-btns">
+                <button class="btn btn-primary" :disabled="updBusy || restartBusy" @click="checkUpdate">{{ updBusy ? '检查中…' : '检查更新' }}</button>
+                <button v-if="checkResult?.hasUpdate" class="btn btn-ok" :disabled="updBusy || restartBusy" @click="applyOpen = true">立即更新</button>
+                <button v-if="updateInfo.needsRestart" class="btn btn-warn" :disabled="restartBusy || updBusy" @click="restartService">{{ restartBusy ? '重启中…' : '重启服务使新代码生效' }}</button>
+              </div>
+              <div class="upd-ops-note small muted">更新来源 GitHub Release · 拉取代码后按需重建前端并重启服务</div>
             </div>
-            <div class="field" style="margin-top:12px"><label>检查间隔（小时，1–720）</label><input v-model.number="updCfg.intervalHours" class="input" type="number" min="1" max="720" /></div>
-            <div class="hint warm" style="margin-bottom:12px">自动更新会直接拉取代码并重启服务，建议先开启「自动检查」确认稳定后再打开自动更新。</div>
-            <button class="btn btn-primary" :disabled="updBusy" @click="saveUpdateConfig">保存设置</button>
           </div>
 
-          <div v-if="updateInfo.config?.lastResult" class="card panel" style="margin-top:14px">
-            <div class="panel-head inner"><h3>最近一次记录</h3></div>
-            <pre class="notes">{{ JSON.stringify(updateInfo.config.lastResult, null, 2) }}</pre>
+          <!-- 状态提示条 -->
+          <div v-if="updateInfo.needsRestart" class="upd-notice warn">
+            <div class="upd-notice-ico">!</div>
+            <div><b>代码已更新，但运行中的服务还是旧版本</b><span>运行进程 #{{ updateInfo.runningCommit }} → 磁盘代码 #{{ updateInfo.commit }}。git 拉取不会重载已启动的进程，需重启后才能生效。</span></div>
+          </div>
+          <div v-else-if="checkResult?.hasUpdate" class="upd-notice info">
+            <div class="upd-notice-ico">↓</div>
+            <div><b>发现新版本 v{{ checkResult.latest }}</b><span>点击「立即更新」拉取代码、重建前端并按需重启服务。</span></div>
+          </div>
+          <div v-if="checkResult?.stale" class="upd-notice info">
+            <div class="upd-notice-ico">i</div>
+            <div><b>网络不可用，显示上次检查结果</b><span>{{ checkResult.error || '远端暂不可达，结果来自本地缓存。' }}</span></div>
+          </div>
+
+          <!-- 进度 -->
+          <div v-if="progressVisible" class="upd-progress">
+            <div class="upd-progress-head"><b>{{ progress.step }}</b><span class="small muted">{{ progress.pct }}%</span></div>
+            <div class="upd-progress-track"><i :style="{ width: Math.max(2, progress.pct) + '%' }"></i></div>
+            <p v-if="progress.detail" class="small muted" style="margin-top:8px">{{ progress.detail }}</p>
+            <p v-if="progress.error" class="small" style="margin-top:8px;color:#b91c1c">{{ progress.error }}</p>
+          </div>
+
+          <!-- 详情：左侧记录 / 右侧设置 -->
+          <div class="upd-cols">
+            <div class="upd-col">
+              <div v-if="checkResult" class="card panel upd-card">
+                <div class="panel-head inner"><h3>更新说明</h3><span class="small muted">来源 {{ checkResult.source }}</span></div>
+                <pre class="upd-notes">{{ checkResult.notes || '无更新说明' }}</pre>
+                <a v-if="checkResult.url" :href="checkResult.url" target="_blank" class="small" style="color:var(--primary)">查看发布页 ↗</a>
+              </div>
+              <div v-if="updateInfo.config?.lastResult" class="card panel upd-card">
+                <div class="panel-head inner"><h3>最近一次记录</h3></div>
+                <pre class="upd-notes">{{ JSON.stringify(updateInfo.config.lastResult, null, 2) }}</pre>
+              </div>
+              <div v-if="!checkResult && !updateInfo.config?.lastResult" class="card panel upd-card">
+                <div class="upd-empty">还没有检查记录，点击「检查更新」开始</div>
+              </div>
+            </div>
+            <div class="upd-col">
+              <div class="card panel upd-card">
+                <div class="panel-head inner"><h3>自动更新设置</h3></div>
+                <div class="field"><label>GitHub 仓库（所有者/仓库名）</label><input v-model="updCfg.repo" class="input" /></div>
+                <div class="field"><label>分支</label><input v-model="updCfg.branch" class="input" /></div>
+                <div class="grid2">
+                  <label class="check"><input type="checkbox" v-model="updCfg.autoCheck" /> 定时自动检查</label>
+                  <label class="check"><input type="checkbox" v-model="updCfg.autoApply" /> 发现新版本自动更新</label>
+                </div>
+                <div class="field" style="margin-top:12px"><label>检查间隔（小时，1–720）</label><input v-model.number="updCfg.intervalHours" class="input" type="number" min="1" max="720" /></div>
+                <div class="hint warm" style="margin-bottom:12px">自动更新会直接拉取代码并重启服务，建议先开启「自动检查」确认稳定后再打开自动更新。</div>
+                <button class="btn btn-primary" :disabled="updBusy" @click="saveUpdateConfig">保存设置</button>
+              </div>
+            </div>
           </div>
         </section>
       </div>
@@ -717,13 +748,49 @@ async function saveUpdateConfig() {
 </script>
 
 <style scoped>
-/* 更新进度条 */
-.upd-restart-tip { margin-top: 16px; padding: 12px 14px; border-radius: 10px; background: #fff7ed; border: 1px solid #fed7aa; display: flex; flex-direction: column; gap: 4px; }
-.upd-restart-tip b { color: #c2410c; font-size: 13px; }
-.upd-progress { margin-top: 16px; padding: 14px; border-radius: 12px; background: #eff6ff; border: 1px solid #dbeafe; }
+/* 版本更新页 */
+.upd-overview { padding: 0; overflow: hidden; }
+.upd-overview-main { display: flex; align-items: center; gap: 20px; padding: 22px 24px; background: linear-gradient(120deg, #12224a, #1d3f8c 60%, #2563eb); color: #fff; flex-wrap: wrap; }
+.upd-ver { min-width: 130px; }
+.upd-ver-label { font-size: 11px; letter-spacing: 1px; color: #bfdbfe; }
+.upd-ver-num { font-size: 30px; font-weight: 800; letter-spacing: -.8px; margin: 4px 0 2px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.upd-ver-num.is-new { color: #fbbf24; }
+.upd-ver-hash { font-size: 11px; color: #93c5fd; }
+.upd-ver-arrow { font-size: 26px; color: #60a5fa; opacity: .7; padding: 0 2px; }
+.upd-status { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.upd-pill { display: inline-block; padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 700; border: 1px solid transparent; }
+.upd-pill.ok { background: rgba(74,222,128,.16); color: #86efac; border-color: rgba(74,222,128,.35); }
+.upd-pill.new { background: rgba(251,191,36,.16); color: #fcd34d; border-color: rgba(251,191,36,.4); }
+.upd-pill.warn { background: rgba(251,146,60,.18); color: #fdba74; border-color: rgba(251,146,60,.4); }
+.upd-pill.idle { background: rgba(255,255,255,.12); color: #dbeafe; border-color: rgba(255,255,255,.2); }
+.upd-status-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-size: 11px; color: #bfdbfe; }
+.upd-ops { display: flex; align-items: center; gap: 16px; padding: 16px 24px; flex-wrap: wrap; }
+.upd-ops-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+.upd-ops-note { flex: 1; min-width: 220px; text-align: right; }
+
+.upd-notice { display: flex; align-items: flex-start; gap: 12px; margin-top: 14px; padding: 13px 16px; border-radius: 12px; }
+.upd-notice.warn { background: #fff7ed; border: 1px solid #fed7aa; }
+.upd-notice.info { background: #eff6ff; border: 1px solid #dbeafe; }
+.upd-notice-ico { width: 24px; height: 24px; flex: 0 0 24px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 13px; color: #fff; }
+.upd-notice.warn .upd-notice-ico { background: #ea580c; }
+.upd-notice.info .upd-notice-ico { background: #2563eb; }
+.upd-notice > div:last-child { display: flex; flex-direction: column; gap: 3px; }
+.upd-notice b { font-size: 13px; }
+.upd-notice.warn b { color: #c2410c; }
+.upd-notice.info b { color: #1e40af; }
+.upd-notice span { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+.upd-progress { margin-top: 14px; padding: 14px 16px; border-radius: 12px; background: #f8fafc; border: 1px solid var(--line); }
 .upd-progress-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 13px; }
-.upd-progress-track { height: 8px; border-radius: 6px; background: #dbeafe; overflow: hidden; }
+.upd-progress-track { height: 8px; border-radius: 6px; background: #e2e8f0; overflow: hidden; }
 .upd-progress-track i { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, #60a5fa, #2563eb); transition: width .5s ease; }
+
+.upd-cols { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(320px, .9fr); gap: 14px; margin-top: 14px; align-items: start; }
+.upd-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.upd-card { margin: 0; }
+.upd-notes { margin: 0; padding: 12px 14px; background: #f8fafc; border: 1px solid var(--line); border-radius: 10px; font-size: 12px; line-height: 1.65; white-space: pre-wrap; word-break: break-word; max-height: 320px; overflow: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text); }
+.upd-empty { padding: 36px 16px; text-align: center; color: var(--muted); font-size: 13px; }
+@media (max-width: 900px) { .upd-cols { grid-template-columns: 1fr; } .upd-status { margin-left: 0; align-items: flex-start; } .upd-status-meta { align-items: flex-start; } .upd-ops-note { text-align: left; } }
 
 /* 登录 */
 .login-page { min-height: 100vh; display: grid; place-items: center; padding: 20px; position: relative; overflow: hidden; background: radial-gradient(900px 500px at 20% 10%, #1e3a8a, transparent 60%), linear-gradient(135deg, #0b1224, #131e3a 60%, #0f172a); }
