@@ -1,6 +1,6 @@
 const express = require('express')
 const crypto = require('crypto')
-const config = require('../config')
+const settings = require('../utils/settings')
 const db = require('../db')
 const payment = require('../services/payment')
 const { activateOrder } = require('../services/orders')
@@ -9,7 +9,8 @@ const router = express.Router()
 
 function verifyNotifySignature(req, raw) {
   // 配置了微信平台证书才校验签名；未配置时依赖 AES-GCM 解密 + 金额校验 + 订单号校验
-  if (!config.WECHAT_PLATFORM_CERT) return true
+  const platformCert = settings.payConfig().WECHAT_PLATFORM_CERT
+  if (!platformCert) return true
   const ts = req.headers['wechatpay-timestamp']
   const nonce = req.headers['wechatpay-nonce']
   const signature = req.headers['wechatpay-signature']
@@ -17,7 +18,7 @@ function verifyNotifySignature(req, raw) {
   if (!ts || !nonce || !signature || !serial) return false
   if (Math.abs(Date.now() / 1000 - Number(ts)) > 300) return false
   const message = `${ts}\n${nonce}\n${raw.toString('utf8')}\n`
-  return crypto.createVerify('RSA-SHA256').update(message).verify(config.WECHAT_PLATFORM_CERT, signature, 'base64')
+  return crypto.createVerify('RSA-SHA256').update(message).verify(platformCert, signature, 'base64')
 }
 
 router.post('/notify/wechat', (req, res) => {

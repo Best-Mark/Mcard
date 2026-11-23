@@ -1,6 +1,6 @@
 const https = require('https')
 const crypto = require('crypto')
-const config = require('../config')
+const settings = require('../utils/settings')
 const { randomHex } = require('../utils/id')
 
 const MCH_HOST = 'api.mch.weixin.qq.com'
@@ -36,28 +36,30 @@ function httpRequest(method, requestPath, body, headers = {}) {
 }
 
 function wechatAuthorization(method, requestPath, body = '') {
+  const p = settings.payConfig()
   const nonce = randomHex(16)
   const timestamp = Math.floor(Date.now() / 1000)
   const message = `${method}\n${requestPath}\n${timestamp}\n${nonce}\n${body}\n`
-  const signature = crypto.createSign('RSA-SHA256').update(message, 'utf8').sign(config.WECHAT_PRIVATE_KEY, 'base64')
-  return `WECHATPAY2-SHA256-RSA2048 mchid="${config.WECHAT_MCH_ID}",nonce_str="${nonce}",signature="${signature}",timestamp="${timestamp}",serial_no="${config.WECHAT_CERT_SERIAL_NO}"`
+  const signature = crypto.createSign('RSA-SHA256').update(message, 'utf8').sign(p.WECHAT_PRIVATE_KEY, 'base64')
+  return `WECHATPAY2-SHA256-RSA2048 mchid="${p.WECHAT_MCH_ID}",nonce_str="${nonce}",signature="${signature}",timestamp="${timestamp}",serial_no="${p.WECHAT_CERT_SERIAL_NO}"`
 }
 
 async function createPayment(order, pkg) {
-  if (config.PAY_MODE !== 'wechat') {
+  const p = settings.payConfig()
+  if (p.PAY_MODE !== 'wechat') {
     return { mode: 'mock', payText: `/mock/${order.order_no}`, message: '模拟支付模式' }
   }
   const missing = ['WECHAT_MCH_ID', 'WECHAT_APP_ID', 'WECHAT_API_V3_KEY', 'WECHAT_CERT_SERIAL_NO', 'WECHAT_PRIVATE_KEY', 'WECHAT_NOTIFY_URL']
-    .filter(k => !config[k])
+    .filter(k => !p[k])
   if (missing.length) throw new Error(`微信支付配置缺失：${missing.join(', ')}`)
 
   const requestPath = '/v3/pay/transactions/native'
   const body = JSON.stringify({
-    appid: config.WECHAT_APP_ID,
-    mchid: config.WECHAT_MCH_ID,
+    appid: p.WECHAT_APP_ID,
+    mchid: p.WECHAT_MCH_ID,
     description: `MCard-${pkg.name}`.slice(0, 127),
     out_trade_no: order.order_no,
-    notify_url: config.WECHAT_NOTIFY_URL,
+    notify_url: p.WECHAT_NOTIFY_URL,
     amount: { total: order.amount_cents, currency: 'CNY' }
   })
   const res = await httpRequest('POST', requestPath, body, { Authorization: wechatAuthorization('POST', requestPath, body) })
@@ -69,7 +71,7 @@ async function createPayment(order, pkg) {
 
 function decryptResource(resource) {
   if (!resource?.ciphertext) return null
-  const key = Buffer.from(config.WECHAT_API_V3_KEY, 'utf8')
+  const key = Buffer.from(settings.payConfig().WECHAT_API_V3_KEY, 'utf8')
   const nonce = Buffer.from(resource.nonce, 'utf8')
   const aad = Buffer.from(resource.associated_data || '', 'utf8')
   const raw = Buffer.from(resource.ciphertext, 'base64')
@@ -83,10 +85,11 @@ function decryptResource(resource) {
 }
 
 async function queryWechatOrder(orderNo) {
-  const requestPath = `/v3/pay/transactions/out-trade-no/${encodeURIComponent(orderNo)}?mchid=${encodeURIComponent(config.WECHAT_MCH_ID)}`
+  const p = settings.payConfig()
+  const requestPath = `/v3/pay/transactions/out-trade-no/${encodeURIComponent(orderNo)}?mchid=${encodeURIComponent(p.WECHAT_MCH_ID)}`
   const res = await httpRequest('GET', requestPath, null, { Authorization: wechatAuthorization('GET', requestPath) })
   if (res.status !== 200) return null
   return res.data
 }
 
-module.exports = { createPayment, decryptResource, queryWechatOrder, httpRequest, wechatAuthorization, PAY_MODE: config.PAY_MODE }
+module.exports = { createPayment, decryptResource, queryWechatOrder, httpRequest, wechatAuthorization, payConfig: settings.payConfig }

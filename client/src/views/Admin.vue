@@ -118,17 +118,36 @@
             </tr></tbody></table></div>
         </section>
 
-        <!-- 配置 -->
+        <!-- 配置中心 -->
         <section v-if="tab === 'config'">
-          <div class="section-title" style="margin-top:0">站点配置</div>
-          <div class="card card-pad" style="max-width:560px">
-            <div class="field"><label>站点名称</label><input v-model="cfg.site_name" class="input" /></div>
-            <div class="field"><label>站点简介</label><input v-model="cfg.site_desc" class="input" /></div>
-            <div class="field"><label>联系方式</label><input v-model="cfg.contact" class="input" /></div>
-            <div class="field"><label>公告</label><textarea v-model="cfg.notice" class="textarea"></textarea></div>
-            <div class="field"><label>二维码中心品牌字</label><input v-model="cfg.qr_brand" class="input" maxlength="2" /></div>
-            <button class="btn btn-primary" :disabled="busy" @click="saveConfig">{{ busy ? '保存中…' : '保存配置' }}</button>
+          <div class="section-title" style="margin-top:0">配置中心 <small>站点 / 支付 / 短信 / 小程序</small></div>
+          <div class="hint" style="margin-bottom:14px">密钥类参数采用「只写不读」：页面显示掩码与指纹，留空即沿用已保存的密钥；只有输入新值才会覆盖。保存后立即生效，无需重启。</div>
+
+          <div v-for="g in cfgGroups" :key="g.label" class="card card-pad" style="margin-bottom:14px;max-width:720px">
+            <div class="section-title" style="margin-top:0">{{ g.label }}</div>
+            <div class="field" v-for="f in g.fields" :key="f.key">
+              <label>
+                {{ f.label }}
+                <span v-if="f.type === 'secret' && cfg[f.key + '_fp']" class="badge ok small">已配置 · 指纹 {{ cfg[f.key + '_fp'] }}</span>
+              </label>
+              <textarea v-if="f.large" v-model="cfg[f.key]" class="textarea" rows="4" :placeholder="f.type === 'secret' ? (cfg[f.key] ? '留空则不修改' : '粘贴 PEM 全文') : ''"></textarea>
+              <input v-else v-model="cfg[f.key]" class="input" :type="f.type === 'secret' ? 'password' : 'text'"
+                     :placeholder="f.type === 'secret' ? (cfg[f.key] ? '•••••• 已配置，留空不改' : '未配置') : ''" />
+            </div>
+
+            <!-- 短信测试 -->
+            <div v-if="g.label === '短信平台'" class="sms-test">
+              <div class="field"><label>测试发送（验证配置是否正确）</label>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                  <input v-model="smsPhone" class="input" style="max-width:280px" placeholder="手机号" />
+                  <button class="btn btn-sm" :disabled="smsBusy" @click="testSms">{{ smsBusy ? '发送中…' : '发送测试码' }}</button>
+                </div>
+                <p class="small muted">发送一个 6 位随机验证码到该手机号；请先保存短信配置再测试。</p>
+              </div>
+            </div>
           </div>
+
+          <button class="btn btn-primary" :disabled="busy" @click="saveConfig">{{ busy ? '保存中…' : '保存全部配置' }}</button>
         </section>
 
         <!-- 版本更新 -->
@@ -223,7 +242,8 @@ const menus = [
 const logged = computed(() => !!adminAuth.token)
 const phone = ref(''); const password = ref(''); const busy = ref(false)
 const tab = ref('overview'); const stats = ref({}); const packages = ref([]); const cards = ref([])
-const orders = ref([]); const users = ref([]); const cfg = ref({})
+const orders = ref([]); const users = ref([]); const cfg = ref({}); const cfgGroups = ref([])
+const smsPhone = ref(''); const smsBusy = ref(false)
 const cardQ = ref(''); const cardStatus = ref(''); const orderStatus = ref('')
 const pkgModal = ref(false); const pkgForm = ref({}); const pkgFeatures = ref('')
 const updateInfo = ref({}); const checkResult = ref(null); const updCfg = ref({})
@@ -249,7 +269,11 @@ async function loadTab(k) {
     if (k === 'cards') await loadCards()
     if (k === 'orders') await loadOrders()
     if (k === 'users') users.value = (await api.get('/api/admin/users')).data.data
-    if (k === 'config') cfg.value = (await api.get('/api/admin/config')).data.data
+    if (k === 'config') {
+      const d = (await api.get('/api/admin/config')).data.data
+      cfg.value = d.values || {}
+      cfgGroups.value = d.groups ? Object.values(d.groups) : []
+    }
     if (k === 'update') await loadUpdate()
   } catch (e) { showToast(e.message, 'error') }
 }
@@ -294,8 +318,22 @@ async function setUserStatus(u) {
 }
 async function saveConfig() {
   busy.value = true
-  try { await api.put('/api/admin/config', cfg.value); showToast('配置已保存', 'success') }
-  catch (e) { showToast(e.message, 'error') } finally { busy.value = false }
+  try {
+    const payload = {}
+    for (const [k, v] of Object.entries(cfg.value)) if (!k.endsWith('_fp')) payload[k] = v
+    await api.put('/api/admin/config', payload)
+    showToast('配置已保存，即时生效', 'success')
+    await loadTab('config')
+  } catch (e) { showToast(e.message, 'error') } finally { busy.value = false }
+}
+
+async function testSms() {
+  if (!smsPhone.value) return showToast('请填写测试手机号', 'error')
+  smsBusy.value = true
+  try {
+    await api.post('/api/admin/sms/test', { phone: smsPhone.value })
+    showToast('测试码已发送', 'success')
+  } catch (e) { showToast(e.message, 'error') } finally { smsBusy.value = false }
 }
 
 async function loadUpdate() {
@@ -357,5 +395,7 @@ async function saveUpdateConfig() {
 .ver-grid b { font-size: 17px; }
 .ver-grid b.hot { color: var(--primary); }
 .notes { white-space: pre-wrap; word-break: break-word; background: #f8fafc; border-radius: 10px; padding: 12px; font-size: 12px; color: #475569; max-height: 240px; overflow: auto; line-height: 1.6; }
+.sms-test { border-top: 1px dashed var(--line); margin-top: 16px; padding-top: 14px; }
+.textarea { width: 100%; min-height: 88px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font-family: monospace; font-size: 12px; resize: vertical; }
 @media (max-width: 760px) { .side { width: 64px; flex-basis: 64px; } .side-brand, .side button { font-size: 0; text-align: center; } .side-brand small, .side-foot { display: none; } .side button::first-letter { font-size: 14px; } }
 </style>

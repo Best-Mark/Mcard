@@ -1,6 +1,6 @@
 const express = require('express')
 const db = require('../db')
-const config = require('../config')
+const settings = require('../utils/settings')
 const { ok, fail, wrap } = require('../utils/response')
 const { authRequired, adminRequired } = require('../utils/auth')
 const { orderNo } = require('../utils/id')
@@ -25,7 +25,7 @@ router.post('/', authRequired, wrap(async (req, res) => {
   const card = db.prepare('SELECT id FROM cards WHERE user_id = ?').get(req.user.id)
   const result = db.prepare(`INSERT INTO orders (order_no, user_id, card_id, package_id, amount_cents, payment_method)
     VALUES (?,?,?,?,?,?)`).run(orderNo(), req.user.id, card?.id || null, pkg.id, pkg.price_cents,
-    config.PAY_MODE === 'wechat' ? 'wechat' : 'mock')
+    settings.payConfig().PAY_MODE === 'wechat' ? 'wechat' : 'mock')
   const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(result.lastInsertRowid)
   try {
     const pay = await payment.createPayment(order, pkg)
@@ -49,7 +49,7 @@ router.get('/:id', authRequired, wrap((req, res) => {
 
 // 模拟支付：仅 PAY_MODE=mock 可用，方便本地/演示跑通开通与续期
 router.post('/:id/mock-pay', authRequired, wrap((req, res) => {
-  if (config.PAY_MODE === 'wechat') return fail(res, 403, '正式支付模式不可模拟')
+  if (settings.payConfig().PAY_MODE === 'wechat') return fail(res, 403, '正式支付模式不可模拟')
   const row = db.prepare('SELECT * FROM orders WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id)
   if (!row) return fail(res, 404, '订单不存在')
   if (row.status === 'paid') return ok(res, { alreadyPaid: true })
@@ -62,7 +62,7 @@ router.post('/:id/refresh', authRequired, wrap(async (req, res) => {
   const row = db.prepare('SELECT * FROM orders WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id)
   if (!row) return fail(res, 404, '订单不存在')
   if (row.status === 'paid') return ok(res, { paid: true })
-  if (config.PAY_MODE !== 'wechat') return fail(res, 400, '当前为模拟支付模式')
+  if (settings.payConfig().PAY_MODE !== 'wechat') return fail(res, 400, '当前为模拟支付模式')
   const remote = await payment.queryWechatOrder(row.order_no)
   const paid = remote?.trade_state === 'SUCCESS' && remote?.amount?.total === row.amount_cents
   ok(res, { paid, result: paid ? activateOrder(row.id, remote.transaction_id) : null })

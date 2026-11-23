@@ -4,6 +4,8 @@ const db = require('../db')
 const { ok, fail, wrap } = require('../utils/response')
 const { sign, adminRequired, superRequired } = require('../utils/auth')
 const updater = require('../services/updater')
+const settings = require('../utils/settings')
+const sms = require('../services/sms')
 
 const router = express.Router()
 const parseJson = (v, f) => { try { return JSON.parse(v) ?? f } catch { return f } }
@@ -125,10 +127,18 @@ router.put('/users/:id/status', superRequired, wrap((req, res) => {
   ok(res, { updated: true })
 }))
 
-// ---------- 站点配置 ----------
+// ---------- 配置中心（站点/支付/短信/小程序） ----------
 router.get('/config', adminRequired, wrap((_req, res) => {
-  const rows = db.prepare('SELECT key, value FROM site_config').all()
-  ok(res, Object.fromEntries(rows.map(r => [r.key, parseJson(r.value, '')])))
+  // 分组定义随配置一起下发，前端据此类渲染表单，不各自硬编码键名
+  ok(res, { values: settings.adminView(), groups: settings.GROUPS })
+}))
+
+// ---------- 短信测试 ----------
+router.post('/sms/test', adminRequired, wrap(async (req, res) => {
+  const phone = String(req.body?.phone || '').trim()
+  const code = String(Math.floor(100000 + Math.random() * 900000))
+  const r = await sms.sendCode(phone, code)
+  ok(res, { sent: true, bizId: r.bizId })
 }))
 
 // ---------- 版本检查与更新 ----------
@@ -148,14 +158,23 @@ router.put('/update/config', superRequired, wrap((req, res) => {
   ok(res, updater.updateConfig(req.body || {}))
 }))
 
-router.put('/config', adminRequired, wrap((req, res) => {
-  const allowed = ['site_name', 'site_desc', 'contact', 'notice', 'qr_brand']
+router.put('/config', superRequired, wrap((req, res) => {
   const stmt = db.prepare("INSERT INTO site_config (key, value, updated_at) VALUES (?,?,datetime('now')) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')")
-  const tx = db.transaction(() => {
-    for (const k of allowed) if (k in (req.body || {})) stmt.run(k, JSON.stringify(String(req.body[k] ?? '').slice(0, 1000)))
+  const txn = db.transaction(() => {
+    for (const k of settings.ALL_KEYS) {
+      if (!(k in (req.body || {}))) continue
+      let v = req.body[k]
+      // 敏感字段：空值或掩码视为「未修改」，沿用库中旧值（只写不读）
+      if (settings.SENSITIVE_KEYS.includes(k)) {
+        const s = String(v ?? '')
+        if (!s || s === settings.MASK) continue
+      }
+      const max = k === 'wechat_private_key' || k === 'wechat_platform_cert' ? 20000 : 1000
+      stmt.run(k, JSON.stringify(String(v ?? '').slice(0, max)))
+    }
   })
-  tx()
-  ok(res, { updated: true })
+  txn()
+  ok(res, settings.adminView())
 }))
 
 module.exports = router

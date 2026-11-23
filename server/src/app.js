@@ -5,6 +5,9 @@ const path = require('path')
 const config = require('./config')
 const db = require('./db')
 const updater = require('./services/updater')
+const settings = require('./utils/settings')
+// 首次启动：把 .env 里的支付参数等种子导入配置中心（幂等，DB 已有值不覆盖）
+settings.seedDefaults()
 
 const app = express()
 app.disable('x-powered-by')
@@ -17,10 +20,12 @@ app.use(express.urlencoded({ extended: false }))
 
 app.use('/uploads', express.static(config.UPLOAD_DIR, { maxAge: '7d' }))
 
-app.get('/api/health', (_req, res) => res.json({ code: 0, data: { ok: true, time: Date.now(), payMode: config.PAY_MODE } }))
+app.get('/api/health', (_req, res) => res.json({ code: 0, data: { ok: true, time: Date.now(), payMode: settings.payConfig().PAY_MODE } }))
 app.get('/api/public/config', (_req, res) => {
   const rows = db.prepare('SELECT key, value FROM site_config').all()
-  const cfg = Object.fromEntries(rows.map(r => { try { return [r.key, JSON.parse(r.value)] } catch { return [r.key, ''] } }))
+  const all = Object.fromEntries(rows.map(r => { try { return [r.key, JSON.parse(r.value)] } catch { return [r.key, ''] } }))
+  // 安全：仅下发公开白名单，支付密钥/短信密钥/小程序密钥绝不外泄
+  const cfg = Object.fromEntries(settings.PUBLIC_KEYS.map(k => [k, all[k] ?? '']))
   res.json({ code: 0, data: cfg })
 })
 
@@ -76,6 +81,6 @@ app.use((err, _req, res, _next) => {
 })
 
 app.listen(config.PORT, config.HOST, () => {
-  console.log(`MCard API 已启动: http://localhost:${config.PORT}  (支付模式: ${config.PAY_MODE})`)
+  console.log(`MCard API 已启动: http://localhost:${config.PORT}  (支付模式: ${settings.payConfig().PAY_MODE})`)
   updater.startAutoUpdateLoop()
 })

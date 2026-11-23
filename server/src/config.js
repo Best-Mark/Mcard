@@ -21,6 +21,7 @@ module.exports = {
   WECHAT_CERT_SERIAL_NO: process.env.WECHAT_CERT_SERIAL_NO || '',
   WECHAT_PRIVATE_KEY: (process.env.WECHAT_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
   WECHAT_NOTIFY_URL: process.env.WECHAT_NOTIFY_URL || '',
+  WECHAT_PLATFORM_CERT: (process.env.WECHAT_PLATFORM_CERT || '').replace(/\\n/g, '\n'),
   ADMIN_INIT_USERNAME: process.env.ADMIN_INIT_USERNAME || 'admin',
   ADMIN_INIT_PASSWORD: process.env.ADMIN_INIT_PASSWORD || 'admin123456'
 }
