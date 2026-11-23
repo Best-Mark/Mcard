@@ -63,8 +63,15 @@ router.post('/:id/refresh', authRequired, wrap(async (req, res) => {
   if (!row) return fail(res, 404, '订单不存在')
   if (row.status === 'paid') return ok(res, { paid: true })
   if (settings.payConfig().PAY_MODE !== 'wechat') return fail(res, 400, '当前为模拟支付模式')
-  const remote = await payment.queryWechatOrder(row.order_no)
-  const paid = remote?.trade_state === 'SUCCESS' && remote?.amount?.total === row.amount_cents
+  let remote
+  try {
+    remote = await payment.queryWechatOrder(row.order_no)
+  } catch (e) {
+    // 健壮：查询失败不能当成「未支付」返回，否则用户看到假状态且以为真没付
+    return fail(res, 502, `支付结果查询失败，请稍后重试：${e.message}`)
+  }
+  if (!remote) return fail(res, 502, '暂时无法确认支付结果，请稍后重试')
+  const paid = remote.trade_state === 'SUCCESS' && remote.amount?.total === row.amount_cents
   ok(res, { paid, result: paid ? activateOrder(row.id, remote.transaction_id) : null })
 }))
 

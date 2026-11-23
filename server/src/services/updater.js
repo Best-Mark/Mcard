@@ -11,11 +11,14 @@ let busy = false
 let timer = null
 
 const badRequest = msg => Object.assign(new Error(msg), { status: 400 })
-const git = args => run('git', args, { cwd: ROOT, maxBuffer: 12 * 1024 * 1024 })
+// 自愈/健壮：子进程必须有超时，否则 git fetch / npm install 异常挂起会让 busy 永久为 true、更新功能死锁
+const EXEC_TIMEOUT = 180000
+const git = args => run('git', args, { cwd: ROOT, maxBuffer: 12 * 1024 * 1024, timeout: EXEC_TIMEOUT })
 const npm = args => run(process.platform === 'win32' ? 'npm.cmd' : 'npm', args, {
   cwd: ROOT,
   shell: process.platform === 'win32',
-  maxBuffer: 12 * 1024 * 1024
+  maxBuffer: 12 * 1024 * 1024,
+  timeout: EXEC_TIMEOUT
 })
 
 function readCfg(key, fallback) {
@@ -177,17 +180,23 @@ async function performUpdate(cfg = getConfig()) {
       .split('\n').map(s => s.trim()).filter(Boolean)
     const log = []
 
-    if (files.some(p => /^server\/package(-lock)?\.json$/.test(p))) {
-      await npm(['--prefix', 'server', 'install'])
-      log.push('server 依赖已更新')
-    }
-    if (files.some(p => p.startsWith('client/'))) {
-      await npm(['--prefix', 'client', 'run', 'build'])
-      log.push('H5 前端已重新构建')
-    }
-    if (files.some(p => p.startsWith('miniapp/'))) {
-      await npm(['--prefix', 'miniapp', 'run', 'build:all'])
-      log.push('小程序三端已重新构建')
+    try {
+      if (files.some(p => /^server\/package(-lock)?\.json$/.test(p))) {
+        await npm(['--prefix', 'server', 'install'])
+        log.push('server 依赖已更新')
+      }
+      if (files.some(p => p.startsWith('client/'))) {
+        await npm(['--prefix', 'client', 'run', 'build'])
+        log.push('H5 前端已重新构建')
+      }
+      if (files.some(p => p.startsWith('miniapp/'))) {
+        await npm(['--prefix', 'miniapp', 'run', 'build:all'])
+        log.push('小程序三端已重新构建')
+      }
+    } catch (e) {
+      // 自愈：重建/依赖安装失败时把代码回滚到更新前，避免「代码新、产物旧」的不一致状态
+      try { await git(['reset', '--hard', before]) } catch (rb) { console.error('[Updater] 回滚失败', rb.message) }
+      throw Object.assign(new Error(`更新后重建失败，已回滚代码：${e.message}`), { status: 500 })
     }
 
     const restartRequired = files.some(p => p.startsWith('server/'))

@@ -80,6 +80,10 @@ function sendSpa(req, res) {
 app.get('*', (req, res, next) => req.path.startsWith('/api') ? next() : sendSpa(req, res))
 
 app.use((err, _req, res, _next) => {
+  // 兼容：JSON 报文非法时 Express 默认吐 HTML，前端 axios 拿到非 JSON 会二次异常；统一转 JSON
+  if (err?.type === 'entity.parse.failed') {
+    return res.status(400).json({ code: 400, msg: '请求内容不是合法的 JSON' })
+  }
   console.error('[Error]', err)
   if (res.headersSent) return
   res.status(err.status || 500).json({ code: err.status || 500, msg: err.message || '服务器内部错误' })

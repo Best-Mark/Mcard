@@ -2,6 +2,7 @@
   "name": "mcard-server",
   "version": "1.0.0",
   "private": true,
+  "engines": { "node": ">=18" },
   "main": "src/app.js",
   "scripts": {
     "start": "node src/app.js",

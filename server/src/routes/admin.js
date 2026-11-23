@@ -159,21 +159,30 @@ router.put('/update/config', superRequired, wrap((req, res) => {
 }))
 
 router.put('/config', superRequired, wrap((req, res) => {
-  const stmt = db.prepare("INSERT INTO site_config (key, value, updated_at) VALUES (?,?,datetime('now')) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')")
-  const txn = db.transaction(() => {
-    for (const k of settings.ALL_KEYS) {
-      if (!(k in (req.body || {}))) continue
-      let v = req.body[k]
-      // 敏感字段：空值或掩码视为「未修改」，沿用库中旧值（只写不读）
-      if (settings.SENSITIVE_KEYS.includes(k)) {
-        const s = String(v ?? '')
-        if (!s || s === settings.MASK) continue
-      }
-      const max = k === 'wechat_private_key' || k === 'wechat_platform_cert' ? 20000 : 1000
-      stmt.run(k, JSON.stringify(String(v ?? '').slice(0, max)))
+  // 第一遍：收集 + 校验（必须在事务外完成，否则事务内 return fail 不会真正返回响应）
+  const entries = []
+  for (const k of settings.ALL_KEYS) {
+    if (!(k in (req.body || {}))) continue
+    const v = req.body[k]
+    // 敏感字段：空值或掩码视为「未修改」，沿用库中旧值（只写不读）
+    if (settings.SENSITIVE_KEYS.includes(k)) {
+      const s = String(v ?? '')
+      if (!s || s === settings.MASK) continue
     }
-  })
-  txn()
+    // 健壮：枚举类配置只接受合法值，避免写入 "0"/"yes" 被判真导致功能意外开启
+    if (k === 'pay_mode' && !['mock', 'wechat'].includes(String(v))) return fail(res, 400, '支付模式只能是 mock 或 wechat')
+    if (['sms_enabled', 'wechat_oauth_enabled', 'wechat_oauth_bind_phone'].includes(k) && !['true', 'false'].includes(String(v))) {
+      return fail(res, 400, `${k} 只能是 true 或 false`)
+    }
+    if (k === 'wechat_oauth_scope' && String(v) !== 'snsapi_userinfo') return fail(res, 400, '授权范围固定为 snsapi_userinfo')
+    if (k === 'wechat_oauth_verify_name' && String(v) && !/^MP_verify_[A-Za-z0-9_-]{1,64}\.txt$/.test(String(v))) {
+      return fail(res, 400, '校验文件名格式应为 MP_verify_xxx.txt')
+    }
+    const max = k === 'wechat_private_key' || k === 'wechat_platform_cert' ? 20000 : 1000
+    entries.push([k, JSON.stringify(String(v ?? '').slice(0, max))])
+  }
+  const stmt = db.prepare("INSERT INTO site_config (key, value, updated_at) VALUES (?,?,datetime('now')) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')")
+  db.transaction(() => { for (const [k, v] of entries) stmt.run(k, v) })()
   ok(res, settings.adminView())
 }))
 

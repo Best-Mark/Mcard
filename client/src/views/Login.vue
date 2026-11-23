@@ -44,14 +44,16 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
 import { setAuth, showToast, siteConfig } from '../store'
 
 const route = useRoute(); const router = useRouter()
 const mode = ref('login'); const phone = ref(''); const password = ref(''); const nickname = ref(''); const busy = ref(false)
-const wxBusy = ref(false); const wxEnabled = ref(false)
+const wxBusy = ref(false)
+// computed 跟随 siteConfig，避免 main.js 里 loadSiteConfig 未 await 导致按钮竞态不显示
+const wxEnabled = computed(() => !!siteConfig.wechat_login_enabled)
 const bindTicket = ref(''); const wxNickname = ref(''); const wxAvatar = ref(''); const errMsg = ref('')
 const isWechat = /MicroMessenger/i.test(navigator.userAgent)
 
@@ -59,11 +61,11 @@ const ERR_TEXT = {
   state: '授权状态校验失败，请重新发起登录',
   denied: '你取消了微信授权',
   disabled: '账号已被停用，请联系管理员',
-  oauth: '微信授权失败，请稍后重试或改用手机号登录'
+  oauth: '微信授权失败，请稍后重试或改用手机号登录',
+  expired: '微信授权已过期，请重新发起登录'
 }
 
 onMounted(() => {
-  wxEnabled.value = !!siteConfig.wechat_login_enabled
   const err = route.query.err
   if (err) errMsg.value = ERR_TEXT[err] || '微信登录失败，请重试'
   const hash = new URLSearchParams(location.hash.replace(/^#/, ''))
@@ -98,6 +100,7 @@ async function submit() {
 }
 
 async function submitBind() {
+  if (busy.value) return
   if (!/^1\d{10}$/.test(phone.value)) return showToast('请输入 11 位手机号', 'error')
   if (password.value.length < 6) return showToast('密码至少 6 位', 'error')
   busy.value = true

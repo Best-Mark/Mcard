@@ -45,7 +45,7 @@ export function showToast(text, type = '') {
   timer = setTimeout(() => { toast.text = '' }, 3200)
 }
 
-export const siteConfig = reactive({ site_name: 'MCard 电子名片', site_desc: '一扫即存，永久有效' })
+export const siteConfig = reactive({ site_name: 'MCard 电子名片', site_desc: '一扫即存，永久有效', wechat_login_enabled: false })
 export async function loadSiteConfig(api) {
   try {
     const { data } = await api.get('/api/public/config')

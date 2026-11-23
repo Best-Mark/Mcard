@@ -10,6 +10,15 @@
     <div class="container" style="margin-top:20px">
       <template v-if="loading"><div class="card card-pad">加载中…</div></template>
 
+      <template v-else-if="loadError">
+        <div class="card card-pad center" style="padding:44px 20px">
+          <div style="font-size:40px;opacity:.3">⚠️</div>
+          <h2 style="margin:10px 0">数据加载失败</h2>
+          <p class="muted small">{{ loadError }}</p>
+          <button class="btn btn-primary" style="margin-top:16px" :disabled="loading" @click="load">重新加载</button>
+        </div>
+      </template>
+
       <template v-else-if="!card">
         <div class="card card-pad center" style="padding:44px 20px">
           <div style="font-size:46px;opacity:.25">▤</div>
@@ -85,22 +94,25 @@ import { auth, logout, showToast } from '../store'
 
 const router = useRouter()
 const card = ref(null); const stats = ref({ views: 0, exchanges: 0, daily: [] }); const orders = ref([])
-const loading = ref(true); const busy = ref(false); const newSlug = ref('')
+const loading = ref(true); const busy = ref(false); const newSlug = ref(''); const loadError = ref('')
 const maxView = computed(() => Math.max(1, ...(stats.value.daily || []).map(d => d.n)))
 const expireDays = computed(() => card.value?.expires_at ? Math.max(0, Math.ceil((new Date(String(card.value.expires_at).replace(' ', 'T') + 'Z') - Date.now()) / 86400000)) : 0)
 const statusBadge = computed(() => card.value?.active ? { text: '已开通', class: 'ok' } : { text: '未开通 / 已到期', class: 'warn' })
 const statusText = s => ({ paid: '已支付', pending: '待支付', cancelled: '已取消' })[s] || s
 
 async function load() {
+  if (loading.value) return
   loading.value = true
+  loadError.value = ''
   try {
     const [c, s, o] = await Promise.all([api.get('/api/cards/mine'), api.get('/api/cards/mine/stats'), api.get('/api/orders/mine')])
     card.value = c.data.data; stats.value = s.data.data; orders.value = o.data.data
-  } catch (e) { showToast(e.message, 'error') } finally { loading.value = false }
+  } catch (e) { loadError.value = e.message || '网络异常' } finally { loading.value = false }
 }
 onMounted(load)
 
 async function createCard() {
+  if (busy.value) return
   busy.value = true
   try {
     const { data } = await api.post('/api/cards/mine', { slug: newSlug.value })

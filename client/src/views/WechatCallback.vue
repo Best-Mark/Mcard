@@ -38,10 +38,12 @@ onMounted(() => {
     return
   }
   try {
-    const user = JSON.parse(decodeURIComponent(raw))
+    // URLSearchParams 已完成一次解码，这里绝不能再 decodeURIComponent（昵称含 % 会抛 URIError）
+    const user = JSON.parse(raw)
+    if (!user || typeof user !== 'object' || !user.id) throw new Error('bad user')
     setAuth(token, user)
     showToast('微信登录成功', 'success')
-    history.replaceState(null, '', '/')
+    history.replaceState(null, '', import.meta.env.BASE_URL || '/')
     router.replace(route.query.redirect || '/me')
   } catch (e) {
     failed.value = true

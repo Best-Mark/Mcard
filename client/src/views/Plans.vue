@@ -8,6 +8,11 @@
       <div class="hint" style="margin-bottom:16px">
         套餐按<b>时段</b>计费，支付后立即开通；到期前可随时续期，剩余时长会与新套餐叠加，不会浪费。
       </div>
+      <div v-if="loadError" class="card card-pad center" style="margin-bottom:14px">
+        <b>套餐加载失败</b><p class="small muted">{{ loadError }}</p>
+        <button class="btn btn-sm btn-primary" style="margin-top:10px" @click="load">重新加载</button>
+      </div>
+      <div v-else-if="!loading && !packages.length" class="card card-pad center">暂无可选套餐</div>
       <div class="plan-grid">
         <div v-for="p in packages" :key="p.id" class="card plan" :class="{ hot: p.sort === 3 }">
           <span v-if="p.sort === 3" class="plan-hot">推荐</span>
@@ -32,12 +37,18 @@ import api from '../api'
 import { showToast } from '../store'
 
 const router = useRouter()
-const packages = ref([]); const busy = ref(0)
-onMounted(async () => {
-  try { packages.value = (await api.get('/api/packages')).data.data } catch (e) { showToast(e.message, 'error') }
-})
+const packages = ref([]); const busy = ref(0); const loadError = ref(''); const loading = ref(true)
+async function load() {
+  if (loading.value && packages.value.length) return
+  loading.value = true; loadError.value = ''
+  try { packages.value = (await api.get('/api/packages')).data.data }
+  catch (e) { loadError.value = e.message || '网络异常' }
+  finally { loading.value = false }
+}
+onMounted(load)
 
 async function buy(p) {
+  if (busy.value) return
   busy.value = p.id
   try {
     const { data } = await api.post('/api/orders', { package_id: p.id })

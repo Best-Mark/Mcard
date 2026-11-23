@@ -3,6 +3,12 @@ const path = require('path')
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data')
 
+// 健壮：生产环境禁止用开发默认密钥/口令启动（避免弱口令上线）
+if (process.env.NODE_ENV === 'production') {
+  if (!process.env.JWT_SECRET) throw new Error('生产环境必须设置 JWT_SECRET')
+  if (!process.env.ADMIN_INIT_PASSWORD) throw new Error('生产环境必须设置 ADMIN_INIT_PASSWORD')
+}
+
 module.exports = {
   PORT: Number(process.env.PORT || 3000),
   HOST: process.env.HOST || '0.0.0.0',

@@ -168,17 +168,24 @@ const seedPackages = [
   { name: '季度会员', description: '90 天，推荐之选', price_cents: 4900, duration_days: 90, features: JSON.stringify(['全部模板', '永久二维码', '一键存通讯录', '实体名片版式下载', '访问数据统计', '交换名片']), sort: 3 },
   { name: '年度会员', description: '365 天，长期商务首选', price_cents: 9900, duration_days: 365, features: JSON.stringify(['全部模板', '永久二维码', '一键存通讯录', '实体名片版式下载', '访问数据统计', '交换名片', '自定义主题']), sort: 4 }
 ]
-const pkgCount = db.prepare('SELECT COUNT(*) AS n FROM packages').get().n
-if (!pkgCount) {
+// 自愈但幂等：用标记键做种子，避免运营删光套餐/降级管理员后下次启动被「复活」
+const insertSeedFlag = db.prepare("INSERT OR IGNORE INTO site_config (key, value) VALUES (?, ?)")
+const seeded = key => !!db.prepare('SELECT 1 FROM site_config WHERE key = ?').get(key)
+if (!seeded('seed_packages_v1')) {
   const insert = db.prepare('INSERT INTO packages (name, description, price_cents, duration_days, features, sort) VALUES (@name,@description,@price_cents,@duration_days,@features,@sort)')
-  const tx = db.transaction(rows => rows.forEach(r => insert.run(r)))
-  tx(seedPackages)
+  db.transaction(rows => { rows.forEach(r => insert.run(r)); insertSeedFlag.run('seed_packages_v1', '1') })(seedPackages)
 }
 
-const adminCount = db.prepare("SELECT COUNT(*) AS n FROM users WHERE role IN ('admin','super_admin')").get().n
-if (!adminCount) {
-  db.prepare('INSERT INTO users (phone, password_hash, nickname, role) VALUES (?,?,?,?)')
-    .run(config.ADMIN_INIT_USERNAME, bcrypt.hashSync(config.ADMIN_INIT_PASSWORD, 10), '超级管理员', 'super_admin')
+if (!seeded('seed_admin_v1')) {
+  db.transaction(() => {
+    // 存量库若已有管理员，只打标记不重建，避免弱口令回灌
+    const exists = db.prepare("SELECT 1 FROM users WHERE role IN ('admin','super_admin') LIMIT 1").get()
+    if (!exists) {
+      db.prepare('INSERT INTO users (phone, password_hash, nickname, role) VALUES (?,?,?,?)')
+        .run(config.ADMIN_INIT_USERNAME, bcrypt.hashSync(config.ADMIN_INIT_PASSWORD, 10), '超级管理员', 'super_admin')
+    }
+    insertSeedFlag.run('seed_admin_v1', '1')
+  })()
 }
 
 const defaults = {

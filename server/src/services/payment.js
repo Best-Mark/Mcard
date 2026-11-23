@@ -21,6 +21,8 @@ function httpRequest(method, requestPath, body, headers = {}) {
     }, res => {
       const chunks = []
       res.on('data', c => chunks.push(c))
+      res.on('error', e => reject(e)) // 兼容：响应流异常时 Promise 不悬挂
+      res.on('aborted', () => reject(new Error('微信支付响应中断')))
       res.on('end', () => {
         const text = Buffer.concat(chunks).toString('utf8')
         let data = null
@@ -37,6 +39,9 @@ function httpRequest(method, requestPath, body, headers = {}) {
 
 function wechatAuthorization(method, requestPath, body = '') {
   const p = settings.payConfig()
+  if (!p.WECHAT_PRIVATE_KEY || !p.WECHAT_MCH_ID || !p.WECHAT_CERT_SERIAL_NO) {
+    throw new Error('微信支付签名配置缺失：请检查商户号、证书序列号与商户私钥')
+  }
   const nonce = randomHex(16)
   const timestamp = Math.floor(Date.now() / 1000)
   const message = `${method}\n${requestPath}\n${timestamp}\n${nonce}\n${body}\n`
@@ -71,24 +76,33 @@ async function createPayment(order, pkg) {
 
 function decryptResource(resource) {
   if (!resource?.ciphertext) return null
-  const key = Buffer.from(settings.payConfig().WECHAT_API_V3_KEY, 'utf8')
-  const nonce = Buffer.from(resource.nonce, 'utf8')
-  const aad = Buffer.from(resource.associated_data || '', 'utf8')
-  const raw = Buffer.from(resource.ciphertext, 'base64')
-  const tag = raw.subarray(raw.length - 16)
-  const data = raw.subarray(0, raw.length - 16)
-  const decipher = crypto.createDecipheriv('aes-256-gcm', key, nonce)
-  decipher.setAuthTag(tag)
-  decipher.setAAD(aad)
-  const out = Buffer.concat([decipher.update(data), decipher.final()]).toString('utf8')
-  return JSON.parse(out)
+  const apiV3Key = settings.payConfig().WECHAT_API_V3_KEY
+  if (!apiV3Key || apiV3Key.length !== 32) throw new Error('微信支付解密失败：API v3 密钥未配置或长度不为 32 位')
+  if (!resource.nonce) throw new Error('微信支付解密失败：回调报文缺少 nonce')
+  try {
+    const key = Buffer.from(apiV3Key, 'utf8')
+    const nonce = Buffer.from(resource.nonce, 'utf8')
+    const aad = Buffer.from(resource.associated_data || '', 'utf8')
+    const raw = Buffer.from(resource.ciphertext, 'base64')
+    if (raw.length < 17) throw new Error('密文长度不合法')
+    const tag = raw.subarray(raw.length - 16)
+    const data = raw.subarray(0, raw.length - 16)
+    const decipher = crypto.createDecipheriv('aes-256-gcm', key, nonce)
+    decipher.setAuthTag(tag)
+    decipher.setAAD(aad)
+    const out = Buffer.concat([decipher.update(data), decipher.final()]).toString('utf8')
+    return JSON.parse(out)
+  } catch (e) {
+    throw new Error(`微信支付回调解密失败：${e.message}（请核对 API v3 密钥是否正确）`)
+  }
 }
 
 async function queryWechatOrder(orderNo) {
   const p = settings.payConfig()
   const requestPath = `/v3/pay/transactions/out-trade-no/${encodeURIComponent(orderNo)}?mchid=${encodeURIComponent(p.WECHAT_MCH_ID)}`
   const res = await httpRequest('GET', requestPath, null, { Authorization: wechatAuthorization('GET', requestPath) })
-  if (res.status !== 200) return null
+  if (res.status === 404) return null // 明确查无此单 = 未支付
+  if (res.status !== 200) throw new Error(`微信查单失败（${res.status}）：${res.data?.message || res.text || '未知错误'}`)
   return res.data
 }
 

@@ -27,7 +27,10 @@
           <button class="btn btn-ghost btn-block" style="margin-top:8px" :disabled="busy" @click="refresh">我已支付，刷新状态</button>
           <p class="small muted" style="margin-top:14px">支付完成后系统自动开通；若长时间未到账，请点击刷新状态。</p>
         </template>
-        <template v-else><b>订单加载失败</b><p class="small muted">{{ error }}</p></template>
+        <template v-else>
+          <b>订单加载失败</b><p class="small muted">{{ error }}</p>
+          <button class="btn btn-primary" style="margin-top:12px" :disabled="loading" @click="load">重试</button>
+        </template>
       </div>
     </div>
   </div>
@@ -47,7 +50,9 @@ const payQr = ref('')
 const slug = ref('')
 
 async function load() {
+  if (loading.value) return
   loading.value = true
+  error.value = ''
   try {
     const { data } = await api.get(`/api/orders/${route.params.id}`)
     order.value = data.data
@@ -59,11 +64,13 @@ async function load() {
 onMounted(load)
 
 async function mockPay() {
+  if (busy.value) return
   busy.value = true
   try { await api.post(`/api/orders/${route.params.id}/mock-pay`); showToast('支付成功，名片已开通', 'success'); await load() }
   catch (e) { showToast(e.message, 'error') } finally { busy.value = false }
 }
 async function refresh() {
+  if (busy.value) return
   busy.value = true
   try {
     const { data } = await api.post(`/api/orders/${route.params.id}/refresh`)

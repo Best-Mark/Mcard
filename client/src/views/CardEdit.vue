@@ -7,6 +7,11 @@
     </header>
 
     <div class="container wide" style="margin-top:18px">
+      <div v-if="loadError" class="card card-pad" style="margin-bottom:14px;border-color:#fecaca;background:#fef2f2">
+        <b style="color:#b91c1c">名片资料加载失败</b>
+        <p class="small muted" style="margin:6px 0 12px">{{ loadError }}。为避免覆盖已有资料，保存已临时禁用。</p>
+        <button class="btn btn-sm btn-primary" :disabled="loading" @click="loadCard">重新加载</button>
+      </div>
       <div class="hint" style="margin-bottom:14px">
         🔒 <b>二维码永久不变</b>：以下任何资料修改都只影响展示内容，链接 <span class="mono">/c/{{ form.slug }}</span> 与二维码图案始终保持一致，印好的实体名片无需重做。
       </div>
@@ -147,8 +152,8 @@
             <p class="small muted">提示：二维码颜色请保持足够对比度（深色码 + 浅色底），否则可能扫不出来。</p>
           </div>
 
-          <button class="btn btn-primary btn-lg btn-block" style="margin-top:16px" :disabled="saving" @click="save">
-            {{ saving ? '保存中…' : '保存资料' }}
+          <button class="btn btn-primary btn-lg btn-block" style="margin-top:16px" :disabled="saving || loadError || !loaded" @click="save">
+            {{ saving ? '保存中…' : (loadError ? '加载失败，暂不可保存' : '保存资料') }}
           </button>
         </div>
 
@@ -222,18 +227,31 @@ const qrFields = [
 ]
 const tagsText = ref('')
 const saving = ref(false)
+const loading = ref(false)
+const loaded = ref(false)
+const loadError = ref('')
 const tagList = computed(() => tagsText.value.split(/[,，]/).map(s => s.trim()).filter(Boolean).slice(0, 8))
 const previewQr = computed(() => `/api/cards/public/${form.value.slug}/qr.svg?size=320&brand=M`)
 
-onMounted(async () => {
-  loadTemplates()
-  loadMarketMeta()
+async function loadCard() {
+  if (loading.value) return
+  loading.value = true
+  loadError.value = ''
   try {
     const { data } = await api.get('/api/cards/mine')
     if (!data.data) { showToast('请先创建名片', 'error'); return router.push('/me') }
     form.value = { ...blank, ...data.data, qr_logo: !!data.data.qr_logo }
     tagsText.value = (data.data.tags || []).join(', ')
-  } catch (e) { showToast(e.message, 'error') }
+    loaded.value = true
+  } catch (e) {
+    loadError.value = e.message || '网络异常'
+  } finally { loading.value = false }
+}
+
+onMounted(async () => {
+  loadTemplates()
+  loadMarketMeta()
+  await loadCard()
 })
 
 async function loadTemplates() {
@@ -291,6 +309,7 @@ async function upload(e, field) {
 }
 
 async function save() {
+  if (saving.value || loadError.value || !loaded.value) return
   if (!form.value.name) return showToast('请填写姓名', 'error')
   saving.value = true
   try {

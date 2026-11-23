@@ -10,7 +10,11 @@
         版式按 <b>90 × 54mm</b> 标准名片设计，四周 <b>3mm 出血</b>、内侧 <b>4.5mm 安全线</b>。可下载 SVG 矢量稿或 300dpi PNG 交印厂；二维码内容就是你的永久名片链接。
       </div>
 
-      <div v-if="!card" class="card card-pad">请先创建名片 <router-link to="/me" style="color:var(--primary)">去创建</router-link></div>
+      <div v-if="loadError" class="card card-pad">
+        <b style="color:#b91c1c">名片加载失败</b><p class="small muted">{{ loadError }}</p>
+        <button class="btn btn-sm btn-primary" style="margin-top:10px" @click="load">重新加载</button>
+      </div>
+      <div v-else-if="!card" class="card card-pad">请先创建名片 <router-link to="/me" style="color:var(--primary)">去创建</router-link></div>
 
       <template v-else>
         <div class="print-layout">
@@ -75,7 +79,7 @@ import { saveText, saveBlob } from '../utils/save-image'
 
 const card = ref(null)
 const template = ref('classic'); const side = ref('front'); const guides = ref(false)
-const brand = ref('MCard'); const svgHtml = ref(''); const busy = ref(false)
+const brand = ref('MCard'); const svgHtml = ref(''); const busy = ref(false); const loadError = ref('')
 const tpls = [
   { k: 'classic', label: '经典商务' }, { k: 'modern', label: '现代色块' }, { k: 'minimal', label: '极简线条' }
 ]
@@ -89,17 +93,19 @@ async function render() {
 }
 watch([template, side, guides, brand], render)
 
-onMounted(async () => {
+async function load() {
+  loadError.value = ''
   try {
     const { data } = await api.get('/api/cards/mine')
     card.value = data.data
     brand.value = siteConfig.site_name || 'MCard'
     await render()
-  } catch (e) { showToast(e.message, 'error') }
-})
+  } catch (e) { loadError.value = e.message || '网络异常' }
+}
+onMounted(load)
 
 async function download(kind) {
-  if (!svgHtml.value) return
+  if (busy.value || !svgHtml.value) return
   busy.value = true
   try {
     const name = `名片-${card.value.name || card.value.slug}-${side.value}`

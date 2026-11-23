@@ -202,9 +202,9 @@ onMounted(() => { loadMeta(); load() })
 .mk-ident { flex: 1; min-width: 0; }
 .mk-name { font-size: 16px; font-weight: 800; }
 .mk-title { font-size: 12px; color: var(--muted, #6b7688); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mk-dist { flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--primary, #2563eb); background: color-mix(in srgb, var(--primary, #2563eb) 12%, transparent); padding: 4px 9px; border-radius: 999px; }
+.mk-dist { flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--primary, #2563eb); background: #eef2ff; background: color-mix(in srgb, var(--primary, #2563eb) 12%, transparent); padding: 4px 9px; border-radius: 999px; }
 .mk-meta { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-.mk-industry { font-size: 11px; padding: 3px 9px; border-radius: 6px; background: color-mix(in srgb, var(--primary, #2563eb) 12%, transparent); color: var(--primary, #2563eb); font-weight: 600; }
+.mk-industry { font-size: 11px; padding: 3px 9px; border-radius: 6px; background: #eef2ff; background: color-mix(in srgb, var(--primary, #2563eb) 12%, transparent); color: var(--primary, #2563eb); font-weight: 600; }
 .mk-city { font-size: 11px; color: var(--muted, #6b7688); }
 .mk-bio { font-size: 13px; color: var(--muted, #6b7688); line-height: 1.55; margin-top: 10px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .mk-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }

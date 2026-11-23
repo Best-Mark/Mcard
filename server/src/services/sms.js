@@ -32,17 +32,23 @@ function request(params, accessKeyId, accessKeySecret) {
   all.Signature = buildSignature(all, accessKeySecret)
   const query = Object.keys(all).sort().map(k => `${percentEncode(k)}=${percentEncode(all[k])}`).join('&')
   return new Promise((resolve, reject) => {
+    let settled = false
     const req = https.get({ ...ENDPOINT, path: `/?${query}` }, res => {
       const chunks = []
       res.on('data', c => chunks.push(c))
+      res.on('error', e => { if (!settled) { settled = true; reject(e) } }) // 兼容：socket reset 时 Promise 不悬挂
+      res.on('aborted', () => { if (!settled) { settled = true; reject(new Error('短信响应中断')) } })
       res.on('end', () => {
+        if (settled) return
+        settled = true
         const text = Buffer.concat(chunks).toString('utf8')
-        let data = null; try { data = JSON.parse(text) } catch { /* 保留原文 */ }
-        resolve(data || { Code: 'ParseError', Message: text.slice(0, 200) })
+        let data = null; try { data = JSON.parse(text) } catch { /* 保留原文用于报错 */ }
+        // 健壮：不把上游响应体原文回传前端，避免泄露签名/参数片段
+        resolve(data || { Code: 'ParseError', Message: '短信服务返回内容无法解析' })
       })
     })
     req.setTimeout(12000, () => req.destroy(new Error('短信请求超时')))
-    req.on('error', reject)
+    req.on('error', e => { if (!settled) { settled = true; reject(e) } })
   })
 }
 
