@@ -6,6 +6,7 @@
     { "path": "pages/market/market", "style": { "navigationBarTitleText": "名片集市", "enablePullDownRefresh": true } },
     { "path": "pages/me/me", "style": { "navigationBarTitleText": "我的名片" } },
     { "path": "pages/edit/edit", "style": { "navigationBarTitleText": "编辑资料" } },
+    { "path": "pages/map-picker/map-picker", "style": { "navigationBarTitleText": "地图选点" } },
     { "path": "pages/plans/plans", "style": { "navigationBarTitleText": "开通套餐" } },
     { "path": "pages/pay/pay", "style": { "navigationBarTitleText": "支付" } },
     { "path": "pages/print/print", "style": { "navigationBarTitleText": "实体名片版式" } }

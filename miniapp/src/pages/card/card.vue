@@ -154,6 +154,7 @@ const coverBg = computed(() => {
   if (tpl.value === 'minimal') return '#f1f5f9'
   if (tpl.value === 'elite') return `linear-gradient(135deg, ${c}, #1c1917 70%)`
   if (tpl.value === 'vivid') return `linear-gradient(135deg, ${c}, #db2777 60%, #f59e0b)`
+  if (tpl.value === 'seal') return '#12213c'
   return `linear-gradient(135deg, ${c}, #0f172a)`
 })
 const contactQrs = computed(() => {
@@ -316,4 +317,20 @@ onShareAppMessage(() => ({
 .tpl-vivid .name { font-size: 40rpx; }
 .tpl-vivid .tags text { border-radius: 10rpx; padding: 6rpx 18rpx; }
 .tpl-vivid .ico { border-radius: 18rpx; }
+
+/* 印章方格 seal：深蓝方块印章风，直角、深蓝描边、几何对称 */
+.tpl-seal .cover { height: 230rpx; border-radius: 0; border-bottom: 8rpx solid #1e3a8a; }
+.tpl-seal .brand { color: #fff; }
+.tpl-seal .body { margin-top: -52rpx; }
+.tpl-seal .card { border-radius: 6rpx; border: 2rpx solid #cbd5e1; box-shadow: 6rpx 6rpx 0 rgba(30,58,138,.12); }
+.tpl-seal .profile { border-top: 6rpx solid #1e3a8a; }
+.tpl-seal .avatar { border-radius: 6rpx; border: 4rpx solid #1e3a8a; box-shadow: 4rpx 4rpx 0 rgba(30,58,138,.18); }
+.tpl-seal .name { color: #12213c; letter-spacing: 2rpx; }
+.tpl-seal .title { color: #1e3a8a; font-weight: 600; }
+.tpl-seal .tags text { border-radius: 4rpx; border: 2rpx solid #1e3a8a; background: transparent; color: #1e3a8a; }
+.tpl-seal .ico { border-radius: 6rpx; border: 2rpx solid #1e3a8a; background: transparent; color: #1e3a8a; }
+.tpl-seal .section { color: #12213c; letter-spacing: 2rpx; border-left: 8rpx solid #1e3a8a; padding-left: 14rpx; }
+.tpl-seal .qr, .tpl-seal .modal-qr { border-radius: 6rpx; border: 4rpx solid #1e3a8a; }
+.tpl-seal .btn.primary { background: #1e3a8a; }
+.tpl-seal .foot { color: #64748b; letter-spacing: 2rpx; }
 </style>

@@ -82,6 +82,7 @@
               <label>定位坐标 <span class="muted small">（用于按距离排序；选城市会自动填入，也可精确定位）</span></label>
               <div class="locate-row">
                 <span class="small mono">{{ form.latitude != null ? form.latitude.toFixed(4) : '—' }}, {{ form.longitude != null ? form.longitude.toFixed(4) : '—' }}</span>
+                <button class="btn btn-sm btn-ghost" @click="mapOpen = true">🗺 地图选点</button>
                 <button class="btn btn-sm btn-ghost" :disabled="locating" @click="locateMe">{{ locating ? '定位中…' : '⌖ 精确定位' }}</button>
               </div>
             </div>
@@ -170,16 +171,33 @@
         </aside>
       </div>
     </div>
+
+    <!-- 地图拖拽选点（懒加载，打开才下载地图组件） -->
+    <div v-if="mapOpen" class="map-mask" @click.self="mapOpen = false">
+      <div class="map-modal">
+        <div class="map-modal-head">
+          <b>地图选点</b>
+          <button class="btn btn-sm btn-ghost" @click="mapOpen = false">关闭</button>
+        </div>
+        <MapPicker
+          :lat="form.latitude || 39.9042"
+          :lng="form.longitude || 116.4074"
+          @confirm="p => { form.latitude = p.lat; form.longitude = p.lng; mapOpen = false; showToast('坐标已填入，记得点保存', 'success') }"
+        />
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
 import { showToast } from '../store'
 import { THEMES } from '../utils/themes'
 import LogoUploader from '../components/LogoUploader.vue'
+
+const MapPicker = defineAsyncComponent(() => import('../components/MapPicker.vue'))
 
 const router = useRouter()
 const blank = {
@@ -195,6 +213,7 @@ const form = ref({ ...blank })
 const templates = ref([])
 const marketMeta = ref({ industries: [], cities: [] })
 const locating = ref(false)
+const mapOpen = ref(false)
 const qrFields = [
   { key: 'wechat_qr', label: '微信 · 加好友码' },
   { key: 'alipay_qr', label: '支付宝 · 加好友码' },
@@ -303,6 +322,9 @@ async function save() {
 .qr-upload-info b { font-size: 13px; }
 .locate-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .locate-row .mono { color: var(--muted); }
+.map-mask { position: fixed; inset: 0; background: rgba(15,23,42,.55); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.map-modal { width: 100%; max-width: 680px; background: var(--bg-card, #fff); border-radius: 14px; padding: 14px; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+.map-modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .link-row { display: grid; grid-template-columns: 1fr 1.5fr auto; gap: 8px; margin-bottom: 8px; }
 .theme-list { display: flex; flex-wrap: wrap; gap: 8px; }
 .theme-item { border: 1px solid var(--line); border-radius: 10px; padding: 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; }
@@ -329,6 +351,7 @@ async function save() {
 .ava-minimal { border-radius: 50%; left: 50%; transform: translateX(-50%); background: #e2e8f0; }
 .ava-elite { border-radius: 50%; left: 50%; transform: translateX(-50%); width: 34px; height: 34px; border: 2px solid #c9a227; }
 .ava-vivid { border-radius: 12px; width: 34px; height: 34px; background: #fff; }
+.ava-seal { border-radius: 3px; width: 34px; height: 34px; border: 3px solid #93c5fd; }
 .tpl-item b { font-size: 13px; }
 .tpl-desc { font-size: 11px; color: var(--muted); line-height: 1.45; min-height: 30px; }
 .tpl-check { font-size: 11px; color: var(--primary); font-weight: 700; }
@@ -340,5 +363,9 @@ async function save() {
 .pv-elite .preview-body { text-align: center; align-items: center; }
 .preview-card.pv-vivid, .pv-vivid .preview-head { border-radius: 18px; }
 .pv-vivid .preview-avatar { border-radius: 12px; }
+.pv-seal .preview-card { border-radius: 3px; border: 2px solid #1e3a8a; }
+.pv-seal .preview-head { background: #12213c !important; border-radius: 0; }
+.pv-seal .preview-avatar { border-radius: 3px; border: 2px solid #93c5fd; background: #12213c; }
+.pv-seal .preview-body { color: #12213c; }
 @media (max-width: 520px) { .tpl-list { grid-template-columns: 1fr; } }
 </style>

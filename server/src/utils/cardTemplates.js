@@ -26,6 +26,12 @@ const CARD_TEMPLATES = [
     label: '活力格调',
     desc: '大圆角封面 + 悬浮头像，年轻、有记忆点',
     cover: 'linear-gradient(135deg,#7c3aed 0%,#db2777 55%,#f59e0b 100%)'
+  },
+  {
+    key: 'seal',
+    label: '印章方格',
+    desc: '深蓝方块印章风，几何对称、稳重有辨识度',
+    cover: 'linear-gradient(135deg,#0f172a 0%,#1e3a8a 55%,#3b82f6 100%)'
   }
 ]
 

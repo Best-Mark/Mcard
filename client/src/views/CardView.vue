@@ -398,4 +398,38 @@ async function doExchange() {
 .cv-tpl-vivid .cv-actions i { border-radius: 14px; }
 .cv-tpl-vivid .cv-block h3 { color: var(--t-accent); }
 .cv-tpl-vivid .cv-qr-img { border-radius: 18px; }
+
+/* 印章方格 seal：深蓝方块印章风，直角、回字描边、几何对称 */
+.cv-tpl-seal { background: #eef2f9; }
+.cv-tpl-seal .cv-cover {
+  height: 190px; border-radius: 0;
+  background: #12213c;
+  background-image:
+    linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px),
+    linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px);
+  background-size: 28px 28px;
+  border-bottom: 4px solid #1e3a8a;
+}
+.cv-tpl-seal .cv-cover::after {
+  content: ''; position: absolute; right: 18px; top: 18px; width: 34px; height: 34px;
+  border: 3px solid rgba(147,197,253,.5); border-radius: 2px;
+  box-shadow: inset 0 0 0 5px #12213c, inset 0 0 0 8px rgba(147,197,253,.35);
+}
+.cv-tpl-seal .cv-back, .cv-tpl-seal .cv-brand { color: #fff; }
+.cv-tpl-seal .cv-main { margin-top: -44px; }
+.cv-tpl-seal .card { border-radius: 4px; border: 1px solid #cbd5e1; box-shadow: 4px 4px 0 rgba(30,58,138,.12); }
+.cv-tpl-seal .cv-profile { border-top: 3px solid #1e3a8a; padding: 20px 16px; }
+.cv-tpl-seal .cv-avatar { border-radius: 4px; border: 3px solid #1e3a8a; box-shadow: 3px 3px 0 rgba(30,58,138,.18); }
+.cv-tpl-seal .cv-name { font-weight: 800; letter-spacing: 1px; color: #12213c; }
+.cv-tpl-seal .cv-en { letter-spacing: .5px; }
+.cv-tpl-seal .cv-title { font-weight: 600; color: #1e3a8a; }
+.cv-tpl-seal .cv-tags span { border-radius: 2px; border: 1px solid #1e3a8a; background: transparent; color: #1e3a8a; }
+.cv-tpl-seal .cv-actions i { border-radius: 4px; border: 1px solid #1e3a8a; background: transparent; color: #1e3a8a; }
+.cv-tpl-seal .cv-block h3 { color: #12213c; border-left: 4px solid #1e3a8a; padding-left: 9px; letter-spacing: 1px; }
+.cv-tpl-seal .cv-links a, .cv-tpl-seal .qr-tile { border-radius: 4px; }
+.cv-tpl-seal .cv-maps a, .cv-tpl-seal .btn-ghost { border-radius: 3px; }
+.cv-tpl-seal .cv-qr-img { border-radius: 4px; border: 2px solid #1e3a8a; }
+.cv-tpl-seal .cv-footer { color: #64748b; letter-spacing: 1px; }
+.cv-tpl-seal .cv-dock { background: rgba(18,33,60,.96); border-top: 3px solid #1e3a8a; }
+.cv-tpl-seal .cv-dock .btn-ghost { background: rgba(255,255,255,.14); color: #fff; border-color: transparent; }
 </style>

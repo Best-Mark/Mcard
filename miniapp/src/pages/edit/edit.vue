@@ -69,6 +69,7 @@
         <view class="field"><text class="label">定位坐标（选城市自动填入，也可精确定位）</text>
           <view class="locate-row">
             <text class="small muted">{{ form.latitude != null ? form.latitude.toFixed(4) : '—' }}, {{ form.longitude != null ? form.longitude.toFixed(4) : '—' }}</text>
+            <button class="btn tiny" @tap="openMapPicker">🗺 地图选点</button>
             <button class="btn tiny" :disabled="locating" @tap="locateMe">{{ locating ? '定位中…' : '⌖ 精确定位' }}</button>
           </view>
         </view>
@@ -132,7 +133,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { api, toast, uploadImage, uploadLogo, processLogo, getLocation } from '../../utils/request'
 
@@ -188,7 +189,9 @@ onLoad(async () => {
     form.value = { ...blank, ...c, qr_logo: !!c.qr_logo }
     tagsText.value = (c.tags || []).join(', ')
   } catch (e) { toast(e.message) }
+  uni.$on('map-picked', onMapPicked)
 })
+onUnmounted(() => uni.$off('map-picked', onMapPicked))
 
 async function loadTemplates() {
   if (templatesCache.length) templates.value = templatesCache
@@ -223,6 +226,13 @@ function locateMe() {
     locating.value = false
     toast('已获取坐标，记得保存', 'success')
   }).catch(() => { locating.value = false; toast('未获取到定位，请改用城市选择', 'error') })
+}
+function openMapPicker() {
+  uni.navigateTo({ url: `/pages/map-picker/map-picker?lat=${form.value.latitude || 39.9042}&lng=${form.value.longitude || 116.4074}` })
+}
+function onMapPicked(p) {
+  form.value.latitude = p.lat; form.value.longitude = p.lng
+  toast('坐标已填入，记得保存', 'success')
 }
 
 function chooseTheme(k, accent) { form.value.theme = k; form.value.accent = accent }
@@ -328,6 +338,7 @@ async function save() {
 .ava-minimal { border-radius: 50%; left: 50%; transform: translateX(-50%); background: #e2e8f0; }
 .ava-elite { border-radius: 50%; left: 50%; transform: translateX(-50%); width: 50rpx; height: 50rpx; border: 3rpx solid #c9a227; }
 .ava-vivid { border-radius: 16rpx; width: 50rpx; height: 50rpx; }
+.ava-seal { border-radius: 6rpx; width: 50rpx; height: 50rpx; border: 4rpx solid #93c5fd; }
 .tpl-name { font-size: 28rpx; font-weight: 700; }
 .tpl-desc { font-size: 22rpx; color: #6b7688; }
 .tpl-check { font-size: 22rpx; color: #2563eb; font-weight: 700; }

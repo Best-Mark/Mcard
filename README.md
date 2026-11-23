@@ -23,7 +23,7 @@
 - **主页与店铺**：公司主页 URL（沿用 `website` 字段，避免重复定义）与店铺 URL 均可一键打开或复制，同时写入 vCard 的 `URL;TYPE=WORK` 与 `X-SHOP-URL`
 - **改资料不改二维码**：`/c/{slug}` 与二维码图案由 `slug` 唯一决定，更新接口白名单里没有 `slug`，已印刷的名片永不作废
 - 自定义链接矩阵（作品集、公众号、店铺……）
-- **四套展示模板 × 五套配色主题自由搭配**：模板决定排版结构（经典商务 / 极简素雅 / 尊享黑金 / 活力格调），主题决定配色（深海蓝 / 墨黑金 / 暖阳橘 / 青竹绿 / 典雅紫），编辑时实时预览；模板清单由服务端 `GET /api/cards/public/templates` 统一下发，两端不各自硬编码
+- **五套展示模板 × 五套配色主题自由搭配**：模板决定排版结构（经典商务 / 极简素雅 / 尊享黑金 / 活力格调 / 印章方格），主题决定配色（深海蓝 / 墨黑金 / 暖阳橘 / 青竹绿 / 典雅紫），编辑时实时预览；模板清单由服务端 `GET /api/cards/public/templates` 统一下发，两端不各自硬编码。印章方格为深蓝几何方块质感，真实二维码始终另行显示、可正常扫码
 - 二维码前景/背景/中心 Logo 可配
 - 一键存通讯录：标准 vCard 3.0（`.vcf`），iPhone / 安卓 / Outlook 通用；微信内引导跳转浏览器
 - 一键保存二维码：SVG / PNG 双格式，大图模式支持长按保存
@@ -133,7 +133,7 @@ nginx 只需反代 `/` 到 Node 服务（`/uploads`、`/api`、静态资源都�
 ## 关键设计
 
 ### 名片集市的隐私与距离口径
-上架是**主动 opt-in**（`cards.market_opt_in`，默认关闭），且只收录 `status='active'`、未过期的名片。集市列表接口 `GET /api/cards/public/market` 只返回 `marketView` 白名单字段（姓名/职位/公司/行业/城市/简介/标签/头像/LOGO/距离/浏览量），**绝不外泄**电话、邮箱、微信、收款码与精确经纬度。距离用 Haversine 在服务端计算，只回 one-decimal 的公里数，无坐标的名片排末尾。定位原点优先级：客户端精确经纬度 > 城市名匹配内置坐标表 > 无原点按热度排序。行业清单与城市坐标表的唯一真相源是 `server/src/utils/market.js`，通过 `GET /api/cards/public/market/meta` 下发，两端不硬编码。定位失败（拒绝授权/平台不支持）一律降级到城市选择，不阻断浏览。
+上架是**主动 opt-in**（`cards.market_opt_in`，默认关闭），且只收录 `status='active'`、未过期的名片。集市列表接口 `GET /api/cards/public/market` 只返回 `marketView` 白名单字段（姓名/职位/公司/行业/城市/简介/标签/头像/LOGO/距离/浏览量），**绝不外泄**电话、邮箱、微信、收款码与精确经纬度。距离用 Haversine 在服务端计算，只回 one-decimal 的公里数，无坐标的名片排末尾。定位原点优先级：客户端精确经纬度 > 城市名匹配内置坐标表 > 无原点按热度排序。行业清单与城市坐标表的唯一真相源是 `server/src/utils/market.js`，通过 `GET /api/cards/public/market/meta` 下发，两端不硬编码。坐标录入有三种方式：① 选内置城市自动填中心坐标；② 一键精确定位（H5 `navigator.geolocation` / 小程序 `uni.getLocation`）；③ **地图拖拽选点**——H5 用 Leaflet + OpenStreetMap 瓦片（无需申请 Key，组件按需懒加载、不进首屏包），小程序用原生 `map` 组件拖动 + `getCenterLocation` 取中心（微信/支付宝可用，抖音等平台降级到城市选择）。定位失败（拒绝授权/平台不支持）一律降级到城市选择，不阻断浏览。
 
 ### 展示模板与配色主题是两个独立维度
 `cards.template`（布局形态：classic / minimal / elite / vivid）与 `cards.theme`（配色：ocean / ink / ...）正交，一张名片 = 一个 template + 一个 theme，可任意组合。模板 key 的唯一真相源是 `server/src/utils/cardTemplates.js`，既做 PUT 写入白名单校验，也通过 `GET /api/cards/public/templates` 下发给两端编辑器渲染选择器，前端不各自硬编码 key。模板只改布局/形状（封面、头像、对齐、圆角），配色始终走主题 CSS 变量 `--t-*`，因此新增模板无需动配色，新增配色也无需动模板。非法/存量空 template 一律回落 `classic`，保证老名片布局不变。
