@@ -62,8 +62,8 @@ const GROUPS = {
       { key: 'wechat_oauth_secret', label: '公众号 AppSecret', type: 'secret' },
       { key: 'wechat_oauth_scope', label: '授权范围（固定 snsapi_userinfo 以取昵称头像）', type: 'text' },
       { key: 'wechat_oauth_bind_phone', label: '新用户授权后必须绑定手机号（true / false）', type: 'text' },
-      { key: 'wechat_oauth_verify_name', label: '域名校验文件名（MP_verify_xxx.txt）', type: 'text' },
-      { key: 'wechat_oauth_verify_content', label: '域名校验文件内容（微信给的一串字符）', type: 'textarea' }
+      { key: 'wechat_oauth_verify_name', label: '域名校验文件名（上传后自动填入）', type: 'hidden' },
+      { key: 'wechat_oauth_verify_content', label: '域名校验文件（上传 MP_verify_xxx.txt）', type: 'file' }
     ]
   }
 }

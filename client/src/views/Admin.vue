@@ -234,6 +234,14 @@
                   <select v-if="optionsFor(f.key)" v-model="cfg[f.key]" class="select">
                     <option v-for="op in optionsFor(f.key)" :key="op[0]" :value="op[0]">{{ op[1] }}</option>
                   </select>
+                  <div v-else-if="f.type === 'hidden'" class="cfg-static">{{ cfg[f.key] ? cfg[f.key] : '未上传' }}</div>
+                  <div v-else-if="f.type === 'file'" class="cfg-file">
+                    <label class="cfg-file-btn">
+                      <input type="file" accept=".txt,text/plain" @change="onVerifyFileChosen($event)" />
+                      {{ cfg.wechat_oauth_verify_name ? '重新选择文件' : '选择 MP_verify_xxx.txt' }}
+                    </label>
+                    <span class="small muted">{{ cfg.wechat_oauth_verify_name ? '已载入：' + cfg.wechat_oauth_verify_name + '（点保存后生效）' : '从微信公众平台下载后直接上传，无需填写路径或内容' }}</span>
+                  </div>
                   <textarea v-else-if="f.large" v-model="cfg[f.key]" class="textarea" rows="5" :placeholder="f.type === 'secret' ? (cfg[f.key] ? '留空则不修改已保存的密钥' : '粘贴 PEM 全文') : ''"></textarea>
                   <input v-else v-model="cfg[f.key]" class="input" :type="f.type === 'secret' && !revealed[f.key] ? 'password' : 'text'"
                          :placeholder="f.type === 'secret' ? (cfg[f.key] ? '•••••• 已配置，留空不改' : '未配置') : ''" />
@@ -558,6 +566,31 @@ async function setUserStatus(u) {
   try { await api.put(`/api/admin/users/${u.id}/status`, { status: u.status === 'active' ? 0 : 1 }); await loadTab('users'); showToast('已更新', 'success') }
   catch (e) { showToast(e.message, 'error') } finally { busy.value = false }
 }
+function onVerifyFileChosen(e) {
+  const input = e.target
+  const file = input.files && input.files[0]
+  input.value = ''
+  if (!file) return
+  if (!/^MP_verify_[A-Za-z0-9_-]{1,64}\.txt$/.test(file.name)) {
+    showToast('请选择微信提供的 MP_verify_xxx.txt 校验文件', 'error')
+    return
+  }
+  if (file.size > 64 * 1024) {
+    showToast('校验文件不能超过 64KB', 'error')
+    return
+  }
+  const reader = new FileReader()
+  reader.onload = () => {
+    const content = String(reader.result || '').replace(/\s+/g, '')
+    if (!content) { showToast('校验文件内容为空，请确认文件内容', 'error'); return }
+    cfg.value.wechat_oauth_verify_name = file.name
+    cfg.value.wechat_oauth_verify_content = content
+    showToast('已读取校验文件，点保存后生效', 'success')
+  }
+  reader.onerror = () => showToast('读取文件失败，请重试', 'error')
+  reader.readAsText(file)
+}
+
 async function saveGroup() {
   if (busy.value || !currentGroup.value) return
   busy.value = true
@@ -781,6 +814,11 @@ async function saveUpdateConfig() {
 .eye { margin-left: auto; color: var(--muted); display: grid; place-items: center; }
 .eye:hover { color: var(--primary); }
 .eye .ico { width: 15px; height: 15px; }
+.cfg-static { display: flex; align-items: center; min-height: 38px; padding: 8px 12px; border: 1px dashed var(--line); border-radius: 8px; background: #f8fafc; color: var(--muted); font-size: 13px; word-break: break-all; }
+.cfg-file { display: flex; flex-direction: column; gap: 6px; }
+.cfg-file-btn { display: inline-flex; align-items: center; justify-content: center; width: fit-content; padding: 8px 14px; border: 1px solid var(--primary); border-radius: 8px; color: var(--primary); font-size: 13px; cursor: pointer; }
+.cfg-file-btn:hover { background: rgba(59,130,246,.06); }
+.cfg-file-btn input { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
 .cfg-actions { display: flex; align-items: center; gap: 14px; justify-content: flex-end; padding-top: 16px; margin-top: 6px; border-top: 1px solid var(--line); }
 .sms-test { margin-top: 18px; padding-top: 6px; border-top: 1px dashed var(--line); }
 .sms-row { display: flex; gap: 10px; max-width: 520px; }
