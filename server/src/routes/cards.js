@@ -8,6 +8,7 @@ const { authRequired, parseToken } = require('../utils/auth')
 const { makeSlug, normalizeSlug } = require('../utils/slug')
 const qr = require('../services/qrcode')
 const vcard = require('../services/vcard')
+const { CARD_TEMPLATES, isTemplate } = require('../utils/cardTemplates')
 
 const router = express.Router()
 
@@ -21,7 +22,7 @@ function cardLogo(row, asDataUrl = false) {
 const EDITABLE = ['name', 'name_en', 'title', 'company', 'company_intro', 'department', 'phone', 'mobile', 'email',
   'wechat', 'alipay', 'whatsapp', 'wechat_qr', 'alipay_qr', 'wechat_pay_qr', 'alipay_pay_qr',
   'address', 'address_detail', 'website', 'shop_url', 'avatar', 'cover', 'logo', 'bio',
-  'tags', 'links', 'theme', 'accent', 'qr_fg', 'qr_bg', 'qr_logo']
+  'tags', 'links', 'template', 'theme', 'accent', 'qr_fg', 'qr_bg', 'qr_logo']
 
 const parseJson = (v, fallback) => { try { const x = JSON.parse(v); return x ?? fallback } catch { return fallback } }
 const isColor = v => /^#[0-9a-fA-F]{6}$/.test(String(v || ''))
@@ -42,6 +43,7 @@ function publicView(row) {
     website: row.website, shop_url: row.shop_url,
     avatar: row.avatar, cover: row.cover, logo: row.logo, bio: row.bio,
     tags: parseJson(row.tags, []), links: parseJson(row.links, []),
+    template: isTemplate(row.template) ? row.template : 'classic',
     theme: row.theme, accent: row.accent, qr_fg: row.qr_fg, qr_bg: row.qr_bg, qr_logo: !!row.qr_logo,
     active: row.status === 'active' && !expired,
     expiresAt: row.expires_at, views: row.views
@@ -51,6 +53,13 @@ function publicView(row) {
 function ownerView(row) {
   return { ...publicView(row), id: row.id, status: row.status, createdAt: row.created_at }
 }
+
+// 布局模板清单（编辑器从此处拉取，避免各端硬编码 key）——必须放在 /public/:slug 之前
+// 清单为静态数据，长缓存头减少重复请求
+router.get('/public/templates', wrap((req, res) => {
+  res.set('Cache-Control', 'public, max-age=3600')
+  ok(res, { templates: CARD_TEMPLATES })
+}))
 
 // 任意文本转二维码（小程序支付码等场景使用）——必须放在 /public/:slug 之前
 router.get('/public/qr.png', wrap(async (req, res) => {
@@ -143,6 +152,9 @@ router.put('/mine', authRequired, wrap((req, res) => {
       v = JSON.stringify(arr.slice(0, 20).map(x => typeof x === 'string' ? x.slice(0, 30) : x))
     } else if (['accent', 'qr_fg', 'qr_bg'].includes(key)) {
       if (!isColor(v)) return fail(res, 400, `${key} 必须是 #RRGGBB 颜色`)
+    } else if (key === 'template') {
+      if (!isTemplate(v)) return fail(res, 400, '无效的展示模板')
+      v = String(v)
     } else if (key === 'qr_logo') {
       v = v ? 1 : 0
     } else {

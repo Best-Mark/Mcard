@@ -1,5 +1,5 @@
 <template>
-  <view class="page">
+  <view class="page" :class="'tpl-' + tpl">
     <view v-if="loading" class="state">名片加载中…</view>
     <view v-else-if="error" class="state">
       <view class="big">!</view>
@@ -147,9 +147,13 @@ const error = ref('')
 const mySlug = ref('')
 const exchanging = ref(false)
 const qrPreview = ref('')
+const tpl = ref('classic')
 
 const coverBg = computed(() => {
   const c = card.value?.accent || '#2563eb'
+  if (tpl.value === 'minimal') return '#f1f5f9'
+  if (tpl.value === 'elite') return `linear-gradient(135deg, ${c}, #1c1917 70%)`
+  if (tpl.value === 'vivid') return `linear-gradient(135deg, ${c}, #db2777 60%, #f59e0b)`
   return `linear-gradient(135deg, ${c}, #0f172a)`
 })
 const contactQrs = computed(() => {
@@ -180,7 +184,10 @@ function saveQrTile(q) { saveImageByUrl(baseUrl + q.url) }
 
 async function load() {
   loading.value = true; error.value = ''
-  try { card.value = await api.get(`/api/cards/public/${slug.value}`, false) }
+  try {
+    card.value = await api.get(`/api/cards/public/${slug.value}`, false)
+    tpl.value = card.value?.template || 'classic'
+  }
   catch (e) { error.value = e.message } finally { loading.value = false }
 }
 onLoad(options => {
@@ -275,4 +282,38 @@ onShareAppMessage(() => ({
 .dock .btn { flex: 1; padding: 20rpx 0; font-size: 28rpx; }
 .muted { color: #6b7688; }
 .small { font-size: 22rpx; }
+
+/* ============ 布局模板：template × theme 正交，模板只改布局/形状 ============ */
+/* 经典 classic：默认样式即经典 */
+.tpl-classic .avatar { border-radius: 24rpx; }
+
+/* 极简 minimal：浅色细封面、无阴影卡片、圆形头像、细线分割 */
+.tpl-minimal .cover { height: 100rpx; border-radius: 0; border-bottom: 2rpx solid #e8edf4; }
+.tpl-minimal .brand { color: #2563eb; }
+.tpl-minimal .body { margin-top: 0; }
+.tpl-minimal .card { box-shadow: none; border-radius: 0; background: transparent; border-bottom: 2rpx solid #e8edf4; padding: 24rpx 8rpx; }
+.tpl-minimal .avatar { border-radius: 50%; }
+.tpl-minimal .tags text { border-radius: 6rpx; }
+.tpl-minimal .section { font-size: 24rpx; color: #94a3b8; letter-spacing: 2rpx; }
+
+/* 尊享 elite：高封面、居中圆形头像金色描边、居中信息 */
+.tpl-elite .cover { height: 300rpx; border-radius: 0 0 48rpx 48rpx; }
+.tpl-elite .body { margin-top: -80rpx; }
+.tpl-elite .profile { flex-direction: column; align-items: center; text-align: center; gap: 12rpx; }
+.tpl-elite .avatar { width: 140rpx; height: 140rpx; border-radius: 50%; border: 4rpx solid #c9a227; box-shadow: 0 0 0 8rpx #fff, 0 12rpx 30rpx rgba(0,0,0,.2); }
+.tpl-elite .name-row { justify-content: center; }
+.tpl-elite .name { font-size: 40rpx; letter-spacing: 3rpx; }
+.tpl-elite .tags { justify-content: center; }
+.tpl-elite .inactive { position: static; margin-left: 20rpx; }
+.tpl-elite .section { text-align: center; color: #b48b20; letter-spacing: 4rpx; }
+.tpl-elite .qr-card { flex-direction: column; text-align: center; }
+
+/* 活力 vivid：大圆角封面、方形大头像、彩色圆角标签 */
+.tpl-vivid .cover { height: 260rpx; border-radius: 0 0 56rpx 56rpx; }
+.tpl-vivid .body { margin-top: -66rpx; }
+.tpl-vivid .card { border-radius: 28rpx; box-shadow: 0 12rpx 34rpx rgba(15,23,42,.1); }
+.tpl-vivid .avatar { width: 130rpx; height: 130rpx; border-radius: 34rpx; box-shadow: 0 8rpx 24rpx rgba(37,99,235,.3); }
+.tpl-vivid .name { font-size: 40rpx; }
+.tpl-vivid .tags text { border-radius: 10rpx; padding: 6rpx 18rpx; }
+.tpl-vivid .ico { border-radius: 18rpx; }
 </style>

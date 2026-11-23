@@ -85,7 +85,23 @@
           </div>
 
           <div class="card card-pad" style="margin-top:14px">
-            <div class="section-title" style="margin-top:0">外观与二维码</div>
+            <div class="section-title" style="margin-top:0">展示模板</div>
+            <p class="small muted" style="margin-bottom:10px">模板决定名片排版结构，主题风格决定配色，两者可自由搭配。</p>
+            <div class="tpl-list">
+              <button v-for="tpl in templates" :key="tpl.key" class="tpl-item" :class="{ on: form.template === tpl.key }" @click="form.template = tpl.key">
+                <span class="tpl-thumb" :style="{ background: tpl.cover }">
+                  <i class="tpl-ava" :class="'ava-' + tpl.key"></i>
+                </span>
+                <b>{{ tpl.label }}</b>
+                <span class="tpl-desc">{{ tpl.desc }}</span>
+                <span v-if="form.template === tpl.key" class="tpl-check">✓ 使用中</span>
+              </button>
+            </div>
+            <div v-if="!templates.length" class="small muted">模板列表加载中，请稍候…</div>
+          </div>
+
+          <div class="card card-pad" style="margin-top:14px">
+            <div class="section-title" style="margin-top:0">主题风格与二维码</div>
             <div class="field"><label>主题风格</label>
               <div class="theme-list">
                 <button v-for="(v, k) in THEMES" :key="k" class="theme-item" :class="{ on: form.theme === k }" @click="chooseTheme(k)">
@@ -110,7 +126,7 @@
         <aside class="preview-panel">
           <div class="card card-pad">
             <div class="section-title" style="margin-top:0">实时预览</div>
-            <div class="preview-card">
+            <div class="preview-card" :class="'pv-' + form.template">
               <div class="preview-head" :style="{ background: THEMES[form.theme]?.cover }">
                 <div class="preview-avatar">{{ (form.name || 'M').slice(0, 1) }}</div>
               </div>
@@ -143,10 +159,11 @@ const blank = {
   mobile: '', phone: '', email: '', wechat: '', alipay: '', whatsapp: '',
   wechat_qr: '', alipay_qr: '', wechat_pay_qr: '', alipay_pay_qr: '',
   address: '', address_detail: '',
-  avatar: '', logo: '', bio: '', tags: [], links: [], theme: 'ocean', accent: THEMES.ocean.accent,
+  avatar: '', logo: '', bio: '', tags: [], links: [], template: 'classic', theme: 'ocean', accent: THEMES.ocean.accent,
   qr_fg: '#0f172a', qr_bg: '#ffffff', qr_logo: true
 }
 const form = ref({ ...blank })
+const templates = ref([])
 const qrFields = [
   { key: 'wechat_qr', label: '微信 · 加好友码' },
   { key: 'alipay_qr', label: '支付宝 · 加好友码' },
@@ -159,6 +176,7 @@ const tagList = computed(() => tagsText.value.split(/[,，]/).map(s => s.trim())
 const previewQr = computed(() => `/api/cards/public/${form.value.slug}/qr.svg?size=320&brand=M`)
 
 onMounted(async () => {
+  loadTemplates()
   try {
     const { data } = await api.get('/api/cards/mine')
     if (!data.data) { showToast('请先创建名片', 'error'); return router.push('/me') }
@@ -166,6 +184,13 @@ onMounted(async () => {
     tagsText.value = (data.data.tags || []).join(', ')
   } catch (e) { showToast(e.message, 'error') }
 })
+
+async function loadTemplates() {
+  try {
+    const { data } = await api.get('/api/cards/public/templates')
+    templates.value = data.data?.templates || []
+  } catch { /* 模板清单拉取失败时用兜底，保证选择器可用 */ }
+}
 
 function chooseTheme(k) {
   form.value.theme = k
@@ -229,4 +254,28 @@ async function save() {
 .preview-tags { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
 .preview-tags i { font-style: normal; font-size: 10px; padding: 2px 7px; border-radius: 999px; background: #eff6ff; color: #2563eb; }
 .preview-qr { width: 120px; height: 120px; margin: 14px auto 8px; border: 1px solid var(--line); padding: 6px; border-radius: 10px; }
+
+/* 模板选择器 */
+.tpl-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.tpl-item { position: relative; border: 1px solid var(--line); border-radius: 14px; padding: 10px; text-align: left; display: flex; flex-direction: column; gap: 4px; transition: border-color .18s, box-shadow .18s, transform .18s; }
+.tpl-item:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(15,23,42,.08); }
+.tpl-item.on { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37,99,235,.16); }
+.tpl-thumb { display: block; height: 54px; border-radius: 9px; position: relative; overflow: hidden; }
+.tpl-ava { position: absolute; width: 30px; height: 30px; left: 12px; bottom: -8px; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+.ava-classic { border-radius: 8px; }
+.ava-minimal { border-radius: 50%; left: 50%; transform: translateX(-50%); background: #e2e8f0; }
+.ava-elite { border-radius: 50%; left: 50%; transform: translateX(-50%); width: 34px; height: 34px; border: 2px solid #c9a227; }
+.ava-vivid { border-radius: 12px; width: 34px; height: 34px; background: #fff; }
+.tpl-item b { font-size: 13px; }
+.tpl-desc { font-size: 11px; color: var(--muted); line-height: 1.45; min-height: 30px; }
+.tpl-check { font-size: 11px; color: var(--primary); font-weight: 700; }
+
+/* 预览卡跟随模板形态 */
+.pv-minimal .preview-head { height: 44px; background: #eef2f7 !important; }
+.pv-minimal .preview-avatar { border-radius: 50%; background: var(--primary); }
+.pv-elite .preview-avatar { border-radius: 50%; left: 50%; transform: translateX(-50%); border: 2px solid #c9a227; }
+.pv-elite .preview-body { text-align: center; align-items: center; }
+.preview-card.pv-vivid, .pv-vivid .preview-head { border-radius: 18px; }
+.pv-vivid .preview-avatar { border-radius: 12px; }
+@media (max-width: 520px) { .tpl-list { grid-template-columns: 1fr; } }
 </style>

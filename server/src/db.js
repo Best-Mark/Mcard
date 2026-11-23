@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS cards (
   bio TEXT NOT NULL DEFAULT '',
   tags TEXT NOT NULL DEFAULT '[]',
   links TEXT NOT NULL DEFAULT '[]',
+  template TEXT NOT NULL DEFAULT 'classic',
   theme TEXT NOT NULL DEFAULT 'ocean',
   accent TEXT NOT NULL DEFAULT '#2563eb',
   qr_fg TEXT NOT NULL DEFAULT '#0f172a',
@@ -77,6 +78,8 @@ addColumnIfMissing('cards', 'company_intro', "TEXT NOT NULL DEFAULT ''")
 for (const col of ['alipay', 'wechat_qr', 'alipay_qr', 'wechat_pay_qr', 'alipay_pay_qr', 'shop_url']) {
   addColumnIfMissing('cards', col, "TEXT NOT NULL DEFAULT ''")
 }
+// 布局模板（与配色 theme 分离）：存量名片回落 classic
+addColumnIfMissing('cards', 'template', "TEXT NOT NULL DEFAULT 'classic'")
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS packages (

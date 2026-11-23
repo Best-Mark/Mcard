@@ -77,7 +77,22 @@
       </view>
 
       <view class="card">
-        <view class="section">外观</view>
+        <view class="section">展示模板</view>
+        <view class="muted small" style="margin-bottom:16rpx">模板决定排版结构，主题决定配色，可自由搭配。</view>
+        <view class="tpl-list">
+          <view v-for="tpl in templates" :key="tpl.key" class="tpl-item" :class="{ on: form.template === tpl.key }" @tap="form.template = tpl.key">
+            <view class="tpl-thumb" :style="{ background: tpl.cover }">
+              <view class="tpl-ava" :class="'ava-' + tpl.key"></view>
+            </view>
+            <text class="tpl-name">{{ tpl.label }}</text>
+            <text class="tpl-desc">{{ tpl.desc }}</text>
+            <text v-if="form.template === tpl.key" class="tpl-check">✓ 使用中</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="card">
+        <view class="section">主题风格与二维码</view>
         <view class="themes">
           <view v-for="(v, k) in themes" :key="k" class="theme" :class="{ on: form.theme === k }" :style="{ background: v.accent }" @tap="chooseTheme(k, v.accent)">
             {{ v.label }}
@@ -110,11 +125,14 @@ const blank = {
   website: '', shop_url: '',
   bio: '', tags: [], links: [], avatar: '', logo: '', mobile: '', phone: '', email: '', wechat: '', alipay: '', whatsapp: '',
   wechat_qr: '', alipay_qr: '', wechat_pay_qr: '', alipay_pay_qr: '',
-  address: '', address_detail: '', theme: 'ocean', accent: '#2563eb', qr_fg: '#0f172a', qr_bg: '#ffffff', qr_logo: true
+  address: '', address_detail: '', template: 'classic', theme: 'ocean', accent: '#2563eb', qr_fg: '#0f172a', qr_bg: '#ffffff', qr_logo: true
 }
 const form = ref({ ...blank })
 const tagsText = ref('')
 const saving = ref(false)
+// 模板清单是静态数据：模块级缓存让二次进入瞬时渲染，随后静默刷新
+let templatesCache = []
+const templates = ref(templatesCache)
 
 const logoOriginal = ref(''); const logoProcessed = ref('')
 const logoMode = ref('auto'); const logoTolerance = ref(32); const logoBusy = ref(false)
@@ -129,6 +147,7 @@ const logoModeLabels = ['智能识别背景', '只去白底', '保留原图']
 const logoModeIdx = ref(0)
 
 onLoad(async () => {
+  loadTemplates()
   try {
     const c = await api.get('/api/cards/mine')
     if (!c) return uni.redirectTo({ url: '/pages/me/me' })
@@ -136,6 +155,17 @@ onLoad(async () => {
     tagsText.value = (c.tags || []).join(', ')
   } catch (e) { toast(e.message) }
 })
+
+async function loadTemplates() {
+  if (templatesCache.length) templates.value = templatesCache
+  try {
+    const r = await api.get('/api/cards/public/templates', false)
+    if (r?.templates?.length) {
+      templatesCache = r.templates
+      templates.value = r.templates
+    }
+  } catch { /* 清单拉取失败时使用缓存，不影响保存 */ }
+}
 
 function chooseTheme(k, accent) { form.value.theme = k; form.value.accent = accent }
 function chooseAvatar() {
@@ -230,6 +260,18 @@ async function save() {
 .link-row { display: flex; gap: 10rpx; align-items: center; margin-bottom: 10rpx; }
 .link-row .input { flex: 1; min-width: 0; }
 .del { color: #dc2626; font-size: 24rpx; padding: 0 8rpx; }
+.tpl-list { display: flex; flex-direction: column; gap: 14rpx; }
+.tpl-item { position: relative; border: 2rpx solid #e8edf4; border-radius: 16rpx; padding: 14rpx; display: flex; flex-direction: column; gap: 6rpx; }
+.tpl-item.on { border-color: #2563eb; box-shadow: 0 0 0 4rpx rgba(37,99,235,.12); }
+.tpl-thumb { height: 90rpx; border-radius: 12rpx; position: relative; overflow: hidden; }
+.tpl-ava { position: absolute; width: 44rpx; height: 44rpx; left: 20rpx; bottom: -12rpx; background: #fff; box-shadow: 0 2rpx 10rpx rgba(0,0,0,.2); }
+.ava-classic { border-radius: 10rpx; }
+.ava-minimal { border-radius: 50%; left: 50%; transform: translateX(-50%); background: #e2e8f0; }
+.ava-elite { border-radius: 50%; left: 50%; transform: translateX(-50%); width: 50rpx; height: 50rpx; border: 3rpx solid #c9a227; }
+.ava-vivid { border-radius: 16rpx; width: 50rpx; height: 50rpx; }
+.tpl-name { font-size: 28rpx; font-weight: 700; }
+.tpl-desc { font-size: 22rpx; color: #6b7688; }
+.tpl-check { font-size: 22rpx; color: #2563eb; font-weight: 700; }
 .themes { display: flex; flex-wrap: wrap; gap: 12rpx; margin-bottom: 20rpx; }
 .theme { padding: 10rpx 18rpx; border-radius: 12rpx; color: #fff; font-size: 24rpx; opacity: .65; }
 .theme.on { opacity: 1; box-shadow: 0 0 0 4rpx rgba(0,0,0,.1); }

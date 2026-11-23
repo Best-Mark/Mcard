@@ -1,6 +1,6 @@
 <template>
-  <div class="cv-page" :style="vars">
-    <div class="cv-cover" :style="{ background: t.cover }">
+  <div class="cv-page" :class="'cv-tpl-' + template" :style="vars">
+    <div class="cv-cover">
       <button class="cv-back" @click="router.back ? router.back() : router.push('/')" aria-label="返回">‹</button>
       <div class="cv-brand">M<em>Card</em></div>
       <div class="cv-themes">
@@ -84,7 +84,7 @@
           <h3>加好友 / 收付款</h3>
           <div class="qr-grid">
             <div v-for="q in contactQrs" :key="q.key" class="qr-tile">
-              <img :src="fullUrl(q.url)" :alt="q.label" @click="previewQr(q)" />
+              <img :src="fullUrl(q.url)" :alt="q.label" loading="lazy" @click="previewQr(q)" />
               <b>{{ q.label }}</b>
               <span class="small muted">{{ qrHint(q.platform) }}</span>
               <div class="btn-row">
@@ -193,6 +193,7 @@ const qrApi = `/api/cards/public/${slug}`
 const vcfApi = `${qrApi}/card.vcf`
 const card = ref(null); const loading = ref(true); const error = ref('')
 const currentTheme = ref('ocean'); const isOwner = ref(false)
+const template = ref('classic')
 const qrModal = ref(false); const guide = ref(''); const guideImage = ref(''); const exchangeOpen = ref(false)
 const mySlug = ref(''); const exchanging = ref(false)
 
@@ -243,6 +244,7 @@ async function load() {
     const { data } = await api.get(qrApi)
     card.value = data.data
     currentTheme.value = THEMES[data.data.theme] ? data.data.theme : 'ocean'
+    template.value = data.data.template || 'classic'
     if (auth.token) {
       try { const mine = await api.get('/api/cards/mine'); isOwner.value = mine.data.data?.slug === slug } catch { /* 忽略 */ }
     }
@@ -295,7 +297,7 @@ async function doExchange() {
 
 <style scoped>
 .cv-page { background: var(--t-bg); color: var(--t-text); min-height: 100vh; padding-bottom: 84px; }
-.cv-cover { height: 168px; position: relative; border-radius: 0 0 28px 28px; }
+.cv-cover { height: 168px; position: relative; border-radius: 0 0 28px 28px; background: var(--t-cover); }
 .cv-back { position: absolute; left: 14px; top: calc(14px + env(safe-area-inset-top)); font-size: 30px; color: #fff; line-height: 1; }
 .cv-brand { position: absolute; right: 16px; top: calc(18px + env(safe-area-inset-top)); color: #fff; font-weight: 800; opacity: .9; }
 .cv-brand em { font-style: normal; opacity: .75; }
@@ -349,4 +351,51 @@ async function doExchange() {
 .cv-dock { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 8px; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); background: rgba(255,255,255,.94); backdrop-filter: blur(12px); border-top: 1px solid var(--line); z-index: 60; }
 .cv-dock .btn { flex: 1; }
 @media (max-width: 520px) { .cv-qr-card { flex-direction: column; align-items: flex-start; } }
+
+/* ============ 布局模板：template × theme 正交组合，template 只改布局/形状，配色仍走 --t-* 变量 ============ */
+
+/* 经典商务 classic：默认样式即经典，这里只做轻微增强（封面圆润、头像方形圆角） */
+.cv-tpl-classic .cv-cover { border-radius: 0 0 28px 28px; }
+.cv-tpl-classic .cv-avatar { border-radius: 18px; }
+
+/* 极简素雅 minimal：去掉彩色封面改为浅色细条、细分割线、无卡片阴影、克制留白 */
+.cv-tpl-minimal .cv-cover { height: 76px; border-radius: 0; background: var(--t-surface); border-bottom: 1px solid var(--line); }
+.cv-tpl-minimal .cv-brand { color: var(--t-accent); opacity: 1; }
+.cv-tpl-minimal .cv-back { color: var(--t-text); }
+.cv-tpl-minimal .cv-themes { display: none; }
+.cv-tpl-minimal .cv-main { margin-top: 0; }
+.cv-tpl-minimal .card { box-shadow: none; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; }
+.cv-tpl-minimal .cv-profile { padding: 24px 18px; }
+.cv-tpl-minimal .cv-avatar { border-radius: 50%; background: var(--t-accent); }
+.cv-tpl-minimal .cv-actions i { border-radius: 50%; }
+.cv-tpl-minimal .cv-name { font-weight: 700; letter-spacing: -.3px; }
+.cv-tpl-minimal .cv-block h3 { font-size: 12px; letter-spacing: 1px; color: var(--t-muted); text-transform: uppercase; }
+.cv-tpl-minimal .cv-tags span { border-radius: 4px; }
+
+/* 尊享黑金 elite：高封面 + 居中头像描金边 + 大写间距 + 居中署名，强调仪式感 */
+.cv-tpl-elite .cv-cover { height: 210px; border-radius: 0 0 40px 40px; background: var(--t-cover); }
+.cv-tpl-elite .cv-main { margin-top: -70px; }
+.cv-tpl-elite .cv-profile { flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 22px 18px; background: var(--t-surface); }
+.cv-tpl-elite .cv-avatar { flex: 0 0 96px; width: 96px; height: 96px; border-radius: 50%; border: 3px solid var(--t-accent); box-shadow: 0 0 0 5px var(--t-surface), 0 12px 30px rgba(0,0,0,.25); }
+.cv-tpl-elite .cv-name-row { justify-content: center; }
+.cv-tpl-elite .cv-name { font-size: 24px; letter-spacing: 2px; }
+.cv-tpl-elite .cv-en { display: block; margin: 2px 0 0; letter-spacing: 1px; }
+.cv-tpl-elite .cv-tags { justify-content: center; }
+.cv-tpl-elite .cv-status { position: static; margin-top: 6px; }
+.cv-tpl-elite .cv-block h3 { text-align: center; font-size: 12px; letter-spacing: 3px; color: var(--t-accent); }
+.cv-tpl-elite .cv-qr-card { flex-direction: column; text-align: center; gap: 12px; }
+.cv-tpl-elite .cv-qr-info .btn-row { justify-content: center; }
+.cv-tpl-elite .cv-footer { letter-spacing: 1px; }
+
+/* 活力格调 vivid：大圆角封面、头像悬浮叠加、彩色标签、更有呼吸感的圆角卡片 */
+.cv-tpl-vivid .cv-cover { height: 188px; border-radius: 0 0 48px 48px; }
+.cv-tpl-vivid .cv-main { margin-top: -56px; }
+.cv-tpl-vivid .card { border-radius: 20px; box-shadow: 0 12px 34px rgba(15,23,42,.09); }
+.cv-tpl-vivid .cv-profile { padding: 20px 18px; }
+.cv-tpl-vivid .cv-avatar { border-radius: 26px; width: 84px; height: 84px; flex-basis: 84px; box-shadow: 0 8px 24px color-mix(in srgb, var(--t-accent) 35%, transparent); }
+.cv-tpl-vivid .cv-name { font-size: 23px; }
+.cv-tpl-vivid .cv-tags span { border-radius: 8px; padding: 4px 12px; }
+.cv-tpl-vivid .cv-actions i { border-radius: 14px; }
+.cv-tpl-vivid .cv-block h3 { color: var(--t-accent); }
+.cv-tpl-vivid .cv-qr-img { border-radius: 18px; }
 </style>

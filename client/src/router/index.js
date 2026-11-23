@@ -1,13 +1,15 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Home from '../views/Home.vue'
-import CardView from '../views/CardView.vue'
-import Login from '../views/Login.vue'
-import Dashboard from '../views/Dashboard.vue'
-import CardEdit from '../views/CardEdit.vue'
-import Plans from '../views/Plans.vue'
-import PayResult from '../views/PayResult.vue'
-import PrintDesign from '../views/PrintDesign.vue'
-import Admin from '../views/Admin.vue'
+
+// 路由懒加载：首页同步首屏直达，其余按访问分块加载，减小首屏 JS 体积。
+const CardView = () => import('../views/CardView.vue')
+const Login = () => import('../views/Login.vue')
+const Dashboard = () => import('../views/Dashboard.vue')
+const CardEdit = () => import('../views/CardEdit.vue')
+const Plans = () => import('../views/Plans.vue')
+const PayResult = () => import('../views/PayResult.vue')
+const PrintDesign = () => import('../views/PrintDesign.vue')
+const Admin = () => import('../views/Admin.vue')
 
 const routes = [
   { path: '/', name: 'home', component: Home },

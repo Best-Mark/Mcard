@@ -23,7 +23,8 @@
 - **主页与店铺**：公司主页 URL（沿用 `website` 字段，避免重复定义）与店铺 URL 均可一键打开或复制，同时写入 vCard 的 `URL;TYPE=WORK` 与 `X-SHOP-URL`
 - **改资料不改二维码**：`/c/{slug}` 与二维码图案由 `slug` 唯一决定，更新接口白名单里没有 `slug`，已印刷的名片永不作废
 - 自定义链接矩阵（作品集、公众号、店铺……）
-- 五套视觉主题（深海蓝 / 墨黑金 / 暖阳橘 / 青竹绿 / 典雅紫），二维码前景/背景/中心 Logo 可配
+- **四套展示模板 × 五套配色主题自由搭配**：模板决定排版结构（经典商务 / 极简素雅 / 尊享黑金 / 活力格调），主题决定配色（深海蓝 / 墨黑金 / 暖阳橘 / 青竹绿 / 典雅紫），编辑时实时预览；模板清单由服务端 `GET /api/cards/public/templates` 统一下发，两端不各自硬编码
+- 二维码前景/背景/中心 Logo 可配
 - 一键存通讯录：标准 vCard 3.0（`.vcf`），iPhone / 安卓 / Outlook 通用；微信内引导跳转浏览器
 - 一键保存二维码：SVG / PNG 双格式，大图模式支持长按保存
 - 地址导航：高德 / 百度 / 腾讯 / Apple / Google 五家地图一键唤起
@@ -129,6 +130,9 @@ nginx 只需反代 `/` 到 Node 服务（`/uploads`、`/api`、静态资源都�
 > 自动更新会执行 git 拉取与进程重启，建议先保持「自动检查」开启、确认稳定后再启用自动更新。部署目录必须是 Git 仓库且配置了 `origin` 远端。
 
 ## 关键设计
+
+### 展示模板与配色主题是两个独立维度
+`cards.template`（布局形态：classic / minimal / elite / vivid）与 `cards.theme`（配色：ocean / ink / ...）正交，一张名片 = 一个 template + 一个 theme，可任意组合。模板 key 的唯一真相源是 `server/src/utils/cardTemplates.js`，既做 PUT 写入白名单校验，也通过 `GET /api/cards/public/templates` 下发给两端编辑器渲染选择器，前端不各自硬编码 key。模板只改布局/形状（封面、头像、对齐、圆角），配色始终走主题 CSS 变量 `--t-*`，因此新增模板无需动配色，新增配色也无需动模板。非法/存量空 template 一律回落 `classic`，保证老名片布局不变。
 
 ### 为什么二维码永不变
 二维码内容只有 `${BASE_URL}/c/${slug}`。`slug` 在创建时生成一次，更新资料的 `PUT /api/cards/mine` 字段白名单**不包含 slug / status / expires_at / views**。因此换头像、换公司、换地址都不会改变二维码图案，实体名片可放心批量印刷。
