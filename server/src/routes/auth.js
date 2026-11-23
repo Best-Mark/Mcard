@@ -14,6 +14,8 @@ const router = express.Router()
 const WECHAT_STATE_COOKIE = 'mcard_wx_state'
 const stateStore = new Map() // state -> { createdAt }，短 TTL 防重放
 const API = 'https://api.weixin.qq.com'
+// 授权页用官方标准域名 open.weixin.qq.com（手机微信只对该域名渲染授权页；api 域名用于服务端接口）
+const OAUTH_PAGE = 'https://open.weixin.qq.com'
 
 function wxa() { return settings.wechatOauthConfig() }
 function enabled() { return settings.wechatLoginEnabled() }
@@ -46,7 +48,7 @@ router.get('/wechat/url', wrap((req, res) => {
   stateStore.set(state, Date.now())
   setStateCookie(res, state)
   const redirectUri = requestUrl(req, '/api/auth/wechat/callback')
-  const url = `${API}/connect/oauth2/authorize?appid=${encodeURIComponent(c.appId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=snsapi_userinfo&state=${state}#wechat_redirect`
+  const url = `${OAUTH_PAGE}/connect/oauth2/authorize?appid=${encodeURIComponent(c.appId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=snsapi_userinfo&state=${state}#wechat_redirect`
   ok(res, { url })
 }))
 
