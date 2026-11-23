@@ -118,12 +118,23 @@ async function check(cfg = getConfig()) {
     ]) {
       try { file = await fetchJson(base); break } catch (e2) { fileError = e2.message }
     }
-    if (!file) throw Object.assign(new Error(`检查更新失败：GitHub Release(${apiError})；version.json(${fileError})`), { status: 502 })
+    let source = 'version.json'
+    if (!file) {
+      try {
+        await git(['fetch', 'origin', cfg.branch])
+        const text = (await git(['show', `origin/${cfg.branch}:version.json`])).stdout
+        file = JSON.parse(text)
+        source = 'git 远端'
+      } catch (e3) {
+        throw Object.assign(new Error(`检查更新失败：GitHub Release(${apiError})；version.json(${fileError})；git 远端(${e3.message})`), { status: 502 })
+      }
+    }
     latest = String(file.version || '').replace(/^v/i, '')
     notes = String(file.notes || '')
     publishedAt = file.publishedAt || ''
     url = file.url || `https://github.com/${cfg.repo}`
     if (!latest) throw badRequest('version.json 缺少 version 字段')
+    apiError = source
   }
 
   const result = {

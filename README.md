@@ -117,7 +117,7 @@ nginx 只需反代 `/` 到 Node 服务（`/uploads`、`/api`、静态资源都�
 
 后台「版本更新」页支持**手动检查 / 手动更新**与**定时检查 / 自动更新**两种模式：
 
-- 版本源：优先读 GitHub Release（`https://api.github.com/repos/Best-Mark/Mcard/releases/latest`），无 Release 时回退仓库根目录 `version.json`；网络异常会在页面给出明确错误，不影响主站运行
+- 版本源：优先读 GitHub Release（`https://api.github.com/repos/Best-Mark/Mcard/releases/latest`），无 Release 时回退仓库根目录 `version.json`；HTTPS 受限时再用 `git show origin/<分支>:version.json` 兜底（与更新共用 git 通道）；全部失败时页面给出明确错误，不影响主站运行
 - 手动：点「检查更新」查看最新版本号与更新说明；有新版时点「立即更新」，二次确认后执行
 - 自动：可配置检查间隔（1–720 小时）、是否定时检查、是否发现新版自动更新。默认只自动检查、不自动更新
 - 更新流程：`git fetch` → `git pull --ff-only` → 按变更文件按需 `npm install` / 重建 H5 / 重建三端小程序 → 若 `server/` 有变更，在 pm2 下自动重启，否则提示手动重启
