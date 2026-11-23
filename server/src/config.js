@@ -12,7 +12,7 @@ if (process.env.NODE_ENV === 'production') {
 module.exports = {
   PORT: Number(process.env.PORT || 3000),
   HOST: process.env.HOST || '0.0.0.0',
-  // 二维码指向的公开域名，正式部署务必改为 https://your.domain
+  // 本地开发兜底域名：对外 URL 一律由 utils/origin.js 按当前请求动态推导，生产环境无需设置本项。
   BASE_URL: (process.env.BASE_URL || 'http://localhost:5173').replace(/\/$/, ''),
   JWT_SECRET: process.env.JWT_SECRET || 'mcard-dev-secret-please-change',
   DATA_DIR,

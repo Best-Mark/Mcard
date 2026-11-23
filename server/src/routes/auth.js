@@ -4,6 +4,7 @@ const crypto = require('crypto')
 const db = require('../db')
 const config = require('../config')
 const settings = require('../utils/settings')
+const { requestUrl } = require('../utils/origin')
 const { ok, fail, wrap } = require('../utils/response')
 const { sign, signBind, verifyBind, authRequired } = require('../utils/auth')
 
@@ -31,20 +32,6 @@ function readStateCookie(req) {
   }
   return ''
 }
-function fullUrl(path, req) {
-  // 自愈：BASE_URL 漏配时默认是 localhost:5173，会让微信授权回调跳到用户手机的 localhost 白屏。
-  // 优先按当前请求推导 origin（兼容 nginx 反代），仅当其为合法公网域名时采用；否则回落显式配置的 BASE_URL。
-  let base = ''
-  const pick = v => String(v || '').split(',')[0].trim()
-  const proto = pick(req?.headers?.['x-forwarded-proto']) || req?.protocol || ''
-  const host = pick(req?.headers?.['x-forwarded-host']) || pick(req?.headers?.host) || ''
-  if (proto && host && !/localhost|127\.0\.0\.1/i.test(host)) base = `${proto}://${host}`
-  if (!base) {
-    const configured = String(config.BASE_URL || '')
-    if (configured && !/localhost|127\.0\.0\.1/i.test(configured)) base = configured
-  }
-  return /^https?:\/\//.test(path) ? path : `${base}${path.startsWith('/') ? '' : '/'}${path}`
-}
 async function wxFetch(url) {
   const res = await fetch(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(10000) })
   return res.json()
@@ -58,7 +45,7 @@ router.get('/wechat/url', wrap((req, res) => {
   const state = crypto.randomBytes(16).toString('hex')
   stateStore.set(state, Date.now())
   setStateCookie(res, state)
-  const redirectUri = fullUrl('/api/auth/wechat/callback', req)
+  const redirectUri = requestUrl(req, '/api/auth/wechat/callback')
   const url = `${API}/connect/oauth2/authorize?appid=${encodeURIComponent(c.appId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=snsapi_userinfo&state=${state}#wechat_redirect`
   ok(res, { url })
 }))
@@ -70,9 +57,9 @@ router.get('/wechat/callback', wrap(async (req, res) => {
   const cached = stateStore.get(state)
   const cookieState = readStateCookie(req)
   stateStore.delete(state) // 一次性，防重放
-  if (!state || !cached || !cookieState || cookieState !== state) return res.redirect(`${fullUrl('/login', req)}?err=state`)
+  if (!state || !cached || !cookieState || cookieState !== state) return res.redirect(`${requestUrl(req, '/login')}?err=state`)
   const code = String(req.query.code || '')
-  if (!code) return res.redirect(`${fullUrl('/login', req)}?err=denied`)
+  if (!code) return res.redirect(`${requestUrl(req, '/login')}?err=denied`)
 
   const c = wxa()
   try {
@@ -87,24 +74,24 @@ router.get('/wechat/callback', wrap(async (req, res) => {
 
     let user = db.prepare('SELECT * FROM users WHERE wx_openid = ?').get(openid)
     if (user) {
-      if (user.status !== 'active') return res.redirect(`${fullUrl('/login', req)}?err=disabled`)
+      if (user.status !== 'active') return res.redirect(`${requestUrl(req, '/login')}?err=disabled`)
       db.prepare("UPDATE users SET avatar=?, auth_source='wechat', updated_at=datetime('now') WHERE id=?").run(avatar, user.id)
       user = db.prepare('SELECT id, phone, nickname, role, status, avatar FROM users WHERE id = ?').get(user.id)
-      return res.redirect(`${fullUrl('/wechat/callback', req)}#token=${encodeURIComponent(sign(user))}&user=${encodeURIComponent(JSON.stringify(user))}`)
+      return res.redirect(`${requestUrl(req, '/wechat/callback')}#token=${encodeURIComponent(sign(user))}&user=${encodeURIComponent(JSON.stringify(user))}`)
     }
 
     // 新用户：按配置决定是否必须先绑定手机号（绑定凭据短 TTL 签名，防伪造 openid）
     if (c.bindPhone) {
       const ticket = signBind({ openid, unionid, nickname, avatar })
-      return res.redirect(`${fullUrl('/login', req)}#bind=${encodeURIComponent(ticket)}&nickname=${encodeURIComponent(nickname)}&avatar=${encodeURIComponent(avatar)}`)
+      return res.redirect(`${requestUrl(req, '/login')}#bind=${encodeURIComponent(ticket)}&nickname=${encodeURIComponent(nickname)}&avatar=${encodeURIComponent(avatar)}`)
     }
     const r = db.prepare("INSERT INTO users (phone, password_hash, nickname, avatar, wx_openid, wx_unionid, auth_source) VALUES (?,?,?,?,?,?, 'wechat')")
       .run(null, bcrypt.hashSync(crypto.randomBytes(24).toString('hex'), 10), nickname || '微信用户', avatar, openid, unionid)
     user = db.prepare('SELECT id, phone, nickname, role, status, avatar FROM users WHERE id = ?').get(r.lastInsertRowid)
-    return res.redirect(`${fullUrl('/wechat/callback', req)}#token=${encodeURIComponent(sign(user))}&user=${encodeURIComponent(JSON.stringify(user))}`)
+    return res.redirect(`${requestUrl(req, '/wechat/callback')}#token=${encodeURIComponent(sign(user))}&user=${encodeURIComponent(JSON.stringify(user))}`)
   } catch (e) {
     console.error('[WechatOAuth]', e.message)
-    return res.redirect(`${fullUrl('/login', req)}?err=oauth`)
+    return res.redirect(`${requestUrl(req, '/login')}?err=oauth`)
   }
 }))
 

@@ -1,11 +1,8 @@
 // 所有公共方法集中在此文件：小程序新增纯 require js 文件在部分开发者工具热重载时会白屏
-// 开发环境走本地后端；打包发布自动切换到线上域名。
-// ⚠️ 微信小程序 request 合法域名强制 HTTPS：正式发布请把下面的 https 地址填到
-//    微信公众平台「开发管理 → 开发设置 → 服务器域名 → request 合法域名」，并申请证书启用 HTTPS。
-//    若线上暂只有 http，请先把下面的 BASE 改回 http 域名（仅 H5 可用，小程序真机不可用）。
-const API_BASE = process.env.NODE_ENV === 'development'
-  ? 'http://localhost:3000'
-  : 'https://card.microeco.net'
+// 强制约束：域名不写死。小程序没有"当前请求上下文"，只能在构建期注入 VITE_API_BASE。
+//   开发：默认 http://localhost:3000
+//   发布：构建前设置 VITE_API_BASE=https://你的域名（与微信后台 request 合法域名一致，必须 HTTPS）
+const API_BASE = String(import.meta.env.VITE_API_BASE || (import.meta.env.DEV ? 'http://localhost:3000' : '')).replace(/\/$/, '')
 
 export const baseUrl = API_BASE
 
@@ -15,6 +12,7 @@ export function toast(title, icon = 'none') {
 
 export function request(url, { method = 'GET', data = {}, auth = false, admin = false } = {}) {
   return new Promise((resolve, reject) => {
+    if (!API_BASE) return reject(new Error('API 域名未配置：构建前请设置 VITE_API_BASE'))
     const token = uni.getStorageSync(admin ? 'mcard_admin_token' : 'mcard_token')
     uni.request({
       url: API_BASE + url,

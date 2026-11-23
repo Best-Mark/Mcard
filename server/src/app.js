@@ -6,6 +6,7 @@ const config = require('./config')
 const db = require('./db')
 const updater = require('./services/updater')
 const settings = require('./utils/settings')
+const { originOf } = require('./utils/origin')
 // 首次启动：把 .env 里的支付参数等种子导入配置中心（幂等，DB 已有值不覆盖）
 settings.seedDefaults()
 
@@ -69,7 +70,7 @@ function sendSpa(req, res) {
         `<meta property="og:title" content="${esc(title)}">`,
         `<meta property="og:description" content="${esc(desc)}">`,
         image ? `<meta property="og:image" content="${esc(image)}">` : '',
-        `<meta property="og:url" content="${esc(`${config.BASE_URL}/c/${card.slug || m[1]}`)}">`
+        `<meta property="og:url" content="${esc(`${originOf(req)}/c/${card.slug || m[1]}`)}">`
       ].filter(Boolean).join('\n    ')
       html = html.replace(/<title>[\s\S]*?<\/title>/, meta)
     }

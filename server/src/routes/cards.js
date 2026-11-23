@@ -3,6 +3,7 @@ const fs = require('fs')
 const path = require('path')
 const db = require('../db')
 const config = require('../config')
+const { originOf, requestUrl } = require('../utils/origin')
 const { ok, fail, wrap } = require('../utils/response')
 const { authRequired, parseToken } = require('../utils/auth')
 const { makeSlug, normalizeSlug } = require('../utils/slug')
@@ -29,12 +30,12 @@ const EDITABLE = ['name', 'name_en', 'title', 'company', 'company_intro', 'depar
 const parseJson = (v, fallback) => { try { const x = JSON.parse(v); return x ?? fallback } catch { return fallback } }
 const isColor = v => /^#[0-9a-fA-F]{6}$/.test(String(v || ''))
 
-function publicView(row) {
+function publicView(row, origin) {
   const now = new Date()
   const expired = row.expires_at && new Date(String(row.expires_at).replace(' ', 'T') + 'Z') < now
   return {
     slug: row.slug,
-    url: `${config.BASE_URL}/c/${row.slug}`,
+    url: `${origin}/c/${row.slug}`,
     name: row.name, name_en: row.name_en, title: row.title, company: row.company,
     company_intro: row.company_intro || '',
     department: row.department, phone: row.phone, mobile: row.mobile, email: row.email,
@@ -54,12 +55,12 @@ function publicView(row) {
   }
 }
 
-function ownerView(row) {
-  return { ...publicView(row), id: row.id, status: row.status, createdAt: row.created_at }
+function ownerView(row, origin) {
+  return { ...publicView(row, origin), id: row.id, status: row.status, createdAt: row.created_at }
 }
 
 // 集市卡片视图：只暴露发现业务对口所需的最小信息，绝不外泄电话/邮箱/微信/收款码等私密字段
-function marketView(row, originLat, originLng) {
+function marketView(row, originLat, originLng, origin) {
   let distance = null
   if (originLat != null && originLng != null && row.latitude != null && row.longitude != null) {
     distance = Math.round(distanceKm(originLat, originLng, row.latitude, row.longitude) * 10) / 10
@@ -67,7 +68,7 @@ function marketView(row, originLat, originLng) {
   const industry = INDUSTRIES.find(i => i.key === row.industry)
   return {
     slug: row.slug,
-    url: `${config.BASE_URL}/c/${row.slug}`,
+    url: `${origin}/c/${row.slug}`,
     name: row.name, name_en: row.name_en, title: row.title, company: row.company,
     industry: normalizeIndustry(row.industry), industryLabel: industry?.label || '',
     city: row.city || '', distanceKm: distance,
@@ -118,7 +119,8 @@ router.get('/public/market', wrap((req, res) => {
     rows = rows.filter(r => [r.name, r.name_en, r.title, r.company, r.bio, r.city, r.tags, r.industry]
       .join(' ').toLowerCase().includes(needle))
   }
-  const list = rows.map(r => marketView(r, originLat, originLng))
+  const origin = originOf(req)
+  const list = rows.map(r => marketView(r, originLat, originLng, origin))
   // 排序：有原点时距离近优先（无坐标的排末尾），再按浏览量；无原点时纯按浏览量
   list.sort((a, b) => {
     if (originLat != null) {
@@ -152,7 +154,7 @@ router.get('/public/:slug', wrap((req, res) => {
     db.prepare('UPDATE cards SET views = views + 1 WHERE id = ?').run(row.id)
     row.views += 1
   }
-  ok(res, publicView(row))
+  ok(res, publicView(row, originOf(req)))
 }))
 
 router.get('/public/:slug/qr.svg', wrap((req, res) => {
@@ -162,7 +164,7 @@ router.get('/public/:slug/qr.svg', wrap((req, res) => {
   const brand = String(req.query.brand || 'M').slice(0, 2)
   const logoImage = row.qr_logo ? cardLogo(row, true) : ''
   res.type('image/svg+xml').set('Cache-Control', 'public, max-age=3600')
-    .send(qr.svg(`${config.BASE_URL}/c/${row.slug}`, { size, fg: row.qr_fg, bg: row.qr_bg, logo: !!row.qr_logo, brand, logoImage }))
+    .send(qr.svg(requestUrl(req, `/c/${row.slug}`), { size, fg: row.qr_fg, bg: row.qr_bg, logo: !!row.qr_logo, brand, logoImage }))
 }))
 
 router.get('/public/:slug/qr.png', wrap(async (req, res) => {
@@ -170,14 +172,15 @@ router.get('/public/:slug/qr.png', wrap(async (req, res) => {
   if (!row) return fail(res, 404, '名片不存在')
   const size = Math.min(2000, Math.max(128, Number(req.query.size) || 720))
   const logoImage = row.qr_logo ? cardLogo(row) : ''
-  const buf = await qr.png(`${config.BASE_URL}/c/${row.slug}`, { size, fg: row.qr_fg, bg: row.qr_bg, logoImage })
+  const buf = await qr.png(requestUrl(req, `/c/${row.slug}`), { size, fg: row.qr_fg, bg: row.qr_bg, logoImage })
   res.type('png').set('Cache-Control', 'public, max-age=3600').send(buf)
 }))
 
 router.get('/public/:slug/card.vcf', wrap((req, res) => {
   const row = db.prepare('SELECT * FROM cards WHERE slug = ?').get(req.params.slug)
   if (!row) return fail(res, 404, '名片不存在')
-  const text = vcard.build(publicView(row), config.BASE_URL)
+  const origin = originOf(req)
+  const text = vcard.build(publicView(row, origin), origin)
   res.type('text/vcard; charset=utf-8')
     .set('Content-Disposition', `attachment; filename="${encodeURIComponent(row.name || row.slug)}.vcf"`)
     .send(text)
@@ -194,7 +197,7 @@ router.post('/public/:slug/exchange', wrap((req, res) => {
 // ---------- 我的名片 ----------
 router.get('/mine', authRequired, wrap((req, res) => {
   const row = db.prepare('SELECT * FROM cards WHERE user_id = ?').get(req.user.id)
-  ok(res, row ? ownerView(row) : null)
+  ok(res, row ? ownerView(row, originOf(req)) : null)
 }))
 
 router.post('/mine', authRequired, wrap((req, res) => {
@@ -205,7 +208,7 @@ router.post('/mine', authRequired, wrap((req, res) => {
   db.prepare('INSERT INTO cards (user_id, slug, name) VALUES (?,?,?)')
     .run(req.user.id, slug, req.user.nickname || '')
   const row = db.prepare('SELECT * FROM cards WHERE user_id = ?').get(req.user.id)
-  ok(res, ownerView(row))
+  ok(res, ownerView(row, originOf(req)))
 }))
 
 router.put('/mine', authRequired, wrap((req, res) => {
@@ -250,7 +253,7 @@ router.put('/mine', authRequired, wrap((req, res) => {
   // 铁律：slug / status / expires_at / views 绝不在更新白名单内 —— 改资料不动二维码
   sets.push("updated_at = datetime('now')")
   db.prepare(`UPDATE cards SET ${sets.join(', ')} WHERE id = ?`).run(...values, row.id)
-  ok(res, ownerView(db.prepare('SELECT * FROM cards WHERE id = ?').get(row.id)))
+  ok(res, ownerView(db.prepare('SELECT * FROM cards WHERE id = ?').get(row.id), originOf(req)))
 }))
 
 router.get('/mine/stats', authRequired, wrap((req, res) => {
