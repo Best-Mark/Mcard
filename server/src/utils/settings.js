@@ -6,6 +6,8 @@ const config = require('../config')
 
 // 公开键：匿名接口 /api/public/config 仅下发这些
 const PUBLIC_KEYS = ['site_name', 'site_desc', 'contact', 'notice', 'qr_brand']
+// 公开派生键：由后端算好后下发，前端据此决定是否显示微信快捷登录入口（不下发任何 key/secret）
+const PUBLIC_DERIVED_KEYS = ['wechat_login_enabled']
 
 // 分组定义：前端按此渲染表单（label/type/敏感标记），键名即 site_config 的 key
 const GROUPS = {
@@ -51,6 +53,18 @@ const GROUPS = {
       { key: 'miniapp_ali_appid', label: '支付宝小程序 AppID', type: 'text' },
       { key: 'miniapp_tt_appid', label: '抖音小程序 AppID', type: 'text' }
     ]
+  },
+  wechat_oauth: {
+    label: '微信网页授权',
+    fields: [
+      { key: 'wechat_oauth_enabled', label: '启用微信快捷登录（true / false）', type: 'text' },
+      { key: 'wechat_oauth_appid', label: '公众号 AppID（网页授权用，非小程序）', type: 'text' },
+      { key: 'wechat_oauth_secret', label: '公众号 AppSecret', type: 'secret' },
+      { key: 'wechat_oauth_scope', label: '授权范围（固定 snsapi_userinfo 以取昵称头像）', type: 'text' },
+      { key: 'wechat_oauth_bind_phone', label: '新用户授权后必须绑定手机号（true / false）', type: 'text' },
+      { key: 'wechat_oauth_verify_name', label: '域名校验文件名（MP_verify_xxx.txt）', type: 'text' },
+      { key: 'wechat_oauth_verify_content', label: '域名校验文件内容（微信给的一串字符）', type: 'textarea' }
+    ]
   }
 }
 
@@ -94,6 +108,36 @@ function smsConfig() {
   }
 }
 
+// 读取微信网页授权配置（公众号 OAuth，非小程序）
+function wechatOauthConfig() {
+  const fromDb = k => String(get(k, ''))
+  return {
+    enabled: fromDb('wechat_oauth_enabled') === 'true',
+    appId: fromDb('wechat_oauth_appid'),
+    secret: fromDb('wechat_oauth_secret'),
+    scope: 'snsapi_userinfo', // 需求：取昵称头像，固定 userinfo（不接受公开改 scope）
+    bindPhone: fromDb('wechat_oauth_bind_phone') !== 'false',
+    verifyName: fromDb('wechat_oauth_verify_name'),
+    verifyContent: fromDb('wechat_oauth_verify_content')
+  }
+}
+
+// 前端配置是否显示微信快捷登录：开关开启 + AppID/Secret 齐全（AppSecret 从库直读，不下发）
+function wechatLoginEnabled() {
+  const c = wechatOauthConfig()
+  return c.enabled && !!c.appId && !!c.secret
+}
+
+// 公开配置：白名单键 + 派生开关（绝不外泄任何 key/secret）
+function publicView() {
+  const out = {}
+  for (const k of PUBLIC_KEYS) out[k] = get(k, '')
+  for (const k of PUBLIC_DERIVED_KEYS) {
+    if (k === 'wechat_login_enabled') out[k] = wechatLoginEnabled()
+  }
+  return out
+}
+
 // 管理端读取：敏感字段回掩码+指纹，其余回明文
 function adminView() {
   const db = require('../db')
@@ -133,7 +177,14 @@ function seedDefaults() {
     miniapp_wx_appid: '',
     miniapp_wx_secret: '',
     miniapp_ali_appid: '',
-    miniapp_tt_appid: ''
+    miniapp_tt_appid: '',
+    wechat_oauth_enabled: 'false',
+    wechat_oauth_appid: '',
+    wechat_oauth_secret: '',
+    wechat_oauth_scope: 'snsapi_userinfo',
+    wechat_oauth_bind_phone: 'true',
+    wechat_oauth_verify_name: '',
+    wechat_oauth_verify_content: ''
   }
   const tx = db.transaction(() => {
     for (const [k, v] of Object.entries(seeds)) stmt.run(k, JSON.stringify(String(v || '')))
@@ -141,4 +192,4 @@ function seedDefaults() {
   tx()
 }
 
-module.exports = { PUBLIC_KEYS, GROUPS, SENSITIVE_KEYS, ALL_KEYS, MASK, fingerprint, get, payConfig, smsConfig, adminView, seedDefaults }
+module.exports = { PUBLIC_KEYS, PUBLIC_DERIVED_KEYS, GROUPS, SENSITIVE_KEYS, ALL_KEYS, MASK, fingerprint, get, payConfig, smsConfig, wechatOauthConfig, wechatLoginEnabled, publicView, adminView, seedDefaults }

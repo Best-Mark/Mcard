@@ -355,6 +355,7 @@ const ICONS = {
   eyeOff: ['M17.9 17.9A10 10 0 0 1 12 20C5 20 1 12 1 12a18 18 0 0 1 5.1-5.9', 'M9.9 4.2A10 10 0 0 1 12 4c7 0 11 8 11 8a18 18 0 0 1-2.2 3.2', 'M1 1l22 22'],
   trend: ['M23 6l-9.5 9.5-5-5L1 18', 'M17 6h6v6'],
   check: ['M20 6 9 17l-5-5'],
+  wechat: ['M9 4C5.1 4 2 6.5 2 9.6c0 1.8 1 3.5 2.6 4.6L4 17l2.6-1.3c.8.2 1.6.4 2.4.4h.4a5 5 0 0 1-.2-1.3c0-3 3-5.5 6.7-5.5h.5C15.6 6.3 12.6 4 9 4ZM6.5 8.4a.8.8 0 1 1 0-1.6.8.8 0 0 1 0 1.6Zm4.6 0a.8.8 0 1 1 0-1.6.8.8 0 0 1 0 1.6Z', 'M22 13.7c0-2.5-2.5-4.6-5.6-4.6s-5.6 2-5.6 4.6 2.5 4.6 5.6 4.6c.7 0 1.3-.1 1.9-.3l1.8.9-.5-1.6c1.5-.9 2.4-2.1 2.4-3.6Zm-7.5-1.2a.7.7 0 1 1 0-1.4.7.7 0 0 1 0 1.4Zm3.7 0a.7.7 0 1 1 0-1.4.7.7 0 0 1 0 1.4Z'],
   yuan: ['M12 2v20', 'M17 6H9a3 3 0 0 0 0 6h6a3 3 0 0 1 0 6H6']
 }
 const ic = n => ICONS[n] || ICONS.overview
@@ -441,12 +442,16 @@ const GROUP_META = {
   site: { i: 'home', desc: '站点名称、公告与联系方式，展示在前台公开配置中。' },
   payment: { i: 'card', desc: '微信支付商户参数。密钥类只写不读，留空即沿用已保存值。' },
   sms: { i: 'mail', desc: '阿里云短信平台参数，用于验证码发送，保存后可测试。' },
-  miniapp: { i: 'phone', desc: '微信 / 支付宝 / 抖音小程序的应用标识与密钥。' }
+  miniapp: { i: 'phone', desc: '微信 / 支付宝 / 抖音小程序的应用标识与密钥。' },
+  wechat_oauth: { i: 'wechat', desc: '公众号网页授权：H5 在微信里免密登录并获取昵称头像。' }
 }
 const OPTIONS = {
   pay_mode: [['mock', 'mock · 模拟支付'], ['wechat', 'wechat · 微信支付']],
   sms_enabled: [['false', '停用'], ['true', '启用']],
-  sms_provider: [['aliyun', '阿里云短信']]
+  sms_provider: [['aliyun', '阿里云短信']],
+  wechat_oauth_enabled: [['false', '停用'], ['true', '启用']],
+  wechat_oauth_bind_phone: [['true', '必须绑定手机号'], ['false', '直接建号（无手机号）']],
+  wechat_oauth_scope: [['snsapi_userinfo', 'snsapi_userinfo · 取昵称头像']]
 }
 const groupMeta = k => GROUP_META[k] || { i: 'config', desc: '保存后立即生效。' }
 const optionsFor = k => OPTIONS[k] || null

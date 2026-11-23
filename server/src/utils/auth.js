@@ -13,7 +13,7 @@ const parseToken = req => {
 const authRequired = (req, res, next) => {
   const payload = parseToken(req)
   if (!payload) return res.status(401).json({ code: 401, msg: '请先登录' })
-  const user = db.prepare('SELECT id, phone, nickname, role, status FROM users WHERE id = ?').get(payload.id)
+  const user = db.prepare('SELECT id, phone, nickname, role, status, avatar, auth_source, wx_openid FROM users WHERE id = ?').get(payload.id)
   if (!user || user.status !== 'active') return res.status(401).json({ code: 401, msg: '账号不可用' })
   req.user = user
   next()
@@ -29,4 +29,10 @@ const superRequired = (req, res, next) => authRequired(req, res, () => {
   next()
 })
 
-module.exports = { sign, parseToken, authRequired, adminRequired, superRequired }
+// 微信首次授权绑定手机号的一次性凭证（10 分钟有效，签 openid 等，防伪造）
+const signBind = payload => jwt.sign(payload, config.JWT_SECRET, { expiresIn: '10m' })
+const verifyBind = ticket => {
+  try { return jwt.verify(String(ticket || ''), config.JWT_SECRET) } catch { return null }
+}
+
+module.exports = { sign, signBind, verifyBind, parseToken, authRequired, adminRequired, superRequired }

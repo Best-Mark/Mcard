@@ -95,6 +95,16 @@ for (const [col, def] of [
 ]) addColumnIfMissing('cards', col, def)
 db.exec('CREATE INDEX IF NOT EXISTS idx_cards_market ON cards(market_opt_in, status, industry);')
 
+// 微信网页授权登录：openid/unionid 用于免密识别，头像来自微信，auth_source 记录账号来源
+for (const [col, def] of [
+  ['wx_openid', "TEXT NOT NULL DEFAULT ''"],
+  ['wx_unionid', "TEXT NOT NULL DEFAULT ''"],
+  ['avatar', "TEXT NOT NULL DEFAULT ''"],
+  ['auth_source', "TEXT NOT NULL DEFAULT 'password'"]
+]) addColumnIfMissing('users', col, def)
+db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_wx_openid ON users(wx_openid) WHERE wx_openid <> '';`)
+db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_wx_unionid ON users(wx_unionid) WHERE wx_unionid <> '';`)
+
 db.exec(`
 CREATE TABLE IF NOT EXISTS packages (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

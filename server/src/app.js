@@ -22,11 +22,16 @@ app.use('/uploads', express.static(config.UPLOAD_DIR, { maxAge: '7d' }))
 
 app.get('/api/health', (_req, res) => res.json({ code: 0, data: { ok: true, time: Date.now(), payMode: settings.payConfig().PAY_MODE } }))
 app.get('/api/public/config', (_req, res) => {
-  const rows = db.prepare('SELECT key, value FROM site_config').all()
-  const all = Object.fromEntries(rows.map(r => { try { return [r.key, JSON.parse(r.value)] } catch { return [r.key, ''] } }))
-  // 安全：仅下发公开白名单，支付密钥/短信密钥/小程序密钥绝不外泄
-  const cfg = Object.fromEntries(settings.PUBLIC_KEYS.map(k => [k, all[k] ?? '']))
-  res.json({ code: 0, data: cfg })
+  // 安全：仅下发公开白名单+派生开关，支付密钥/短信密钥/小程序密钥/公众号密钥绝不外泄
+  res.json({ code: 0, data: settings.publicView() })
+})
+
+// 微信网页授权域名校验文件：从 DB 底本按需下发，部署/git clean 不会丢失
+app.get('/MP_verify_:code.txt', (req, res) => {
+  const c = settings.wechatOauthConfig()
+  const name = `MP_verify_${String(req.params.code || '').replace(/[^\w-]/g, '')}.txt`
+  if (!c.verifyName || name !== c.verifyName || !c.verifyContent) return res.status(404).type('text/plain').send('not found')
+  res.type('text/plain').send(String(c.verifyContent).replace(/\s+/g, ''))
 })
 
 app.use('/api/auth', require('./routes/auth'))

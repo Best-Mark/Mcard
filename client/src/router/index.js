@@ -5,6 +5,7 @@ import Home from '../views/Home.vue'
 const CardView = () => import('../views/CardView.vue')
 const Market = () => import('../views/Market.vue')
 const Login = () => import('../views/Login.vue')
+const WechatCallback = () => import('../views/WechatCallback.vue')
 const Dashboard = () => import('../views/Dashboard.vue')
 const CardEdit = () => import('../views/CardEdit.vue')
 const Plans = () => import('../views/Plans.vue')
@@ -17,6 +18,7 @@ const routes = [
   { path: '/c/:slug', name: 'card', component: CardView },
   { path: '/market', name: 'market', component: Market },
   { path: '/login', name: 'login', component: Login },
+  { path: '/wechat/callback', name: 'wechat-callback', component: WechatCallback },
   { path: '/me', name: 'dashboard', component: Dashboard, meta: { auth: true } },
   { path: '/me/card', name: 'card-edit', component: CardEdit, meta: { auth: true } },
   { path: '/me/plans', name: 'plans', component: Plans, meta: { auth: true } },
