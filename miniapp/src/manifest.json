@@ -7,7 +7,13 @@
   "vueVersion": "3",
   "mp-weixin": {
     "appid": "",
-    "setting": { "urlCheck": false, "es6": true, "postcss": true }
+    "setting": { "urlCheck": false, "es6": true, "postcss": true },
+    "requiredPrivateInfos": ["getLocation"],
+    "permission": {
+      "scope.userLocation": {
+        "desc": "用于名片集市按距离为你发现附近的业务伙伴，仅在你主动定位时获取"
+      }
+    }
   },
   "mp-alipay": { "appid": "" },
   "mp-toutiao": { "appid": "" }

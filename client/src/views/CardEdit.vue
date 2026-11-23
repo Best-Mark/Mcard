@@ -61,6 +61,34 @@
           </div>
 
           <div class="card card-pad" style="margin-top:14px">
+            <div class="section-title" style="margin-top:0">名片集市 <span class="small muted">· 按距离发现业务对口</span></div>
+            <p class="small muted" style="margin-bottom:12px">开启后，你的名片会出现在名片集市，附近及同行业的人可按距离找到你。仅展示姓名、职位、公司、行业、城市与简介，联系方式不会公开；可随时关闭下架。</p>
+            <div class="field"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" v-model="form.market_opt_in" /> 加入名片集市（主动上架）</label></div>
+            <div class="grid2">
+              <div class="field"><label>所属行业</label>
+                <select v-model="form.industry" class="input">
+                  <option value="">未选择</option>
+                  <option v-for="ind in marketMeta.industries" :key="ind.key" :value="ind.key">{{ ind.label }}</option>
+                </select>
+              </div>
+              <div class="field"><label>所在城市</label>
+                <select :value="form.city" class="input" @change="e => pickCity(e.target.value)">
+                  <option value="">未选择</option>
+                  <option v-for="c in marketMeta.cities" :key="c.name" :value="c.name">{{ c.name }}</option>
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label>定位坐标 <span class="muted small">（用于按距离排序；选城市会自动填入，也可精确定位）</span></label>
+              <div class="locate-row">
+                <span class="small mono">{{ form.latitude != null ? form.latitude.toFixed(4) : '—' }}, {{ form.longitude != null ? form.longitude.toFixed(4) : '—' }}</span>
+                <button class="btn btn-sm btn-ghost" :disabled="locating" @click="locateMe">{{ locating ? '定位中…' : '⌖ 精确定位' }}</button>
+              </div>
+            </div>
+            <p v-if="form.market_opt_in && form.latitude == null" class="small" style="color:#b45309">已开启上架但尚无坐标，请选城市或精确定位，否则在集市中会排在末尾。</p>
+          </div>
+
+          <div class="card card-pad" style="margin-top:14px">
             <div class="section-title" style="margin-top:0">加好友 / 收付款二维码</div>
             <p class="small muted" style="margin-bottom:12px">上传微信 / 支付宝的「加好友码」或「收款码」原图，访客在自己常用的 App 环境里可长按识别或保存后扫码。请只上传自己本人的二维码。</p>
             <div v-for="q in qrFields" :key="q.key" class="qr-upload-row">
@@ -160,10 +188,13 @@ const blank = {
   wechat_qr: '', alipay_qr: '', wechat_pay_qr: '', alipay_pay_qr: '',
   address: '', address_detail: '',
   avatar: '', logo: '', bio: '', tags: [], links: [], template: 'classic', theme: 'ocean', accent: THEMES.ocean.accent,
+  industry: '', city: '', latitude: null, longitude: null, market_opt_in: false,
   qr_fg: '#0f172a', qr_bg: '#ffffff', qr_logo: true
 }
 const form = ref({ ...blank })
 const templates = ref([])
+const marketMeta = ref({ industries: [], cities: [] })
+const locating = ref(false)
 const qrFields = [
   { key: 'wechat_qr', label: '微信 · 加好友码' },
   { key: 'alipay_qr', label: '支付宝 · 加好友码' },
@@ -177,6 +208,7 @@ const previewQr = computed(() => `/api/cards/public/${form.value.slug}/qr.svg?si
 
 onMounted(async () => {
   loadTemplates()
+  loadMarketMeta()
   try {
     const { data } = await api.get('/api/cards/mine')
     if (!data.data) { showToast('请先创建名片', 'error'); return router.push('/me') }
@@ -190,6 +222,35 @@ async function loadTemplates() {
     const { data } = await api.get('/api/cards/public/templates')
     templates.value = data.data?.templates || []
   } catch { /* 模板清单拉取失败时用兜底，保证选择器可用 */ }
+}
+
+async function loadMarketMeta() {
+  try {
+    const { data } = await api.get('/api/cards/public/market/meta')
+    marketMeta.value = data.data
+  } catch { /* 集市元数据失败不影响资料编辑 */ }
+}
+
+function pickCity(name) {
+  form.value.city = name
+  const hit = (marketMeta.value.cities || []).find(c => c.name === name)
+  if (hit) { form.value.latitude = hit.lat; form.value.longitude = hit.lng }
+}
+
+function locateMe() {
+  if (!navigator.geolocation) return showToast('当前浏览器不支持定位，请改用城市选择', 'error')
+  locating.value = true
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      form.value.latitude = pos.coords.latitude
+      form.value.longitude = pos.coords.longitude
+      if (!form.value.city) form.value.city = ''
+      locating.value = false
+      showToast('已获取坐标，记得点保存', 'success')
+    },
+    () => { locating.value = false; showToast('未获取到定位，请改用城市选择', 'error') },
+    { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+  )
 }
 
 function chooseTheme(k) {
@@ -240,6 +301,8 @@ async function save() {
 .qr-thumb img { width: 100%; height: 100%; object-fit: contain; }
 .qr-upload-info { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .qr-upload-info b { font-size: 13px; }
+.locate-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.locate-row .mono { color: var(--muted); }
 .link-row { display: grid; grid-template-columns: 1fr 1.5fr auto; gap: 8px; margin-bottom: 8px; }
 .theme-list { display: flex; flex-wrap: wrap; gap: 8px; }
 .theme-item { border: 1px solid var(--line); border-radius: 10px; padding: 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; }

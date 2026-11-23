@@ -9,6 +9,7 @@ const { makeSlug, normalizeSlug } = require('../utils/slug')
 const qr = require('../services/qrcode')
 const vcard = require('../services/vcard')
 const { CARD_TEMPLATES, isTemplate } = require('../utils/cardTemplates')
+const { INDUSTRIES, CITIES, isIndustry, normalizeIndustry, distanceKm } = require('../utils/market')
 
 const router = express.Router()
 
@@ -22,7 +23,8 @@ function cardLogo(row, asDataUrl = false) {
 const EDITABLE = ['name', 'name_en', 'title', 'company', 'company_intro', 'department', 'phone', 'mobile', 'email',
   'wechat', 'alipay', 'whatsapp', 'wechat_qr', 'alipay_qr', 'wechat_pay_qr', 'alipay_pay_qr',
   'address', 'address_detail', 'website', 'shop_url', 'avatar', 'cover', 'logo', 'bio',
-  'tags', 'links', 'template', 'theme', 'accent', 'qr_fg', 'qr_bg', 'qr_logo']
+  'tags', 'links', 'template', 'industry', 'city', 'latitude', 'longitude', 'market_opt_in',
+  'theme', 'accent', 'qr_fg', 'qr_bg', 'qr_logo']
 
 const parseJson = (v, fallback) => { try { const x = JSON.parse(v); return x ?? fallback } catch { return fallback } }
 const isColor = v => /^#[0-9a-fA-F]{6}$/.test(String(v || ''))
@@ -44,6 +46,8 @@ function publicView(row) {
     avatar: row.avatar, cover: row.cover, logo: row.logo, bio: row.bio,
     tags: parseJson(row.tags, []), links: parseJson(row.links, []),
     template: isTemplate(row.template) ? row.template : 'classic',
+    industry: normalizeIndustry(row.industry), city: row.city || '',
+    latitude: row.latitude ?? null, longitude: row.longitude ?? null, market_opt_in: !!row.market_opt_in,
     theme: row.theme, accent: row.accent, qr_fg: row.qr_fg, qr_bg: row.qr_bg, qr_logo: !!row.qr_logo,
     active: row.status === 'active' && !expired,
     expiresAt: row.expires_at, views: row.views
@@ -54,11 +58,77 @@ function ownerView(row) {
   return { ...publicView(row), id: row.id, status: row.status, createdAt: row.created_at }
 }
 
+// 集市卡片视图：只暴露发现业务对口所需的最小信息，绝不外泄电话/邮箱/微信/收款码等私密字段
+function marketView(row, originLat, originLng) {
+  let distance = null
+  if (originLat != null && originLng != null && row.latitude != null && row.longitude != null) {
+    distance = Math.round(distanceKm(originLat, originLng, row.latitude, row.longitude) * 10) / 10
+  }
+  const industry = INDUSTRIES.find(i => i.key === row.industry)
+  return {
+    slug: row.slug,
+    url: `${config.BASE_URL}/c/${row.slug}`,
+    name: row.name, name_en: row.name_en, title: row.title, company: row.company,
+    industry: normalizeIndustry(row.industry), industryLabel: industry?.label || '',
+    city: row.city || '', distanceKm: distance,
+    avatar: row.avatar, logo: row.logo, cover: row.cover,
+    tags: parseJson(row.tags, []), bio: row.bio, views: row.views || 0,
+    template: isTemplate(row.template) ? row.template : 'classic', theme: row.theme, accent: row.accent
+  }
+}
+
 // 布局模板清单（编辑器从此处拉取，避免各端硬编码 key）——必须放在 /public/:slug 之前
 // 清单为静态数据，长缓存头减少重复请求
 router.get('/public/templates', wrap((req, res) => {
   res.set('Cache-Control', 'public, max-age=3600')
   ok(res, { templates: CARD_TEMPLATES })
+}))
+
+// 名片集市元数据（行业清单 + 内置城市坐标）——固定路径，必须在 /public/:slug 之前
+router.get('/public/market/meta', wrap((req, res) => {
+  res.set('Cache-Control', 'public, max-age=3600')
+  ok(res, { industries: INDUSTRIES, cities: CITIES })
+}))
+
+// 名片集市：按距离发现附近、行业对口、关键词命中的上架名片
+// 只返回 market_opt_in=1 且 active 且未过期的名片；隐私字段一律不返回
+router.get('/public/market', wrap((req, res) => {
+  const industry = String(req.query.industry || '').slice(0, 40)
+  const q = String(req.query.q || '').trim().slice(0, 60)
+  const city = String(req.query.city || '').trim().slice(0, 30)
+  const limit = Math.min(60, Math.max(1, Number(req.query.limit) || 30))
+
+  // 定位原点：优先精确经纬度，否则用城市名匹配内置坐标
+  let originLat = null, originLng = null
+  const la = Number(req.query.lat), ln = Number(req.query.lng)
+  if (Number.isFinite(la) && Number.isFinite(ln) && Math.abs(la) <= 90 && Math.abs(ln) <= 180) {
+    originLat = la; originLng = ln
+  } else if (city) {
+    const hit = CITIES.find(c => c.name === city || c.name.includes(city) || city.includes(c.name))
+    if (hit) { originLat = hit.lat; originLng = hit.lng }
+  }
+
+  let rows = db.prepare("SELECT * FROM cards WHERE market_opt_in = 1 AND status = 'active'").all()
+  const now = new Date()
+  rows = rows.filter(r => !r.expires_at || new Date(String(r.expires_at).replace(' ', 'T') + 'Z') >= now)
+  if (industry && isIndustry(industry)) rows = rows.filter(r => normalizeIndustry(r.industry) === industry)
+  if (city) rows = rows.filter(r => (r.city || '').includes(city))
+  if (q) {
+    const needle = q.toLowerCase()
+    rows = rows.filter(r => [r.name, r.name_en, r.title, r.company, r.bio, r.city, r.tags, r.industry]
+      .join(' ').toLowerCase().includes(needle))
+  }
+  const list = rows.map(r => marketView(r, originLat, originLng))
+  // 排序：有原点时距离近优先（无坐标的排末尾），再按浏览量；无原点时纯按浏览量
+  list.sort((a, b) => {
+    if (originLat != null) {
+      if (a.distanceKm == null && b.distanceKm != null) return 1
+      if (a.distanceKm != null && b.distanceKm == null) return -1
+      if (a.distanceKm != b.distanceKm) return a.distanceKm - b.distanceKm
+    }
+    return b.views - a.views
+  })
+  ok(res, { list: list.slice(0, limit), total: list.length, origin: originLat != null ? { lat: originLat, lng: originLng } : null })
 }))
 
 // 任意文本转二维码（小程序支付码等场景使用）——必须放在 /public/:slug 之前
@@ -155,6 +225,19 @@ router.put('/mine', authRequired, wrap((req, res) => {
     } else if (key === 'template') {
       if (!isTemplate(v)) return fail(res, 400, '无效的展示模板')
       v = String(v)
+    } else if (key === 'industry') {
+      if (v && !isIndustry(v)) return fail(res, 400, '无效的行业类目')
+      v = normalizeIndustry(v)
+    } else if (key === 'latitude' || key === 'longitude') {
+      if (v === '' || v === null || v === undefined) v = null
+      else {
+        const num = Number(v)
+        const range = key === 'latitude' ? 90 : 180
+        if (!Number.isFinite(num) || Math.abs(num) > range) return fail(res, 400, `${key} 坐标超出有效范围`)
+        v = num
+      }
+    } else if (key === 'market_opt_in') {
+      v = v ? 1 : 0
     } else if (key === 'qr_logo') {
       v = v ? 1 : 0
     } else {

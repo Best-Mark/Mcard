@@ -3,6 +3,7 @@ import Home from '../views/Home.vue'
 
 // 路由懒加载：首页同步首屏直达，其余按访问分块加载，减小首屏 JS 体积。
 const CardView = () => import('../views/CardView.vue')
+const Market = () => import('../views/Market.vue')
 const Login = () => import('../views/Login.vue')
 const Dashboard = () => import('../views/Dashboard.vue')
 const CardEdit = () => import('../views/CardEdit.vue')
@@ -14,6 +15,7 @@ const Admin = () => import('../views/Admin.vue')
 const routes = [
   { path: '/', name: 'home', component: Home },
   { path: '/c/:slug', name: 'card', component: CardView },
+  { path: '/market', name: 'market', component: Market },
   { path: '/login', name: 'login', component: Login },
   { path: '/me', name: 'dashboard', component: Dashboard, meta: { auth: true } },
   { path: '/me/card', name: 'card-edit', component: CardEdit, meta: { auth: true } },

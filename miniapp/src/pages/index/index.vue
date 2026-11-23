@@ -45,6 +45,7 @@
           <button class="btn primary" @tap="openKeyword">打开名片</button>
           <button class="btn" @tap="scan">扫一扫</button>
         </view>
+        <button class="btn block" style="margin-top:16rpx" @tap="go('/pages/market/market')">⌖ 逛名片集市 · 发现附近业务对口</button>
       </view>
 
       <view class="card features">

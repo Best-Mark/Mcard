@@ -54,6 +54,11 @@ CREATE TABLE IF NOT EXISTS cards (
   tags TEXT NOT NULL DEFAULT '[]',
   links TEXT NOT NULL DEFAULT '[]',
   template TEXT NOT NULL DEFAULT 'classic',
+  industry TEXT NOT NULL DEFAULT '',
+  city TEXT NOT NULL DEFAULT '',
+  latitude REAL,
+  longitude REAL,
+  market_opt_in INTEGER NOT NULL DEFAULT 0,
   theme TEXT NOT NULL DEFAULT 'ocean',
   accent TEXT NOT NULL DEFAULT '#2563eb',
   qr_fg TEXT NOT NULL DEFAULT '#0f172a',
@@ -80,6 +85,15 @@ for (const col of ['alipay', 'wechat_qr', 'alipay_qr', 'wechat_pay_qr', 'alipay_
 }
 // 布局模板（与配色 theme 分离）：存量名片回落 classic
 addColumnIfMissing('cards', 'template', "TEXT NOT NULL DEFAULT 'classic'")
+// 名片集市：存量名片默认不上架、无坐标（保护隐私，需用户主动 opt-in）
+for (const [col, def] of [
+  ['industry', "TEXT NOT NULL DEFAULT ''"],
+  ['city', "TEXT NOT NULL DEFAULT ''"],
+  ['latitude', 'REAL'],
+  ['longitude', 'REAL'],
+  ['market_opt_in', 'INTEGER NOT NULL DEFAULT 0']
+]) addColumnIfMissing('cards', col, def)
+db.exec('CREATE INDEX IF NOT EXISTS idx_cards_market ON cards(market_opt_in, status, industry);')
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS packages (

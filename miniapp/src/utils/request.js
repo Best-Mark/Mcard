@@ -184,3 +184,19 @@ export function processLogo(sourceUrl, mode = 'auto', tolerance = 32) {
 export function shareCardPath(slug) {
   return `/pages/card/card?slug=${slug}`
 }
+
+// 统一定位入口：微信/支付宝/抖音(api.getLocation) 差异封装，失败走 reject，由调用方降级到城市选择
+export function getLocation() {
+  return new Promise((resolve, reject) => {
+    // #ifdef MP-WEIXIN || MP-ALIPAY || MP-TOUTIAO
+    uni.getLocation({
+      type: 'gcj02',
+      success: res => resolve({ lat: res.latitude, lng: res.longitude }),
+      fail: err => reject(err)
+    })
+    // #endif
+    // #ifndef MP-WEIXIN || MP-ALIPAY || MP-TOUTIAO
+    reject(new Error('当前平台不支持定位'))
+    // #endif
+  })
+}

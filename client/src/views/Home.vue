@@ -14,7 +14,7 @@
         <p class="sub">二维码终身不变，资料随时更新。电话、微信、地址一键保存进通讯录，还能直接导出印刷级实体名片版式。</p>
         <div class="btn-row hero-actions">
           <router-link to="/me" class="btn btn-primary btn-lg">免费创建名片 →</router-link>
-          <a href="#features" class="btn btn-ghost btn-lg">看看能做什么</a>
+          <router-link to="/market" class="btn btn-ghost btn-lg">逛名片集市 ⌖</router-link>
         </div>
         <div class="hero-card">
           <div class="mini-cover"></div>

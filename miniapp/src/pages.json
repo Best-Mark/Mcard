@@ -3,6 +3,7 @@
     { "path": "pages/index/index", "style": { "navigationBarTitleText": "MCard 电子名片", "enablePullDownRefresh": false } },
     { "path": "pages/login/login", "style": { "navigationBarTitleText": "登录" } },
     { "path": "pages/card/card", "style": { "navigationBarTitleText": "电子名片" } },
+    { "path": "pages/market/market", "style": { "navigationBarTitleText": "名片集市", "enablePullDownRefresh": true } },
     { "path": "pages/me/me", "style": { "navigationBarTitleText": "我的名片" } },
     { "path": "pages/edit/edit", "style": { "navigationBarTitleText": "编辑资料" } },
     { "path": "pages/plans/plans", "style": { "navigationBarTitleText": "开通套餐" } },

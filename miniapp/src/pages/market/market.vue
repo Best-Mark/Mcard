@@ -1,0 +1,189 @@
+<template>
+  <view class="page">
+    <view class="hero">
+      <view class="slogan">按距离找到附近、业务对口的商务伙伴</view>
+      <view class="locate">
+        <text class="loco">⌖</text>
+        <view class="loc-text">
+          <text class="b">{{ locateLabel }}</text>
+          <text class="hint">{{ locateHint }}</text>
+        </view>
+        <button class="btn tiny light" :disabled="locating" @tap="relocate">{{ locating ? '定位中' : '重新定位' }}</button>
+      </view>
+    </view>
+
+    <view class="filters">
+      <view class="search-row">
+        <input v-model="keyword" class="input" placeholder="搜姓名 / 公司 / 业务关键词" @confirm="applyFilter" />
+        <button class="btn tiny primary" :disabled="loading" @tap="applyFilter">搜索</button>
+      </view>
+      <scroll-view scroll-x class="chips">
+        <view class="chip-wrap">
+          <text class="chip" :class="{ on: !industry }" @tap="setIndustry('')">全部</text>
+          <text v-for="ind in meta.industries" :key="ind.key" class="chip" :class="{ on: industry === ind.key }" @tap="setIndustry(ind.key)">{{ ind.icon }} {{ ind.label }}</text>
+        </view>
+      </scroll-view>
+      <picker :range="cityNames" :value="cityIdx" @change="onCity">
+        <view class="picker">{{ city ? '中心城市：' + city : '选择中心城市（按城市距离排序）' }} ▾</view>
+      </picker>
+    </view>
+
+    <view class="list">
+      <view v-if="loading" class="state">正在发现附近名片…</view>
+      <view v-else-if="error" class="state">
+        <text>加载失败：{{ error }}</text>
+        <button class="btn tiny primary" style="margin-top:20rpx" @tap="load">重试</button>
+      </view>
+      <block v-else>
+        <view class="count">共找到 {{ total }} 张公开名片<text v-if="distanceMode"> · 按距离由近到远</text></view>
+        <view v-if="!list.length" class="state">
+          <view class="empty-ico">⌕</view>
+          <text class="b">附近还没有上架的名片</text>
+          <text class="hint">试试切换行业 / 城市，或邀请伙伴在资料页开启「加入名片集市」</text>
+          <button class="btn tiny primary" style="margin-top:20rpx" @tap="goEdit">上架我的名片</button>
+        </view>
+
+        <view v-for="c in list" :key="c.slug" class="mk-card" @tap="openCard(c.slug)">
+          <view class="card-top">
+            <view class="avatar">
+              <image v-if="c.avatar" :src="c.avatar" mode="aspectFill" />
+              <text v-else>{{ (c.name || '名').slice(0, 1) }}</text>
+            </view>
+            <image v-if="c.logo" class="logo" :src="c.logo" mode="aspectFit" />
+            <view class="ident">
+              <view class="name">{{ c.name || c.name_en || '未填写姓名' }}</view>
+              <view class="title">{{ [c.title, c.company].filter(Boolean).join(' · ') || '商务伙伴' }}</view>
+            </view>
+            <text v-if="c.distanceKm != null" class="dist">{{ fmtDist(c.distanceKm) }}</text>
+          </view>
+          <view class="meta">
+            <text v-if="c.industryLabel" class="industry">{{ c.industryLabel }}</text>
+            <text v-if="c.city" class="city">⌖ {{ c.city }}</text>
+          </view>
+          <view v-if="c.bio" class="bio">{{ c.bio }}</view>
+          <view v-if="c.tags && c.tags.length" class="tags">
+            <text v-for="tag in c.tags.slice(0, 4)" :key="tag">{{ tag }}</text>
+          </view>
+          <view class="card-bottom"><text>查看名片 · 存入通讯录</text><text class="arrow">›</text></view>
+        </view>
+        <view v-if="list.length && list.length < total" class="more">已显示 {{ list.length }} / {{ total }}，可缩小筛选范围</view>
+      </block>
+    </view>
+  </view>
+</template>
+
+<script setup>
+import { ref, computed } from 'vue'
+import { onLoad, onPullDownRefresh, onShareAppMessage } from '@dcloudio/uni-app'
+import { api, toast, getLocation } from '../../utils/request'
+
+const meta = ref({ industries: [], cities: [] })
+const list = ref([])
+const total = ref(0)
+const loading = ref(true)
+const error = ref('')
+const keyword = ref('')
+const industry = ref('')
+const city = ref('')
+const coords = ref(null)
+const locating = ref(false)
+const cityNames = computed(() => ['不使用城市', ...(meta.value.cities || []).map(c => c.name)])
+const cityIdx = computed(() => city.value ? cityNames.value.indexOf(city.value) : 0)
+const distanceMode = computed(() => !!(coords.value || city.value))
+
+const locateLabel = computed(() => coords.value ? '已获取你的位置' : city.value ? `以 ${city.value} 为中心` : '未定位 · 按热度推荐')
+const locateHint = computed(() => coords.value ? '正在按到你的实际距离排序' : city.value ? '选择城市或重新定位可按距离排序' : '点重新定位或选择城市以按距离发现伙伴')
+
+function fmtDist(km) { return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km` }
+
+async function loadMeta() {
+  try { meta.value = await api.get('/api/cards/public/market/meta', false) } catch {}
+}
+
+async function load() {
+  loading.value = true; error.value = ''
+  try {
+    const params = { limit: 40 }
+    if (industry.value) params.industry = industry.value
+    if (city.value) params.city = city.value
+    if (keyword.value.trim()) params.q = keyword.value.trim()
+    if (coords.value) { params.lat = coords.value.lat; params.lng = coords.value.lng }
+    const query = Object.keys(params).map(k => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`).join('&')
+    const r = await api.get('/api/cards/public/market?' + query, false)
+    list.value = r.list; total.value = r.total
+  } catch (e) { error.value = e.message } finally { loading.value = false }
+}
+
+function applyFilter() { load() }
+function setIndustry(k) { industry.value = k; load() }
+function onCity(e) {
+  const name = cityNames.value[Number(e.detail.value)]
+  city.value = (name && name !== '不使用城市') ? name : ''
+  load()
+}
+function relocate() {
+  locating.value = true
+  getLocation().then(pos => {
+    coords.value = pos; locating.value = false
+    toast('定位成功，按附近距离排序', 'success'); load()
+  }).catch(() => {
+    locating.value = false
+    toast('未获取到定位，请改用上方城市选择', 'error')
+  })
+}
+function openCard(slug) { uni.navigateTo({ url: `/pages/card/card?slug=${slug}` }) }
+function goEdit() { uni.navigateTo({ url: '/pages/edit/edit' }) }
+
+onLoad(() => { loadMeta(); load() })
+onPullDownRefresh(async () => { await Promise.all([loadMeta(), load()]); uni.stopPullDownRefresh() })
+onShareAppMessage(() => ({ title: '名片集市 · 发现附近业务对口伙伴', path: '/pages/market/market' }))
+</script>
+
+<style scoped>
+.page { min-height: 100vh; background: #f5f7fb; }
+.hero { background: linear-gradient(135deg, #1e3a8a, #2563eb 55%, #38bdf8); color: #fff; padding: 30rpx 24rpx 34rpx; }
+.slogan { font-size: 32rpx; font-weight: 800; margin-bottom: 22rpx; }
+.locate { display: flex; align-items: center; gap: 16rpx; background: rgba(255,255,255,.15); border: 2rpx solid rgba(255,255,255,.28); border-radius: 20rpx; padding: 18rpx 20rpx; }
+.loco { font-size: 40rpx; }
+.loc-text { flex: 1; display: flex; flex-direction: column; gap: 4rpx; min-width: 0; }
+.loc-text .b { font-size: 28rpx; font-weight: 700; }
+.loc-text .hint { font-size: 22rpx; opacity: .85; }
+.btn.light { background: #fff; color: #2563eb; }
+.filters { background: #fff; padding: 22rpx 24rpx 18rpx; border-bottom: 2rpx solid #e8edf4; }
+.search-row { display: flex; gap: 12rpx; }
+.search-row .input { flex: 1; min-width: 0; }
+.chips { margin-top: 18rpx; width: 100%; white-space: nowrap; }
+.chip-wrap { display: inline-flex; gap: 14rpx; padding-bottom: 6rpx; }
+.chip { flex-shrink: 0; font-size: 24rpx; padding: 10rpx 22rpx; border-radius: 999rpx; border: 2rpx solid #e8edf4; background: #f5f7fb; color: #6b7688; }
+.chip.on { background: #2563eb; border-color: #2563eb; color: #fff; font-weight: 700; }
+.picker { margin-top: 18rpx; border: 2rpx solid #e8edf4; border-radius: 12rpx; padding: 16rpx 18rpx; font-size: 26rpx; color: #162033; }
+.list { padding: 22rpx 24rpx 40rpx; }
+.state { text-align: center; padding: 80rpx 20rpx; color: #6b7688; font-size: 26rpx; }
+.state .b { display: block; color: #0f172a; font-size: 30rpx; font-weight: 700; margin: 16rpx 0; }
+.state .hint { display: block; font-size: 24rpx; line-height: 1.6; }
+.empty-ico { font-size: 90rpx; color: #cbd5e1; }
+.count { font-size: 24rpx; color: #94a3b8; margin-bottom: 16rpx; }
+.mk-card { background: #fff; border: 2rpx solid #e8edf4; border-radius: 20rpx; padding: 24rpx; margin-bottom: 18rpx; box-shadow: 0 8rpx 24rpx rgba(15,23,42,.05); }
+.card-top { display: flex; align-items: center; gap: 16rpx; }
+.avatar { width: 96rpx; height: 96rpx; border-radius: 20rpx; background: #2563eb; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 40rpx; font-weight: 800; overflow: hidden; flex-shrink: 0; }
+.avatar image { width: 100%; height: 100%; }
+.logo { width: 48rpx; height: 48rpx; border-radius: 10rpx; background: rgba(0,0,0,.04); flex-shrink: 0; }
+.ident { flex: 1; min-width: 0; }
+.name { font-size: 32rpx; font-weight: 800; }
+.title { font-size: 24rpx; color: #6b7688; margin-top: 4rpx; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dist { flex-shrink: 0; font-size: 24rpx; font-weight: 700; color: #2563eb; background: #eff6ff; padding: 8rpx 16rpx; border-radius: 999rpx; }
+.meta { display: flex; gap: 14rpx; margin-top: 18rpx; flex-wrap: wrap; }
+.industry { font-size: 22rpx; padding: 6rpx 16rpx; border-radius: 10rpx; background: #eff6ff; color: #2563eb; font-weight: 600; }
+.city { font-size: 22rpx; color: #6b7688; }
+.bio { font-size: 26rpx; color: #6b7688; line-height: 1.6; margin-top: 16rpx; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tags { display: flex; gap: 10rpx; flex-wrap: wrap; margin-top: 14rpx; }
+.tags text { font-size: 22rpx; padding: 4rpx 14rpx; border-radius: 10rpx; background: #f1f5f9; color: #6b7688; }
+.card-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 20rpx; padding-top: 18rpx; border-top: 2rpx solid #f1f5f9; font-size: 24rpx; color: #2563eb; font-weight: 600; }
+.arrow { font-size: 34rpx; }
+.more { text-align: center; font-size: 24rpx; color: #94a3b8; padding: 24rpx; }
+.input { width: 100%; box-sizing: border-box; border: 2rpx solid #e8edf4; border-radius: 12rpx; padding: 16rpx 18rpx; font-size: 26rpx; }
+.btn { font-size: 24rpx; padding: 16rpx 0; border-radius: 12rpx; }
+.btn::after { border: 0; }
+.btn.primary { background: #2563eb; color: #fff; }
+.btn.tiny { padding: 12rpx 28rpx; flex-shrink: 0; }
+</style>

@@ -53,6 +53,29 @@
       </view>
 
       <view class="card">
+        <view class="section">名片集市 <text class="muted small"> · 按距离发现业务对口</text></view>
+        <view class="muted small" style="margin-bottom:16rpx">开启后名片会出现在集市，附近及同行业的人可按距离找到你。仅展示姓名、职位、公司、行业、城市与简介，联系方式不公开；可随时关闭下架。</view>
+        <view class="field"><text class="label">加入名片集市（主动上架）</text><switch :checked="form.market_opt_in" @change="e => form.market_opt_in = e.detail.value" /></view>
+        <view class="field"><text class="label">所属行业</text>
+          <picker :range="industryLabels" :value="industryIdx" @change="onIndustry">
+            <view class="picker">{{ form.industry ? industryLabels[industryIdx] : '未选择' }} ▾</view>
+          </picker>
+        </view>
+        <view class="field"><text class="label">所在城市</text>
+          <picker :range="cityNames" :value="cityIdx" @change="onCity">
+            <view class="picker">{{ form.city || '未选择' }} ▾</view>
+          </picker>
+        </view>
+        <view class="field"><text class="label">定位坐标（选城市自动填入，也可精确定位）</text>
+          <view class="locate-row">
+            <text class="small muted">{{ form.latitude != null ? form.latitude.toFixed(4) : '—' }}, {{ form.longitude != null ? form.longitude.toFixed(4) : '—' }}</text>
+            <button class="btn tiny" :disabled="locating" @tap="locateMe">{{ locating ? '定位中…' : '⌖ 精确定位' }}</button>
+          </view>
+        </view>
+        <view v-if="form.market_opt_in && form.latitude == null" class="small" style="color:#b45309">已开启上架但尚无坐标，请选城市或精确定位，否则在集市中会排在末尾。</view>
+      </view>
+
+      <view class="card">
         <view class="section">加好友 / 收付款二维码</view>
         <block v-for="q in qrFields" :key="q.key">
           <view class="qr-upload-row">
@@ -109,9 +132,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { api, toast, uploadImage, uploadLogo, processLogo } from '../../utils/request'
+import { api, toast, uploadImage, uploadLogo, processLogo, getLocation } from '../../utils/request'
 
 const themes = {
   ocean: { label: '深海蓝', accent: '#2563eb' },
@@ -125,7 +148,8 @@ const blank = {
   website: '', shop_url: '',
   bio: '', tags: [], links: [], avatar: '', logo: '', mobile: '', phone: '', email: '', wechat: '', alipay: '', whatsapp: '',
   wechat_qr: '', alipay_qr: '', wechat_pay_qr: '', alipay_pay_qr: '',
-  address: '', address_detail: '', template: 'classic', theme: 'ocean', accent: '#2563eb', qr_fg: '#0f172a', qr_bg: '#ffffff', qr_logo: true
+  address: '', address_detail: '', template: 'classic', theme: 'ocean', accent: '#2563eb', qr_fg: '#0f172a', qr_bg: '#ffffff', qr_logo: true,
+  industry: '', city: '', latitude: null, longitude: null, market_opt_in: false
 }
 const form = ref({ ...blank })
 const tagsText = ref('')
@@ -133,6 +157,15 @@ const saving = ref(false)
 // 模板清单是静态数据：模块级缓存让二次进入瞬时渲染，随后静默刷新
 let templatesCache = []
 const templates = ref(templatesCache)
+const marketMeta = ref({ industries: [], cities: [] })
+const locating = ref(false)
+const cityNames = computed(() => ['未选择', ...(marketMeta.value.cities || []).map(c => c.name)])
+const cityIdx = computed(() => form.value.city ? cityNames.value.indexOf(form.value.city) : 0)
+const industryLabels = computed(() => ['未选择', ...(marketMeta.value.industries || []).map(i => i.label)])
+const industryIdx = computed(() => {
+  const idx = (marketMeta.value.industries || []).findIndex(i => i.key === form.value.industry)
+  return idx < 0 ? 0 : idx + 1
+})
 
 const logoOriginal = ref(''); const logoProcessed = ref('')
 const logoMode = ref('auto'); const logoTolerance = ref(32); const logoBusy = ref(false)
@@ -148,6 +181,7 @@ const logoModeIdx = ref(0)
 
 onLoad(async () => {
   loadTemplates()
+  loadMarketMeta()
   try {
     const c = await api.get('/api/cards/mine')
     if (!c) return uni.redirectTo({ url: '/pages/me/me' })
@@ -165,6 +199,30 @@ async function loadTemplates() {
       templates.value = r.templates
     }
   } catch { /* 清单拉取失败时使用缓存，不影响保存 */ }
+}
+
+async function loadMarketMeta() {
+  try { marketMeta.value = await api.get('/api/cards/public/market/meta', false) } catch {}
+}
+
+function onIndustry(e) {
+  const idx = Number(e.detail.value)
+  const ind = (marketMeta.value.industries || [])[idx - 1]
+  form.value.industry = ind ? ind.key : ''
+}
+function onCity(e) {
+  const name = cityNames.value[Number(e.detail.value)]
+  form.value.city = (name && name !== '未选择') ? name : ''
+  const hit = (marketMeta.value.cities || []).find(c => c.name === form.value.city)
+  if (hit) { form.value.latitude = hit.lat; form.value.longitude = hit.lng }
+}
+function locateMe() {
+  locating.value = true
+  getLocation().then(pos => {
+    form.value.latitude = pos.lat; form.value.longitude = pos.lng
+    locating.value = false
+    toast('已获取坐标，记得保存', 'success')
+  }).catch(() => { locating.value = false; toast('未获取到定位，请改用城市选择', 'error') })
 }
 
 function chooseTheme(k, accent) { form.value.theme = k; form.value.accent = accent }
@@ -245,6 +303,7 @@ async function save() {
 .logo-current { display: flex; align-items: center; gap: 14rpx; margin-bottom: 14rpx; }
 .logo-current image { width: 80rpx; height: 80rpx; background: #f1f5f9; border-radius: 12rpx; padding: 6rpx; box-sizing: border-box; }
 .picker { border: 2rpx solid #e8edf4; border-radius: 12rpx; padding: 16rpx; font-size: 26rpx; margin-top: 14rpx; }
+.locate-row { display: flex; align-items: center; gap: 16rpx; flex-wrap: wrap; }
 .slider-label { font-size: 24rpx; color: #6b7688; margin-top: 14rpx; }
 .logo-preview { width: 220rpx; height: 160rpx; background: #f1f5f9; border-radius: 14rpx; margin: 14rpx auto; display: block; }
 .avatar { width: 100rpx; height: 100rpx; border-radius: 22rpx; flex-shrink: 0; }
