@@ -1,5 +1,11 @@
 // 所有公共方法集中在此文件：小程序新增纯 require js 文件在部分开发者工具热重载时会白屏
-const API_BASE = 'http://localhost:3000'
+// 开发环境走本地后端；打包发布自动切换到线上域名。
+// ⚠️ 微信小程序 request 合法域名强制 HTTPS：正式发布请把下面的 https 地址填到
+//    微信公众平台「开发管理 → 开发设置 → 服务器域名 → request 合法域名」，并申请证书启用 HTTPS。
+//    若线上暂只有 http，请先把下面的 BASE 改回 http 域名（仅 H5 可用，小程序真机不可用）。
+const API_BASE = process.env.NODE_ENV === 'development'
+  ? 'http://localhost:3000'
+  : 'https://card.microeco.net'
 
 export const baseUrl = API_BASE
 

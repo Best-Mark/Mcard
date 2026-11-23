@@ -112,6 +112,62 @@ cd server && npm start        # 或 pm2 start src/app.js --name mcard
 
 nginx 只需反代 `/` 到 Node 服务（`/uploads`、`/api`、静态资源都由 Express 处理）。启用 HTTPS 后 Service Worker 才会注册。
 
+### 实操示例：单域名 + nginx 反代（以 card.microeco.net 为例）
+
+1) DNS：把 `card.microeco.net` 的 A 记录指向服务器 IP，放行 80/443。
+
+2) 服务器装依赖并拉代码（部署目录必须是 Git 仓库并配好 `origin`，后台自动更新依赖它）：
+
+```bash
+mkdir -p /www/wwwroot/card.microeco.net && cd /www/wwwroot/card.microeco.net
+git clone <你的仓库地址> .
+npm run setup                 # 装根/server/client/miniapp 四处依赖
+npm run build                 # 产出 client/dist（Express 同源托管）
+cp server/.env.example server/.env
+```
+
+3) 编辑 `server/.env`（HTTPS 是推荐值；若暂只有 HTTP，把 BASE_URL 与 WECHAT_NOTIFY_URL 改成 http 即可，但见下方限制）：
+
+```dotenv
+PORT=3000
+HOST=0.0.0.0
+BASE_URL=https://card.microeco.net
+JWT_SECRET=换成随机长字符串
+ADMIN_INIT_USERNAME=admin
+ADMIN_INIT_PASSWORD=换成强密码
+PAY_MODE=mock                 # 接入微信支付时改 wechat 并填下列商户参数
+```
+
+4) 启动（二选一）：
+
+```bash
+cd server && npm start                         # 前台
+pm2 start src/app.js --name mcard && pm2 save  # 推荐：后台常驻 + 开机自启
+```
+
+5) nginx 反代（域名根路径全部转给 Node 3000）：
+
+```nginx
+server {
+    listen 80;
+    server_name card.microeco.net;
+    client_max_body_size 10m;
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+配好证书后把 `listen 443 ssl` 加上证书路径，并加一个 80→443 跳转。
+
+6) 验证：`curl http://127.0.0.1:3000/api/health` 应返回 `code:0`；浏览器打开域名能看到首页即成功。
+
+> **HTTP 的限制（重要）**：① 小程序真机 request 合法域名**强制 HTTPS**，纯 HTTP 域名小程序连不上（H5 不受影响）；② 浏览器 `navigator.geolocation`（地图选点/附近发现）在非 HTTPS 下多数浏览器拒绝授权；③ 微信 JS-SDK、PWA Service Worker 也要求 HTTPS。因此**生产建议务必启用 HTTPS**。`BASE_URL` 决定二维码内容，改域名后旧二维码仍指向旧域名——首次上线定域名要谨慎。
+
 ### 开通与资金说明
 - 支付直接进你的微信商户号，本系统不设余额账户、不做资金池、不参与资金清分，无二清风险。
 - 回调验签：AES-256-GCM 解密 + 商户订单号与金额双校验；配置 `WECHAT_PLATFORM_CERT`（平台证书 PEM）后还会校验微信应答签名。
