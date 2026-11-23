@@ -95,13 +95,15 @@ import { auth, logout, showToast } from '../store'
 const router = useRouter()
 const card = ref(null); const stats = ref({ views: 0, exchanges: 0, daily: [] }); const orders = ref([])
 const loading = ref(true); const busy = ref(false); const newSlug = ref(''); const loadError = ref('')
+let loadStarted = false
 const maxView = computed(() => Math.max(1, ...(stats.value.daily || []).map(d => d.n)))
 const expireDays = computed(() => card.value?.expires_at ? Math.max(0, Math.ceil((new Date(String(card.value.expires_at).replace(' ', 'T') + 'Z') - Date.now()) / 86400000)) : 0)
 const statusBadge = computed(() => card.value?.active ? { text: '已开通', class: 'ok' } : { text: '未开通 / 已到期', class: 'warn' })
 const statusText = s => ({ paid: '已支付', pending: '待支付', cancelled: '已取消' })[s] || s
 
 async function load() {
-  if (loading.value) return
+  if (loadStarted && loading.value) return
+  loadStarted = true
   loading.value = true
   loadError.value = ''
   try {

@@ -45,12 +45,14 @@ import { showToast } from '../store'
 
 const route = useRoute()
 const order = ref(null); const loading = ref(true); const busy = ref(false); const error = ref('')
+let loadStarted = false
 const payText = computed(() => route.query.pay || '')
 const payQr = ref('')
 const slug = ref('')
 
 async function load() {
-  if (loading.value) return
+  if (loadStarted && loading.value) return
+  loadStarted = true
   loading.value = true
   error.value = ''
   try {
