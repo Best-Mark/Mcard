@@ -170,7 +170,7 @@
         <div class="map-sheet-head"><b>选择导航地图</b><button @click="mapOpen = false">×</button></div>
         <div class="map-sheet-list">
           <a v-for="m in maps" :key="m.key" :href="m.href" target="_blank" rel="noopener" @click="mapOpen = false">
-            <span class="map-ico">{{ mapIcon(m.key) }}</span><span>{{ m.label }}地图</span><span class="map-arrow">↗</span>
+            <span class="map-ico" v-html="mapIcon(m.key)"></span><span>{{ m.label }}地图</span><span class="map-arrow">↗</span>
           </a>
         </div>
       </BottomSheet>
@@ -449,9 +449,16 @@ function openMapSheet() {
   if (!maps.value.length) return showToast('尚未填写地址')
   mapOpen.value = true
 }
-function mapIcon(key) {
-  return ({ amap: '高', baidu: '百', qq: '腾', apple: '🍎', google: 'G' })[key] || '⌖'
+// 各家地图品牌色 + 简化符号的内联 SVG：指示性使用风险低，且无外部图片依赖。
+// ⚠️ 不是官方 logo 原图，勿改成直接引用受版权保护的品牌图片文件。
+const MAP_ICONS = {
+  amap: '<svg viewBox="0 0 34 34" width="100%" height="100%"><rect width="34" height="34" rx="9" fill="#00B0FF"/><path d="M10 17.5h14M17 10.5v14" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/><circle cx="17" cy="17.5" r="5.2" fill="none" stroke="#fff" stroke-width="2.4"/></svg>',
+  baidu: '<svg viewBox="0 0 34 34" width="100%" height="100%"><rect width="34" height="34" rx="9" fill="#3385FF"/><path d="M17 8c-4 0-7 3-7 7 0 5 7 11 7 11s7-6 7-11c0-4-3-7-7-7z" fill="#fff"/><circle cx="17" cy="15" r="2.8" fill="#3385FF"/></svg>',
+  qq: '<svg viewBox="0 0 34 34" width="100%" height="100%"><rect width="34" height="34" rx="9" fill="#12B7F5"/><path d="M17 8c-4 0-7 3-7 7 0 5 7 11 7 11s7-6 7-11c0-4-3-7-7-7z" fill="#fff"/><circle cx="17" cy="15" r="2.8" fill="#12B7F5"/></svg>',
+  apple: '<svg viewBox="0 0 34 34" width="100%" height="100%"><rect width="34" height="34" rx="9" fill="#1C1C1E"/><path d="M18 7c-.6 0-1.1.5-1.1 1.1v1.3c-1.6.2-2.9 1.1-3.6 2.5h-1.3c-.6 0-1.1.5-1.1 1.1v9.6c0 .6.5 1.1 1.1 1.1h1.6c.8 1.2 2.2 2 3.8 2s3-.8 3.8-2h1.6c.6 0 1.1-.5 1.1-1.1v-9.6c0-.6-.5-1.1-1.1-1.1h-1.3c-.7-1.4-2-2.3-3.6-2.5V8.1c0-.6-.5-1.1-1.1-1.1zm0 3.8c1.8 0 3.2 1.4 3.2 3.2s-1.4 3.2-3.2 3.2-3.2-1.4-3.2-3.2 1.4-3.2 3.2-3.2z" fill="#fff"/><circle cx="18" cy="14" r="1" fill="#1C1C1E"/></svg>',
+  google: '<svg viewBox="0 0 34 34" width="100%" height="100%"><rect width="34" height="34" rx="9" fill="#fff"/><path d="M17 8c-4 0-7 3-7 7 0 5 7 11 7 11s7-6 7-11c0-4-3-7-7-7z" fill="#4285F4"/><circle cx="17" cy="15" r="2.8" fill="#fff"/></svg>'
 }
+function mapIcon(key) { return MAP_ICONS[key] || '<svg viewBox="0 0 34 34" width="100%" height="100%"><rect width="34" height="34" rx="9" fill="#94a3b8"/><circle cx="17" cy="17" r="7" fill="#fff"/></svg>' }
 function openVcf() {
   guide.value = ''
   if (isIOS() && !isWeChat()) return openVcfInline(vcfApi)
@@ -582,7 +589,7 @@ async function toggleFavorite() {
 .map-sheet-list { padding: 6px 12px 18px; overflow-y: auto; }
 .map-sheet-list a { display: flex; align-items: center; gap: 12px; padding: 13px 10px; border-bottom: 1px solid #f0f3f8; text-decoration: none; color: #17233c; font-size: 14px; }
 .map-sheet-list a:last-child { border-bottom: 0; }
-.map-ico { flex: 0 0 34px; width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; background: #eaf1ff; color: var(--t-accent, #2454e8); font-size: 15px; font-weight: 700; }
+.map-ico { flex: 0 0 34px; width: 34px; height: 34px; border-radius: 9px; display: block; overflow: hidden; }
 .map-arrow { margin-left: auto; color: #94a3b8; font-size: 16px; }
 .cv-qr-card { margin-top: 12px; display: flex; flex-direction: column; align-items: center; text-align: center; background: var(--t-surface); padding: 22px 18px 20px; }
 .cv-qr-img { display: block; width: 140px; height: 140px; margin: 0 auto 14px; padding: 8px; background: #fff; border-radius: 10px; border: 1px solid var(--line); box-shadow: 0 4px 14px rgba(15,23,42,.06); }
