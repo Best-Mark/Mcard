@@ -98,7 +98,13 @@
       </template>
     </div>
 
-    <MapPicker v-if="mapPickerOpen" @confirm="onMapPicked" @close="mapPickerOpen = false" />
+    <BottomSheet :show="mapPickerOpen" @update:show="mapPickerOpen = $event" height="72vh">
+      <div class="mp-sheet-head">
+        <b>地图选点</b>
+        <button @click="mapPickerOpen = false">×</button>
+      </div>
+      <div v-if="mapPickerOpen" class="mp-sheet-body"><MapPicker @confirm="onMapPicked" /></div>
+    </BottomSheet>
     <CityPicker v-model:show="cityPickerOpen" :current="city || currentCity" :cities="meta.cities" :relocating="locating" @select="onCitySelected" @relocate="relocate" />
   </div>
 </template>
@@ -113,6 +119,7 @@ import { CITIES as FALLBACK_CITIES } from '../utils/city-data'
 import MapPicker from '../components/MapPicker.vue'
 import ScrollChips from '../components/ScrollChips.vue'
 import CityPicker from '../components/CityPicker.vue'
+import BottomSheet from '../components/BottomSheet.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -280,6 +287,9 @@ onMounted(async () => {
 .mk-locate-right { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
 .mk-cur-city { font-size: 18px; font-weight: 800; color: #fff; }
 .mk-locate .btn { background: #fff; color: #2563eb; border-color: #fff; font-size: 12px; padding: 4px 12px; }
+.mp-sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #eef1f6; font-size: 16px; }
+.mp-sheet-head button { width: 30px; height: 30px; border: 0; border-radius: 50%; background: #f1f5f9; font-size: 18px; color: #64748b; cursor: pointer; }
+.mp-sheet-body { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 20px 20px; }
 .mk-filters { background: var(--bg-card, #fff); padding: 14px 16px 12px; border-bottom: 1px solid var(--line, #e8edf4); }
 .mk-search { display: flex; gap: 8px; }
 .mk-search .input { flex: 1; min-width: 0; }
