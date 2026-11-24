@@ -11,11 +11,14 @@
       <p class="mk-slogan">按距离找到附近、业务对口的商务伙伴</p>
       <div class="mk-locate">
         <span class="mk-locate-ico">⌖</span>
-        <button class="mk-locate-text" @click="openCityPicker">
-          <b>{{ displayCity }} <span class="mk-change-city">切换 ▾</span><span v-if="positionMeta.label" class="mk-quality" :class="positionMeta.level">{{ positionMeta.label }}</span></b>
+        <div class="mk-locate-text">
+          <b>按距离发现附近伙伴 <span v-if="positionMeta.label" class="mk-quality" :class="positionMeta.level">{{ positionMeta.label }}</span></b>
           <span class="small">{{ locateHint }}</span>
-        </button>
-        <button class="btn btn-sm" :disabled="locating" @click="relocate">{{ locating ? '定位中…' : '重新定位' }}</button>
+        </div>
+        <div class="mk-locate-right">
+          <b class="mk-cur-city">{{ displayCity }}</b>
+          <button class="btn btn-sm" @click="openCityPicker">切换城市</button>
+        </div>
       </div>
     </div>
 
@@ -96,7 +99,7 @@
     </div>
 
     <MapPicker v-if="mapPickerOpen" @confirm="onMapPicked" @close="mapPickerOpen = false" />
-    <CityPicker v-model:show="cityPickerOpen" :current="city || currentCity" :cities="meta.cities" @select="onCitySelected" />
+    <CityPicker v-model:show="cityPickerOpen" :current="city || currentCity" :cities="meta.cities" :relocating="locating" @select="onCitySelected" @relocate="relocate" />
   </div>
 </template>
 
@@ -137,7 +140,7 @@ const displayCity = computed(() => city.value || currentCity.value || '全国')
 const locateHint = computed(() => {
   if (city.value) return `以 ${city.value} 为中心，按距离发现伙伴`
   if (coords.value) return '正在按到你的实际距离排序'
-  return '点城市切换或「重新定位」，按距离发现伙伴'
+  return '点「切换城市」选城市，按距离发现伙伴'
 })
 
 function fmtDist(km) {
@@ -211,9 +214,11 @@ async function relocate() {
     coords.value = { lat: pos.lat, lng: pos.lng }
     positionMeta.value = getPositionQualityLabel()
     if (pos.city && pos.source !== 'default') currentCity.value = pos.city
-    if (!city.value && pos.city) city.value = pos.city
+    // 重新定位后以定位城市为原点（用户主动点的，覆盖手动选择）
+    if (pos.city) city.value = pos.city
     sort.value = 'distance'
-    showToast(pos.source === 'default' ? '已用城市中心坐标排序，可点「重新定位」再试' : '定位成功，按附近距离排序', pos.source === 'default' ? 'error' : 'success')
+    showToast(pos.source === 'default' ? '已用城市中心坐标排序，可点「重新定位」再试' : `已定位到 ${displayCity.value}，按附近距离排序`, pos.source === 'default' ? 'error' : 'success')
+    cityPickerOpen.value = false
     load()
   } catch (e) {
     showToast(e.message || '定位失败，请改用城市选择', 'error')
@@ -269,11 +274,12 @@ onMounted(async () => {
 .mk-slogan { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
 .mk-locate { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.25); border-radius: 14px; padding: 10px 12px; }
 .mk-locate-ico { font-size: 22px; }
-.mk-locate-text { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; border: 0; background: transparent; color: #fff; text-align: left; cursor: pointer; padding: 0; }
+.mk-locate-text { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; border: 0; background: transparent; color: #fff; text-align: left; padding: 0; }
 .mk-locate-text b { font-size: 15px; }
 .mk-locate-text .small { opacity: .85; font-size: 11px; }
-.mk-change-city { font-size: 11px; opacity: .9; border: 1px solid rgba(255,255,255,.5); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; }
-.mk-locate .btn { background: #fff; color: #2563eb; border-color: #fff; flex-shrink: 0; }
+.mk-locate-right { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+.mk-cur-city { font-size: 18px; font-weight: 800; color: #fff; }
+.mk-locate .btn { background: #fff; color: #2563eb; border-color: #fff; font-size: 12px; padding: 4px 12px; }
 .mk-filters { background: var(--bg-card, #fff); padding: 14px 16px 12px; border-bottom: 1px solid var(--line, #e8edf4); }
 .mk-search { display: flex; gap: 8px; }
 .mk-search .input { flex: 1; min-width: 0; }

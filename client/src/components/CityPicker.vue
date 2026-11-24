@@ -9,6 +9,7 @@
     </div>
     <div class="cp-search">
       <input v-model.trim="keyword" class="input" placeholder="输入城市名或拼音首字母，如「北京」「BJ」" />
+      <button class="cp-relocate" :disabled="relocating" @click="emit('relocate')">{{ relocating ? '定位中…' : '⌖ 重新定位' }}</button>
     </div>
     <div class="cp-body" ref="body" @scroll="onScroll">
       <template v-if="filteredGroups.length">
@@ -22,7 +23,7 @@
       <div v-else class="cp-empty">没有匹配的城市，试试输入拼音首字母</div>
     </div>
     <div class="cp-index" v-if="!keyword">
-      <button v-for="l in letters" :key="l" :class="{ on: activeLetter === l }" @click="jumpTo(l)">{{ l }}</button>
+      <button v-for="l in ALL_LETTERS" :key="l" :disabled="!letters.includes(l)" :class="{ on: activeLetter === l }" @click="jumpTo(l)">{{ l }}</button>
     </div>
   </van-popup>
 </template>
@@ -31,12 +32,15 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import { CITIES as FALLBACK } from '../utils/city-data'
 
+const ALL_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
+
 const props = defineProps({
   show: { type: Boolean, default: false },
   current: { type: String, default: '' },
-  cities: { type: Array, default: () => [] }
+  cities: { type: Array, default: () => [] },
+  relocating: { type: Boolean, default: false }
 })
-const emit = defineEmits(['update:show', 'select'])
+const emit = defineEmits(['update:show', 'select', 'relocate'])
 
 const visible = computed({ get: () => props.show, set: v => emit('update:show', v) })
 const keyword = ref('')
@@ -92,16 +96,20 @@ watch(visible, v => { if (v) { keyword.value = ''; nextTick(() => { activeLetter
 .cp-close { position: absolute; right: 16px; top: 14px; width: 32px; height: 32px; border: 0; border-radius: 50%; background: #f1f5f9; font-size: 20px; color: #64748b; cursor: pointer; }
 .cp-current { display: flex; align-items: center; gap: 10px; padding: 10px 20px; background: #eff6ff; font-size: 13px; color: #64748b; }
 .cp-current b { color: #1d4ed8; font-size: 15px; }
-.cp-search { padding: 12px 20px; }
-.cp-search .input { width: 100%; box-sizing: border-box; }
+.cp-search { display: flex; align-items: center; gap: 8px; padding: 12px 20px; }
+.cp-search .input { flex: 1; min-width: 0; box-sizing: border-box; }
+.cp-relocate { flex-shrink: 0; padding: 8px 10px; border: 1px solid #dbe3ef; border-radius: 8px; background: #fff; color: #2563eb; font-size: 12px; font-weight: 700; cursor: pointer; }
+.cp-relocate:disabled { opacity: .5; cursor: wait; }
 .cp-body { position: relative; height: calc(76vh - 180px); overflow-y: auto; padding: 0 64px 20px 20px; -webkit-overflow-scrolling: touch; }
 .cp-group { margin-bottom: 8px; }
 .cp-letter { position: sticky; top: 0; z-index: 1; padding: 6px 0; font-size: 12px; font-weight: 800; color: #2563eb; background: #fff; }
 .cp-city { display: block; width: 100%; text-align: left; padding: 11px 4px; border: 0; border-bottom: 1px solid #f3f5f9; background: transparent; font-size: 14px; color: #334155; cursor: pointer; }
 .cp-city:hover { color: #1d4ed8; }
 .cp-city.on { color: #1d4ed8; font-weight: 700; }
-.cp-index { position: absolute; right: 8px; top: 168px; bottom: 16px; display: flex; flex-direction: column; justify-content: center; gap: 1px; z-index: 3; }
-.cp-index button { width: 26px; padding: 3px 0; border: 0; background: transparent; font-size: 11px; font-weight: 700; color: #94a3b8; cursor: pointer; }
-.cp-index button.on, .cp-index button:hover { color: #fff; background: #2563eb; border-radius: 8px; }
+.cp-index { position: absolute; right: 6px; top: 168px; bottom: 12px; display: flex; flex-direction: column; justify-content: center; gap: 0; z-index: 3; }
+.cp-index button { width: 24px; padding: 2px 0; border: 0; background: transparent; font-size: 10px; font-weight: 700; color: #2563eb; cursor: pointer; line-height: 1.15; }
+.cp-index button:disabled { color: #cbd5e1; cursor: default; }
+.cp-index button.on { color: #fff; background: #2563eb; border-radius: 6px; }
+.cp-index button:not(:disabled):hover { background: #eff6ff; border-radius: 6px; }
 .cp-empty { padding: 40px 0; text-align: center; color: #94a3b8; font-size: 13px; }
 </style>

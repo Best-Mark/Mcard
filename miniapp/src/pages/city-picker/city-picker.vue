@@ -6,6 +6,7 @@
     </view>
     <view class="cp-search">
       <input v-model="keyword" class="input" placeholder="输入城市名或拼音首字母，如 北京 / BJ" confirm-type="search" />
+      <text class="cp-relocate" @tap="relocate">⌖ 重新定位</text>
     </view>
     <view v-if="current" class="cp-current">当前选择：<text class="b">{{ current }}</text></view>
     <scroll-view scroll-y class="cp-body" :scroll-into-view="scrollInto" scroll-with-animation>
@@ -18,7 +19,7 @@
       <view v-else class="cp-empty">没有匹配的城市，试试拼音首字母</view>
     </scroll-view>
     <view v-if="!keyword" class="cp-index">
-      <text v-for="l in letters" :key="l" class="cp-idx-item" :class="{ on: activeLetter === l }" @tap="jumpTo(l)">{{ l }}</text>
+      <text v-for="l in ALL_LETTERS" :key="l" class="cp-idx-item" :class="{ on: activeLetter === l, muted: !letters.includes(l) }" @tap="jumpTo(l)">{{ l }}</text>
     </view>
   </view>
 </template>
@@ -27,6 +28,8 @@
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { api } from '../../utils/request'
+
+const ALL_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
 
 const CITY_FALLBACK = [
   { name: '北京', py: 'BJ' }, { name: '上海', py: 'SH' }, { name: '广州', py: 'GZ' }, { name: '深圳', py: 'SZ' },
@@ -70,9 +73,14 @@ function choose(c) {
 }
 function close() { uni.navigateBack() }
 function jumpTo(letter) {
+  if (!letters.value.includes(letter)) return
   activeLetter.value = letter
   scrollInto.value = ''
   setTimeout(() => { scrollInto.value = 'letter-' + letter }, 0)
+}
+function relocate() {
+  uni.$emit('city-relocate')
+  uni.navigateBack()
 }
 onLoad(async options => {
   current.value = options?.current || ''
@@ -90,7 +98,9 @@ onLoad(async options => {
 .cp-title { font-size: 34rpx; font-weight: 800; }
 .cp-sub { font-size: 22rpx; font-weight: 400; color: #94a3b8; margin-left: 16rpx; }
 .cp-close { position: absolute; right: 28rpx; top: 24rpx; width: 56rpx; height: 56rpx; line-height: 56rpx; text-align: center; font-size: 32rpx; color: #64748b; background: #f1f5f9; border-radius: 50%; }
-.cp-search { padding: 18rpx 32rpx; }
+.cp-search { display: flex; align-items: center; gap: 16rpx; padding: 18rpx 32rpx; }
+.cp-search .input { flex: 1; min-width: 0; }
+.cp-relocate { flex-shrink: 0; font-size: 22rpx; font-weight: 700; color: #2563eb; border: 2rpx solid #dbe3ef; border-radius: 12rpx; padding: 10rpx 16rpx; }
 .cp-current { padding: 8rpx 32rpx 16rpx; font-size: 24rpx; color: #64748b; }
 .cp-current .b { color: #2563eb; font-weight: 700; }
 .cp-body { flex: 1; height: 0; padding: 0 110rpx 20rpx 32rpx; box-sizing: border-box; }
@@ -99,7 +109,8 @@ onLoad(async options => {
 .cp-city { font-size: 28rpx; color: #334155; padding: 20rpx 8rpx; border-bottom: 2rpx solid #f3f5f9; }
 .cp-city.on { color: #2563eb; font-weight: 700; }
 .cp-empty { padding: 80rpx 0; text-align: center; color: #94a3b8; font-size: 26rpx; }
-.cp-index { position: absolute; right: 12rpx; top: 220rpx; bottom: 32rpx; display: flex; flex-direction: column; justify-content: center; }
-.cp-idx-item { width: 52rpx; text-align: center; font-size: 22rpx; font-weight: 700; color: #94a3b8; padding: 6rpx 0; }
-.cp-idx-item.on { color: #fff; background: #2563eb; border-radius: 16rpx; }
+.cp-index { position: absolute; right: 8rpx; top: 220rpx; bottom: 24rpx; display: flex; flex-direction: column; justify-content: center; }
+.cp-idx-item { width: 44rpx; text-align: center; font-size: 19rpx; font-weight: 700; color: #2563eb; padding: 3rpx 0; }
+.cp-idx-item.muted { color: #cbd5e1; }
+.cp-idx-item.on { color: #fff; background: #2563eb; border-radius: 12rpx; }
 </style>

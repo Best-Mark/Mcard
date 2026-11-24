@@ -4,11 +4,14 @@
       <view class="slogan">按距离找到附近、业务对口的商务伙伴</view>
       <view class="locate">
         <text class="loco">⌖</text>
-        <view class="loc-text" @tap="openCityPicker">
-          <text class="b">{{ displayCity }}<text class="change-city">切换 ▾</text></text>
+        <view class="loc-text">
+          <text class="b">按距离发现附近伙伴</text>
           <text class="hint">{{ locateHint }}</text>
         </view>
-        <button class="btn tiny light" :disabled="locating" @tap="relocate">{{ locating ? '定位中' : '重新定位' }}</button>
+        <view class="loc-right">
+          <text class="cur-city">{{ displayCity }}</text>
+          <text class="switch-city" @tap="openCityPicker">切换城市</text>
+        </view>
       </view>
     </view>
 
@@ -108,6 +111,7 @@ const displayCity = computed(() => city.value || currentCity.value || '全国')
 
 function openCityPicker() {
   uni.$off('city-picked')
+  uni.$off('city-relocate')
   uni.$once('city-picked', c => {
     if (!c?.name) return
     city.value = c.name
@@ -115,6 +119,7 @@ function openCityPicker() {
     sort.value = 'distance'
     load()
   })
+  uni.$once('city-relocate', () => { relocate() })
   uni.navigateTo({ url: '/pages/city-picker/city-picker?current=' + encodeURIComponent(displayCity.value) })
 }
 function setSort(s) {
@@ -140,7 +145,7 @@ function openMapPicker() {
   uni.navigateTo({ url: '/pages/map-picker/map-picker?lat=' + (coords.value?.lat || '') + '&lng=' + (coords.value?.lng || '') })
 }
 
-const locateHint = computed(() => city.value ? `以 ${city.value} 为中心，按距离发现伙伴` : coords.value ? `按附近距离排序${sourceLabel.value ? ' · ' + sourceLabel.value : ''}` : '点城市切换或重新定位，按距离发现伙伴')
+const locateHint = computed(() => city.value ? `以 ${city.value} 为中心，按距离发现伙伴` : coords.value ? `按附近距离排序${sourceLabel.value ? ' · ' + sourceLabel.value : ''}` : '点「切换城市」选城市，按距离发现伙伴')
 
 function fmtDist(km) { return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km` }
 
@@ -174,9 +179,9 @@ async function relocate() {
     coords.value = pos
     sourceLabel.value = { wechat: '微信定位', gps: 'GPS 定位', ip: 'IP 定位', default: '城市兜底' }[pos.source] || ''
     if (pos.city && pos.source !== 'default') currentCity.value = pos.city
-    if (!city.value && pos.city) city.value = pos.city
+    if (pos.city) city.value = pos.city
     sort.value = 'distance'
-    toast(pos.source === 'default' ? '已用城市中心坐标，可再点重新定位' : '定位成功，按附近距离排序', pos.source === 'default' ? 'none' : 'success')
+    toast(pos.source === 'default' ? '已用城市中心坐标，可再点重新定位' : `已定位到 ${displayCity.value}，按附近距离排序`, pos.source === 'default' ? 'none' : 'success')
     load()
   } catch (e) { toast(e.message || '定位失败，请改用城市选择', 'error') }
   finally { locating.value = false }
@@ -206,9 +211,11 @@ onShareAppMessage(() => ({ title: '名片集市 · 发现附近业务对口伙�
 .locate { display: flex; align-items: center; gap: 16rpx; background: rgba(255,255,255,.15); border: 2rpx solid rgba(255,255,255,.28); border-radius: 20rpx; padding: 18rpx 20rpx; }
 .loco { font-size: 40rpx; }
 .loc-text { flex: 1; display: flex; flex-direction: column; gap: 4rpx; min-width: 0; }
-.loc-text .b { font-size: 30rpx; font-weight: 700; }
+.loc-text .b { font-size: 28rpx; font-weight: 700; }
 .loc-text .hint { font-size: 22rpx; opacity: .85; }
-.change-city { font-size: 20rpx; opacity: .9; border: 2rpx solid rgba(255,255,255,.5); border-radius: 999rpx; padding: 2rpx 14rpx; margin-left: 12rpx; vertical-align: middle; }
+.loc-right { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 8rpx; }
+.cur-city { font-size: 34rpx; font-weight: 800; }
+.switch-city { font-size: 22rpx; font-weight: 700; color: #2563eb; background: #fff; border-radius: 999rpx; padding: 6rpx 20rpx; }
 .btn.light { background: #fff; color: #2563eb; flex-shrink: 0; }
 .filters { background: #fff; padding: 22rpx 24rpx 18rpx; border-bottom: 2rpx solid #e8edf4; }
 .search-row { display: flex; gap: 12rpx; }
