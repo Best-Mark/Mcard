@@ -11,10 +11,10 @@
       <p class="mk-slogan">按距离找到附近、业务对口的商务伙伴</p>
       <div class="mk-locate">
         <span class="mk-locate-ico">⌖</span>
-        <div class="mk-locate-text">
-          <b>{{ locateLabel }} <span v-if="positionMeta.label" class="mk-quality" :class="positionMeta.level">{{ positionMeta.label }}</span></b>
+        <button class="mk-locate-text" @click="openCityPicker">
+          <b>{{ displayCity }} <span class="mk-change-city">切换 ▾</span><span v-if="positionMeta.label" class="mk-quality" :class="positionMeta.level">{{ positionMeta.label }}</span></b>
           <span class="small">{{ locateHint }}</span>
-        </div>
+        </button>
         <button class="btn btn-sm" :disabled="locating" @click="relocate">{{ locating ? '定位中…' : '重新定位' }}</button>
       </div>
     </div>
@@ -31,28 +31,8 @@
         </button>
       </ScrollChips>
       <div class="mk-city-head">
-        <span>选择城市：</span>
+        <span>范围原点：<b>{{ city || (coords ? '地图选点' : '全国') }}</b></span>
         <button class="mk-map-btn" :disabled="loading" @click="openMapPicker">⌖ 地图选点</button>
-      </div>
-      <ScrollChips class="mk-city-chips" :reset-key="cityChips.length">
-        <button v-for="c in cityChips" :key="c.name" class="city-chip" :class="{ on: isCityActive(c.name) }" @click="pickCity(c)">
-          <span v-if="c.isCurrent" class="current-dot"></span>{{ c.name }}
-        </button>
-        <button class="city-chip more" :class="{ on: !!province && !isCityActive(city) }" @click="showMoreCity = !showMoreCity">更多 ▾</button>
-      </ScrollChips>
-      <div v-if="showMoreCity" class="mk-city-more">
-        <select v-model="province" class="select" @change="onProvinceChange">
-          <option value="">全部省份</option>
-          <option v-for="p in provinceOptions" :key="p.code" :value="p.name">{{ p.name }}</option>
-        </select>
-        <select v-model="city" class="select" @change="onCityChange">
-          <option value="">全部城市</option>
-          <option v-for="c in cityOptions" :key="c.name" :value="c.name">{{ c.name }}</option>
-        </select>
-        <select v-if="districtOptions.length" v-model="district" class="select" @change="applyFilter">
-          <option value="">全部区县</option>
-          <option v-for="d in districtOptions" :key="d.name" :value="d.name">{{ d.name }}</option>
-        </select>
       </div>
       <div class="mk-sort-row">
         <span>排序：</span>
@@ -116,6 +96,7 @@
     </div>
 
     <MapPicker v-if="mapPickerOpen" @confirm="onMapPicked" @close="mapPickerOpen = false" />
+    <CityPicker v-model:show="cityPickerOpen" :current="city || currentCity" :cities="meta.cities" @select="onCitySelected" />
   </div>
 </template>
 
@@ -125,13 +106,14 @@ import { useRouter, useRoute } from 'vue-router'
 import api from '../api'
 import { showToast, toggleDrawer } from '../store'
 import { getCurrentPosition, getPositionQualityLabel, setManualPosition } from '../utils/geo'
-import { CITIES as FALLBACK_CITIES, HOT_CITIES as FALLBACK_HOT } from '../utils/city-data'
+import { CITIES as FALLBACK_CITIES } from '../utils/city-data'
 import MapPicker from '../components/MapPicker.vue'
 import ScrollChips from '../components/ScrollChips.vue'
+import CityPicker from '../components/CityPicker.vue'
 
 const router = useRouter()
 const route = useRoute()
-const meta = ref({ industries: [], cities: [], hotCities: [], regions: [] })
+const meta = ref({ industries: [], cities: [], hotCities: [] })
 const list = ref([])
 const total = ref(0)
 const matchedTokens = ref([])
@@ -140,27 +122,22 @@ const error = ref('')
 const keyword = ref('')
 const industry = ref('')
 const city = ref('')
-const province = ref('')
-const district = ref('')
 const coords = ref(null)
 const locating = ref(false)
 const positionMeta = ref({ label: '', level: '' })
-const currentCity = ref('')          // 定位到的当前城市（标签栏首位）
-const showMoreCity = ref(false)
+const currentCity = ref('')          // 定位到的当前城市（蓝卡显示）
+const cityPickerOpen = ref(false)
 const mapPickerOpen = ref(false)
 const sort = ref('distance')
 const radiusKm = ref(0)
 const distanceMode = computed(() => !!(coords.value || city.value))
 
-const locateLabel = computed(() => {
-  if (coords.value) return '已获取你的位置'
-  if (city.value) return `以 ${city.value} 为中心`
-  return '未定位 · 按热度推荐'
-})
+// 蓝卡始终显示一个城市：手动选择 > 定位城市 > 城市中心兜底
+const displayCity = computed(() => city.value || currentCity.value || '全国')
 const locateHint = computed(() => {
+  if (city.value) return `以 ${city.value} 为中心，按距离发现伙伴`
   if (coords.value) return '正在按到你的实际距离排序'
-  if (city.value) return '选择城市或重新定位可按距离排序'
-  return '点「重新定位」或选择城市以按距离发现伙伴'
+  return '点城市切换或「重新定位」，按距离发现伙伴'
 })
 
 function fmtDist(km) {
@@ -173,41 +150,19 @@ async function loadMeta() {
     const { data } = await api.get('/api/cards/public/market/meta')
     meta.value = data.data
   } catch { /* 元数据失败仅影响筛选项，列表仍可用 */ }
-  try {
-    const { data } = await api.get('/api/geo/regions')
-    meta.value.regions = data?.data?.regions || []
-  } catch { /* 区域数据失败不影响基础筛选 */ }
 }
 
-// 城市标签栏：当前定位城市排第一（带圆点），其后为热门城市，去重
-const cityChips = computed(() => {
-  const hot = (meta.value.hotCities?.length ? meta.value.hotCities : FALLBACK_HOT).slice()
-  const cur = currentCity.value
-  const list = []
-  if (cur) list.push({ name: cur, isCurrent: true })
-  for (const name of hot) {
-    if (list.some(x => x.name === name)) continue
-    list.push({ name, isCurrent: false })
-  }
-  return list
-})
 function cityOf(name) {
   const all = (meta.value.cities?.length ? meta.value.cities : FALLBACK_CITIES)
   return all.find(c => c.name === name) || all.find(c => c.name.includes(name) || name.includes(c.name)) || null
 }
-function isCityActive(name) {
-  if (coords.value && !city.value) return false // 地图选点模式不高亮城市标签
-  return city.value === name || (!!coords.value && currentCity.value === name && !city.value)
-}
-// 点城市标签：设为原点（城市中心坐标），立即按距离排序
-function pickCity(c) {
-  showMoreCity.value = false
+function openCityPicker() { cityPickerOpen.value = true }
+// 城市选择弹层选中：设为原点（城市中心坐标），立即按距离排序
+function onCitySelected(c) {
   city.value = c.name
-  province.value = ''
-  district.value = ''
-  const hit = cityOf(c.name)
-  coords.value = hit ? { lat: hit.lat, lng: hit.lng } : null
+  coords.value = { lat: c.lat, lng: c.lng }
   if (sort.value === 'views') sort.value = 'distance'
+  showToast(`已切换到 ${c.name}`, 'success')
   load()
 }
 function setSort(s) {
@@ -221,41 +176,18 @@ function onMapPicked(p) {
   if (!p || !Number.isFinite(p.lat) || !Number.isFinite(p.lng)) return
   coords.value = { lat: p.lat, lng: p.lng }
   city.value = ''  // 自定义原点不再按城市名过滤
-  province.value = ''
-  district.value = ''
   setManualPosition(p.lat, p.lng, '')
   sort.value = 'distance'
   showToast('已按地图选点位置排序', 'success')
   load()
 }
 
-// 省级选项（level=1）
-const provinceOptions = computed(() => (meta.value.regions || []).filter(r => r.level === 1))
-// 城市选项：选中省份后取子级，否则用内置热门城市
-const cityOptions = computed(() => {
-  if (province.value) {
-    const p = (meta.value.regions || []).find(r => r.level === 1 && r.name === province.value)
-    return p ? (meta.value.regions || []).filter(r => r.level === 2 && r.parent_code === p.code).map(r => ({ name: r.name })) : []
-  }
-  return meta.value.cities || []
-})
-// 区选项：选中城市后取子级
-const districtOptions = computed(() => {
-  if (!city.value) return []
-  const c = (meta.value.regions || []).find(r => r.level === 2 && r.name === city.value)
-  return c ? (meta.value.regions || []).filter(r => r.level === 3 && r.parent_code === c.code).map(r => ({ name: r.name })) : []
-})
-function onProvinceChange() { city.value = ''; district.value = ''; applyFilter() }
-function onCityChange() { district.value = ''; applyFilter() }
-
 async function load() {
   loading.value = true; error.value = ''
   try {
     const params = { limit: 40 }
     if (industry.value) params.industry = industry.value
-    if (province.value) params.province = province.value
     if (city.value) params.city = city.value
-    if (district.value) params.district = district.value
     if (keyword.value.trim()) params.q = keyword.value.trim()
     if (coords.value) { params.lat = coords.value.lat; params.lng = coords.value.lng }
     if (sort.value) params.sort = sort.value
@@ -337,10 +269,11 @@ onMounted(async () => {
 .mk-slogan { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
 .mk-locate { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.25); border-radius: 14px; padding: 10px 12px; }
 .mk-locate-ico { font-size: 22px; }
-.mk-locate-text { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.mk-locate-text b { font-size: 14px; }
-.mk-locate-text .small { opacity: .85; }
-.mk-locate .btn { background: #fff; color: #2563eb; border-color: #fff; }
+.mk-locate-text { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; border: 0; background: transparent; color: #fff; text-align: left; cursor: pointer; padding: 0; }
+.mk-locate-text b { font-size: 15px; }
+.mk-locate-text .small { opacity: .85; font-size: 11px; }
+.mk-change-city { font-size: 11px; opacity: .9; border: 1px solid rgba(255,255,255,.5); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; }
+.mk-locate .btn { background: #fff; color: #2563eb; border-color: #fff; flex-shrink: 0; }
 .mk-filters { background: var(--bg-card, #fff); padding: 14px 16px 12px; border-bottom: 1px solid var(--line, #e8edf4); }
 .mk-search { display: flex; gap: 8px; }
 .mk-search .input { flex: 1; min-width: 0; }
@@ -348,13 +281,8 @@ onMounted(async () => {
 .chip { flex-shrink: 0; font-size: 12px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line, #e8edf4); background: var(--bg-page, #f4f6fb); color: var(--muted, #6b7688); }
 .chip.on { background: var(--primary, #2563eb); border-color: var(--primary, #2563eb); color: #fff; font-weight: 700; }
 .mk-city-head { display: flex; align-items: center; justify-content: space-between; margin-top: 13px; font-size: 13px; font-weight: 600; }
+.mk-city-head b { color: var(--primary, #2563eb); }
 .mk-map-btn { font-size: 12px; font-weight: 600; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--primary, #2563eb); background: transparent; color: var(--primary, #2563eb); }
-.mk-city-chips { margin-top: 9px; }
-.city-chip { flex-shrink: 0; font-size: 13px; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line, #e8edf4); background: var(--bg-page, #f4f6fb); color: var(--muted, #6b7688); white-space: nowrap; }
-.city-chip.on { background: #16a34a; border-color: #16a34a; color: #fff; font-weight: 700; }
-.city-chip.more { border-style: dashed; }
-.current-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 5px; vertical-align: middle; }
-.mk-city-more { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 .mk-sort-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 12px; flex-wrap: wrap; }
 .sort-btn { font-size: 12px; padding: 5px 11px; border-radius: 8px; border: 1px solid var(--line, #e8edf4); background: var(--bg-page, #f4f6fb); color: var(--muted, #6b7688); }
 .sort-btn.on { border-color: var(--primary, #2563eb); color: var(--primary, #2563eb); background: color-mix(in srgb, var(--primary, #2563eb) 10%, transparent); font-weight: 700; }
