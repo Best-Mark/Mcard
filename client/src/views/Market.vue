@@ -28,7 +28,7 @@
         <button class="btn btn-primary btn-sm" :disabled="loading" @click="applyFilter">搜索</button>
       </div>
       <div v-if="meta.industries.length" class="mk-chips">
-        <ScrollChips :reset-key="meta.industries.length">
+        <ScrollChips>
           <button class="chip" :class="{ on: !industry }" @click="setIndustry('')">全部</button>
           <button v-for="ind in meta.industries" :key="ind.key" class="chip" :class="{ on: industry === ind.key }" @click="setIndustry(ind.key)">
             {{ ind.icon }} {{ ind.label }}
