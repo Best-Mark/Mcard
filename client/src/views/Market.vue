@@ -3,6 +3,7 @@
     <header class="topbar market-nav">
       <button class="nav-back" @click="router.back ? router.back() : router.push('/')" aria-label="返回">‹</button>
       <span class="nav-title">名片集市 · 发现对口伙伴</span>
+      <button class="nav-menu-btn" aria-label="打开菜单" @click="openDrawer">☰</button>
       <router-link to="/me" class="nav-me">我的</router-link>
     </header>
 
@@ -88,7 +89,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
-import { showToast } from '../store'
+import { showToast, openDrawer } from '../store'
 
 const router = useRouter()
 const meta = ref({ industries: [], cities: [] })

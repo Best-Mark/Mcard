@@ -12,6 +12,7 @@ const WechatCallback = () => import('../views/WechatCallback.vue')
 const WechatQrLogin = () => import('../views/WechatQrLogin.vue')
 const WechatQrResult = () => import('../views/WechatQrResult.vue')
 const Dashboard = () => import('../views/Dashboard.vue')
+const Profile = () => import('../views/Profile.vue')
 const CardEdit = () => import('../views/CardEdit.vue')
 const Plans = () => import('../views/Plans.vue')
 const PayResult = () => import('../views/PayResult.vue')
@@ -29,11 +30,14 @@ const routes = [
   { path: '/wechat/qr-login', name: 'wechat-qr-login', component: WechatQrLogin },
   { path: '/wechat/qr-result', name: 'wechat-qr-result', component: WechatQrResult },
   { path: '/me', name: 'dashboard', component: Dashboard, meta: { auth: true } },
+  { path: '/me/profile', name: 'profile', component: Profile, meta: { auth: true } },
   { path: '/me/card', name: 'card-edit', component: CardEdit, meta: { auth: true } },
   { path: '/me/plans', name: 'plans', component: Plans, meta: { auth: true } },
   { path: '/me/pay/:id', name: 'pay', component: PayResult, meta: { auth: true } },
   { path: '/me/print', name: 'print', component: PrintDesign, meta: { auth: true } },
   { path: '/me/contacts', name: 'contacts', component: Contacts, meta: { auth: true } },
+  // 收藏夹复用名片夹列表（同一真相源），仅默认筛选为「收藏」
+  { path: '/me/favorites', name: 'favorites', component: Contacts, meta: { auth: true } },
   { path: '/me/stats', name: 'stats', component: Stats, meta: { auth: true } },
   { path: '/admin/login', name: 'admin-login', component: Admin },
   { path: '/admin', name: 'admin', component: Admin, meta: { admin: true } },

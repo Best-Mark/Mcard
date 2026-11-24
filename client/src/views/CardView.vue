@@ -17,7 +17,7 @@
 
     <template v-else-if="card">
       <div class="container cv-main">
-        <div class="cv-profile card">
+        <div class="cv-profile card" :data-wm="template === 'navygold' ? (card.company || '').slice(0, 4) : ''">
           <div class="cv-avatar">
             <img v-if="card.avatar" :src="card.avatar" :alt="card.name" />
             <span v-else>{{ (card.name || '名').slice(0, 1) }}</span>
@@ -29,7 +29,8 @@
                 <span v-if="card.name_en" class="cv-en">{{ card.name_en }}</span>
               </div>
             </div>
-            <div class="cv-title">{{ [card.title, card.company, card.department].filter(Boolean).join(' · ') || '点击进入编辑，完善你的职业信息' }}</div>
+            <div class="cv-title">{{ displayTitle || '点击进入编辑，完善你的职业信息' }}</div>
+            <div v-if="template === 'navygold' && displayOrg" class="cv-org">{{ displayOrg }}</div>
             <div v-if="card.tags?.length" class="cv-tags"><span v-for="tag in card.tags" :key="tag">{{ tag }}</span></div>
           </div>
           <span v-if="!card.active" class="badge warn cv-status">未开通 / 已到期</span>
@@ -229,6 +230,13 @@ const favorite = ref(false); const favBusy = ref(false)
 const t = computed(() => themeOf({ theme: currentTheme.value, accent: card.value?.accent }))
 const vars = computed(() => themeVars(t.value))
 const maps = computed(() => mapLinks(card.value?.address || ''))
+// 深蓝鎏金模板把「公司」从职位行拆成独立署名行，其余模板保持原拼接口径
+const displayOrg = computed(() => (template.value === 'navygold' ? (card.value?.company || '') : ''))
+const displayTitle = computed(() => {
+  const c = card.value || {}
+  const parts = template.value === 'navygold' ? [c.title, c.department] : [c.title, c.company, c.department]
+  return parts.filter(Boolean).join(' · ')
+})
 const windowRef = window
 const isAlipay = () => /AlipayClient/i.test(navigator.userAgent || '')
 const fullUrl = u => (u ? new URL(u, windowRef.location.origin).href : '')
@@ -625,4 +633,66 @@ async function toggleFavorite() {
 .cv-page .cv-dock .btn { font-size: 13px; border-radius: 8px; }
 .cv-page .cv-dock .btn-ghost { background: #263550; color: #fff; border-color: transparent; }
 .cv-page .cv-share-fab { background: #2454e8; border-radius: 16px; width: 60px; height: 60px; }
+
+/* ============ 深蓝鎏金 navygold：参考名片配色与结构（放在最后覆盖通用商务风）============ */
+.cv-tpl-navygold { color: var(--ng-ink); background: var(--ng-page-bg); }
+.cv-tpl-navygold .cv-cover { border-radius: 0 0 22px 22px; background: linear-gradient(135deg, var(--ng-navy) 0%, var(--ng-deep) 100%); }
+.cv-tpl-navygold .cv-themes button { border-color: rgba(216,187,133,.6); }
+.cv-tpl-navygold .card { border-color: rgba(185,147,85,.28); border-radius: 16px; box-shadow: 0 10px 30px -18px rgba(0,0,0,.55); }
+.cv-tpl-navygold .cv-profile {
+  position: relative; overflow: hidden; border-radius: 22px; padding: 30px 24px 22px;
+  border: 1px solid rgba(185,147,85,.28); background: #fff;
+  box-shadow: 0 26px 60px -22px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.06);
+}
+.cv-tpl-navygold .cv-profile::before {
+  content: ''; position: absolute; inset: 0 0 auto 0; height: 6px;
+  background: linear-gradient(90deg, var(--ng-navy), var(--ng-navy-2) 40%, var(--ng-gold-2) 78%, var(--ng-gold));
+}
+.cv-tpl-navygold .cv-main { max-width: 430px; }
+.cv-tpl-navygold .cv-profile::after {
+  content: attr(data-wm); position: absolute; right: -26px; top: 54px;
+  font-size: 80px; font-weight: 900; color: var(--ng-ink); opacity: .04;
+  letter-spacing: -4px; line-height: 1; pointer-events: none;
+}
+.cv-tpl-navygold .cv-profile > * { position: relative; z-index: 2; }
+.cv-tpl-navygold .cv-avatar {
+  width: 64px; height: 64px; flex: 0 0 64px; border-radius: 14px; font-size: 26px; color: #fff;
+  background: linear-gradient(145deg, var(--ng-navy), #0e2233);
+  box-shadow: inset 0 0 0 2px rgba(216,187,133,.5), 0 8px 18px -8px rgba(18,32,46,.6);
+}
+.cv-tpl-navygold .cv-name { color: var(--ng-ink); font-size: 27px; font-weight: 900; letter-spacing: .04em; }
+.cv-tpl-navygold .cv-en { color: var(--ng-ink-2); }
+.cv-tpl-navygold .cv-title { color: var(--ng-ink-2); font-size: 12.5px; letter-spacing: .06em; font-weight: 400; }
+.cv-tpl-navygold .cv-org {
+  color: var(--ng-navy); border-top: 1px dashed var(--ng-line); padding-top: 12px; margin-top: 12px;
+  font-size: 13.5px; font-weight: 700; letter-spacing: .03em;
+}
+.cv-tpl-navygold .cv-tags span {
+  border-radius: 99px; background: var(--ng-paper); color: #6b5a3c;
+  box-shadow: inset 0 0 0 1px rgba(185,147,85,.28);
+}
+.cv-tpl-navygold .cv-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0; overflow: hidden; background: transparent; border: 0; box-shadow: none; }
+.cv-tpl-navygold .cv-actions button {
+  display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 8px;
+  height: 50px; border-radius: 13px; background: #f7f5f0; color: var(--ng-navy);
+  font-size: 14.5px; font-weight: 700; letter-spacing: .02em; box-shadow: inset 0 0 0 1px #e6e0d4;
+}
+.cv-tpl-navygold .cv-actions button:first-child {
+  background: linear-gradient(135deg, var(--ng-navy), #0f2739); color: #fff;
+  box-shadow: 0 10px 22px -12px rgba(18,32,46,.85);
+}
+.cv-tpl-navygold .cv-actions button:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.cv-tpl-navygold .cv-actions i { width: auto; height: auto; border-radius: 0; background: transparent; color: inherit; font-size: 17px; }
+.cv-tpl-navygold .cv-block h3, .cv-tpl-navygold .cv-sec-title { color: var(--ng-navy); border-left: 3px solid var(--ng-gold); padding-left: 9px; }
+.cv-tpl-navygold .cv-bio, .cv-tpl-navygold .small.muted, .cv-tpl-navygold .cv-qr-lead { color: var(--ng-ink-2); }
+.cv-tpl-navygold .cv-links a, .cv-tpl-navygold .qr-tile { border-color: var(--ng-line); background: #fff; }
+.cv-tpl-navygold .cv-links b, .cv-tpl-navygold .qr-tile b { color: var(--ng-navy); }
+.cv-tpl-navygold .cv-maps a { background: var(--ng-paper); color: var(--ng-navy); box-shadow: inset 0 0 0 1px rgba(185,147,85,.28); }
+.cv-tpl-navygold .cv-vcard-qr { border: 4px solid rgba(185,147,85,.45); }
+.cv-tpl-navygold .cv-footer { color: #a9b1ba; letter-spacing: .1em; }
+.cv-tpl-navygold .cv-footer b { color: var(--ng-gold); }
+.cv-tpl-navygold .cv-dock { background: rgba(18,32,46,.96); border-top: 2px solid var(--ng-gold); }
+.cv-tpl-navygold .cv-dock .btn-primary { background: linear-gradient(135deg, #c9a163, #a8834a); color: #fff; box-shadow: 0 12px 24px -14px rgba(169,131,74,.9); }
+.cv-tpl-navygold .cv-dock .btn-ghost { background: rgba(255,255,255,.12); color: #fff; border-color: rgba(216,187,133,.35); }
+.cv-tpl-navygold .cv-share-fab { background: linear-gradient(135deg, #c9a163, #a8834a); box-shadow: 0 8px 20px rgba(169,131,74,.4); border-radius: 18px; }
 </style>

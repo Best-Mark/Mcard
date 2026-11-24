@@ -25,7 +25,8 @@
               <image v-if="card.logo" class="logo" :src="card.logo" mode="aspectFit" />
               <view class="name">{{ card.name || card.name_en || '未填写姓名' }}</view>
             </view>
-            <view class="title">{{ [card.title, card.company, card.department].filter(Boolean).join(' · ') }}</view>
+            <view class="title">{{ titleText }}</view>
+            <view v-if="tpl === 'navygold' && card.company" class="ng-org">{{ card.company }}</view>
           </view>
           <view v-if="card.tags && card.tags.length" class="tags">
             <text v-for="tag in card.tags" :key="tag">{{ tag }}</text>
@@ -155,7 +156,14 @@ const coverBg = computed(() => {
   if (tpl.value === 'elite') return `linear-gradient(135deg, ${c}, #1c1917 70%)`
   if (tpl.value === 'vivid') return `linear-gradient(135deg, ${c}, #db2777 60%, #f59e0b)`
   if (tpl.value === 'seal') return '#12213c'
+  if (tpl.value === 'navygold') return 'linear-gradient(135deg,#1d3a55 0%,#2f5a7d 40%,#d8bb85 78%,#b99355 100%)'
   return `linear-gradient(135deg, ${c}, #0f172a)`
+})
+// 深蓝鎏金把公司从职位行拆成独立署名行，其余模板保持原拼接口径
+const titleText = computed(() => {
+  const c = card.value || {}
+  const parts = tpl.value === 'navygold' ? [c.title, c.department] : [c.title, c.company, c.department]
+  return parts.filter(Boolean).join(' · ')
 })
 const contactQrs = computed(() => {
   const c = card.value || {}
@@ -333,4 +341,31 @@ onShareAppMessage(() => ({
 .tpl-seal .qr, .tpl-seal .modal-qr { border-radius: 6rpx; border: 4rpx solid #1e3a8a; }
 .tpl-seal .btn.primary { background: #1e3a8a; }
 .tpl-seal .foot { color: #64748b; letter-spacing: 2rpx; }
+
+/* 深蓝鎏金 navygold：深蓝放射底 + 白卡金线 + 沙金标签 + 表格化署名（与 Web 端同口径） */
+.tpl-navygold { background: radial-gradient(1200rpx 500rpx at 50% -10%, #1d3a55 0%, #132a3d 45%, #0c1a26 100%); min-height: 100vh; }
+.tpl-navygold .cover { height: 220rpx; border-radius: 0 0 44rpx 44rpx; position: relative; }
+.tpl-navygold .cover::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 8rpx; background: linear-gradient(90deg, #1d3a55, #2f5a7d 40%, #d8bb85 78%, #b99355); }
+.tpl-navygold .brand { color: #d8bb85; }
+.tpl-navygold .body { margin-top: -48rpx; }
+.tpl-navygold .card { border-radius: 22rpx; border: 2rpx solid rgba(185,147,85,.28); box-shadow: 0 26rpx 60rpx -22rpx rgba(0,0,0,.65); }
+.tpl-navygold .profile { position: relative; overflow: hidden; padding: 36rpx 28rpx 24rpx; }
+.tpl-navygold .profile::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 12rpx; background: linear-gradient(90deg, #1d3a55, #2f5a7d 40%, #d8bb85 78%, #b99355); }
+.tpl-navygold .avatar { width: 110rpx; height: 110rpx; border-radius: 22rpx; background: linear-gradient(145deg, #1d3a55, #0e2233); box-shadow: inset 0 0 0 4rpx rgba(216,187,133,.5), 0 8rpx 18rpx -8rpx rgba(18,32,46,.6); }
+.tpl-navygold .name { color: #12202e; font-size: 50rpx; font-weight: 900; letter-spacing: 2rpx; }
+.tpl-navygold .title { color: #4a5b6e; font-size: 24rpx; letter-spacing: 1rpx; }
+.tpl-navygold .ng-org { color: #1d3a55; font-size: 26rpx; font-weight: 700; border-top: 2rpx dashed #e2ddd2; padding-top: 18rpx; margin-top: 18rpx; }
+.tpl-navygold .tags text { border-radius: 999rpx; background: #f4f1ea; color: #6b5a3c; box-shadow: inset 0 0 0 2rpx rgba(185,147,85,.28); }
+.tpl-navygold .actions { grid-template-columns: repeat(2, 1fr); gap: 16rpx; }
+.tpl-navygold .act { height: 88rpx; border-radius: 22rpx; background: #f7f5f0; color: #1d3a55; flex-direction: row; gap: 10rpx; font-size: 26rpx; font-weight: 700; box-shadow: inset 0 0 0 2rpx #e6e0d4; }
+.tpl-navygold .act:first-child { background: linear-gradient(135deg, #1d3a55, #0f2739); color: #fff; box-shadow: 0 10rpx 22rpx -12rpx rgba(18,32,46,.85); }
+.tpl-navygold .act:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.tpl-navygold .ico { width: auto; height: auto; border-radius: 0; background: transparent; color: inherit; font-size: 30rpx; }
+.tpl-navygold .section { color: #1d3a55; border-left: 6rpx solid #b99355; padding-left: 14rpx; }
+.tpl-navygold .content { color: #4a5b6e; }
+.tpl-navygold .link { border-bottom: 2rpx solid #efece5; }
+.tpl-navygold .link .b { color: #1d3a55; }
+.tpl-navygold .btn.primary { background: linear-gradient(135deg, #c9a163, #a8834a); }
+.tpl-navygold .qr, .tpl-navygold .modal-qr { border: 4rpx solid rgba(185,147,85,.45); }
+.tpl-navygold .foot { color: #a9b1ba; }
 </style>

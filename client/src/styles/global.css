@@ -10,6 +10,17 @@
   --ok: #059669;
   --radius: 16px;
   --shadow: 0 6px 24px rgba(15, 23, 42, .06);
+  /* 深蓝鎏金模板：从参考名片提取的配色，Web 端各页共用这一份（小程序在 card.vue 内同口径） */
+  --ng-ink: #12202e;
+  --ng-ink-2: #4a5b6e;
+  --ng-navy: #1d3a55;
+  --ng-navy-2: #2f5a7d;
+  --ng-deep: #0c1a26;
+  --ng-gold: #b99355;
+  --ng-gold-2: #d8bb85;
+  --ng-paper: #f4f1ea;
+  --ng-line: #e2ddd2;
+  --ng-page-bg: radial-gradient(1200px 500px at 50% -10%, #1d3a55 0%, #132a3d 45%, #0c1a26 100%);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { min-height: 100%; }
@@ -112,3 +123,8 @@ tr:last-child td { border-bottom: 0; }
 .modal { background: #fff; border-radius: 18px; width: min(100%, 440px); padding: 22px; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
 .modal h3 { font-size: 16px; margin-bottom: 10px; }
 .modal p { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
+
+/* 会员区底部三栏 + 右抽屉：页面底部留白由 body.member-shell 统一抬高，避免被导航遮住 */
+.member-shell .page, .member-shell .dash-page, .member-shell .market-page { padding-bottom: 140px; }
+.nav-menu-btn { width: 34px; height: 34px; border-radius: 10px; background: rgba(37,99,235,.1); color: var(--primary); font-size: 15px; display: grid; place-items: center; }
+.nav-menu-btn:active { background: rgba(37,99,235,.2); }

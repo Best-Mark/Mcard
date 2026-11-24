@@ -3,6 +3,7 @@
     <header class="topbar">
       <router-link to="/me" class="brand">M<em>Card</em></router-link>
       <div class="spacer"></div>
+      <button class="nav-menu-btn" aria-label="打开菜单" @click="openDrawer">☰</button>
     </header>
     <div class="container" style="margin-top:20px">
       <div class="hint" style="margin-bottom:16px">
@@ -35,7 +36,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
-import { showToast } from '../store'
+import { showToast, openDrawer } from '../store'
 
 const router = useRouter()
 const packages = ref([]); const busy = ref(0); const loadError = ref(''); const loading = ref(true)

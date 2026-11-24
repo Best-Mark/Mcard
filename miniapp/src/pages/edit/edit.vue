@@ -339,6 +339,7 @@ async function save() {
 .ava-elite { border-radius: 50%; left: 50%; transform: translateX(-50%); width: 50rpx; height: 50rpx; border: 3rpx solid #c9a227; }
 .ava-vivid { border-radius: 16rpx; width: 50rpx; height: 50rpx; }
 .ava-seal { border-radius: 6rpx; width: 50rpx; height: 50rpx; border: 4rpx solid #93c5fd; }
+.ava-navygold { border-radius: 12rpx; width: 50rpx; height: 50rpx; border: 4rpx solid #d8bb85; background: #f4f1ea; }
 .tpl-name { font-size: 28rpx; font-weight: 700; }
 .tpl-desc { font-size: 22rpx; color: #6b7688; }
 .tpl-check { font-size: 22rpx; color: #2563eb; font-weight: 700; }

@@ -3,6 +3,7 @@
     <header class="topbar">
       <router-link to="/me" class="brand">M<em>Card</em></router-link>
       <div class="spacer"></div>
+      <button class="nav-menu-btn" aria-label="打开菜单" @click="openDrawer">☰</button>
       <span class="small muted">实体名片版式</span>
     </header>
     <div class="container wide" style="margin-top:18px">
@@ -72,7 +73,7 @@
 <script setup>
 import { ref, watch, onMounted } from 'vue'
 import api from '../api'
-import { showToast, siteConfig } from '../store'
+import { showToast, siteConfig, openDrawer } from '../store'
 import { themeOf } from '../utils/themes'
 import { buildPrintSvg, svgToPngBlob } from '../utils/printCard'
 import { saveText, saveBlob } from '../utils/save-image'

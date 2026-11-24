@@ -38,6 +38,12 @@ const CARD_TEMPLATES = [
     label: '联络卡',
     desc: '简洁商务联络卡，身份+业务标签+拨号/复制/存档，扫码即联系',
     cover: 'linear-gradient(135deg,#0b1a3a 0%,#1e40af 55%,#3b82f6 100%)'
+  },
+  {
+    key: 'navygold',
+    label: '深蓝鎏金',
+    desc: '深蓝底 + 沙金描边参考名片，顶部金线、淡水印、业务标签与表格化联系方式',
+    cover: 'linear-gradient(135deg,#1d3a55 0%,#2f5a7d 40%,#d8bb85 78%,#b99355 100%)'
   }
 ]
 

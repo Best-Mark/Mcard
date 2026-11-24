@@ -6,7 +6,7 @@
       <div class="spacer"></div>
       <button class="dash-icon" aria-label="分享名片" @click="doShare">↗</button>
       <button class="dash-icon" aria-label="二维码" @click="qrModal = true">▦</button>
-      <button class="dash-menu-btn" aria-label="打开菜单" @click="menuOpen = true">☰ <span>菜单</span></button>
+      <button class="dash-menu-btn" aria-label="打开菜单" @click="openDrawer">☰ <span>菜单</span></button>
     </header>
 
     <!-- 加载 / 错误 / 未创建 -->
@@ -43,7 +43,7 @@
 
       <div class="container cv-main">
         <!-- 身份区：参考商务联络卡，姓名/公司/职位突出 -->
-        <div class="card cv-profile">
+        <div class="card cv-profile" :data-wm="card?.template === 'navygold' ? (card.company || '').slice(0, 4) : ''">
           <div class="cv-avatar">
             <img v-if="card.avatar" :src="card.avatar" :alt="card.name" />
             <span v-else>{{ (card.name || '名').slice(0, 1) }}</span>
@@ -117,46 +117,7 @@
         <p class="cv-footer">{{ card.company || card.name || siteConfig.site_name }} · 由 <b>{{ siteConfig.site_name }}</b> 提供技术支持</p>
       </div>
 
-      <!-- 底部常驻操作：拨号优先，分享放右下悬浮主按钮（拇指最顺手） -->
-      <div class="cv-dock">
-        <button v-if="card.mobile || card.phone" class="btn btn-primary" @click="tel(card.mobile || card.phone)">📞 打电话</button>
-        <button class="btn btn-ghost" @click="router.push(`/c/${card.slug}?save=1`)">存入通讯录</button>
-        <button class="btn btn-ghost" @click="router.push(`/c/${card.slug}`)">二维码</button>
-      </div>
-      <button class="share-fab" @click="doShare" aria-label="分享名片">↗<span>分享</span></button>
     </template>
-
-    <!-- 可收缩侧边菜单 -->
-    <div v-if="menuOpen" class="drawer-mask" @click.self="menuOpen = false">
-      <aside class="drawer">
-        <div class="drawer-head">
-          <div>
-            <b>{{ auth.user?.phone || '我的账户' }}</b>
-            <span class="small muted">我的名片工作台</span>
-          </div>
-          <button class="drawer-close" @click="menuOpen = false" aria-label="关闭">✕</button>
-        </div>
-        <nav class="drawer-nav">
-          <router-link to="/me" @click="menuOpen = false"><i>▤</i>我的名片</router-link>
-          <router-link to="/me/card" @click="menuOpen = false"><i>✎</i>编辑资料</router-link>
-          <button @click="improveOpen = !improveOpen"><i>📝</i>完善度 {{ completedCount }}/{{ checklist.length }} <span style="margin-left:auto">{{ improveOpen ? '▴' : '▾' }}</span></button>
-          <div v-if="improveOpen" class="drawer-improve">
-            <div class="progress-track"><i :style="{ width: progressPct + '%' }"></i></div>
-            <button v-for="item in checklist" :key="item.key" :class="{ done: item.done }" @click="goEdit(item.focus)">
-              <span>{{ item.done ? '✓' : '○' }}</span>{{ item.label }}
-            </button>
-          </div>
-          <router-link :to="`/c/${card?.slug || ''}`" @click="menuOpen = false"><i>↗</i>公开名片页</router-link>
-          <router-link to="/me/contacts" @click="menuOpen = false"><i>★</i>我的名片夹</router-link>
-          <div class="drawer-sep">数据与运营</div>
-          <router-link to="/me/stats" @click="menuOpen = false"><i>📊</i>浏览统计 / 订单</router-link>
-          <router-link to="/me/plans" @click="menuOpen = false"><i>💎</i>套餐 / 续期</router-link>
-          <router-link to="/me/print" @click="menuOpen = false"><i>🖨</i>实体名片版式</router-link>
-          <button @click="menuOpen = false; qrModal = true"><i>▦</i>我的二维码</button>
-        </nav>
-        <div class="drawer-foot"><button class="btn btn-ghost btn-block" @click="doLogout">退出登录</button></div>
-      </aside>
-    </div>
 
     <!-- 二维码大图 -->
     <div v-if="qrModal" class="modal-mask" @click.self="qrModal = false">
@@ -177,16 +138,16 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
-import { auth, logout, showToast, siteConfig } from '../store'
+import { showToast, siteConfig, openDrawer } from '../store'
 import { THEMES, themeOf, themeVars } from '../utils/themes'
-import { isWeChat, isIOS, saveImageUrl, prepareExternalOpen, openVcfInline } from '../utils/save-image'
+import { isWeChat, saveImageUrl } from '../utils/save-image'
 import { shareOrCopy, mapLinks } from '../utils/share'
 import { setupWechatShare, absoluteMediaUrl } from '../utils/wx-share'
 
 const router = useRouter()
 const card = ref(null)
 const loading = ref(true); const busy = ref(false); const newSlug = ref(''); const loadError = ref('')
-const menuOpen = ref(false); const qrModal = ref(false); const improveOpen = ref(false)
+const qrModal = ref(false)
 let loadStarted = false
 const qrApi = computed(() => `/api/cards/public/${card.value?.slug || ''}`)
 const t = computed(() => themeOf({ theme: THEMES[card.value?.theme] ? card.value.theme : 'ocean', accent: card.value?.accent }))
@@ -194,18 +155,6 @@ const cardVars = computed(() => card.value ? themeVars(t.value) : {})
 const maps = computed(() => mapLinks(card.value?.address || ''))
 
 const hasContact = computed(() => !!(card.value?.mobile || card.value?.phone || card.value?.email || card.value?.wechat || card.value?.alipay || card.value?.address))
-const checklist = computed(() => {
-  const c = card.value || {}
-  return [
-    { key: 'identity', label: '姓名 / 职位 / 公司', hint: '访客第一眼看到的身份', focus: 'identity', done: !!(c.name && (c.title || c.company)) },
-    { key: 'contact', label: '联系方式', hint: '电话 / 微信 / 邮箱，方便联系', focus: 'contact', done: hasContact.value },
-    { key: 'bio', label: '个人 / 公司简介', hint: '让对方快速了解你', focus: 'bio', done: !!(c.bio || c.company_intro) },
-    { key: 'qr', label: '加好友 / 收款码', hint: '可直接扫码添加或付款', focus: 'qr', done: !!(c.wechat_qr || c.alipay_qr || c.wechat_pay_qr || c.alipay_pay_qr) },
-    { key: 'links', label: '更多链接', hint: '主页 / 店铺 / 作品集', focus: 'links', done: !!c.links?.length }
-  ]
-})
-const completedCount = computed(() => checklist.value.filter(x => x.done).length)
-const progressPct = computed(() => Math.round(completedCount.value / checklist.value.length * 100))
 
 async function load() {
   if (loadStarted && loading.value) return
@@ -260,20 +209,6 @@ async function saveQr() {
   if (r.kind === 'longpress') return showToast('请长按二维码图片保存', 'error')
   showToast(r.kind === 'downloaded' ? '二维码已开始下载' : '已打开，请长按保存', 'success')
 }
-async function saveContact() {
-  if (!card.value) return
-  const vcfApi = `${qrApi.value}/card.vcf`
-  if (isIOS()) {
-    if (isWeChat()) {
-      await prepareExternalOpen(api)
-      return showToast('请点右上角「···」→ 在浏览器中打开，再点「存入通讯录」即可一键添加联系人（已带登录状态）', 'error')
-    }
-    openVcfInline(vcfApi)
-    return showToast('正在打开通讯录添加界面…', 'success')
-  }
-  const r = await saveImageUrl(vcfApi, `${card.value.name || card.value.slug}.vcf`)
-  showToast(r.kind === 'downloaded' ? '已下载，打开即可导入通讯录' : '已打开名片文件，请选择导入通讯录', 'success')
-}
 async function doShare() {
   // 分享前先抹掉地址栏里的 wx_ticket：这是登录凭证，绝不能随分享发出去
   const cur = new URL(window.location.href)
@@ -293,7 +228,6 @@ async function doShare() {
   if (r === 'copied') showToast('链接已复制，快分享给朋友', 'success')
   else if (r === 'failed') showToast('复制失败，请手动复制地址栏链接', 'error')
 }
-function doLogout() { logout(); router.push('/') }
 </script>
 
 <style scoped>
@@ -345,33 +279,6 @@ function doLogout() { logout(); router.push('/') }
 .cv-qr-text h3 { font-size: 14px; margin: 0 0 4px; font-weight: 600; }
 .cv-qr-text p { font-size: 12px; margin: 0; color: var(--muted); }
 .cv-footer { text-align: center; font-size: 11px; color: var(--muted); padding: 24px 0 8px; }
-.cv-dock { position: fixed; bottom: 0; left: 0; right: 0; z-index: 15; display: flex; gap: 8px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid #e2e8f0; }
-.cv-dock .btn { flex: 1; }
-.share-fab { position: fixed; right: 16px; bottom: calc(74px + env(safe-area-inset-bottom)); z-index: 18; width: 58px; height: 58px; border-radius: 50%; background: #2563eb; color: #fff; box-shadow: 0 8px 24px rgba(37,99,235,.42); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; font-size: 20px; }
-.share-fab span { font-size: 10px; }
-
-.progress-track { height: 6px; border-radius: 4px; background: var(--line); overflow: hidden; margin: 10px 0 12px; }
-.progress-track i { display: block; height: 100%; background: var(--primary); transition: width .3s; }
-
-.drawer-mask { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.55); }
-/* 右上角下拉：贴住触发按钮下方展开，避免整屏侧栏压住名片 */
-.drawer { position: absolute; right: 12px; left: auto; top: 56px; bottom: auto; width: min(86vw, 340px); max-width: 100%; max-height: calc(100vh - 72px); border-radius: 14px; overflow: hidden; background: #fff; color: #0f172a; display: flex; flex-direction: column; animation: dropIn .2s ease; box-shadow: 0 12px 40px rgba(0,0,0,.3); }
-@keyframes dropIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-.drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 16px; background: #2563eb; color: #fff; flex: 0 0 auto; }
-.drawer-head b { display: block; font-size: 14px; }
-.drawer-head span { color: rgba(255,255,255,.7); }
-.drawer-close { width: 30px; height: 30px; flex: 0 0 30px; border-radius: 50%; background: rgba(255,255,255,.16); color: #fff; font-size: 14px; }
-.drawer-nav { flex: 1; overflow-y: auto; padding: 8px 0; background: #fff; min-height: 0; }
-.drawer-nav a, .drawer-nav button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 18px; font-size: 14px; color: #0f172a; text-align: left; }
-.drawer-nav a:hover, .drawer-nav button:hover { background: #f1f5f9; }
-.drawer-nav i { width: 22px; text-align: center; font-style: normal; }
-.drawer-sep { padding: 14px 18px 6px; font-size: 11px; color: #64748b; }
-.drawer-improve { padding: 4px 18px 10px 34px; background: #f8fafc; }
-.drawer-improve .progress-track { margin: 4px 0 8px; }
-.drawer-improve button { padding: 7px 0 !important; font-size: 12px !important; color: #475569; }
-.drawer-improve button.done { color: #64748b; }
-.drawer-improve button span { width: 16px; display: inline-block; color: #2563eb; }
-.drawer-foot { padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid #e2e8f0; background: #fff; flex: 0 0 auto; }
 /* 工作台配色统一为参考商务名片（深蓝→亮蓝→青蓝），不随名片模板/主题改变 */
 .dash-tpl-contact .cv-cover, .dash-tpl-classic .cv-cover, .dash-tpl-minimal .cv-cover,
 .dash-tpl-elite .cv-cover, .dash-tpl-vivid .cv-cover, .dash-tpl-seal .cv-cover { background: var(--dash-cover); }
@@ -380,7 +287,66 @@ function doLogout() { logout(); router.push('/') }
 .dash-page .cv-org { color: #2f6feb; }
 .dash-page .cv-tags span { border-color: #c7d2fe; background: #eff6ff; color: #1d4ed8; border-radius: 8px; }
 .dash-page .card { border-radius: 20px; border-color: #e8eef8; box-shadow: 0 4px 16px rgba(15,23,42,.05); }
-.dash-page .cv-dock { background: #fff; border-top: 1px solid #e8eef8; }
-.share-fab { background: linear-gradient(135deg,#2f6feb,#06b6d4); box-shadow: 0 8px 20px rgba(47,111,235,.32); }
+
+/* 深蓝鎏金 navygold：深蓝放射底 + 白卡金线 + 淡水印 + 纸色业务标签 + 表格化联系方式 */
+.dash-tpl-navygold { color: var(--ng-ink); background: var(--ng-page-bg); --dash-cover: linear-gradient(135deg, var(--ng-navy) 0%, var(--ng-deep) 100%); }
+.dash-tpl-navygold .dash-top { background: linear-gradient(90deg, var(--ng-navy), var(--ng-deep)); border-bottom: 2px solid var(--ng-gold); }
+.dash-tpl-navygold .dash-icon { background: rgba(216,187,133,.18); }
+.dash-tpl-navygold .cv-cover { border-radius: 0 0 22px 22px; background: var(--dash-cover); }
+.dash-tpl-navygold .cv-cover::after { height: 4px; background: linear-gradient(90deg, var(--ng-navy-2), var(--ng-gold-2) 70%, var(--ng-gold)); }
+.dash-tpl-navygold .cv-edit-cover { color: var(--ng-gold-2); border-color: rgba(216,187,133,.5); }
+.dash-tpl-navygold .card { border-color: var(--ng-line); border-radius: 16px; box-shadow: 0 10px 30px -18px rgba(0,0,0,.55); }
+.dash-tpl-navygold .cv-profile {
+  position: relative; overflow: hidden; border-radius: 22px; padding: 30px 24px 22px;
+  border: 1px solid rgba(185,147,85,.28);
+  box-shadow: 0 26px 60px -22px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.06);
+}
+.dash-tpl-navygold .cv-profile::before {
+  content: ''; position: absolute; inset: 0 0 auto 0; height: 6px;
+  background: linear-gradient(90deg, var(--ng-navy), var(--ng-navy-2) 40%, var(--ng-gold-2) 78%, var(--ng-gold));
+}
+.dash-tpl-navygold .cv-main { max-width: 430px; }
+.dash-tpl-navygold .cv-profile::after {
+  content: attr(data-wm); position: absolute; right: -26px; top: 54px;
+  font-size: 80px; font-weight: 900; color: var(--ng-ink); opacity: .04;
+  letter-spacing: -4px; line-height: 1; pointer-events: none;
+}
+.dash-tpl-navygold .cv-profile > * { position: relative; z-index: 2; }
+.dash-tpl-navygold .cv-avatar {
+  width: 64px; height: 64px; flex-basis: 64px; border-radius: 14px; font-size: 26px;
+  background: linear-gradient(145deg, var(--ng-navy), #0e2233);
+  box-shadow: inset 0 0 0 2px rgba(216,187,133,.5), 0 8px 18px -8px rgba(18,32,46,.6);
+}
+.dash-tpl-navygold .cv-name { color: var(--ng-ink); font-size: 27px; font-weight: 900; letter-spacing: .04em; }
+.dash-tpl-navygold .cv-en { color: var(--ng-ink-2); }
+.dash-tpl-navygold .cv-title { color: var(--ng-ink-2); font-size: 12.5px; letter-spacing: .06em; }
+.dash-tpl-navygold .cv-org {
+  color: var(--ng-navy); border-top: 1px dashed var(--ng-line); padding-top: 12px; margin-top: 12px;
+  font-size: 13.5px; font-weight: 700; letter-spacing: .03em;
+}
+.dash-tpl-navygold .cv-tags span {
+  border-radius: 99px; background: var(--ng-paper); color: #6b5a3c;
+  border: 0; box-shadow: inset 0 0 0 1px rgba(185,147,85,.28);
+}
+.dash-tpl-navygold .cv-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0; overflow: hidden; background: transparent; border: 0; box-shadow: none; }
+.dash-tpl-navygold .cv-actions button {
+  display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 8px;
+  height: 50px; border-radius: 13px; background: #f7f5f0; color: var(--ng-navy);
+  font-size: 14.5px; font-weight: 700; letter-spacing: .02em; box-shadow: inset 0 0 0 1px #e6e0d4;
+}
+.dash-tpl-navygold .cv-actions button:first-child {
+  background: linear-gradient(135deg, var(--ng-navy), #0f2739); color: #fff;
+  box-shadow: 0 10px 22px -12px rgba(18,32,46,.85);
+}
+.dash-tpl-navygold .cv-actions button:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.dash-tpl-navygold .cv-actions i { width: auto; height: auto; border-radius: 0; background: transparent; color: inherit; font-size: 17px; }
+.dash-tpl-navygold .contact-row { border-top: 1px solid var(--ng-line); padding: 13px 0; }
+.dash-tpl-navygold .contact-row span { width: 46px; flex-basis: 46px; color: #9aa3ad; letter-spacing: .16em; }
+.dash-tpl-navygold .contact-row b { color: var(--ng-navy); }
+.dash-tpl-navygold .contact-row button { color: var(--ng-gold); }
+.dash-tpl-navygold .cv-block h3 { color: var(--ng-navy); border-left: 3px solid var(--ng-gold); padding-left: 9px; }
+.dash-tpl-navygold .cv-footer { color: #a9b1ba; letter-spacing: .1em; }
+.dash-tpl-navygold .cv-footer b { color: var(--ng-gold); }
+
 @media (min-width: 720px) { .cv-main { max-width: 640px; } }
 </style>

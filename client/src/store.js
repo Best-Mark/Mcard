@@ -13,6 +13,11 @@ export const adminAuth = reactive({
   user: read('mcard_admin_user')
 })
 
+// 会员区全局导航状态：右侧抽屉由各页顶部的 ☰ 打开，底部三栏常驻 /me 系列页面
+export const ui = reactive({ drawerOpen: false })
+export function openDrawer() { ui.drawerOpen = true }
+export function closeDrawer() { ui.drawerOpen = false }
+
 export function setAuth(token, user) {
   auth.token = token || ''
   auth.user = user || null

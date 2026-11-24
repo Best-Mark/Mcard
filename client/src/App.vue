@@ -2,12 +2,14 @@
   <router-view v-slot="{ Component }">
     <component :is="Component" />
   </router-view>
+  <MemberNav />
   <div v-if="toast.text" class="toast" :class="toast.type">{{ toast.text }}</div>
 </template>
 
 <script setup>
 import { reactive } from 'vue'
 import { toast } from './store'
+import MemberNav from './components/MemberNav.vue'
 </script>
 
 <style scoped>

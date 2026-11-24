@@ -107,6 +107,11 @@ function loadQrSession(sid) {
   if (!t || Date.now() - t > QR_SESSION_TTL) { db.prepare('DELETE FROM site_config WHERE key = ?').run(QR_SESSION_PREFIX + sid); return null }
   try { return JSON.parse(row.value) } catch { return null }
 }
+// 扫码登录失败回写：手机端取消/授权失败时让电脑端立刻拿到明确失败，而不是空等 5 分钟
+function failQrSession(sid, reason) {
+  const s = loadQrSession(sid)
+  if (s) saveQrSession(sid, { ...s, status: 'failed', reason: reason || 'cancelled' })
+}
 function cleanQrSessions() {
   try {
     const rows = db.prepare('SELECT key, updated_at FROM site_config WHERE key LIKE ?').all(QR_SESSION_PREFIX + '%')
@@ -144,7 +149,24 @@ router.post('/wechat/qr-scanned', wrap((req, res) => {
   ok(res, { ok: true })
 }))
 
-// 浏览器轮询：pending / scanned / done（done 时原子消费，凭证只能兑换一次）/ expired
+// 手机端点「确认登录」后才推进到 confirmed 并发起 OAuth；未确认的二维码不会自动登录
+router.post('/wechat/qr-confirm', wrap((req, res) => {
+  const sid = String(req.body?.sid || '')
+  const s = loadQrSession(sid)
+  // 允许 pending：手机扫码上报若延迟/失败，确认动作仍能把会话推进到 confirmed
+  if (!s || !['pending', 'scanned', 'confirmed'].includes(s.status)) return fail(res, 400, '二维码已过期，请在电脑端重新扫码')
+  saveQrSession(sid, { ...s, status: 'confirmed' }) // 重复点确认幂等，凭证仍是一次性的 OAuth state
+  ok(res, { ok: true })
+}))
+
+// 手机端点「取消」：显式回写失败，电脑端立即提示并允许刷新，不再空等到超时
+router.post('/wechat/qr-cancel', wrap((req, res) => {
+  const sid = String(req.body?.sid || '')
+  failQrSession(sid, 'cancelled')
+  ok(res, { ok: true })
+}))
+
+// 浏览器轮询：pending / scanned / confirmed / done（done 原子消费，凭证只能兑换一次）/ failed / expired
 router.get('/wechat/qr-status', wrap((req, res) => {
   const sid = String(req.query.sid || '')
   const s = loadQrSession(sid)
@@ -153,7 +175,9 @@ router.get('/wechat/qr-status', wrap((req, res) => {
     db.prepare('DELETE FROM site_config WHERE key = ?').run(QR_SESSION_PREFIX + sid) // 先删 = 原子消费
     return ok(res, { status: 'done', token: s.token, user: s.user })
   }
-  ok(res, { status: s.status === 'scanned' ? 'scanned' : 'pending' })
+  if (s.status === 'failed' || s.status === 'cancelled') return ok(res, { status: 'failed', reason: s.reason || 'cancelled' })
+  // scanned 与 confirmed 都属于「已扫待授权」，电脑端必须继续轮询，直到 done / failed / expired
+  ok(res, { status: ['scanned', 'confirmed'].includes(s.status) ? 'scanned' : 'pending' })
 }))
 
 // 前端点「微信快捷登录」：拿到授权跳转地址（AppSecret 全程留在服务端）
@@ -182,10 +206,15 @@ router.get('/wechat/callback', wrap(async (req, res) => {
   // 原子消费 DB 中的 state（一次性防重放）。state 随机且 DB 命中即证明本服务发起，
   // 不依赖 cookie —— 手机微信回调不保证带回 cookie，也不该被并发登录覆盖的 cookie 误伤。
   const valid = consumeState(state)
-  const qrFail = msg => res.redirect(`${requestUrl(req, '/wechat/qr-result')}?err=${encodeURIComponent(msg)}`)
+  const qrFail = msg => {
+    if (qrSid) failQrSession(qrSid, msg) // 授权失败也要让电脑端停止等待
+    return res.redirect(`${requestUrl(req, '/wechat/qr-result')}?err=${encodeURIComponent(msg)}`)
+  }
   if (!valid) return qrSid ? qrFail('state') : res.redirect(`${requestUrl(req, '/login')}?err=state`)
   const code = String(req.query.code || '')
   if (!code) return qrSid ? qrFail('denied') : res.redirect(`${requestUrl(req, '/login')}?err=denied`)
+  // 会话在授权途中过期：不能再跳「扫码成功」骗手机端，电脑端也会读到 expired
+  if (qrSid && !loadQrSession(qrSid)) return qrFail('expired')
 
   const c = wxa()
   try {
@@ -207,7 +236,8 @@ router.get('/wechat/callback', wrap(async (req, res) => {
       const jwt = sign(user)
       const pub = publicUser(user)
       if (qrSid) {
-        if (loadQrSession(qrSid)) saveQrSession(qrSid, { status: 'done', token: jwt, user: pub })
+        if (!loadQrSession(qrSid)) return qrFail('expired')
+        saveQrSession(qrSid, { status: 'done', token: jwt, user: pub })
         return res.redirect(`${requestUrl(req, '/wechat/qr-result')}?ok=1`)
       }
       return res.redirect(`${requestUrl(req, '/wechat/callback')}#token=${encodeURIComponent(jwt)}&user=${encodeURIComponent(JSON.stringify(pub))}`)
@@ -226,7 +256,8 @@ router.get('/wechat/callback', wrap(async (req, res) => {
     const jwt = sign(user)
     const pub = publicUser(user)
     if (qrSid) {
-      if (loadQrSession(qrSid)) saveQrSession(qrSid, { status: 'done', token: jwt, user: pub })
+      if (!loadQrSession(qrSid)) return qrFail('expired')
+      saveQrSession(qrSid, { status: 'done', token: jwt, user: pub })
       return res.redirect(`${requestUrl(req, '/wechat/qr-result')}?ok=1`)
     }
     return res.redirect(`${requestUrl(req, '/wechat/callback')}#token=${encodeURIComponent(jwt)}&user=${encodeURIComponent(JSON.stringify(pub))}`)
@@ -263,9 +294,11 @@ router.post('/wechat/bind', wrap((req, res) => {
   }
   const jwt = sign(user)
   const pub = publicUser(user)
-  // 扫码登录的新用户绑定成功后：写回会话，电脑端轮询即可登录；不再把凭证塞进手机 URL
-  if (payload.qrSid && /^[a-f0-9]{32}$/.test(payload.qrSid) && loadQrSession(payload.qrSid)) {
-    saveQrSession(payload.qrSid, { status: 'done', token: jwt, user: pub })
+  // 扫码登录的新用户绑定成功后：会话必须仍在，才写回凭证让电脑端登录
+  const qrSid = /^[a-f0-9]{32}$/.test(String(payload.qrSid || '')) ? payload.qrSid : ''
+  if (qrSid) {
+    if (!loadQrSession(qrSid)) return fail(res, 400, '登录会话已过期，请在电脑端重新扫码')
+    saveQrSession(qrSid, { status: 'done', token: jwt, user: pub })
   }
   ok(res, { token: jwt, user: pub })
 }))

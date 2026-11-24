@@ -3,6 +3,7 @@
     <header class="topbar">
       <button class="back-btn" @click="finish">‹ 返回</button>
       <div class="spacer"></div>
+      <button class="nav-menu-btn" aria-label="打开菜单" @click="openDrawer">☰</button>
       <span class="small muted">编辑资料 · 可随时离开，下次继续</span>
     </header>
 
@@ -252,7 +253,7 @@
 import { ref, computed, onMounted, watch, defineAsyncComponent } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '../api'
-import { showToast } from '../store'
+import { showToast, openDrawer } from '../store'
 import { THEMES } from '../utils/themes'
 import LogoUploader from '../components/LogoUploader.vue'
 
@@ -494,6 +495,7 @@ async function finish() {
 .ava-vivid { border-radius: 12px; width: 34px; height: 34px; background: #fff; }
 .ava-seal { border-radius: 3px; width: 34px; height: 34px; border: 3px solid #93c5fd; }
 .ava-contact { border-radius: 3px; width: 34px; height: 34px; border: 2px solid #1e40af; background: #eff4ff; }
+.ava-navygold { border-radius: 8px; width: 34px; height: 34px; border: 2px solid var(--ng-gold); background: var(--ng-paper); }
 .tpl-item b { font-size: 13px; }
 .tpl-desc { font-size: 11px; color: var(--muted); line-height: 1.45; min-height: 30px; }
 .tpl-check { font-size: 11px; color: var(--primary); font-weight: 700; }
@@ -514,5 +516,11 @@ async function finish() {
 .pv-contact .preview-avatar { border-radius: 6px; border: 2px solid #fff; background: #eff4ff; color: #1e40af; }
 .pv-contact .preview-body { color: #0f2147; }
 .pv-contact .preview-tags i { border-radius: 3px; border: 1px solid #1e40af; background: #eff4ff; }
+/* 深蓝鎏金 navygold：金线封顶 + 深蓝封面 + 纸色标签 */
+.preview-card.pv-navygold { border-radius: 22px; border: 2px solid var(--ng-gold); overflow: hidden; }
+.pv-navygold .preview-head { background: linear-gradient(135deg, var(--ng-navy) 0%, var(--ng-navy-2) 40%, var(--ng-gold-2) 78%, var(--ng-gold) 100%) !important; }
+.pv-navygold .preview-avatar { border-radius: 8px; background: var(--ng-paper); color: var(--ng-navy); box-shadow: inset 0 0 0 2px var(--ng-gold); }
+.pv-navygold .preview-body { color: var(--ng-ink); }
+.pv-navygold .preview-tags i { border-radius: 99px; background: var(--ng-paper); color: #6b5a3c; box-shadow: inset 0 0 0 1px rgba(185,147,85,.35); }
 @media (max-width: 520px) { .tpl-list { grid-template-columns: 1fr; } }
 </style>

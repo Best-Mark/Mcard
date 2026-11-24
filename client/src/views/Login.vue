@@ -69,21 +69,24 @@
         <h3>微信扫码登录</h3>
         <p class="qr-sub">{{ qrTip }}</p>
 
-        <div class="qr-frame" :class="{ scanning: qrStatus === 'scanned', done: qrStatus === 'done', expired: qrStatus === 'expired' }">
+        <div class="qr-frame" :class="{ scanning: qrStatus === 'scanned', done: qrStatus === 'done', expired: qrStatus === 'expired', failed: qrStatus === 'failed' }">
           <img v-if="qrImage" :src="qrImage" alt="微信登录二维码" />
           <div v-else class="qr-loading">二维码生成中…</div>
           <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
           <div v-if="qrStatus === 'expired'" class="qr-overlay" @click="refreshQr">
             <b>二维码已过期</b><span>点击刷新</span>
           </div>
+          <div v-if="qrStatus === 'failed'" class="qr-overlay" @click="refreshQr">
+            <b>登录未完成</b><span>点击重新扫码</span>
+          </div>
           <div v-if="qrStatus === 'done'" class="qr-overlay ok"><b>✓</b><span>登录成功</span></div>
         </div>
 
         <p class="qr-foot">
           <span v-if="qrStatus === 'pending'" class="pulse-dot"></span>
-          {{ qrStatus === 'pending' ? '等待扫码 · 剩余 ' + qrCountdown + 's' : qrStatus === 'scanned' ? '已扫描，请在手机上确认' : qrStatus === 'done' ? '正在进入…' : '请重新打开扫码登录' }}
+          {{ qrStatus === 'pending' ? '等待扫码 · 剩余 ' + qrCountdown + 's' : qrStatus === 'scanned' ? '已扫描，请在手机上确认' : qrStatus === 'done' ? '正在进入…' : qrStatus === 'failed' ? qrTip : '请重新打开扫码登录' }}
         </p>
-        <button v-if="qrStatus === 'expired'" class="btn btn-primary btn-block" @click="refreshQr">刷新二维码</button>
+        <button v-if="qrStatus === 'expired' || qrStatus === 'failed'" class="btn btn-primary btn-block" @click="refreshQr">刷新二维码</button>
       </div>
     </div>
   </div>
@@ -112,6 +115,14 @@ const ERR_TEXT = {
   disabled: '账号已被停用，请联系管理员',
   oauth: '微信授权失败，请稍后重试或改用手机号登录',
   expired: '微信授权已过期，请重新发起登录'
+}
+const QR_FAIL_TEXT = {
+  cancelled: '你已取消本次扫码登录，请重新扫码',
+  state: '授权状态校验失败，请重新扫码',
+  denied: '你取消了微信授权，请重新扫码',
+  disabled: '账号已被停用，请联系管理员',
+  oauth: '微信授权失败，请重新扫码',
+  expired: '登录会话已过期，请重新扫码'
 }
 
 onMounted(() => {
@@ -182,7 +193,8 @@ async function startQrLogin() {
     qrTickTimer = setInterval(() => {
       const left = Math.max(0, Math.ceil((qrExpiresAt - Date.now()) / 1000))
       qrCountdown.value = left
-      if (left <= 0 && qrStatus.value === 'pending') { qrStatus.value = 'expired'; qrTip.value = '二维码已过期'; stopQrPoll() }
+      // 手机已扫但迟迟未确认也要能超时，不能永远停在「请在手机上确认」
+      if (left <= 0 && (qrStatus.value === 'pending' || qrStatus.value === 'scanned')) { qrStatus.value = 'expired'; qrTip.value = '二维码已过期'; stopQrPoll() }
     }, 1000)
   } catch (e) {
     qrModal.value = false
@@ -191,7 +203,9 @@ async function startQrLogin() {
 }
 function refreshQr() { startQrLogin() }
 async function pollQrStatus(sid) {
-  if (qrBusy.value || !qrModal.value || qrStatus.value !== 'pending') return
+  // 关键：scanned 不是终态，必须继续轮询，否则拿不到手机确认后的 done
+  if (qrBusy.value || !qrModal.value || !['pending', 'scanned'].includes(qrStatus.value)) return
+  let pollFailed = false
   try {
     const { data } = await api.get('/api/auth/wechat/qr-status', { params: { sid } })
     const s = data?.data || {}
@@ -203,13 +217,21 @@ async function pollQrStatus(sid) {
       setAuth(s.token, s.user)
       await router.replace(route.query.redirect || '/me')
       showToast('微信扫码登录成功', 'success')
+    } else if (s.status === 'failed') {
+      stopQrPoll(); qrStatus.value = 'failed'
+      qrTip.value = QR_FAIL_TEXT[s.reason] || '登录已取消或失败，请重新扫码'
     } else if (s.status === 'expired') {
       stopQrPoll(); qrStatus.value = 'expired'; qrTip.value = '二维码已过期'
-    } else if (s.status === 'scanned' && qrStatus.value === 'pending') {
+    } else if (s.status === 'scanned') {
       qrStatus.value = 'scanned'
       qrTip.value = '已扫描，请在手机上确认'
     }
-  } catch { /* 轮询网络抖动不打断，下轮继续 */ }
+  } catch (e) {
+    // 网络抖动不打断轮询；连续失败则给出可操作提示，避免静默卡住
+    pollFailed = true
+    qrTip.value = '网络异常，正在重试…'
+  }
+  if (!pollFailed && qrStatus.value === 'scanned') qrTip.value = '已扫描，请在手机上确认'
 }
 
 async function submit() {
@@ -294,7 +316,7 @@ function cancelBind() { bindTicket.value = ''; wxNickname.value = ''; wxAvatar.v
 .qr-sub { font-size: 12px; color: var(--muted); margin: 6px 0 18px; }
 .qr-frame { position: relative; width: 216px; height: 216px; margin: 0 auto; padding: 12px; }
 .qr-frame img { width: 100%; height: 100%; }
-.qr-frame.scanning img, .qr-frame.done img { filter: blur(3px) grayscale(.6); opacity: .6; }
+.qr-frame.scanning img, .qr-frame.done img, .qr-frame.failed img { filter: blur(3px) grayscale(.6); opacity: .6; }
 .qr-loading { width: 100%; height: 100%; display: grid; place-items: center; color: var(--muted); font-size: 12px; background: #f8fafc; }
 .corner { position: absolute; width: 22px; height: 22px; border-color: #07c160; border-style: solid; border-width: 0; }
 .corner.tl { top: 0; left: 0; border-top-width: 3px; border-left-width: 3px; border-top-left-radius: 10px; }
@@ -305,6 +327,7 @@ function cancelBind() { bindTicket.value = ''; wxNickname.value = ''; wxAvatar.v
 .qr-overlay b { font-size: 15px; }
 .qr-overlay span { font-size: 12px; color: var(--primary); }
 .qr-overlay.ok b { font-size: 40px; color: #07c160; }
+.qr-overlay.failed b { color: var(--danger); }
 .qr-foot { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; color: var(--muted); margin: 16px 0 0; }
 .pulse-dot { width: 7px; height: 7px; border-radius: 50%; background: #07c160; animation: pulse 1.4s infinite; }
 @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .3 } }
