@@ -112,7 +112,8 @@
           <h3 class="cv-sec-title">存入通讯录</h3>
           <p class="small muted cv-qr-lead">用手机相机扫一扫下方二维码，即可把名片直接存入通讯录（iPhone / 安卓 / 鸿蒙通用）</p>
           <button class="cv-vcard-qr" @click="vcardQrModal = true" title="点击放大">
-            <img :src="vcardQrApi" alt="存入通讯录二维码" />
+            <img v-if="vcardQrDataUrl" :src="vcardQrDataUrl" alt="存入通讯录二维码" />
+            <img v-else :src="vcardQrApi" alt="存入通讯录二维码" />
           </button>
           <div class="cv-qr-actions">
             <button class="btn btn-primary" @click="vcardQrModal = true">放大二维码</button>
@@ -151,10 +152,10 @@
       <div class="modal center">
         <h3>存入通讯录</h3>
         <p class="small muted" style="margin:6px 0 12px">用<i style="font-style:normal;color:#07c160;font-weight:700">手机相机</i>扫一扫（不是微信扫一扫），直接弹出联系人卡片，点「添加到通讯录」即可</p>
-        <img :src="vcardQrApi + '&size=720'" style="width:260px;height:260px;margin:4px auto;display:block" alt="通讯录二维码" />
+        <img :src="vcardQrDataUrl || (vcardQrApi + '&size=720')" style="width:260px;height:260px;margin:4px auto;display:block" alt="通讯录二维码" />
         <p class="small muted">iPhone 相机 / 安卓相机 / 鸿蒙相机 / 系统扫一扫均可识别</p>
         <div class="btn-row" style="justify-content:center;margin-top:12px">
-          <button class="btn btn-primary" @click="saveQrFile({ url: vcardQrApi + '&size=900', label: '通讯录二维码' })">保存二维码图片</button>
+          <button class="btn btn-primary" @click="saveQrFile({ url: vcardQrDataUrl || vcardQrApi, label: '通讯录二维码' })">保存二维码图片</button>
           <button class="btn btn-ghost" @click="vcardQrModal = false">关闭</button>
         </div>
       </div>
@@ -210,12 +211,14 @@ import { THEMES, themeOf, themeVars } from '../utils/themes'
 import { isWeChat, isIOS, saveImageUrl, prepareExternalOpen, openVcfInline } from '../utils/save-image'
 import { shareOrCopy, mapLinks } from '../utils/share'
 import { setupWechatShare, absoluteMediaUrl } from '../utils/wx-share'
+import QRCode from 'qrcode'
 
 const route = useRoute(); const router = useRouter()
 const slug = route.params.slug
 const qrApi = `/api/cards/public/${slug}`
 const vcfApi = `${qrApi}/card.vcf`
 const vcardQrApi = `${qrApi}/vcard.svg?size=520`
+const vcardQrDataUrl = ref('') // 前端本地生成的 vCard 二维码，不依赖服务端图片接口
 const card = ref(null); const loading = ref(true); const error = ref('')
 const currentTheme = ref('ocean'); const isOwner = ref(false)
 const template = ref('classic')
@@ -269,11 +272,69 @@ async function saveQrFile(q) {
   showToast(r.kind === 'downloaded' ? '二维码已开始下载' : '已打开二维码，请长按保存', 'success')
 }
 
+// 与 server/src/services/vcard.js 同口径的本地构造：优先用服务端 vcard.txt（唯一真相源），
+// 失败（如服务端未重启）时用本函数兜底，保证二维码永远能显示、相机扫一扫能加联系人。
+function localVcard(c) {
+  if (!c) return ''
+  const esc = s => String(s || '').replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;')
+  const name = String(c.name || c.name_en || '').trim()
+  const western = /^[\x00-\x7F]+$/.test(name) && name.includes(' ')
+  const i = western ? name.lastIndexOf(' ') : -1
+  const family = i >= 0 ? name.slice(0, i) : ''
+  const given = i >= 0 ? name.slice(i + 1) : name
+  const origin = windowRef.location.origin
+  const url = `${origin}/c/${c.slug}`
+  const notes = []
+  if (c.bio) notes.push(c.bio)
+  if (c.company_intro) notes.push(`公司简介：${c.company_intro}`)
+  const extra = []
+  if (c.wechat) extra.push(`微信：${c.wechat}`)
+  if (c.alipay) extra.push(`支付宝：${c.alipay}`)
+  if (c.whatsapp) extra.push(`WhatsApp：${c.whatsapp}`)
+  if (c.shop_url) extra.push(`店铺：${c.shop_url}`)
+  if (extra.length) notes.push(extra.join('\n'))
+  notes.push(`电子名片：${url}`)
+  const lines = [
+    'BEGIN:VCARD', 'VERSION:3.0',
+    `N:${esc(family)};${esc(given)};;;`,
+    `FN:${esc(name || '名片')}`,
+    c.company || c.department ? `ORG:${esc(c.company)};${esc(c.department)}` : '',
+    c.title ? `TITLE:${esc(c.title)}` : '',
+    c.mobile ? `TEL;TYPE=CELL,VOICE:${esc(c.mobile)}` : '',
+    c.phone ? `TEL;TYPE=WORK,VOICE:${esc(c.phone)}` : '',
+    c.email ? `EMAIL;TYPE=INTERNET,WORK:${esc(c.email)}` : '',
+    c.address || c.address_detail ? `ADR;TYPE=WORK:;;${esc(c.address_detail)};${esc(c.address)};;;` : '',
+    c.website ? `URL;TYPE=WORK:${esc(c.website)}` : '',
+    `URL:${esc(url)}`,
+    `NOTE:${esc(notes.filter(Boolean).join('\n'))}`,
+    'END:VCARD'
+  ].filter(Boolean)
+  return lines.join('\r\n') + '\r\n'
+}
+
+async function buildVcardQr(c) {
+  if (!c) return
+  let text = ''
+  try {
+    // 权威源：服务端 vcard.txt；axios 会按 text 返回字符串
+    const r = await api.get(`${qrApi}/vcard.txt`, { responseType: 'text' })
+    text = typeof r.data === 'string' ? r.data : ''
+  } catch { /* 服务端未部署新接口时用本地兜底 */ }
+  if (!text || !text.includes('BEGIN:VCARD')) text = localVcard(c)
+  try {
+    vcardQrDataUrl.value = await QRCode.toDataURL(text, {
+      width: 720, margin: 2, errorCorrectionLevel: 'M',
+      color: { dark: '#0f172aff', light: '#ffffffff' }
+    })
+  } catch (e) { console.error('[vcard qr]', e) }
+}
+
 async function load() {
   loading.value = true; error.value = ''
   try {
     const { data } = await api.get(qrApi)
     card.value = data.data
+    buildVcardQr(data.data)
     currentTheme.value = THEMES[data.data.theme] ? data.data.theme : 'ocean'
     template.value = data.data.template || 'classic'
     setupWechatShare(api, {

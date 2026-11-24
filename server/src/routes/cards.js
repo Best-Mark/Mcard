@@ -176,6 +176,14 @@ router.get('/public/:slug/qr.png', wrap(async (req, res) => {
   res.type('png').set('Cache-Control', 'public, max-age=3600').send(buf)
 }))
 
+// vCard 文本（唯一真相源仍是 services/vcard.build，前端拿它本地生成二维码，避免依赖图片接口）
+router.get('/public/:slug/vcard.txt', wrap((req, res) => {
+  const row = db.prepare('SELECT * FROM cards WHERE slug = ?').get(req.params.slug)
+  if (!row) return fail(res, 404, '名片不存在')
+  const origin = originOf(req)
+  res.type('text/plain; charset=utf-8').send(vcard.build(publicView(row, origin), origin))
+}))
+
 // vCard 内容二维码：扫码得到的是完整联系人数据（BEGIN:VCARD...），
 // iOS/Android 相机扫一扫会直接弹出「添加到通讯录」——这才是「扫一扫存入通讯录」的正确实现。
 // 不加 logo（H 纠错留足识别余量），内容较长时自动选合适版本。
