@@ -13,6 +13,9 @@
     </div>
     <div class="cp-stage">
       <div class="cp-body" ref="body" @scroll="onScroll">
+        <div v-if="!keyword && locatedCity" class="cp-located-wrap">
+          <button class="cp-located" @click="chooseByName(locatedCity)">⌖ 当前定位城市 <b>{{ locatedCity }}</b></button>
+        </div>
         <template v-if="filteredGroups.length">
           <div v-for="g in filteredGroups" :key="g.letter" class="cp-group" :data-letter="g.letter">
             <div class="cp-letter">{{ g.letter }}</div>
@@ -40,6 +43,7 @@ const ALL_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
 const props = defineProps({
   show: { type: Boolean, default: false },
   current: { type: String, default: '' },
+  locatedCity: { type: String, default: '' },
   cities: { type: Array, default: () => [] },
   relocating: { type: Boolean, default: false }
 })
@@ -71,6 +75,10 @@ const filteredGroups = computed(() => {
 function choose(c) {
   emit('select', c)
   emit('update:show', false)
+}
+function chooseByName(name) {
+  const hit = source.value.find(c => c.name === name) || { name }
+  choose(hit)
 }
 function jumpTo(letter) {
   if (!letters.value.includes(letter)) return
@@ -104,6 +112,9 @@ watch(() => props.show, v => { if (v) { keyword.value = ''; nextTick(() => { act
 .cp-relocate:disabled { opacity: .5; cursor: wait; }
 .cp-stage { position: relative; flex: 1; min-height: 0; }
 .cp-body { height: 100%; box-sizing: border-box; overflow-y: auto; padding: 0 64px 20px 20px; -webkit-overflow-scrolling: touch; }
+.cp-located-wrap { margin: 10px 0 14px; }
+.cp-located { width: 100%; text-align: left; padding: 12px 14px; border: 1px solid #bfdbfe; border-radius: 12px; background: #eff6ff; color: #2563eb; font-size: 13px; cursor: pointer; }
+.cp-located b { font-size: 15px; margin-left: 6px; }
 .cp-group { margin-bottom: 8px; }
 .cp-letter { position: sticky; top: 0; z-index: 1; padding: 6px 0; font-size: 12px; font-weight: 800; color: #2563eb; background: #fff; }
 .cp-city { display: block; width: 100%; text-align: left; padding: 11px 4px; border: 0; border-bottom: 1px solid #f3f5f9; background: transparent; font-size: 14px; color: #334155; cursor: pointer; }

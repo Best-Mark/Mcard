@@ -116,11 +116,11 @@ function openCityPicker() {
     if (!c?.name) return
     city.value = c.name
     coords.value = Number.isFinite(c.lat) && Number.isFinite(c.lng) ? { lat: c.lat, lng: c.lng } : null
-    sort.value = 'distance'
+    if (coords.value) sort.value = 'distance'
     load()
   })
   uni.$once('city-relocate', () => { relocate() })
-  uni.navigateTo({ url: '/pages/city-picker/city-picker?current=' + encodeURIComponent(displayCity.value) })
+  uni.navigateTo({ url: '/pages/city-picker/city-picker?current=' + encodeURIComponent(displayCity.value) + '&located=' + encodeURIComponent(currentCity.value) })
 }
 function setSort(s) {
   if (s === 'distance' && !distanceMode.value) return

@@ -10,6 +10,9 @@
     </view>
     <view v-if="current" class="cp-current">当前选择：<text class="b">{{ current }}</text></view>
     <scroll-view scroll-y class="cp-body" :scroll-into-view="scrollInto" scroll-with-animation>
+      <view v-if="!keyword && locatedCity" class="cp-located-wrap">
+        <view class="cp-located" @tap="chooseByName(locatedCity)">⌖ 当前定位城市 <text class="b">{{ locatedCity }}</text></view>
+      </view>
       <view v-if="filteredGroups.length">
         <view v-for="g in filteredGroups" :key="g.letter" class="cp-group" :id="'letter-' + g.letter">
           <view class="cp-letter">{{ g.letter }}</view>
@@ -45,6 +48,7 @@ const CITY_FALLBACK = [
 
 const cities = ref([])
 const current = ref('')
+const locatedCity = ref('')
 const keyword = ref('')
 const activeLetter = ref('')
 const scrollInto = ref('')
@@ -71,6 +75,9 @@ function choose(c) {
   uni.$emit('city-picked', c)
   uni.navigateBack()
 }
+function chooseByName(name) {
+  choose(cities.value.find(c => c.name === name) || { name })
+}
 function close() { uni.navigateBack() }
 function jumpTo(letter) {
   if (!letters.value.includes(letter)) return
@@ -84,6 +91,7 @@ function relocate() {
 }
 onLoad(async options => {
   current.value = options?.current || ''
+  locatedCity.value = options?.located || ''
   try {
     const meta = await api.get('/api/cards/public/market/meta', false)
     cities.value = meta?.cities?.length ? meta.cities : CITY_FALLBACK
@@ -104,6 +112,9 @@ onLoad(async options => {
 .cp-current { padding: 8rpx 32rpx 16rpx; font-size: 24rpx; color: #64748b; }
 .cp-current .b { color: #2563eb; font-weight: 700; }
 .cp-body { flex: 1; height: 0; padding: 0 110rpx 20rpx 32rpx; box-sizing: border-box; }
+.cp-located-wrap { margin: 16rpx 0 20rpx; }
+.cp-located { font-size: 26rpx; color: #2563eb; background: #eff6ff; border: 2rpx solid #bfdbfe; border-radius: 16rpx; padding: 20rpx 24rpx; }
+.cp-located .b { font-size: 30rpx; font-weight: 800; margin-left: 12rpx; }
 .cp-group { margin-bottom: 12rpx; }
 .cp-letter { font-size: 24rpx; font-weight: 800; color: #2563eb; padding: 12rpx 0 8rpx; }
 .cp-city { font-size: 28rpx; color: #334155; padding: 20rpx 8rpx; border-bottom: 2rpx solid #f3f5f9; }

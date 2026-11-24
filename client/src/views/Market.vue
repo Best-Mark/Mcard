@@ -105,7 +105,7 @@
       </div>
       <div v-if="mapPickerOpen" class="mp-sheet-body"><MapPicker @confirm="onMapPicked" /></div>
     </BottomSheet>
-    <CityPicker v-model:show="cityPickerOpen" :current="city || currentCity" :cities="meta.cities" :relocating="locating" @select="onCitySelected" @relocate="relocate" />
+    <CityPicker v-model:show="cityPickerOpen" :current="city || currentCity" :located-city="currentCity" :cities="meta.cities" :relocating="locating" @select="onCitySelected" @relocate="relocate" />
   </div>
 </template>
 
@@ -170,8 +170,9 @@ function openCityPicker() { cityPickerOpen.value = true }
 // 城市选择弹层选中：设为原点（城市中心坐标），立即按距离排序
 function onCitySelected(c) {
   city.value = c.name
-  coords.value = { lat: c.lat, lng: c.lng }
-  if (sort.value === 'views') sort.value = 'distance'
+  // 常用城市有精确坐标→按距离排序；其余城市无坐标→服务端按城市名筛选+热度排序
+  coords.value = (Number.isFinite(c.lat) && Number.isFinite(c.lng)) ? { lat: c.lat, lng: c.lng } : null
+  if (coords.value && sort.value === 'views') sort.value = 'distance'
   showToast(`已切换到 ${c.name}`, 'success')
   load()
 }
