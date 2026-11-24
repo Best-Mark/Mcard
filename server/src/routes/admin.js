@@ -198,8 +198,14 @@ router.put('/config', superRequired, wrap((req, res) => {
   const stmt = db.prepare("INSERT INTO site_config (key, value, updated_at) VALUES (?,?,datetime('now')) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')")
   db.transaction(() => { for (const [k, v] of entries) stmt.run(k, v) })()
   // OSS 配置变更后立即失效客户端缓存，避免改了配置仍用旧密钥/旧路径
-  if (entries.some(([k]) => k.startsWith('oss_'))) oss.clearCache()
+  const ossChanged = entries.some(([k]) => k.startsWith('oss_'))
+  if (ossChanged) oss.clearCache()
   ok(res, settings.adminView())
+  // 保存 OSS 配置后自动触发存量同步（延迟 2s 等客户端缓存重建，与 MShop 同口径）。
+  // 失败/停止都不影响配置保存本身，前端通过进度接口展示状态。
+  if (ossChanged && settings.ossConfig().provider !== 'local') {
+    setTimeout(() => { try { oss.startMigrate() } catch (e) { console.warn('[OSS] 自动同步启动失败：', e.message) } }, 2000)
+  }
 }))
 
 // ---------- 对象存储 OSS 管理 ----------
@@ -234,6 +240,25 @@ router.post('/oss/test', adminRequired, wrap(async (_req, res) => {
   if (!oss.configured()) return fail(res, 400, 'OSS 未启用或配置不完整，请先在配置中心填写并保存')
   const files = await oss.listFiles()
   ok(res, { ok: true, count: files.length, pathPrefix: oss.currentPrefix(), message: '连接成功，可访问项目路径下的对象' })
+}))
+
+// 地域列表（唯一真相源在 services/oss.js，前端下拉从此拉取）
+router.get('/oss/regions', adminRequired, wrap((_req, res) => {
+  ok(res, { regions: oss.OSS_REGIONS, provider: settings.ossConfig().provider })
+}))
+
+// 存量同步：进度 / 启动 / 停止（服务端单例，刷新页面不丢）
+router.get('/oss/migrate/progress', adminRequired, wrap((_req, res) => {
+  ok(res, oss.migrateProgress())
+}))
+router.post('/oss/migrate/start', adminRequired, wrap((_req, res) => {
+  if (!oss.configured()) return fail(res, 400, '请先保存并启用 OSS 配置（当前为本地存储）')
+  const r = oss.startMigrate()
+  if (r.skipped === 'oss-disabled') return fail(res, 400, 'OSS 未启用')
+  ok(res, r)
+}))
+router.post('/oss/migrate/stop', adminRequired, wrap((_req, res) => {
+  ok(res, oss.stopMigrate())
 }))
 
 module.exports = router

@@ -275,6 +275,35 @@
               上传的图片会自动同步到云存储（失败自动回落本地，不影响使用）。配置在「配置中心 → 对象存储 OSS」；<b>项目路径前缀</b>决定本项目文件落在 Bucket 的哪个目录，改前缀后旧对象不会迁移。密钥只写不读，留空即沿用已保存值。
             </p>
 
+            <!-- 存量图片同步：保存 OSS 配置后自动触发，也可手动启动/停止；服务端单例，刷新不丢 -->
+            <div class="oss-migrate">
+              <div class="oss-migrate-head">
+                <b>存量图片同步</b>
+                <span class="small muted" v-if="migrate.ossPrefer">✅ OSS 优先已激活（图片走 CDN，本地保留兜底）</span>
+                <span class="small muted" v-else>⏳ 尚未全量同步，图片仍走本地</span>
+              </div>
+              <p class="small muted" style="margin:6px 0 10px">
+                保存 OSS 配置后会自动把服务器 uploads/ 里已有图片上传到云端，并把数据库里的图片地址换成 OSS 链接。已上传的自动跳过，中断后可从断点继续；全部成功且 0 失败才切换为 OSS 优先。
+              </p>
+              <div class="oss-migrate-actions">
+                <button class="btn btn-sm btn-primary" :disabled="ossMigrateBusy || migrate.running || !ossStatus.enabled" @click="runMigrate">
+                  {{ migrate.running ? '同步中…' : (migrate.total ? '继续 / 重新同步' : '开始同步') }}
+                </button>
+                <button v-if="migrate.running" class="btn btn-sm" @click="stopMigrate">停止</button>
+                <span v-if="!ossStatus.enabled" class="small muted">需先启用 OSS 配置</span>
+              </div>
+              <div v-if="migrate.total" class="oss-migrate-progress">
+                <div class="oss-bar"><i :style="{ width: migratePct + '%' }"></i></div>
+                <div class="small muted" style="margin-top:6px">
+                  {{ migrate.running ? '同步中' : (migrate.failed ? '已停止/完成' : '同步完成') }}：
+                  {{ migrate.done + migrate.skipped }} / {{ migrate.total }}
+                  （上传 {{ migrate.done }} · 跳过 {{ migrate.skipped }} · 失败 {{ migrate.failed }}<span v-if="migrate.backfilled"> · 回填 {{ migrate.backfilled }} 条地址</span>）
+                  <span v-if="migrate.running">，可随时停止，下次续跑</span>
+                </div>
+                <div v-if="migrate.lastError" class="small" style="color:#c0392b;margin-top:4px;word-break:break-all">最近失败：{{ migrate.lastError }}</div>
+              </div>
+            </div>
+
             <div class="oss-files-head">
               <b>云端文件 <span class="small muted">({{ ossFilteredFiles.length }})</span></b>
               <input v-model="ossFilter" class="input" placeholder="筛选文件名" />
@@ -317,7 +346,16 @@
                       <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path :d="revealed[f.key] ? ICONS.eyeOff[0] : ICONS.eye[0]" /><circle cx="12" cy="12" r="3" /></svg>
                     </button>
                   </label>
-                  <select v-if="optionsFor(f.key)" v-model="cfg[f.key]" class="select">
+                  <!-- OSS 地域：按 provider 出常用地域下拉，存量自定义值自动落「其它」手输（对齐 MShop） -->
+                  <div v-if="f.key === 'oss_region'" class="cfg-region">
+                    <select v-model="ossRegionPick" class="select">
+                      <option value="" disabled>请选择地域</option>
+                      <option v-for="r in ossRegionOptions" :key="r.v" :value="r.v">{{ r.label }}</option>
+                      <option value="__custom__">其它（手动输入）</option>
+                    </select>
+                    <input v-if="ossRegionPick === '__custom__'" v-model="cfg.oss_region" class="input" placeholder="如 oss-cn-xulin / ap-xxx" />
+                  </div>
+                  <select v-else-if="optionsFor(f.key)" v-model="cfg[f.key]" class="select">
                     <option v-for="op in optionsFor(f.key)" :key="op[0]" :value="op[0]">{{ op[1] }}</option>
                   </select>
                   <div v-else-if="f.type === 'hidden'" class="cfg-static">{{ cfg[f.key] ? cfg[f.key] : '未上传' }}</div>
@@ -529,6 +567,15 @@ const regions = ref([]); const regionLevel = ref(0); const regionBusy = ref(fals
 const regionForm = ref({ code: '', parent_code: '', name: '', level: 1, sort: 0, enabled: true }); const regionEditing = ref(false)
 const ossStatus = ref({ enabled: false, provider: 'local', pathPrefix: '', bucket: '', region: '', customDomain: '' })
 const ossFiles = ref([]); const ossBusy = ref(false); const ossFilter = ref('')
+// OSS 地域下拉（服务端 services/oss.js 是唯一真相源，此处只渲染）
+const ossRegions = ref({ aliyun: [], tencent: [] })
+const ossRegionPick = ref('')
+const ossRegionOptions = computed(() => ossRegions.value[cfg.value.oss_provider === 'tencent' || cfg.value.oss_provider === 'cos' ? 'tencent' : 'aliyun'] || [])
+// 存量同步进度（服务端单例任务，进页面/切 tab 刷新一次，运行中轮询）
+const migrate = ref({ running: false, total: 0, done: 0, failed: 0, skipped: 0, lastError: '', ossPrefer: false, syncedAt: null, backfilled: 0 })
+const ossMigrateBusy = ref(false)
+let migrateTimer = null
+const migratePct = computed(() => migrate.value.total ? Math.round(((migrate.value.done + migrate.value.skipped) / migrate.value.total) * 100) : 0)
 const cardQ = ref(''); const cardStatus = ref(''); const orderStatus = ref('')
 const pkgModal = ref(false); const pkgForm = ref({}); const pkgFeatures = ref('')
 const updateInfo = ref({}); const checkResult = ref(null); const updCfg = ref({})
@@ -686,6 +733,54 @@ async function loadOss() {
     if (s.enabled) ossFiles.value = (await api.get('/api/admin/oss/files')).data.data.files || []
     else ossFiles.value = []
   } catch (e) { showToast(e.message, 'error') } finally { ossBusy.value = false }
+  refreshMigrate() // 进 OSS 页签顺带恢复同步进度（服务端单例，刷新不丢）
+}
+
+// 地域列表从服务端拉（唯一真相源），只拉一次
+async function loadOssRegions() {
+  try {
+    const d = (await api.get('/api/admin/oss/regions')).data.data
+    ossRegions.value = d.regions || { aliyun: [], tencent: [] }
+    syncRegionPick()
+  } catch (e) { /* 地域列表失败不阻塞配置保存，回落手输 */ }
+}
+function regionValues() {
+  const list = ossRegionOptions.value.map(r => r.v)
+  return [...list, ...(ossRegions.value.aliyun || []).map(r => r.v), ...(ossRegions.value.tencent || []).map(r => r.v)]
+}
+// 下拉选中值 ↔ region 双向：选列表项写入 region；存量 region 不在列表自动落「其它」
+watch(ossRegionPick, v => { if (v && v !== '__custom__') cfg.value.oss_region = v })
+function syncRegionPick() {
+  const cur = String(cfg.value.oss_region || '')
+  if (!cur) { ossRegionPick.value = ''; return }
+  ossRegionPick.value = regionValues().includes(cur) ? cur : '__custom__'
+}
+watch(() => cfg.value.oss_region, v => {
+  if (v && v !== '__custom__' && regionValues().length && !regionValues().includes(v)) ossRegionPick.value = '__custom__'
+})
+
+// ===== 存量同步 =====
+async function refreshMigrate() {
+  try {
+    const d = (await api.get('/api/admin/oss/migrate/progress')).data.data
+    migrate.value = d
+    if (!d.running && migrateTimer) { clearInterval(migrateTimer); migrateTimer = null }
+  } catch (e) { /* 进度查询失败静默，不打断页面 */ }
+}
+async function runMigrate() {
+  if (ossMigrateBusy.value || migrate.value.running) return
+  ossMigrateBusy.value = true
+  try {
+    const d = (await api.post('/api/admin/oss/migrate/start', {})).data.data
+    if (d.alreadyRunning) showToast('同步已在进行中', 'success')
+    else showToast(d.total ? `已启动，共 ${d.total} 个文件` : '已启动，本地无存量文件', 'success')
+    if (!migrateTimer) migrateTimer = setInterval(refreshMigrate, 1500)
+    refreshMigrate()
+  } catch (e) { showToast(e.message, 'error') } finally { ossMigrateBusy.value = false }
+}
+async function stopMigrate() {
+  try { await api.post('/api/admin/oss/migrate/stop', {}); showToast('已请求停止，正在收尾当前批次'); refreshMigrate() }
+  catch (e) { showToast(e.message, 'error') }
 }
 async function testOss() {
   if (ossBusy.value) return
@@ -727,6 +822,8 @@ async function loadTab(k) {
       cfg.value = d.values || {}
       cfgGroups.value = Object.entries(d.groups || {}).map(([key, g]) => ({ key, ...g }))
       if (cfgGroups.value.length && !cfgGroups.value.some(g => g.key === activeGroup.value)) activeGroup.value = cfgGroups.value[0].key
+      // 地域下拉：独立于配置加载链，失败也不阻塞配置显示（MShop 教训：链尾请求失败=功能永远不出）
+      loadOssRegions()
     }
     if (k === 'regions') await loadRegions()
     if (k === 'oss') await loadOss()
@@ -743,7 +840,7 @@ onMounted(() => {
     api.get('/api/admin/update/status').then(r => { const d = r.data.data; updateInfo.value = d; updCfg.value = { ...(d.config || {}) } }).catch(() => {})
   }
 })
-onBeforeUnmount(() => { clearInterval(clockTimer); clearInterval(pollTimer); cancelAnimationFrame(kpiRaf) })
+onBeforeUnmount(() => { clearInterval(clockTimer); clearInterval(pollTimer); clearInterval(migrateTimer); cancelAnimationFrame(kpiRaf) })
 
 function openPkg(p) {
   pkgForm.value = p ? { ...p } : { name: '', price_cents: 1900, duration_days: 30, features: [], sort: 0, enabled: true }
@@ -1094,6 +1191,13 @@ async function saveUpdateConfig() {
 .oss-status-item b { font-size: 14px; }
 .oss-status-item .mono { font-size: 12px; }
 .oss-actions { display: flex; gap: 8px; margin-left: auto; align-items: center; }
+/* 存量同步面板 */
+.oss-migrate { padding: 14px; margin-bottom: 16px; background: var(--bg-page, #f8fafc); border: 1px solid var(--line); border-radius: 10px; }
+.oss-migrate-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.oss-migrate-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.oss-bar { height: 8px; border-radius: 4px; background: rgba(0,0,0,.08); overflow: hidden; }
+.oss-bar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--primary, #2563eb), #4e9a8f); transition: width .4s; }
+.cfg-region { display: flex; flex-direction: column; gap: 6px; }
 .oss-files-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 16px 0 10px; }
 .oss-files-head .input { width: 240px; }
 
