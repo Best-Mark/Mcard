@@ -27,12 +27,14 @@
         <input v-model="keyword" class="input" placeholder="搜姓名 / 公司 / 业务关键词，如「设计」「财税」" @keyup.enter="applyFilter" />
         <button class="btn btn-primary btn-sm" :disabled="loading" @click="applyFilter">搜索</button>
       </div>
-      <ScrollChips v-if="meta.industries.length" class="mk-chips" :reset-key="meta.industries.length">
-        <button class="chip" :class="{ on: !industry }" @click="setIndustry('')">全部</button>
-        <button v-for="ind in meta.industries" :key="ind.key" class="chip" :class="{ on: industry === ind.key }" @click="setIndustry(ind.key)">
-          {{ ind.icon }} {{ ind.label }}
-        </button>
-      </ScrollChips>
+      <div v-if="meta.industries.length" class="mk-chips">
+        <ScrollChips :reset-key="meta.industries.length">
+          <button class="chip" :class="{ on: !industry }" @click="setIndustry('')">全部</button>
+          <button v-for="ind in meta.industries" :key="ind.key" class="chip" :class="{ on: industry === ind.key }" @click="setIndustry(ind.key)">
+            {{ ind.icon }} {{ ind.label }}
+          </button>
+        </ScrollChips>
+      </div>
       <div class="mk-city-head">
         <span>范围原点：<b>{{ city || (coords ? '地图选点' : '全国') }}</b></span>
         <button class="mk-map-btn" :disabled="loading" @click="openMapPicker">⌖ 地图选点</button>
@@ -41,17 +43,17 @@
         <span>排序：</span>
         <button class="sort-btn" :class="{ on: sort === 'distance' }" :disabled="!distanceMode" @click="setSort('distance')">📍 离我最近</button>
         <button class="sort-btn" :class="{ on: sort === 'views' }" @click="setSort('views')">🔥 热度优先</button>
-        <span class="mk-radius">
-          范围：
-          <select v-model.number="radiusKm" class="select select-sm" :disabled="!distanceMode" @change="applyFilter">
-            <option :value="0">不限</option>
-            <option :value="5">5 km</option>
-            <option :value="20">20 km</option>
-            <option :value="50">50 km</option>
-            <option :value="100">100 km</option>
-            <option :value="500">500 km</option>
-          </select>
-        </span>
+      </div>
+      <div class="mk-radius-row">
+        <span class="mk-radius-label">范围：</span>
+        <select v-model.number="radiusKm" class="select select-sm" :disabled="!distanceMode" @change="applyFilter">
+          <option :value="0">不限</option>
+          <option :value="5">5 km</option>
+          <option :value="20">20 km</option>
+          <option :value="50">50 km</option>
+          <option :value="100">100 km</option>
+          <option :value="500">500 km</option>
+        </select>
       </div>
     </div>
 
@@ -304,7 +306,8 @@ onMounted(async () => {
 .sort-btn { font-size: 12px; padding: 5px 11px; border-radius: 8px; border: 1px solid var(--line, #e8edf4); background: var(--bg-page, #f4f6fb); color: var(--muted, #6b7688); }
 .sort-btn.on { border-color: var(--primary, #2563eb); color: var(--primary, #2563eb); background: color-mix(in srgb, var(--primary, #2563eb) 10%, transparent); font-weight: 700; }
 .sort-btn:disabled { opacity: .45; }
-.mk-radius { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; color: var(--muted, #6b7688); }
+.mk-radius-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; }
+.mk-radius-label { color: var(--muted, #6b7688); white-space: nowrap; flex-shrink: 0; }
 .select { border: 1px solid var(--line, #e8edf4); border-radius: 8px; padding: 6px 10px; background: var(--bg-card, #fff); color: var(--text, #0f172a); }
 .select-sm { padding: 4px 8px; font-size: 12px; }
 .mk-list { padding-top: 14px; }
