@@ -24,22 +24,22 @@
         <input v-model="keyword" class="input" placeholder="搜姓名 / 公司 / 业务关键词，如「设计」「财税」" @keyup.enter="applyFilter" />
         <button class="btn btn-primary btn-sm" :disabled="loading" @click="applyFilter">搜索</button>
       </div>
-      <div v-if="meta.industries.length" class="mk-chips">
+      <ScrollChips v-if="meta.industries.length" class="mk-chips" :reset-key="meta.industries.length">
         <button class="chip" :class="{ on: !industry }" @click="setIndustry('')">全部</button>
         <button v-for="ind in meta.industries" :key="ind.key" class="chip" :class="{ on: industry === ind.key }" @click="setIndustry(ind.key)">
           {{ ind.icon }} {{ ind.label }}
         </button>
-      </div>
+      </ScrollChips>
       <div class="mk-city-head">
         <span>选择城市：</span>
         <button class="mk-map-btn" :disabled="loading" @click="openMapPicker">⌖ 地图选点</button>
       </div>
-      <div class="mk-city-chips">
+      <ScrollChips class="mk-city-chips" :reset-key="cityChips.length">
         <button v-for="c in cityChips" :key="c.name" class="city-chip" :class="{ on: isCityActive(c.name) }" @click="pickCity(c)">
           <span v-if="c.isCurrent" class="current-dot"></span>{{ c.name }}
         </button>
         <button class="city-chip more" :class="{ on: !!province && !isCityActive(city) }" @click="showMoreCity = !showMoreCity">更多 ▾</button>
-      </div>
+      </ScrollChips>
       <div v-if="showMoreCity" class="mk-city-more">
         <select v-model="province" class="select" @change="onProvinceChange">
           <option value="">全部省份</option>
@@ -127,6 +127,7 @@ import { showToast, toggleDrawer } from '../store'
 import { getCurrentPosition, getPositionQualityLabel, setManualPosition } from '../utils/geo'
 import { CITIES as FALLBACK_CITIES, HOT_CITIES as FALLBACK_HOT } from '../utils/city-data'
 import MapPicker from '../components/MapPicker.vue'
+import ScrollChips from '../components/ScrollChips.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -343,12 +344,12 @@ onMounted(async () => {
 .mk-filters { background: var(--bg-card, #fff); padding: 14px 16px 12px; border-bottom: 1px solid var(--line, #e8edf4); }
 .mk-search { display: flex; gap: 8px; }
 .mk-search .input { flex: 1; min-width: 0; }
-.mk-chips { display: flex; gap: 8px; overflow-x: auto; margin-top: 12px; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+.mk-chips { margin-top: 12px; }
 .chip { flex-shrink: 0; font-size: 12px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line, #e8edf4); background: var(--bg-page, #f4f6fb); color: var(--muted, #6b7688); }
 .chip.on { background: var(--primary, #2563eb); border-color: var(--primary, #2563eb); color: #fff; font-weight: 700; }
 .mk-city-head { display: flex; align-items: center; justify-content: space-between; margin-top: 13px; font-size: 13px; font-weight: 600; }
 .mk-map-btn { font-size: 12px; font-weight: 600; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--primary, #2563eb); background: transparent; color: var(--primary, #2563eb); }
-.mk-city-chips { display: flex; gap: 8px; overflow-x: auto; margin-top: 9px; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+.mk-city-chips { margin-top: 9px; }
 .city-chip { flex-shrink: 0; font-size: 13px; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line, #e8edf4); background: var(--bg-page, #f4f6fb); color: var(--muted, #6b7688); white-space: nowrap; }
 .city-chip.on { background: #16a34a; border-color: #16a34a; color: #fff; font-weight: 700; }
 .city-chip.more { border-style: dashed; }
