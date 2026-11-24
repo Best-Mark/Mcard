@@ -121,7 +121,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import api from '../api'
 import { showToast, toggleDrawer } from '../store'
 import { getCurrentPosition, getPositionQualityLabel, setManualPosition } from '../utils/geo'
@@ -129,6 +129,7 @@ import { CITIES as FALLBACK_CITIES, HOT_CITIES as FALLBACK_HOT } from '../utils/
 import MapPicker from '../components/MapPicker.vue'
 
 const router = useRouter()
+const route = useRoute()
 const meta = ref({ industries: [], cities: [], hotCities: [], regions: [] })
 const list = ref([])
 const total = ref(0)
@@ -285,14 +286,36 @@ async function relocate() {
 }
 
 onMounted(async () => {
-  loadMeta()
-  // 进入集市即后台预热四级定位（先用缓存/城市兜底即时出结果，再渐进升级）
-  try {
-    const pos = await getCurrentPosition({})
-    coords.value = { lat: pos.lat, lng: pos.lng }
-    positionMeta.value = getPositionQualityLabel()
-    if (pos.city && pos.source !== 'default') currentCity.value = pos.city
-  } catch {}
+  // 门户首页跳转来的筛选：q=关键词、industry=行业、city=城市(+lat/lng=地图原点)、sort=排序
+  const q = String(route.query.q || '').trim()
+  if (q) keyword.value = q
+  const ind = String(route.query.industry || '').trim()
+  if (ind) industry.value = ind
+  const cityQ = String(route.query.city || '').trim()
+  const latQ = Number(route.query.lat)
+  const lngQ = Number(route.query.lng)
+  if (Number.isFinite(latQ) && Number.isFinite(lngQ)) coords.value = { lat: latQ, lng: lngQ }
+
+  await loadMeta()
+  if (cityQ) {
+    city.value = cityQ
+    if (!coords.value) {
+      const hit = cityOf(cityQ)
+      if (hit) coords.value = { lat: hit.lat, lng: hit.lng }
+    }
+  }
+  const sortQ = String(route.query.sort || '')
+  if (sortQ === 'views' || sortQ === 'distance') sort.value = sortQ
+
+  // 无 query 城市/坐标时才预热定位；带明确筛选时尊重用户选择，不覆盖原点
+  if (!cityQ && !coords.value) {
+    try {
+      const pos = await getCurrentPosition({})
+      coords.value = { lat: pos.lat, lng: pos.lng }
+      positionMeta.value = getPositionQualityLabel()
+      if (pos.city && pos.source !== 'default') currentCity.value = pos.city
+    } catch {}
+  }
   load()
 })
 </script>
