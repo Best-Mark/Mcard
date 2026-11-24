@@ -8,11 +8,10 @@
           <b>图片素材库</b>
           <button class="ap-close" @click="show = false">✕</button>
         </div>
-        <p class="ap-tip small muted">上传过的图片都在这里，点一张即可替换当前字段；可跨头像 / LOGO / 二维码图复用。</p>
         <div class="ap-actions">
           <label class="ap-upload">
             <input type="file" accept="image/*" @change="onUpload" />
-            {{ uploading ? '上传中…' : '＋ 上传新图（自动压缩）' }}
+            {{ uploading ? '上传中…' : '上传图片' }}
           </label>
           <button class="ap-refresh" :disabled="loading" @click="load">刷新</button>
         </div>
@@ -76,7 +75,6 @@ onMounted(() => { /* 打开时才加载，避免编辑页挂载即请求 */ })
 .ap-head { display: flex; align-items: center; justify-content: space-between; }
 .ap-head b { font-size: 16px; }
 .ap-close { border: 0; background: transparent; font-size: 18px; cursor: pointer; }
-.ap-tip { margin: 8px 0 12px; line-height: 1.6; }
 .ap-actions { display: flex; gap: 8px; margin-bottom: 12px; }
 .ap-upload { flex: 1; text-align: center; font-size: 13px; padding: 9px; border-radius: 9px; background: var(--primary, #2563eb); color: #fff; cursor: pointer; }
 .ap-upload input { display: none; }
