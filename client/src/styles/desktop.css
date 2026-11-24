@@ -11,8 +11,9 @@
 .desktop-shell .cv-main { max-width: 900px; margin-top: 0; }
 .desktop-shell .page { padding-top: 0; }
 
-/* 集市：列表卡 3 列网格（手机端是单列，这里只覆盖桌面壳内） */
-.desktop-shell .mk-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start; }
+/* 集市：列表卡 3 列网格（手机端是单列，这里只覆盖桌面壳内）
+   align-items:stretch 让同行卡片等高，卡片内底栏靠 margin-top:auto 贴齐 */
+.desktop-shell .mk-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: stretch; }
 .desktop-shell .mk-list > .mk-state,
 .desktop-shell .mk-list > .mk-empty,
 .desktop-shell .mk-list > .mk-count,

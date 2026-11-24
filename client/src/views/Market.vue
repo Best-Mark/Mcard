@@ -89,9 +89,9 @@
             <span v-if="c.industryLabel" class="mk-industry">{{ c.industryLabel }}</span>
             <span v-if="c.city" class="mk-city">⌖ {{ c.city }}</span>
           </div>
-          <p v-if="c.bio" class="mk-bio">{{ c.bio }}</p>
-          <div v-if="c.tags?.length" class="mk-tags">
-            <span v-for="tag in c.tags.slice(0, 4)" :key="tag">{{ tag }}</span>
+          <p class="mk-bio">{{ c.bio || '' }}</p>
+          <div class="mk-tags">
+            <span v-for="tag in (c.tags || []).slice(0, 4)" :key="tag">{{ tag }}</span>
           </div>
           <div class="mk-card-bottom"><span>查看名片 · 一键存入通讯录</span><span class="mk-arrow">›</span></div>
         </router-link>
@@ -315,10 +315,11 @@ onMounted(async () => {
 .mk-count { margin-bottom: 10px; }
 .mk-empty-ico { font-size: 46px; color: #cbd5e1; }
 .mk-empty b { display: block; color: var(--text, #0f172a); margin: 8px 0; }
-.mk-card { display: block; background: var(--bg-card, #fff); border: 1px solid var(--line, #e8edf4); border-radius: 14px; padding: 14px; margin-bottom: 10px; box-shadow: 0 4px 16px rgba(15,23,42,.05); transition: transform .15s, box-shadow .15s; }
+/* 卡片统一 flex 列 + 底部贴齐：同行 bio/tags 行数不同时高度一致，底栏不错位 */
+.mk-card { display: flex; flex-direction: column; background: var(--bg-card, #fff); border: 1px solid var(--line, #e8edf4); border-radius: 14px; padding: 14px; margin-bottom: 10px; box-shadow: 0 4px 16px rgba(15,23,42,.05); transition: transform .15s, box-shadow .15s; }
 .mk-card:active { transform: scale(.995); }
 .mk-card:hover { box-shadow: 0 10px 26px rgba(15,23,42,.1); }
-.mk-card-top { display: flex; align-items: center; gap: 10px; }
+.mk-card-top { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .mk-avatar { flex: 0 0 52px; height: 52px; border-radius: 12px; overflow: hidden; background: var(--primary, #2563eb); color: #fff; display: grid; place-items: center; font-size: 22px; font-weight: 800; }
 .mk-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .mk-logo { width: 28px; height: 28px; object-fit: contain; border-radius: 6px; background: rgba(127,127,127,.06); padding: 2px; }
@@ -326,13 +327,14 @@ onMounted(async () => {
 .mk-name { font-size: 16px; font-weight: 800; }
 .mk-title { font-size: 12px; color: var(--muted, #6b7688); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mk-dist { flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--primary, #2563eb); background: #eef2ff; background: color-mix(in srgb, var(--primary, #2563eb) 12%, transparent); padding: 4px 9px; border-radius: 999px; }
-.mk-meta { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.mk-meta { display: flex; gap: 8px; margin-top: 10px; flex-wrap: nowrap; overflow: hidden; flex-shrink: 0; min-height: 23px; }
 .mk-industry { font-size: 11px; padding: 3px 9px; border-radius: 6px; background: #eef2ff; background: color-mix(in srgb, var(--primary, #2563eb) 12%, transparent); color: var(--primary, #2563eb); font-weight: 600; }
 .mk-city { font-size: 11px; color: var(--muted, #6b7688); }
-.mk-bio { font-size: 13px; color: var(--muted, #6b7688); line-height: 1.55; margin-top: 10px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.mk-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
-.mk-tags span { font-size: 11px; padding: 2px 8px; border-radius: 5px; background: var(--bg-page, #f4f6fb); color: var(--muted, #6b7688); }
-.mk-card-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line, #e8edf4); font-size: 12px; color: var(--primary, #2563eb); font-weight: 600; }
+/* bio 固定两行高度，空值也占位；tags 固定一行高度，避免有无标签时卡片高度不一致 */
+.mk-bio { font-size: 13px; color: var(--muted, #6b7688); line-height: 1.55; margin-top: 10px; min-height: 40px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; flex-shrink: 0; }
+.mk-tags { display: flex; gap: 6px; flex-wrap: nowrap; overflow: hidden; margin-top: 8px; margin-bottom: 12px; min-height: 21px; flex-shrink: 0; }
+.mk-tags span { font-size: 11px; padding: 2px 8px; border-radius: 5px; background: var(--bg-page, #f4f6fb); color: var(--muted, #6b7688); white-space: nowrap; flex-shrink: 0; }
+.mk-card-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 10px; border-top: 1px solid var(--line, #e8edf4); font-size: 12px; color: var(--primary, #2563eb); font-weight: 600; flex-shrink: 0; }
 .mk-arrow { font-size: 18px; }
 .mk-more { text-align: center; padding: 16px; }
 </style>
