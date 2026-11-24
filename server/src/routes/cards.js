@@ -176,6 +176,19 @@ router.get('/public/:slug/qr.png', wrap(async (req, res) => {
   res.type('png').set('Cache-Control', 'public, max-age=3600').send(buf)
 }))
 
+// vCard 内容二维码：扫码得到的是完整联系人数据（BEGIN:VCARD...），
+// iOS/Android 相机扫一扫会直接弹出「添加到通讯录」——这才是「扫一扫存入通讯录」的正确实现。
+// 不加 logo（H 纠错留足识别余量），内容较长时自动选合适版本。
+router.get('/public/:slug/vcard.svg', wrap((req, res) => {
+  const row = db.prepare('SELECT * FROM cards WHERE slug = ?').get(req.params.slug)
+  if (!row) return fail(res, 404, '名片不存在')
+  const origin = originOf(req)
+  const text = vcard.build(publicView(row, origin), origin)
+  const size = Math.min(2000, Math.max(256, Number(req.query.size) || 520))
+  res.type('image/svg+xml').set('Cache-Control', 'public, max-age=3600')
+    .send(qr.svg(text, { size, fg: '#0f172a', bg: '#ffffff', logo: false }))
+}))
+
 router.get('/public/:slug/card.vcf', wrap((req, res) => {
   const row = db.prepare('SELECT * FROM cards WHERE slug = ?').get(req.params.slug)
   if (!row) return fail(res, 404, '名片不存在')

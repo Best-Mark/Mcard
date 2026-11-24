@@ -107,14 +107,26 @@
           </div>
         </div>
 
-        <div class="card card-pad cv-qr-card">
-          <button class="cv-qr-img" @click="qrModal = true" title="点击放大">
-            <img :src="qrApi + '/qr.svg?size=440'" alt="名片二维码" />
+        <!-- 通讯录二维码：内容就是 vCard，相机扫一扫直接弹「添加到通讯录」 -->
+        <div class="card card-pad cv-block cv-contact-qr" id="contact-qr">
+          <h3 class="cv-sec-title">存入通讯录</h3>
+          <p class="small muted cv-qr-lead">用手机相机扫一扫下方二维码，即可把名片直接存入通讯录（iPhone / 安卓 / 鸿蒙通用）</p>
+          <button class="cv-vcard-qr" @click="vcardQrModal = true" title="点击放大">
+            <img :src="vcardQrApi" alt="存入通讯录二维码" />
           </button>
-          <div class="cv-qr-info">
-            <h3>扫一扫，存入通讯录</h3>
-            <p class="small muted">点击上方二维码可放大保存</p>
+          <div class="cv-qr-actions">
+            <button class="btn btn-primary" @click="vcardQrModal = true">放大二维码</button>
+            <button class="btn btn-ghost" @click="saveContact">iPhone 一键添加</button>
           </div>
+          <p class="small muted" style="margin-top:8px">也可点击底部「存入通讯录」，在 iPhone 上直接打开系统添加界面</p>
+        </div>
+
+        <div class="card card-pad cv-block">
+          <h3 class="cv-sec-title">分享这张名片</h3>
+          <p class="small muted">下方二维码打开的是名片网页，可转发给朋友浏览</p>
+          <button class="cv-share-qr" @click="qrModal = true" title="点击放大">
+            <img :src="qrApi + '/qr.svg?size=360'" alt="名片网页二维码" />
+          </button>
         </div>
 
         <div class="card card-pad cv-exchange">
@@ -134,12 +146,26 @@
       <button class="cv-share-fab" @click="doShare" aria-label="分享名片">↗<span>分享</span></button>
     </template>
 
-    <!-- 二维码大图 -->
+    <!-- 通讯录二维码大图：相机扫一扫直接加联系人 -->
+    <div v-if="vcardQrModal" class="modal-mask" @click.self="vcardQrModal = false">
+      <div class="modal center">
+        <h3>存入通讯录</h3>
+        <p class="small muted" style="margin:6px 0 12px">用<i style="font-style:normal;color:#07c160;font-weight:700">手机相机</i>扫一扫（不是微信扫一扫），直接弹出联系人卡片，点「添加到通讯录」即可</p>
+        <img :src="vcardQrApi + '&size=720'" style="width:260px;height:260px;margin:4px auto;display:block" alt="通讯录二维码" />
+        <p class="small muted">iPhone 相机 / 安卓相机 / 鸿蒙相机 / 系统扫一扫均可识别</p>
+        <div class="btn-row" style="justify-content:center;margin-top:12px">
+          <button class="btn btn-primary" @click="saveQrFile({ url: vcardQrApi + '&size=900', label: '通讯录二维码' })">保存二维码图片</button>
+          <button class="btn btn-ghost" @click="vcardQrModal = false">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 名片网页二维码大图 -->
     <div v-if="qrModal" class="modal-mask" @click.self="qrModal = false">
       <div class="modal center">
-        <h3>扫码保存名片</h3>
+        <h3>分享名片</h3>
         <img :src="qrApi + '/qr.svg?size=640'" style="width:240px;height:240px;margin:12px auto" alt="二维码大图" />
-        <p class="small">长按图片可保存，或用浏览器打开下载</p>
+        <p class="small">扫一扫打开名片网页；长按图片可保存</p>
         <div class="btn-row" style="justify-content:center">
           <button class="btn btn-primary" @click="saveQr">下载二维码</button>
           <button class="btn btn-ghost" @click="qrModal = false">关闭</button>
@@ -189,10 +215,11 @@ const route = useRoute(); const router = useRouter()
 const slug = route.params.slug
 const qrApi = `/api/cards/public/${slug}`
 const vcfApi = `${qrApi}/card.vcf`
+const vcardQrApi = `${qrApi}/vcard.svg?size=520`
 const card = ref(null); const loading = ref(true); const error = ref('')
 const currentTheme = ref('ocean'); const isOwner = ref(false)
 const template = ref('classic')
-const qrModal = ref(false); const guide = ref(''); const guideImage = ref(''); const exchangeOpen = ref(false)
+const qrModal = ref(false); const vcardQrModal = ref(false); const guide = ref(''); const guideImage = ref(''); const exchangeOpen = ref(false)
 const mySlug = ref(''); const exchanging = ref(false)
 const favorite = ref(false); const favBusy = ref(false)
 
@@ -289,8 +316,10 @@ async function saveContact() {
   if (!card.value) return
   if (isWeChat()) { await showGuide('contact'); return }
   if (isIOS()) {
+    // 先弹 vCard 二维码大图（最稳），同时尝试直开 .vcf（iOS Safari 支持时直接弹系统添加界面）
+    vcardQrModal.value = true
     openVcfInline(vcfApi)
-    return showToast('正在打开通讯录添加界面…', 'success')
+    return
   }
   const r = await saveImageUrl(vcfApi, `${card.value.name || slug}.vcf`)
   if (r.kind === 'downloaded') showToast('已下载，打开即可导入通讯录', 'success')
@@ -498,4 +527,32 @@ async function toggleFavorite() {
 .cv-tpl-contact .cv-footer b { color: #1e40af; }
 .cv-tpl-contact .cv-dock { background: rgba(11,26,58,.97); border-top: 2px solid #1e40af; }
 .cv-tpl-contact .cv-dock .btn-ghost { background: rgba(255,255,255,.14); color: #fff; border-color: transparent; }
+
+/* ============ 参考商务名片风（统一强化，放在最后覆盖）============ */
+.cv-page { background: #eef3f8; }
+.cv-page .card { border: 1px solid #dbe3ef; border-radius: 14px; box-shadow: 0 2px 10px rgba(16,36,70,.10); }
+.cv-page .cv-block h3, .cv-page .cv-sec-title { font-size: 16px; font-weight: 700; color: #17233c; border-left: 4px solid #2454e8; padding-left: 10px; margin-bottom: 10px; }
+.cv-page .small.muted, .cv-page .cv-qr-lead { color: #6c788c; }
+
+/* 通讯录二维码卡：一眼就知道「扫这个存通讯录」 */
+.cv-contact-qr { background: #fff; text-align: center; padding: 20px 16px; }
+.cv-contact-qr .cv-sec-title { text-align: left; }
+.cv-contact-qr .cv-qr-lead { text-align: left; line-height: 1.6; margin-bottom: 14px; font-size: 12px; }
+.cv-vcard-qr { display: block; width: 240px; height: 240px; margin: 0 auto 14px; padding: 10px; background: #fff; border: 2px solid #1a3f86; border-radius: 12px; box-shadow: 0 6px 20px rgba(26,63,134,.14); }
+.cv-vcard-qr img { display: block; width: 100%; height: 100%; }
+.cv-qr-actions { display: flex; gap: 10px; justify-content: center; }
+.cv-qr-actions .btn { min-width: 128px; }
+.cv-share-qr { display: block; width: 160px; height: 160px; margin: 8px auto 0; padding: 8px; background: #fff; border: 1px solid #d9e1ee; border-radius: 10px; }
+.cv-share-qr img { display: block; width: 100%; height: 100%; }
+
+/* 身份卡：深蓝金高档质感 */
+.cv-page .cv-profile { border-radius: 16px; border: 1px solid #dbe4f5; box-shadow: 0 8px 26px rgba(16,36,70,.12); background: #fff; }
+.cv-page .cv-name { color: #132a53; font-size: 23px; }
+.cv-page .cv-title { color: #2454e8; font-weight: 600; }
+
+/* 底部深蓝操作栏 */
+.cv-page .cv-dock { background: #0f1c33; border-top: 1px solid #1e3a8a; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); }
+.cv-page .cv-dock .btn { font-size: 13px; border-radius: 8px; }
+.cv-page .cv-dock .btn-ghost { background: #263550; color: #fff; border-color: transparent; }
+.cv-page .cv-share-fab { background: #2454e8; border-radius: 16px; width: 60px; height: 60px; }
 </style>
