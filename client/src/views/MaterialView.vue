@@ -35,29 +35,8 @@
           </div>
         </div>
 
-        <!-- 每份资料都能看到名片落款二维码：内容是 /c/{slug} 网页 URL，微信扫一扫可直接打开 -->
-        <div class="card card-pad mv-owner">
-          <div class="mv-owner-ava">{{ (info.owner.name || '名').slice(0, 1) }}</div>
-          <div class="mv-owner-info">
-            <b>{{ info.owner.name || '名片主人' }}</b>
-            <span class="small muted">扫码保存名片 · 资料随时更新，二维码永久不变</span>
-          </div>
-          <button class="mv-owner-qr" @click="qrOpen = true" title="点击放大">
-            <img :src="info.owner.qr" alt="名片二维码" />
-          </button>
-        </div>
-        <p class="mv-tip small muted">用微信「扫一扫」或手机相机扫描上方二维码，即可打开名片并存入通讯录。</p>
       </div>
     </template>
-
-    <div v-if="qrOpen" class="modal-mask" @click.self="qrOpen = false">
-      <div class="modal center">
-        <h3>{{ info?.owner?.name || '名片' }} 的二维码</h3>
-        <img :src="(info?.owner?.qr || '') + '&size=640'" style="width:240px;height:240px;margin:12px auto" alt="二维码大图" />
-        <p class="small">微信扫一扫打开名片网页；长按可保存</p>
-        <button class="btn btn-ghost" @click="qrOpen = false">关闭</button>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -74,7 +53,6 @@ const info = ref(null)
 const list = ref([])
 const loading = ref(true)
 const error = ref('')
-const qrOpen = ref(false)
 let loadStarted = false
 
 async function load() {
@@ -115,16 +93,5 @@ onMounted(load)
 .mv-item-title { flex: 1; min-width: 0; }
 .mv-item-title b { display: block; font-size: 15px; }
 .mv-item-body { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-.mv-owner { margin-top: 18px; display: flex; align-items: center; gap: 12px; background: linear-gradient(135deg, #1e3a8a, #4f46e5); color: #fff; border: 0; }
-.mv-owner-ava { width: 42px; height: 42px; border-radius: 50%; background: rgba(255,255,255,.2); display: grid; place-items: center; font-weight: 700; flex: 0 0 auto; }
-.mv-owner-info { flex: 1; min-width: 0; }
-.mv-owner-info b { display: block; font-size: 15px; }
-.mv-owner-info .small { color: rgba(255,255,255,.8); }
-.mv-owner-qr { width: 64px; height: 64px; background: #fff; border-radius: 8px; padding: 4px; flex: 0 0 auto; }
-.mv-owner-qr img { width: 100%; height: 100%; }
-.mv-tip { text-align: center; margin-top: 10px; }
-.modal-mask { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.6); display: grid; place-items: center; padding: 20px; }
-.modal { background: #fff; border-radius: 16px; padding: 22px; max-width: 340px; width: 100%; color: #162033; }
-.modal.center { text-align: center; }
-.modal h3 { margin: 0 0 8px; font-size: 16px; }
+
 </style>

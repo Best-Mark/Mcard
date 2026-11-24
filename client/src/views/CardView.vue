@@ -212,7 +212,7 @@
       </div>
     </div>
 
-    <!-- 相册大图：点缩略图直接看，不跳中间页；底部保留存名片入口 -->
+    <!-- 相册大图：点缩略图直接看，不跳中间页；资料场景不放二维码，避免与名片二维码混淆 -->
     <div v-if="galleryIndex >= 0" class="modal-mask gallery-mask" @click.self="galleryIndex = -1">
       <div class="gallery-viewer">
         <img :src="fullUrl(imageMaterials[galleryIndex]?.url)" :alt="imageMaterials[galleryIndex]?.title" />
@@ -224,8 +224,7 @@
           <button class="btn btn-ghost" :disabled="galleryIndex <= 0" @click="galleryIndex--">上一张</button>
           <button class="btn btn-ghost" :disabled="galleryIndex >= imageMaterials.length - 1" @click="galleryIndex++">下一张</button>
         </div>
-        <button class="btn btn-primary" style="margin-top:8px" @click="vcardQrModal = true; galleryIndex = -1">存入通讯录</button>
-        <button class="btn btn-ghost" style="margin-top:6px" @click="galleryIndex = -1">关闭</button>
+        <button class="btn btn-ghost" style="margin-top:8px" @click="galleryIndex = -1">关闭</button>
       </div>
     </div>
 
