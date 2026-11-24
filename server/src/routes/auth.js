@@ -136,14 +136,24 @@ router.get('/wechat/qr-image', wrap((req, res) => {
   res.send(require('../services/qrcode').svg(url, { size: 260, logo: false }))
 }))
 
-// 浏览器轮询：pending / done（done 时原子消费，凭证只能兑换一次）/ expired
+// 手机微信扫码落地页上报「已扫描」，让电脑端从「等待扫码」切到「请在手机确认」
+router.post('/wechat/qr-scanned', wrap((req, res) => {
+  const sid = String(req.body?.sid || '')
+  const s = loadQrSession(sid)
+  if (s && s.status === 'pending') saveQrSession(sid, { ...s, status: 'scanned' })
+  ok(res, { ok: true })
+}))
+
+// 浏览器轮询：pending / scanned / done（done 时原子消费，凭证只能兑换一次）/ expired
 router.get('/wechat/qr-status', wrap((req, res) => {
   const sid = String(req.query.sid || '')
   const s = loadQrSession(sid)
   if (!s) return ok(res, { status: 'expired' })
-  if (s.status !== 'done' || !s.token) return ok(res, { status: 'pending' })
-  db.prepare('DELETE FROM site_config WHERE key = ?').run(QR_SESSION_PREFIX + sid) // 先删 = 原子消费
-  ok(res, { status: 'done', token: s.token, user: s.user })
+  if (s.status === 'done' && s.token) {
+    db.prepare('DELETE FROM site_config WHERE key = ?').run(QR_SESSION_PREFIX + sid) // 先删 = 原子消费
+    return ok(res, { status: 'done', token: s.token, user: s.user })
+  }
+  ok(res, { status: s.status === 'scanned' ? 'scanned' : 'pending' })
 }))
 
 // 前端点「微信快捷登录」：拿到授权跳转地址（AppSecret 全程留在服务端）

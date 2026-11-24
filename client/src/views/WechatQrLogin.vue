@@ -35,6 +35,7 @@ onMounted(async () => {
   if (!/^[a-f0-9]{32}$/.test(sid)) { failed.value = true; msg.value = '登录二维码无效，请在电脑端重新扫码'; return }
   if (!isWeChat()) { failed.value = true; msg.value = '请用手机微信扫一扫此二维码'; return }
   try {
+    api.post('/api/auth/wechat/qr-scanned', { sid }).catch(() => {}) // 上报已扫描，电脑端切到「请在手机确认」
     const { data } = await api.get('/api/auth/wechat/url', { params: { sid } })
     if (!data?.data?.url) throw new Error('未获取到微信授权地址')
     location.href = data.data.url
