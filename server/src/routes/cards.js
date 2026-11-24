@@ -107,9 +107,9 @@ function marketView(row, originLat, originLng, origin) {
 }
 
 // 布局模板清单（编辑器从此处拉取，避免各端硬编码 key）——必须放在 /public/:slug 之前
-// 清单为静态数据，长缓存头减少重复请求
+// 清单虽为静态数据，但会随发版变化；缓存过长会导致上线后仍读到旧清单，故 60 秒 + must-revalidate
 router.get('/public/templates', wrap((req, res) => {
-  res.set('Cache-Control', 'public, max-age=3600')
+  res.set('Cache-Control', 'public, max-age=60, must-revalidate')
   ok(res, { templates: CARD_TEMPLATES })
 }))
 
