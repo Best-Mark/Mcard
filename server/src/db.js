@@ -278,6 +278,21 @@ if (!db.prepare('SELECT 1 FROM packages WHERE duration_days = 0 LIMIT 1').get())
   const lifetime = seedPackages.find(p => p.duration_days === 0)
   db.prepare('INSERT INTO packages (name, description, price_cents, duration_days, features, sort) VALUES (@name,@description,@price_cents,@duration_days,@features,@sort)').run(lifetime)
 }
+// 自愈去重：历史遗留的种子重复（同名+同价+同时长的套餐出现多份），每次启动幂等收敛。
+// 保留每组 id 最小的一条；orders.package_id 指向被删 id 的先改指保留 id（无外键约束，安全），再删重复行。
+try {
+  const dupGroups = db.prepare(`SELECT name, price_cents, duration_days, MIN(id) AS keep_id, COUNT(*) AS n
+    FROM packages GROUP BY name, price_cents, duration_days HAVING n > 1`).all()
+  for (const g of dupGroups) {
+    db.transaction(() => {
+      db.prepare(`UPDATE orders SET package_id = ? WHERE package_id IN (
+        SELECT id FROM packages WHERE name = ? AND price_cents = ? AND duration_days = ? AND id <> ?)`)
+        .run(g.keep_id, g.name, g.price_cents, g.duration_days, g.keep_id)
+      db.prepare(`DELETE FROM packages WHERE name = ? AND price_cents = ? AND duration_days = ? AND id <> ?`)
+        .run(g.name, g.price_cents, g.duration_days, g.keep_id)
+    })()
+  }
+} catch (e) { console.error('[DB] 套餐去重失败（不影响启动）', e.message) }
 
 if (!seeded('seed_admin_v1')) {
   db.transaction(() => {
