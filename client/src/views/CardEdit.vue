@@ -33,26 +33,9 @@
           <div v-show="active === 'identity'" class="card card-pad" id="focus-identity">
             <div class="section-title" style="margin-top:0">基本信息</div>
 
-            <!-- 个人头像：账号形象，与个人资料页共用，和名片 LOGO 明确分开 -->
+            <!-- 账号头像请在「我的 → 账户信息」管理；这里只放名片视觉元素 -->
             <div class="identity-block">
-              <div class="block-title">👤 个人头像 <span class="muted small">代表你本人 · 显示在名片与通讯录</span></div>
-              <div class="avatar-row">
-                <div class="avatar-preview">
-                  <img v-if="form.avatar" :src="form.avatar" alt="头像" />
-                  <span v-else>{{ (form.name || 'M').slice(0, 1) }}</span>
-                </div>
-                <div>
-                  <label class="btn btn-sm btn-ghost upload-btn">上传头像
-                    <input type="file" accept="image/*" @change="e => upload(e, 'avatar')" />
-                  </label>
-                  <AssetPicker v-model="form.avatar" label="从素材库选" />
-                  <p class="small muted" style="margin-top:6px">建议正方形；上传自动压缩转 WebP，≤5MB</p>
-                </div>
-              </div>
-            </div>
-
-            <!-- 品牌 LOGO：名片视觉主体，代表公司/品牌，与个人头像分块 -->
-            <div class="identity-block divided">
+              <p class="small muted" style="margin:0 0 12px">👤 个人头像属于账号资料，请在「我的 → 账户信息」中更换；这里只管理名片内容。</p>
               <div class="block-title">🏢 公司 / 品牌 LOGO <span class="muted small">代表企业或品牌 · 名片的视觉主体（自动去底成透明 PNG）</span></div>
               <div class="field">
                 <div v-if="form.logo" class="logo-current"><img :src="form.logo" alt="当前 LOGO" /><span>当前 LOGO · 重新上传可替换</span></div>
@@ -628,7 +611,7 @@ async function upload(e, field) {
 
 // 每类字段清单：保存时只提交当前分类，真正实现「填一类存一类」的渐进式完善
 const SECTION_FIELDS = {
-  identity: ['name', 'name_en', 'title', 'company', 'department', 'avatar', 'logo'],
+  identity: ['name', 'name_en', 'title', 'company', 'department', 'logo'],
   bio: ['bio', 'company_intro', 'tags'],
   contact: ['mobile', 'phone', 'email', 'wechat', 'alipay', 'whatsapp', 'province', 'city', 'district', 'street', 'address', 'address_detail'],
   qr: ['wechat_qr', 'alipay_qr', 'wechat_pay_qr', 'alipay_pay_qr'],

@@ -5,12 +5,7 @@
     <view class="body">
       <view class="card">
         <view class="section">基本信息</view>
-        <view class="avatar-row" @tap="chooseAvatar">
-          <image v-if="form.avatar" class="avatar" :src="form.avatar" mode="aspectFill" />
-          <view v-else class="avatar ph">{{ (form.name || 'M').slice(0, 1) }}</view>
-          <view class="muted small">点击上传头像（自动压缩转 WebP，≤5MB）</view>
-        </view>
-        <button class="btn tiny" style="margin-top:12rpx" @tap="openAssets('avatar')">从素材库选头像</button>
+        <view class="muted small" style="margin-bottom:16rpx">👤 个人头像属于账号资料，请在「我的 → 账号资料」中更换；这里只管理名片内容。</view>
         <view class="field">
           <text class="label">公司 LOGO（自动去透明底）</text>
           <view v-if="form.logo" class="logo-current">
@@ -387,12 +382,6 @@ async function onMapPicked(p) {
 }
 
 function chooseTheme(k, accent) { form.value.theme = k; form.value.accent = accent }
-function chooseAvatar() {
-  uni.chooseImage({ count: 1, sizeType: ['compressed'], success: async res => {
-    try { form.value.avatar = await uploadImage(res.tempFilePaths[0]); toast('上传成功，记得保存', 'success') }
-    catch (e) { toast(e.message) }
-  } })
-}
 
 function chooseLogo() {
   uni.chooseImage({ count: 1, sizeType: ['original'], success: async res => {
@@ -448,6 +437,7 @@ async function save() {
       links: form.value.links.filter(l => l.label || l.url)
     }
     delete payload.slug
+    delete payload.avatar // 账号头像在个人中心管理，名片资料不写此字段
     await api.put('/api/cards/mine', payload)
     toast('资料已保存，二维码不变', 'success')
     setTimeout(() => uni.navigateBack(), 700)

@@ -328,6 +328,27 @@ function publicUser(u) {
 
 router.get('/me', authRequired, (req, res) => ok(res, req.user))
 
+// 账号头像（个人中心管理）：唯一真相源 = 该用户名片的 avatar 字段。
+// 名片编辑页不再提供头像上传；这里读写的 URL 由 /api/upload 生成，白名单只接受本站媒体路径。
+function normalizeAvatar(v) {
+  const s = String(v || '').trim()
+  if (!s) return ''
+  if (!/^\/(uploads|media)\//.test(s) && !/^https?:\/\//.test(s)) return null
+  return s.slice(0, 500)
+}
+router.get('/avatar', authRequired, wrap((req, res) => {
+  const card = db.prepare('SELECT avatar FROM cards WHERE user_id = ?').get(req.user.id)
+  ok(res, { avatar: card?.avatar || '' })
+}))
+router.put('/avatar', authRequired, wrap((req, res) => {
+  const avatar = normalizeAvatar(req.body?.avatar)
+  if (avatar === null) return fail(res, 400, '头像地址不合法')
+  const card = db.prepare('SELECT id FROM cards WHERE user_id = ?').get(req.user.id)
+  if (!card) return fail(res, 404, '请先创建名片')
+  db.prepare('UPDATE cards SET avatar = ? WHERE user_id = ?').run(avatar, req.user.id)
+  ok(res, { avatar })
+}))
+
 // 微信内已登录 → 生成一次性凭证，前端把它拼到当前 URL，引导「在浏览器中打开」后免二次登录
 router.post('/share-ticket', authRequired, wrap((req, res) => {
   ok(res, { ticket: signShareTicket(req.user.id) })

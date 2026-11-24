@@ -34,6 +34,7 @@
         <view class="cell" @tap="go('/pages/plans/plans')"><view class="ico">¥</view><view>开通 / 续期</view></view>
         <view class="cell" @tap="go('/pages/print/print')"><view class="ico">▤</view><view>实体版式</view></view>
         <view class="cell" @tap="go('/pages/market/market')"><view class="ico">⌕</view><view>名片集市</view></view>
+        <view class="cell" @tap="go('/pages/account/account')"><view class="ico">👤</view><view>账号资料</view></view>
       </view>
 
       <!-- 上架集市：把名片变成 7×24 小时获客入口 -->

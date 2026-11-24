@@ -28,7 +28,7 @@ function cardLogo(row, asDataUrl = false) {
 const EDITABLE = ['name', 'name_en', 'title', 'company', 'company_intro', 'department', 'phone', 'mobile', 'email',
   'wechat', 'alipay', 'whatsapp', 'wechat_qr', 'alipay_qr', 'wechat_pay_qr', 'alipay_pay_qr',
   'address', 'address_detail', 'province', 'city', 'district', 'street',
-  'website', 'shop_url', 'avatar', 'cover', 'logo', 'bio',
+  'website', 'shop_url', 'cover', 'logo', 'bio',
   'tags', 'links', 'template', 'industry', 'latitude', 'longitude', 'market_opt_in',
   'theme', 'accent', 'qr_fg', 'qr_bg', 'qr_logo', 'qr_style']
 

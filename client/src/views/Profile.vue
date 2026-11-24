@@ -8,13 +8,31 @@
 
     <div class="container" style="margin-top:18px">
       <div class="card card-pad me-head">
-        <div class="me-ava">{{ (auth.user?.phone || '名').slice(0, 1) }}</div>
+        <label class="me-ava" title="点击更换账号头像">
+          <img v-if="avatar" :src="avatar" alt="账号头像" />
+          <span v-else>{{ (auth.user?.phone || '名').slice(0, 1) }}</span>
+          <i class="me-ava-cam">✎</i>
+          <input type="file" accept="image/*" :disabled="avatarSaving" @change="onAvatarFile" />
+        </label>
         <div class="me-ident">
           <b>{{ auth.user?.phone || '我的账户' }}</b>
           <span v-if="card">{{ card.name || '未设置姓名' }} · {{ card.company || '未设置公司' }}</span>
           <span v-else>还没有创建名片</span>
         </div>
         <span v-if="card" class="badge" :class="card.active ? 'ok' : 'warn'">{{ card.active ? '已开通' : '未开通' }}</span>
+      </div>
+
+      <div class="card card-pad avatar-manage">
+        <div>
+          <b>👤 账号头像</b>
+          <p class="small muted">属于账号资料，展示在你的名片与通讯录；与名片 LOGO 分开管理。</p>
+        </div>
+        <div class="avatar-actions">
+          <label class="btn btn-sm btn-ghost upload-btn" :class="{ disabled: avatarSaving }">{{ avatarSaving ? '上传中…' : '上传头像' }}
+            <input type="file" accept="image/*" :disabled="avatarSaving" @change="onAvatarFile" />
+          </label>
+          <AssetPicker :model-value="avatar" label="从素材库选" @update:model-value="saveAvatar" />
+        </div>
       </div>
 
       <div v-if="loadError" class="card card-pad" style="margin-top:14px;border-color:#fecaca;background:#fef2f2">
@@ -49,9 +67,12 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
 import { auth, logout, toggleDrawer, showToast } from '../store'
+import AssetPicker from '../components/AssetPicker.vue'
 
 const router = useRouter()
 const card = ref(null)
+const avatar = ref('')
+const avatarSaving = ref(false)
 const loading = ref(true)
 const loadError = ref('')
 let loadStarted = false
@@ -62,12 +83,36 @@ async function load() {
   loading.value = true
   loadError.value = ''
   try {
-    const { data } = await api.get('/api/cards/mine')
-    card.value = data?.data || null
+    const [c, a] = await Promise.all([api.get('/api/cards/mine'), api.get('/api/auth/avatar')])
+    card.value = c?.data?.data || null
+    avatar.value = a?.data?.data?.avatar || ''
   } catch (e) { loadError.value = e.message || '网络异常' }
   finally { loading.value = false }
 }
 onMounted(load)
+
+async function onAvatarFile(e) {
+  const file = e.target.files?.[0]
+  e.target.value = ''
+  if (!file || avatarSaving.value) return
+  avatarSaving.value = true
+  try {
+    const fd = new FormData()
+    fd.append('file', file)
+    const { data } = await api.post('/api/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+    await saveAvatar(data?.data?.url || '')
+    const d = data?.data || {}
+    const saved = d.converted && d.originalSize > d.size ? ` · 已压缩 ${Math.round((1 - d.size / d.originalSize) * 100)}%` : ''
+    showToast(`头像已更新${saved}`, 'success')
+  } catch (err) { showToast(err.message || '头像更新失败', 'error') }
+  finally { avatarSaving.value = false }
+}
+async function saveAvatar(url) {
+  if (!url || avatarSaving.value) return
+  const { data } = await api.put('/api/auth/avatar', { avatar: url })
+  avatar.value = data?.data?.avatar || url
+  if (card.value) card.value.avatar = avatar.value
+}
 
 async function copyLink() {
   if (!card.value?.slug) return showToast('还没有名片', 'error')
@@ -81,7 +126,17 @@ function logoutNow() { logout(); router.push('/') }
 
 <style scoped>
 .me-head { display: flex; align-items: center; gap: 12px; }
-.me-ava { width: 48px; height: 48px; flex: 0 0 48px; border-radius: 14px; background: linear-gradient(135deg, #17357c, #2563eb); color: #fff; display: grid; place-items: center; font-size: 20px; font-weight: 800; }
+.me-ava { position: relative; width: 56px; height: 56px; flex: 0 0 56px; border-radius: 16px; background: linear-gradient(135deg, #17357c, #2563eb); color: #fff; display: grid; place-items: center; font-size: 22px; font-weight: 800; overflow: hidden; cursor: pointer; }
+.me-ava img { width: 100%; height: 100%; object-fit: cover; }
+.me-ava input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.me-ava-cam { position: absolute; right: 0; bottom: 0; width: 18px; height: 18px; border-radius: 50%; background: #fff; color: #2563eb; font-size: 10px; font-style: normal; display: grid; place-items: center; }
+.avatar-manage { margin-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.avatar-manage b { font-size: 14px; }
+.avatar-manage p { margin: 5px 0 0; }
+.avatar-actions { display: flex; align-items: center; gap: 8px; }
+.upload-btn { position: relative; overflow: hidden; }
+.upload-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.upload-btn.disabled { opacity: .6; pointer-events: none; }
 .me-ident { flex: 1; min-width: 0; }
 .me-ident b { display: block; font-size: 15px; }
 .me-ident span { display: block; font-size: 12px; color: var(--muted); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
