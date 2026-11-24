@@ -36,8 +36,6 @@ const routes = [
   { path: '/me/pay/:id', name: 'pay', component: PayResult, meta: { auth: true } },
   { path: '/me/print', name: 'print', component: PrintDesign, meta: { auth: true } },
   { path: '/me/contacts', name: 'contacts', component: Contacts, meta: { auth: true } },
-  // 收藏夹复用名片夹列表（同一真相源），仅默认筛选为「收藏」
-  { path: '/me/favorites', name: 'favorites', component: Contacts, meta: { auth: true } },
   { path: '/me/stats', name: 'stats', component: Stats, meta: { auth: true } },
   { path: '/admin/login', name: 'admin-login', component: Admin },
   { path: '/admin', name: 'admin', component: Admin, meta: { admin: true } },

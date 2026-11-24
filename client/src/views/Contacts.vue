@@ -4,12 +4,12 @@
       <router-link to="/me" class="brand">M<em>Card</em></router-link>
       <div class="spacer"></div>
       <button class="nav-menu-btn" aria-label="打开菜单" @click="openDrawer">☰</button>
-      <span class="small muted">{{ isFavorites ? '我的收藏夹' : '我的名片夹' }}</span>
+      <span class="small muted">我的名片夹</span>
     </header>
     <div class="container" style="margin-top:18px">
       <div class="card card-pad intro">
-        <b>{{ isFavorites ? '我的收藏夹' : '我的名片夹' }}</b>
-        <p class="small muted">{{ isFavorites ? '这里是你收藏的名片，点击即可查看完整资料、拨号或存入通讯录。' : '这里集中管理你收藏的名片，以及和你交换过联系人的名片。点击任一名片即可查看完整资料、拨号或存入通讯录。' }}</p>
+        <b>我的名片夹</b>
+        <p class="small muted">这里集中管理你收藏的名片，以及和你交换过联系人的名片。点击任一名片即可查看完整资料、拨号或存入通讯录。</p>
       </div>
 
       <div v-if="loading" class="card card-pad center" style="margin-top:14px">加载中…</div>
@@ -22,7 +22,7 @@
         <div style="font-size:40px;opacity:.25">☆</div>
         <h3 style="margin:10px 0">还没有收藏的名片</h3>
         <p class="small muted">扫到别人的名片后，点底部「收藏」即可存到这里。</p>
-        <router-link :to="isFavorites ? '/market' : '/'" class="btn btn-primary" style="margin-top:14px">{{ isFavorites ? '去集市发现伙伴' : '去逛逛' }}</router-link>
+        <router-link to="/" class="btn btn-primary" style="margin-top:14px">去逛逛</router-link>
       </div>
 
       <template v-else>
@@ -58,16 +58,13 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
 import api from '../api'
 import { openDrawer } from '../store'
 
-const route = useRoute()
-const isFavorites = computed(() => route.path === '/me/favorites')
 const contacts = ref([])
 const loading = ref(true)
 const error = ref('')
-const filter = ref(isFavorites.value || route.query.tab === 'favorite' ? 'favorite' : 'all')
+const filter = ref('all')
 let loadStarted = false
 const filtered = computed(() => filter.value === 'all' ? contacts.value : contacts.value.filter(c => c.source === filter.value))
 

@@ -26,8 +26,7 @@
 
       <div class="section-title">快捷入口</div>
       <div class="me-grid">
-        <router-link to="/me/favorites" class="me-cell"><i>★</i><span>我的收藏夹</span></router-link>
-        <router-link to="/me/contacts" class="me-cell"><i>▤</i><span>我的名片夹</span></router-link>
+        <router-link to="/me/contacts" class="me-cell"><i>★</i><span>我的名片夹</span></router-link>
         <router-link to="/me/stats" class="me-cell"><i>📊</i><span>浏览统计</span></router-link>
         <router-link to="/me/plans" class="me-cell"><i>💎</i><span>套餐 / 续期</span></router-link>
         <router-link to="/me/print" class="me-cell"><i>🖨</i><span>实体版式</span></router-link>
@@ -86,7 +85,7 @@ function logoutNow() { logout(); router.push('/') }
 .me-ident { flex: 1; min-width: 0; }
 .me-ident b { display: block; font-size: 15px; }
 .me-ident span { display: block; font-size: 12px; color: var(--muted); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.me-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.me-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 .me-cell { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 16px 4px; border-radius: 14px; background: #fff; border: 1px solid var(--line); font-size: 12px; text-align: center; }
 .me-cell i { width: 40px; height: 40px; border-radius: 12px; background: #eff6ff; color: var(--primary); display: grid; place-items: center; font-style: normal; font-size: 19px; }
 .me-link { display: flex; align-items: center; justify-content: space-between; gap: 12px; }

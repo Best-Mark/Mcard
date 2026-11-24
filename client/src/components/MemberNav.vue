@@ -32,7 +32,6 @@
         <section class="m-group">
           <div class="m-group-title">我的</div>
           <button @click="go('/me/profile')"><i>◉</i>账户信息</button>
-          <button @click="go('/me/favorites')"><i>★</i>我的收藏夹</button>
           <button @click="go('/me/contacts')"><i>▤</i>我的名片夹</button>
           <button @click="go('/me/stats')"><i>📊</i>浏览统计 / 订单</button>
           <button @click="go('/me/plans')"><i>💎</i>套餐 / 续期</button>
@@ -66,7 +65,7 @@ const tabs = [
   { path: '/me', label: '名片', ico: '▤', exact: true },
   { path: '/me/card', label: '资料', ico: '✎', exact: false },
   { path: '/market', label: '集市', ico: '⌕', exact: true, feature: true },
-  { path: '/me/favorites', label: '收藏', ico: '★', exact: false },
+  { path: '/me/contacts', label: '名片夹', ico: '▤', exact: false },
   { path: '/me/profile', label: '我的', ico: '◉', exact: false }
 ]
 const slug = ref('')
