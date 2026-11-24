@@ -165,12 +165,12 @@
             <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
           </div>
 
-          <!-- ⑦ 外观（模板 + 主题） -->
+          <!-- ⑦ 外观（模板自带配色） -->
           <div v-show="active === 'appearance'" class="card card-pad">
             <div class="section-title" style="margin-top:0">展示模板</div>
-            <p class="small muted" style="margin-bottom:10px">模板决定名片排版结构，主题风格决定配色，两者可自由搭配。</p>
+            <p class="small muted" style="margin-bottom:10px">选一套模板即应用整套配色（含二维码颜色），无需逐项调整；想微调可在下方「高级配色」里改。</p>
             <div class="tpl-list">
-              <button v-for="tpl in templates" :key="tpl.key" class="tpl-item" :class="{ on: form.template === tpl.key }" @click="form.template = tpl.key">
+              <button v-for="tpl in templates" :key="tpl.key" class="tpl-item" :class="{ on: form.template === tpl.key }" @click="chooseTemplate(tpl.key)">
                 <span class="tpl-thumb" :style="{ background: tpl.cover }">
                   <i class="tpl-ava" :class="'ava-' + tpl.key"></i>
                 </span>
@@ -183,21 +183,18 @@
           </div>
 
           <div v-show="active === 'appearance'" class="card card-pad" style="margin-top:14px">
-            <div class="section-title" style="margin-top:0">主题风格与二维码</div>
-            <div class="field"><label>主题风格</label>
-              <div class="theme-list">
-                <button v-for="(v, k) in THEMES" :key="k" class="theme-item" :class="{ on: form.theme === k }" @click="chooseTheme(k)">
-                  <i :style="{ background: v.cover }"></i><span>{{ v.label }}</span>
-                </button>
-              </div>
-            </div>
+            <button class="adv-toggle" @click="showAdvanced = !showAdvanced">
+              <span>⚙️ 高级配色（选模板已自动配好，一般无需修改）</span>
+              <span class="adv-arrow">{{ showAdvanced ? '▴' : '▾' }}</span>
+            </button>
+            <div v-if="showAdvanced">
+            <p class="small muted" style="margin:6px 0 12px">当前配色来自模板「{{ currentTplLabel }}」，下面可单独微调强调色与二维码。二维码请保持足够对比度（深码 + 浅底），否则可能扫不出来。</p>
             <div class="grid2">
               <div class="field"><label>强调色</label><input v-model="form.accent" type="color" class="color-input" /></div>
               <div class="field"><label>二维码颜色</label><input v-model="form.qr_fg" type="color" class="color-input" /></div>
               <div class="field"><label>二维码背景</label><input v-model="form.qr_bg" type="color" class="color-input" /></div>
               <div class="field"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" v-model="form.qr_logo" /> 二维码中心 Logo</label></div>
             </div>
-            <p class="small muted">提示：二维码颜色请保持足够对比度（深色码 + 浅色底），否则可能扫不出来。</p>
 
             <div class="qr-beautify">
               <div class="section-title" style="margin:16px 0 8px;font-size:14px">🎨 二维码美化（草料风格）</div>
@@ -234,6 +231,7 @@
                 <p class="small muted" style="margin-top:4px">背景图会自动淡化，不影响扫码。二维码颜色与背景请保持对比度。</p>
               </div>
               <p class="small muted">实时预览见右侧；保存本节后公开名片与分享二维码同步生效。</p>
+            </div>
             </div>
             <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
           </div>
@@ -305,7 +303,7 @@ import { ref, computed, onMounted, watch, defineAsyncComponent } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '../api'
 import { showToast, toggleDrawer } from '../store'
-import { THEMES } from '../utils/themes'
+import { THEMES, paletteOf } from '../utils/themes'
 import { refreshPosition, setManualPosition, reverseGeocode, geocode } from '../utils/geo'
 import LogoUploader from '../components/LogoUploader.vue'
 import AssetPicker from '../components/AssetPicker.vue'
@@ -317,15 +315,19 @@ const RegionPicker = defineAsyncComponent(() => import('../components/RegionPick
 
 const router = useRouter()
 const route = useRoute()
+const DEFAULT_TPL = 'contact'
+const DEFAULT_PAL = paletteOf(DEFAULT_TPL)
 const blank = {
   slug: '', name: '', name_en: '', title: '', company: '', company_intro: '', department: '', website: '', shop_url: '',
   mobile: '', phone: '', email: '', wechat: '', alipay: '', whatsapp: '',
   address: '', address_detail: '', province: '', city: '', district: '', street: '',
-  avatar: '', logo: '', bio: '', tags: [], links: [], template: 'contact', theme: 'ocean', accent: THEMES.ocean.accent,
+  avatar: '', logo: '', bio: '', tags: [], links: [], template: DEFAULT_TPL, theme: DEFAULT_PAL.theme, accent: THEMES[DEFAULT_PAL.theme].accent,
   industry: '', city: '', latitude: null, longitude: null, market_opt_in: false,
-  qr_fg: '#0f172a', qr_bg: '#ffffff', qr_logo: true,
+  qr_fg: DEFAULT_PAL.qrFg, qr_bg: DEFAULT_PAL.qrBg, qr_logo: true,
   qr_style: { dot: 'square', eye: 'square', gradTo: '', logoShape: 'rounded', bgImage: '' }
 }
+const showAdvanced = ref(false)
+const currentTplLabel = computed(() => templates.value.find(t => t.key === form.value?.template)?.label || form.value?.template || '默认')
 // 预设（草料风格）：一键切换码点/码眼/渐变组合
 const QR_PRESETS = [
   { key: 'classic', label: '经典', swatch: '#0f172a', dot: 'square', eye: 'square', gradTo: '', logoShape: 'rounded' },
@@ -423,7 +425,8 @@ watch(() => route.query.focus, () => applyFocus())
 
 async function loadTemplates() {
   try {
-    const { data } = await api.get('/api/cards/public/templates')
+    // 时间戳破缓存：模板清单会随发版增加，避免浏览器/nginx 缓存导致新模板看不到
+    const { data } = await api.get('/api/cards/public/templates?t=' + Date.now())
     templates.value = data.data?.templates || []
   } catch { /* 模板清单拉取失败时用兜底，保证选择器可用 */ }
 }
@@ -535,9 +538,15 @@ async function onMapPicked(p) {
   showToast('坐标已填入，记得点保存', 'success')
 }
 
-function chooseTheme(k) {
-  form.value.theme = k
-  form.value.accent = THEMES[k].accent
+// 选模板 = 一键应用整套推荐配色（主题/强调色/二维码色），用户无需逐项调
+function chooseTemplate(key) {
+  const pal = paletteOf(key)
+  form.value.template = key
+  form.value.theme = pal.theme
+  form.value.accent = (THEMES[pal.theme] || THEMES.ocean).accent
+  form.value.qr_fg = pal.qrFg
+  form.value.qr_bg = pal.qrBg
+  showToast(`已应用「${currentTplLabel.value}」整套配色`, 'success')
 }
 
 async function upload(e, field) {
@@ -743,6 +752,9 @@ async function finish() {
 .theme-item.on { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37,99,235,.12); }
 .theme-item i { width: 44px; height: 26px; border-radius: 6px; display: block; }
 .color-input { width: 100%; height: 40px; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+.adv-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: none; border: 0; padding: 0; cursor: pointer; color: var(--muted, #6b7688); font-size: 13px; text-align: left; }
+.adv-toggle:hover { color: var(--primary, #2563eb); }
+.adv-arrow { font-size: 16px; }
 .qr-beautify { margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--line, #e8edf4); }
 .qr-presets { display: flex; gap: 8px; flex-wrap: wrap; }
 .qr-preset { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 6px 12px; border: 1px solid var(--line, #e8edf4); border-radius: 999px; background: var(--bg-page, #f4f6fb); color: var(--muted, #6b7688); }

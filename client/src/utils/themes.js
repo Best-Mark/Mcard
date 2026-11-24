@@ -30,6 +30,35 @@ export const THEMES = {
   }
 }
 
+// 模板自带推荐配色：选模板即应用一整套（主题/强调色/二维码色），用户无需逐项调色。
+// key = cardTemplates.js 的模板 key；二维码色遵循「深码 + 浅底」保证可扫。
+// ⚠️ 新增模板或调整模板配色时，需同步 miniapp/src/pages/edit/edit.vue 的 TEMPLATE_PALETTES。
+export const TEMPLATE_PALETTES = {
+  classic: { theme: 'ocean', qrFg: '#12306b', qrBg: '#f2f7ff' },
+  minimal: { theme: 'ocean', qrFg: '#0f172a', qrBg: '#ffffff' },
+  elite: { theme: 'ink', qrFg: '#b99355', qrBg: '#15171c' },
+  vivid: { theme: 'royal', qrFg: '#7c3aed', qrBg: '#fff7ed' },
+  seal: { theme: 'ocean', qrFg: '#0f172a', qrBg: '#ffffff' },
+  contact: { theme: 'ink', qrFg: '#12202e', qrBg: '#ffffff' },
+  navygold: { theme: 'ink', qrFg: '#1d3a55', qrBg: '#f7f1e3' },
+  paper: { theme: 'ocean', qrFg: '#3f4a5a', qrBg: '#f7f6f3' },
+  glass: { theme: 'mint', qrFg: '#0b2e2a', qrBg: '#eaf8f4' },
+  wood: { theme: 'sunset', qrFg: '#5b3a1f', qrBg: '#f6eee1' },
+  neon: { theme: 'royal', qrFg: '#3d1a72', qrBg: '#f3e9ff' },
+  acid: { theme: 'mint', qrFg: '#0a0a0a', qrBg: '#dfff5e' },
+  pop: { theme: 'sunset', qrFg: '#1a1a1a', qrBg: '#fff4e8' },
+  magazine: { theme: 'sunset', qrFg: '#b91c1c', qrBg: '#f7f3ec' },
+  poster: { theme: 'ink', qrFg: '#1d3a55', qrBg: '#ffffff' },
+  ticket: { theme: 'ocean', qrFg: '#1f2937', qrBg: '#f7f5ee' },
+  horizontal: { theme: 'ocean', qrFg: '#1d3a55', qrBg: '#eef1f4' },
+  sidebar: { theme: 'sunset', qrFg: '#44291a', qrBg: '#f7f3ec' }
+}
+
+// 取某模板的推荐配色；未登记的模板（新加但未同步映射）回落默认，保证不崩
+export function paletteOf(template) {
+  return TEMPLATE_PALETTES[template] || { theme: 'ocean', qrFg: '#0f172a', qrBg: '#ffffff' }
+}
+
 export function themeOf(card) {
   const base = THEMES[card?.theme] || THEMES.ocean
   const accent = /^#[0-9a-f]{6}$/i.test(card?.accent || '') ? card.accent : base.accent

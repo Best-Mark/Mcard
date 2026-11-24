@@ -96,9 +96,9 @@
 
       <view class="card">
         <view class="section">展示模板</view>
-        <view class="muted small" style="margin-bottom:16rpx">模板决定排版结构，主题决定配色，可自由搭配。</view>
+        <view class="muted small" style="margin-bottom:16rpx">选模板即应用整套配色（含二维码色），无需逐项调；想微调可在下方「高级配色」里改。</view>
         <view class="tpl-list">
-          <view v-for="tpl in templates" :key="tpl.key" class="tpl-item" :class="{ on: form.template === tpl.key }" @tap="form.template = tpl.key">
+          <view v-for="tpl in templates" :key="tpl.key" class="tpl-item" :class="{ on: form.template === tpl.key }" @tap="chooseTemplate(tpl.key)">
             <view class="tpl-thumb" :style="{ background: tpl.cover }">
               <view class="tpl-ava" :class="'ava-' + tpl.key"></view>
             </view>
@@ -110,12 +110,12 @@
       </view>
 
       <view class="card">
-        <view class="section">主题风格与二维码</view>
-        <view class="themes">
-          <view v-for="(v, k) in themes" :key="k" class="theme" :class="{ on: form.theme === k }" :style="{ background: v.accent }" @tap="chooseTheme(k, v.accent)">
-            {{ v.label }}
-          </view>
+        <view class="adv-toggle" @tap="showAdvanced = !showAdvanced">
+          <text>⚙️ 高级配色（选模板已自动配好，一般无需修改）</text>
+          <text>{{ showAdvanced ? '▴' : '▾' }}</text>
         </view>
+        <view v-if="showAdvanced">
+        <view class="muted small" style="margin:8rpx 0 16rpx">当前配色来自模板「{{ currentTplLabel }}」，下面可单独微调。二维码请保持深码浅底，否则可能扫不出来。</view>
         <view class="field"><text class="label">强调色</text><input v-model="form.accent" class="input" placeholder="#2563eb" /></view>
         <view class="field"><text class="label">二维码前景色</text><input v-model="form.qr_fg" class="input" placeholder="#0f172a" /></view>
         <view class="field"><text class="label">二维码背景色</text><input v-model="form.qr_bg" class="input" placeholder="#ffffff" /></view>
@@ -135,6 +135,7 @@
           <view class="field"><text class="label">渐变终点色（留空=纯色）</text><input v-model="form.qr_style.gradTo" class="input" placeholder="#06b6d4，留空纯色" /></view>
           <button class="btn tiny" @tap="openAssets('qr_style.bgImage')">从素材库选背景图</button>
           <view v-if="form.qr_style.bgImage" class="muted small" style="margin-top:8rpx">已设置背景图 · <text @tap="form.qr_style.bgImage = ''">移除</text></view>
+        </view>
         </view>
       </view>
 
@@ -156,6 +157,29 @@ const themes = {
   mint: { label: '翡翠绿', accent: '#0f766e' },
   royal: { label: '皇家紫', accent: '#7c3aed' }
 }
+// ⚠️ 与 client/src/utils/themes.js 的 TEMPLATE_PALETTES 保持同步
+const TEMPLATE_PALETTES = {
+  classic: { theme: 'ocean', qrFg: '#12306b', qrBg: '#f2f7ff' },
+  minimal: { theme: 'ocean', qrFg: '#0f172a', qrBg: '#ffffff' },
+  elite: { theme: 'ink', qrFg: '#b99355', qrBg: '#15171c' },
+  vivid: { theme: 'royal', qrFg: '#7c3aed', qrBg: '#fff7ed' },
+  seal: { theme: 'ocean', qrFg: '#0f172a', qrBg: '#ffffff' },
+  contact: { theme: 'ink', qrFg: '#12202e', qrBg: '#ffffff' },
+  navygold: { theme: 'ink', qrFg: '#1d3a55', qrBg: '#f7f1e3' },
+  paper: { theme: 'ocean', qrFg: '#3f4a5a', qrBg: '#f7f6f3' },
+  glass: { theme: 'mint', qrFg: '#0b2e2a', qrBg: '#eaf8f4' },
+  wood: { theme: 'sunset', qrFg: '#5b3a1f', qrBg: '#f6eee1' },
+  neon: { theme: 'royal', qrFg: '#3d1a72', qrBg: '#f3e9ff' },
+  acid: { theme: 'mint', qrFg: '#0a0a0a', qrBg: '#dfff5e' },
+  pop: { theme: 'sunset', qrFg: '#1a1a1a', qrBg: '#fff4e8' },
+  magazine: { theme: 'sunset', qrFg: '#b91c1c', qrBg: '#f7f3ec' },
+  poster: { theme: 'ink', qrFg: '#1d3a55', qrBg: '#ffffff' },
+  ticket: { theme: 'ocean', qrFg: '#1f2937', qrBg: '#f7f5ee' },
+  horizontal: { theme: 'ocean', qrFg: '#1d3a55', qrBg: '#eef1f4' },
+  sidebar: { theme: 'sunset', qrFg: '#44291a', qrBg: '#f7f3ec' }
+}
+const paletteOf = key => TEMPLATE_PALETTES[key] || { theme: 'ocean', qrFg: '#0f172a', qrBg: '#ffffff' }
+const DEFAULT_PAL = paletteOf('contact')
 const QR_PRESETS = [
   { key: 'classic', label: '经典', dot: 'square', eye: 'square', gradTo: '' },
   { key: 'dots', label: '圆点', dot: 'dots', eye: 'rounded', gradTo: '' },
@@ -179,7 +203,7 @@ const blank = {
   website: '', shop_url: '',
   bio: '', tags: [], links: [], avatar: '', logo: '', mobile: '', phone: '', email: '', wechat: '', alipay: '', whatsapp: '',
   address: '', address_detail: '', province: '', city: '', district: '', street: '',
-  template: 'contact', theme: 'ocean', accent: '#2563eb', qr_fg: '#0f172a', qr_bg: '#ffffff', qr_logo: true,
+  template: 'contact', theme: DEFAULT_PAL.theme, accent: themes[DEFAULT_PAL.theme].accent, qr_fg: DEFAULT_PAL.qrFg, qr_bg: DEFAULT_PAL.qrBg, qr_logo: true,
   qr_style: { dot: 'square', eye: 'square', gradTo: '', logoShape: 'rounded', bgImage: '' },
   industry: '', latitude: null, longitude: null, market_opt_in: false
 }
@@ -189,6 +213,8 @@ const saving = ref(false)
 // 模板清单是静态数据：模块级缓存让二次进入瞬时渲染，随后静默刷新
 let templatesCache = []
 const templates = ref(templatesCache)
+const showAdvanced = ref(false)
+const currentTplLabel = computed(() => templates.value.find(t => t.key === form.value?.template)?.label || form.value?.template || '默认')
 const marketMeta = ref({ industries: [], cities: [] })
 const locating = ref(false)
 const geoBusy = ref(false)
@@ -256,7 +282,7 @@ onUnmounted(() => { uni.$off('map-picked', onMapPicked); uni.$off('asset-picked'
 async function loadTemplates() {
   if (templatesCache.length) templates.value = templatesCache
   try {
-    const r = await api.get('/api/cards/public/templates', false)
+    const r = await api.get('/api/cards/public/templates?t=' + Date.now(), false)
     if (r?.templates?.length) {
       templatesCache = r.templates
       templates.value = r.templates
@@ -354,7 +380,15 @@ async function onMapPicked(p) {
   toast('坐标已填入，记得保存', 'success')
 }
 
-function chooseTheme(k, accent) { form.value.theme = k; form.value.accent = accent }
+function chooseTemplate(key) {
+  const pal = paletteOf(key)
+  form.value.template = key
+  form.value.theme = pal.theme
+  form.value.accent = themes[pal.theme].accent
+  form.value.qr_fg = pal.qrFg
+  form.value.qr_bg = pal.qrBg
+  toast(`已应用「${currentTplLabel.value}」整套配色`, 'success')
+}
 
 function chooseLogo() {
   uni.chooseImage({ count: 1, sizeType: ['original'], success: async res => {
@@ -466,6 +500,7 @@ async function save() {
 .tpl-name { font-size: 28rpx; font-weight: 700; }
 .tpl-desc { font-size: 22rpx; color: #6b7688; }
 .tpl-check { font-size: 22rpx; color: #2563eb; font-weight: 700; }
+.adv-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; padding: 8rpx 0; font-size: 26rpx; color: #6b7688; }
 .themes { display: flex; flex-wrap: wrap; gap: 12rpx; margin-bottom: 20rpx; }
 .theme { padding: 10rpx 18rpx; border-radius: 12rpx; color: #fff; font-size: 24rpx; opacity: .65; }
 .theme.on { opacity: 1; box-shadow: 0 0 0 4rpx rgba(0,0,0,.1); }
