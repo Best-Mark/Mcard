@@ -172,6 +172,24 @@ server {
 
 6) 验证：`curl http://127.0.0.1:3000/api/health` 应返回 `code:0`；浏览器打开域名能看到首页即成功。
 
+### 服务器手动更新（Bash）
+
+`client/dist` 不进 Git，服务器必须本地 rebuild，否则拉了源码但静态产物还是旧的，会出现页面/后台白屏。部署目录以 `/www/wwwroot/card.microeco.net` 为例（按实际路径替换）：
+
+```bash
+cd /www/wwwroot/card.microeco.net && \
+git fetch origin main && \
+git reset --hard origin/main && \
+npm run build && \
+pm2 restart mcard && \
+curl -s http://127.0.0.1:3000/api/health
+```
+
+- `git reset --hard origin/main`：以远端为准；`.env`、`data/`、上传文件在 `.gitignore` 里，不会被清掉。若服务器上另有本地改动需保留，换成 `git pull --ff-only origin main`。
+- `npm run build`：重建 `client/dist`（白屏多因漏了这步）。
+- `pm2 restart mcard`：仅在 `server/` 有变更时必需；纯前端改动可省略以免重启窗口。
+- 若只改了前端、确认无需重启服务，可去掉 `pm2 restart mcard` 一行。
+
 > **HTTP 的限制（重要）**：① 小程序真机 request 合法域名**强制 HTTPS**，纯 HTTP 域名小程序连不上（H5 不受影响）；② 浏览器 `navigator.geolocation`（地图选点/附近发现）在非 HTTPS 下多数浏览器拒绝授权；③ 微信 JS-SDK、PWA Service Worker 也要求 HTTPS。因此**生产建议务必启用 HTTPS**。`BASE_URL` 决定二维码内容，改域名后旧二维码仍指向旧域名——首次上线定域名要谨慎。
 
 ### 开通与资金说明
