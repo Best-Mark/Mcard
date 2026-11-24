@@ -125,9 +125,6 @@
           <div class="cv-address" @click="copy(fullAddress, '地址')">
             <span>地址：{{ fullAddress }}</span>
           </div>
-          <div v-if="card.latitude != null && card.longitude != null" class="cv-geo-hint small muted">
-            坐标：{{ card.latitude.toFixed(4) }}, {{ card.longitude.toFixed(4) }}
-          </div>
           <button v-if="maps.length" class="cv-map-launch" @click="mapOpen = true">导航</button>
         </div>
 
@@ -639,7 +636,6 @@ async function toggleFavorite() {
 .cv-material-ico { font-size: 18px; }
 .cv-material-title { flex: 1; min-width: 0; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cv-material-more { font-size: 12px; color: var(--t-accent); }
-.cv-geo-hint { margin-top: 6px; font-variant-numeric: tabular-nums; }
 /* 相册：图片缩略图直看，链接/文档点开直跳，不再绕中间资料页 */
 .cv-gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .cv-gallery-cell { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--t-bg); min-width: 0; }

@@ -95,7 +95,6 @@
           <h3>地址</h3>
           <div v-if="regionLine" class="cp-region-line">{{ regionLine }}</div>
           <div class="cp-address">地址：{{ fullAddress }}</div>
-          <div v-if="card.latitude != null && card.longitude != null" class="cp-geo">坐标：{{ card.latitude.toFixed(4) }}, {{ card.longitude.toFixed(4) }}</div>
           <button type="button" class="cp-map-btn">导航</button>
         </div>
 
@@ -254,7 +253,6 @@ watch(() => props.section, async () => {
 .cp-qr-tile span { font-size: 9px; color: var(--t-muted); word-break: break-all; }
 .cp-region-line { font-size: 11px; font-weight: 600; color: var(--t-accent); margin-bottom: 4px; }
 .cp-address { font-size: 11px; line-height: 1.5; }
-.cp-geo { font-size: 9px; color: var(--t-muted); margin-top: 4px; }
 .cp-map-btn { width: 100%; margin-top: 8px; padding: 8px; border: 0; border-radius: 8px; background: var(--t-accent); color: #fff; font-size: 11px; }
 .cp-center { text-align: center; }
 .cp-center h3 { text-align: left; }

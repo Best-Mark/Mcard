@@ -90,7 +90,6 @@
           <view class="addr" @tap="copyText(fullAddress, '地址已复制，可粘贴到地图')">
             <text class="content">地址：{{ fullAddress }}</text>
           </view>
-          <view v-if="card.latitude != null && card.longitude != null" class="hint">坐标：{{ card.latitude.toFixed(4) }}, {{ card.longitude.toFixed(4) }} · 可在微信/高德中发送此坐标导航</view>
           <view class="hint">小程序内无法直接唤起所有地图，地址复制后打开高德/百度/Apple 地图粘贴即可导航。</view>
         </view>
 
