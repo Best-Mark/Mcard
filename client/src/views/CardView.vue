@@ -125,7 +125,7 @@
           <div v-if="card.latitude != null && card.longitude != null" class="cv-geo-hint small muted">
             ⌖ {{ card.latitude.toFixed(4) }}, {{ card.longitude.toFixed(4) }}
           </div>
-          <button v-if="maps.length" class="cv-map-launch" @click="mapOpen = true">⌖ 导航到此处（点选地图） ›</button>
+          <button v-if="maps.length" class="cv-map-launch" @click="mapOpen = true">导航</button>
         </div>
 
         <!-- 通讯录二维码：内容就是 vCard，相机扫一扫直接弹「添加到通讯录」 -->

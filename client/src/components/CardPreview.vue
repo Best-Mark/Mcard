@@ -92,7 +92,7 @@
           <div v-if="regionLine" class="cp-region-line">{{ regionLine }}</div>
           <div class="cp-address">{{ fullAddress }}</div>
           <div v-if="card.latitude != null && card.longitude != null" class="cp-geo">⌖ {{ card.latitude.toFixed(4) }}, {{ card.longitude.toFixed(4) }}</div>
-          <button type="button" class="cp-map-btn">⌖ 导航到此处（{{ mapLabels }}）›</button>
+          <button type="button" class="cp-map-btn">导航</button>
         </div>
 
         <div class="cp-block cp-center">
@@ -144,10 +144,6 @@ const fullAddress = computed(() => {
   const c = props.card || {}
   const region = [c.province, c.city, c.district, c.street].filter(Boolean).join('')
   return [region, c.address, c.address_detail].filter(Boolean).join(' ')
-})
-const mapLabels = computed(() => {
-  const c = props.card || {}
-  return c.latitude != null && c.longitude != null ? '高德/百度/腾讯/Apple' : '高德/百度'
 })
 const contactFields = computed(() => {
   const c = props.card || {}
