@@ -34,9 +34,7 @@
           <div v-show="active === 'identity'" class="card card-pad" id="focus-identity">
             <div class="section-title" style="margin-top:0">基本信息</div>
 
-            <!-- 账号头像请在「我的 → 账户信息」管理；这里只放名片视觉元素 -->
             <div class="identity-block">
-              <p class="small muted" style="margin:0 0 12px">👤 个人头像属于账号资料，请在「我的 → 账户信息」中更换；这里只管理名片内容。</p>
               <div class="block-title">🏢 公司 / 品牌 LOGO <span class="muted small">代表企业或品牌 · 名片的视觉主体（自动去底成透明 PNG）</span></div>
               <div class="field">
                 <div v-if="form.logo" class="logo-current"><img :src="form.logo" alt="当前 LOGO" /><span>当前 LOGO · 重新上传可替换</span></div>
