@@ -443,8 +443,16 @@ router.put('/mine', authRequired, wrap((req, res) => {
     sets.push(`${key} = ?`)
     values.push(v)
   }
+  // 自愈：主动开启集市上架时，若名片仍停留在 draft，同步激活为 active。
+  // 否则前端显示「已上架」但集市 SQL（status='active'）永远查不到，用户困惑。
+  // 注意：仅限 draft→active，绝不动其它 status（如 expired/pending），也不改二维码。
+  let activateOnMarket = false
+  if (req.body && 'market_opt_in' in req.body && Number(req.body.market_opt_in) && row.status === 'draft') {
+    sets.push("status = 'active'")
+    activateOnMarket = true
+  }
   if (!sets.length) return fail(res, 400, '没有需要更新的字段')
-  // 铁律：slug / status / expires_at / views 绝不在更新白名单内 —— 改资料不动二维码
+  // 铁律：slug / expires_at / views 绝不在更新白名单内 —— 改资料不动二维码
   sets.push("updated_at = datetime('now')")
   db.prepare(`UPDATE cards SET ${sets.join(', ')} WHERE id = ?`).run(...values, row.id)
   const updated = db.prepare('SELECT * FROM cards WHERE id = ?').get(row.id)

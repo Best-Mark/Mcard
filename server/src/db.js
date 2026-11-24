@@ -101,6 +101,9 @@ for (const [col, def] of [
 ]) addColumnIfMissing('cards', col, def)
 db.exec('CREATE INDEX IF NOT EXISTS idx_cards_market ON cards(market_opt_in, status, industry);')
 db.exec('CREATE INDEX IF NOT EXISTS idx_cards_region ON cards(province, city, district);')
+// 自愈：存量名片若已主动上架（market_opt_in=1）却仍是 draft，集市 SQL 永远查不到。
+// 启动时一次性激活这些名片，确保「显示已上架 = 集市可见」。
+db.prepare("UPDATE cards SET status = 'active', updated_at = datetime('now') WHERE market_opt_in = 1 AND status = 'draft'").run()
 
 // 微信网页授权登录：openid/unionid 用于免密识别，头像来自微信，auth_source 记录账号来源
 for (const [col, def] of [
