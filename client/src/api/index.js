@@ -5,7 +5,11 @@ import { setAuth, setAdminAuth } from '../store'
 const api = axios.create({ baseURL: '', timeout: 20000 })
 let redirecting = false
 api.interceptors.request.use(cfg => {
-  const adminPath = cfg.url?.startsWith('/api/admin')
+  // 后台接口不只有 /api/admin 前缀：行政区划管理 /api/geo/admin/*、后台标记支付
+  // /api/orders/:id/mark-paid 也走后台鉴权，必须用 mcard_admin_token。
+  // 否则会误带 C 端 mcard_token（role=user）→ 403「需要管理权限」。
+  const url = cfg.url || ''
+  const adminPath = url.startsWith('/api/admin') || url.startsWith('/api/geo/admin/') || /^\/api\/orders\/[^/]+\/mark-paid$/.test(url)
   const token = adminPath ? localStorage.getItem('mcard_admin_token') : localStorage.getItem('mcard_token')
   if (token) cfg.headers.Authorization = `Bearer ${token}`
   return cfg
