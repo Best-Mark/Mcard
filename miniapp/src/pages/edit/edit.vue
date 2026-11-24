@@ -64,9 +64,8 @@
         </view>
         <view class="field"><text class="label">地址</text><input v-model="form.address" class="input" placeholder="街道门牌，越详细越好导航" /></view>
         <view class="field"><text class="label">门牌补充</text><input v-model="form.address_detail" class="input" /></view>
-        <view class="field"><text class="label">定位坐标 <text class="muted small">（原生 → IP → 城市兜底；用于集市按距离排序与一键导航）</text></text>
+        <view class="field"><text class="label">位置定位 <text class="muted small">（用于精准导航；集市按距离排序）</text></text>
           <view class="locate-row">
-            <text class="small muted">{{ form.latitude != null ? form.latitude.toFixed(4) : '—' }}, {{ form.longitude != null ? form.longitude.toFixed(4) : '—' }}</text>
             <button class="btn tiny" @tap="openMapPicker">🗺 地图选点</button>
             <button class="btn tiny" :disabled="locating" @tap="locateMe">{{ locating ? '定位中…' : '⌖ 精确定位' }}</button>
           </view>

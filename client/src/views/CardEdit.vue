@@ -88,9 +88,8 @@
             <div class="field"><label>地址（用于一键导航）</label><input v-model="form.address" class="input" placeholder="街道门牌，越详细导航越准" /></div>
             <div class="field"><label>门牌 / 楼层补充</label><input v-model="form.address_detail" class="input" /></div>
             <div class="field">
-              <label>定位坐标 <span class="muted small">（微信/GPS → IP → 城市兜底；用于名片集市按距离排序与一键导航）</span></label>
+              <label>位置定位 <span class="muted small">（用于精准导航；集市按距离排序）</span></label>
               <div class="locate-row">
-                <span class="small mono">{{ form.latitude != null ? form.latitude.toFixed(4) : '—' }}, {{ form.longitude != null ? form.longitude.toFixed(4) : '—' }}</span>
                 <span v-if="positionSource" class="badge small" :class="qualityClass">{{ sourceLabel }}</span>
                 <button class="btn btn-sm btn-ghost" @click="mapOpen = true">🗺 地图选点</button>
                 <button class="btn btn-sm btn-ghost" :disabled="locating" @click="locateMe">{{ locating ? '定位中…' : '⌖ 精确定位' }}</button>
