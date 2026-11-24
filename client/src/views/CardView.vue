@@ -144,6 +144,15 @@
           <p class="small muted" style="margin-top:8px">{{ contactActionTip }}</p>
         </div>
 
+        <!-- 扫码进来的多是未登录访客：看完名片顺手引导「我也要一张」，登录后直达建卡页 -->
+        <div v-if="showCreateOwn" class="card card-pad cv-create-own">
+          <div class="cv-create-copy">
+            <b>也想拥有这样一张名片？</b>
+            <p class="small muted">二维码终身不变、资料随时改，免费创建</p>
+          </div>
+          <router-link to="/login?redirect=/me/card" class="btn btn-primary">免费创建我的名片 →</router-link>
+        </div>
+
         <div class="card card-pad cv-exchange">
           <div><h3>交换名片</h3><p class="small muted">扫描对方二维码后，在这里留下互换记录</p></div>
           <button class="btn btn-ghost btn-sm" @click="openExchange">我要交换</button>
@@ -245,7 +254,6 @@ import { getCachedPosition } from '../utils/geo'
 import BottomSheet from '../components/BottomSheet.vue'
 import AppIcon from '../components/AppIcon.vue'
 import { BRAND_ICONS, FUNC_ICONS } from '../utils/icons'
-// QRCode 动态加载：只在进入名片页、需要本地生成 vCard 高清二维码时才下载，不拖慢首屏
 
 const route = useRoute(); const router = useRouter()
 const slug = route.params.slug
@@ -285,6 +293,8 @@ async function countMaterialView(m) {
 
 const t = computed(() => themeOf({ theme: currentTheme.value, accent: card.value?.accent }))
 const vars = computed(() => themeVars(t.value))
+// 扫码进来的访客多为未登录：只在未登录且非本人时展示建卡引导，避免打扰名片主人
+const showCreateOwn = computed(() => !auth.token && !isOwner.value)
 const regionLine = computed(() => {
   const c = card.value || {}
   return [c.province, c.city, c.district, c.street].filter(Boolean).join(' · ')
@@ -729,6 +739,10 @@ async function toggleFavorite() {
 .cv-vcard-qr img { display: block; width: 100%; height: 100%; }
 .cv-qr-actions { display: flex; gap: 10px; justify-content: center; }
 .cv-qr-actions .btn { min-width: 128px; }
+/* 访客建卡引导：醒目但不喧宾夺主，按钮在窄屏换行居中 */
+.cv-create-own { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; text-align: left; background: var(--t-surface, #fff); }
+.cv-create-copy b { color: var(--t-accent, #1a3f86); }
+.cv-create-own .btn { white-space: nowrap; }
 
 /* ============ 7 套模板骨架差异化 ============
    换「模板」= 换排版骨架（封面形态 / 头像位置 / 信息排布 / 底栏）；
