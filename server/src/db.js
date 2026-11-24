@@ -154,7 +154,6 @@ CREATE TABLE IF NOT EXISTS card_views (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_views_card ON card_views(card_id);
-CREATE INDEX IF NOT EXISTS idx_views_source ON card_views(card_id, source);
 
 CREATE TABLE IF NOT EXISTS card_exchanges (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -235,6 +234,8 @@ addColumnIfMissing('card_views', 'source', "TEXT NOT NULL DEFAULT ''")
 addColumnIfMissing('card_views', 'city', "TEXT NOT NULL DEFAULT ''")
 addColumnIfMissing('card_favorites', 'note', "TEXT NOT NULL DEFAULT ''")
 addColumnIfMissing('card_favorites', 'tags', "TEXT NOT NULL DEFAULT '[]'")
+// 索引依赖补列后的字段，必须放在 addColumnIfMissing 之后（存量库 source 列此时才存在）
+db.exec('CREATE INDEX IF NOT EXISTS idx_views_source ON card_views(card_id, source);')
 
 // ---------------- 种子数据 ----------------
 const seedPackages = [
