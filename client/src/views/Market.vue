@@ -12,7 +12,7 @@
       <div class="mk-locate">
         <span class="mk-locate-ico">⌖</span>
         <div class="mk-locate-text">
-          <b>{{ locateLabel }}</b>
+          <b>{{ locateLabel }} <span v-if="positionMeta.label" class="mk-quality" :class="positionMeta.level">{{ positionMeta.label }}</span></b>
           <span class="small">{{ locateHint }}</span>
         </div>
         <button class="btn btn-sm" :disabled="locating" @click="relocate">{{ locating ? '定位中…' : '重新定位' }}</button>
@@ -31,12 +31,19 @@
         </button>
       </div>
       <div class="mk-city-row">
-        <label>以城市为中心：</label>
-        <select v-model="city" class="select" @change="applyFilter">
-          <option value="">不使用城市</option>
-          <option v-for="c in meta.cities" :key="c.name" :value="c.name">{{ c.name }}</option>
+        <label>按地区筛选：</label>
+        <select v-model="province" class="select" @change="onProvinceChange">
+          <option value="">全部省份</option>
+          <option v-for="p in provinceOptions" :key="p.code" :value="p.name">{{ p.name }}</option>
         </select>
-        <span class="small muted">选城市后按到该市中心的距离排序</span>
+        <select v-model="city" class="select" @change="onCityChange">
+          <option value="">全部城市</option>
+          <option v-for="c in cityOptions" :key="c.name" :value="c.name">{{ c.name }}</option>
+        </select>
+        <select v-if="districtOptions.length" v-model="district" class="select" @change="applyFilter">
+          <option value="">全部区县</option>
+          <option v-for="d in districtOptions" :key="d.name" :value="d.name">{{ d.name }}</option>
+        </select>
       </div>
     </div>
 
@@ -90,9 +97,10 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
 import { showToast, openDrawer } from '../store'
+import { getCurrentPosition, getPositionQualityLabel } from '../utils/geo'
 
 const router = useRouter()
-const meta = ref({ industries: [], cities: [] })
+const meta = ref({ industries: [], cities: [], regions: [] })
 const list = ref([])
 const total = ref(0)
 const loading = ref(true)
@@ -100,8 +108,11 @@ const error = ref('')
 const keyword = ref('')
 const industry = ref('')
 const city = ref('')
+const province = ref('')
+const district = ref('')
 const coords = ref(null)
 const locating = ref(false)
+const positionMeta = ref({ label: '', level: '' })
 const distanceMode = computed(() => !!(coords.value || city.value))
 
 const locateLabel = computed(() => {
@@ -125,14 +136,39 @@ async function loadMeta() {
     const { data } = await api.get('/api/cards/public/market/meta')
     meta.value = data.data
   } catch { /* 元数据失败仅影响筛选项，列表仍可用 */ }
+  try {
+    const { data } = await api.get('/api/geo/regions')
+    meta.value.regions = data?.data?.regions || []
+  } catch { /* 区域数据失败不影响基础筛选 */ }
 }
+
+// 省级选项（level=1）
+const provinceOptions = computed(() => (meta.value.regions || []).filter(r => r.level === 1))
+// 城市选项：选中省份后取子级，否则用内置热门城市
+const cityOptions = computed(() => {
+  if (province.value) {
+    const p = (meta.value.regions || []).find(r => r.level === 1 && r.name === province.value)
+    return p ? (meta.value.regions || []).filter(r => r.level === 2 && r.parent_code === p.code).map(r => ({ name: r.name })) : []
+  }
+  return meta.value.cities || []
+})
+// 区选项：选中城市后取子级
+const districtOptions = computed(() => {
+  if (!city.value) return []
+  const c = (meta.value.regions || []).find(r => r.level === 2 && r.name === city.value)
+  return c ? (meta.value.regions || []).filter(r => r.level === 3 && r.parent_code === c.code).map(r => ({ name: r.name })) : []
+})
+function onProvinceChange() { city.value = ''; district.value = ''; applyFilter() }
+function onCityChange() { district.value = ''; applyFilter() }
 
 async function load() {
   loading.value = true; error.value = ''
   try {
     const params = { limit: 40 }
     if (industry.value) params.industry = industry.value
+    if (province.value) params.province = province.value
     if (city.value) params.city = city.value
+    if (district.value) params.district = district.value
     if (keyword.value.trim()) params.q = keyword.value.trim()
     if (coords.value) { params.lat = coords.value.lat; params.lng = coords.value.lng }
     const { data } = await api.get('/api/cards/public/market', { params })
@@ -144,25 +180,32 @@ async function load() {
 function applyFilter() { load() }
 function setIndustry(key) { industry.value = key; load() }
 
-function relocate() {
-  if (!navigator.geolocation) { showToast('当前浏览器不支持定位，请改用上方城市选择', 'error'); return }
+async function relocate() {
+  if (locating.value) return
   locating.value = true
-  navigator.geolocation.getCurrentPosition(
-    pos => {
-      coords.value = { lat: pos.coords.latitude, lng: pos.coords.longitude }
-      locating.value = false
-      showToast('定位成功，按附近距离排序', 'success')
-      load()
-    },
-    () => {
-      locating.value = false
-      showToast('未获取到定位，请改用城市选择或检查定位权限', 'error')
-    },
-    { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
-  )
+  try {
+    // 四级降级：微信 JS-SDK → GPS → IP → 城市兜底，永不为空
+    const pos = await getCurrentPosition({ city: city.value || undefined, forceRefresh: true, timeout: 10000 })
+    coords.value = { lat: pos.lat, lng: pos.lng }
+    positionMeta.value = getPositionQualityLabel()
+    if (!city.value && pos.city) city.value = pos.city
+    showToast(pos.source === 'default' ? '已用城市中心坐标排序，可点「重新定位」再试' : '定位成功，按附近距离排序', pos.source === 'default' ? 'error' : 'success')
+    load()
+  } catch (e) {
+    showToast(e.message || '定位失败，请改用城市选择', 'error')
+  } finally { locating.value = false }
 }
 
-onMounted(() => { loadMeta(); load() })
+onMounted(async () => {
+  loadMeta()
+  // 进入集市即后台预热四级定位（先用缓存/城市兜底即时出结果，再渐进升级）
+  try {
+    const pos = await getCurrentPosition({ city: '上海' })
+    coords.value = { lat: pos.lat, lng: pos.lng }
+    positionMeta.value = getPositionQualityLabel()
+  } catch {}
+  load()
+})
 </script>
 
 <style scoped>
@@ -171,6 +214,10 @@ onMounted(() => { loadMeta(); load() })
 .nav-back { border: 0; background: transparent; font-size: 30px; line-height: 1; padding: 0 10px; color: var(--primary, #2563eb); }
 .nav-title { flex: 1; font-weight: 700; font-size: 15px; }
 .nav-me { font-size: 13px; color: var(--primary, #2563eb); }
+.mk-quality { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; margin-left: 4px; vertical-align: middle; }
+.mk-quality.high { background: #16a34a; color: #fff; }
+.mk-quality.medium { background: #f59e0b; color: #fff; }
+.mk-quality.low { background: rgba(255,255,255,.22); color: #fff; }
 .mk-hero { background: linear-gradient(135deg, #1e3a8a, #2563eb 55%, #38bdf8); color: #fff; padding: 18px 16px 20px; }
 .mk-slogan { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
 .mk-locate { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.25); border-radius: 14px; padding: 10px 12px; }

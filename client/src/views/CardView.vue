@@ -97,11 +97,15 @@
           <p class="small muted" style="margin-top:10px">付款前请核对收款方与金额；二维码由名片主人自行上传。</p>
         </div>
 
-        <div v-if="card.address" class="card card-pad cv-block">
+        <div v-if="fullAddress" class="card card-pad cv-block">
           <h3>地址</h3>
+          <div v-if="regionLine" class="cv-region-line">{{ regionLine }}</div>
           <div class="cv-address">
-            <span>{{ card.address }} {{ card.address_detail }}</span>
-            <button class="btn btn-sm btn-ghost" @click="copy(card.address + (card.address_detail || ''), '地址')">复制</button>
+            <span>{{ fullAddress }}</span>
+            <button class="btn btn-sm btn-ghost" @click="copy(fullAddress, '地址')">复制</button>
+          </div>
+          <div v-if="card.latitude != null && card.longitude != null" class="cv-geo-hint small muted">
+            ⌖ {{ card.latitude.toFixed(4) }}, {{ card.longitude.toFixed(4) }}
           </div>
           <div class="cv-maps">
             <a v-for="m in maps" :key="m.key" :href="m.href" target="_blank" rel="noopener">{{ m.label }}导航 ↗</a>
@@ -229,7 +233,29 @@ const favorite = ref(false); const favBusy = ref(false)
 
 const t = computed(() => themeOf({ theme: currentTheme.value, accent: card.value?.accent }))
 const vars = computed(() => themeVars(t.value))
-const maps = computed(() => mapLinks(card.value?.address || ''))
+const regionLine = computed(() => {
+  const c = card.value || {}
+  return [c.province, c.city, c.district, c.street].filter(Boolean).join(' · ')
+})
+const fullAddress = computed(() => {
+  const c = card.value || {}
+  const region = [c.province, c.city, c.district, c.street].filter(Boolean).join('')
+  return [region, c.address, c.address_detail].filter(Boolean).join(' ')
+})
+// 有坐标时优先用经纬度生成各地图导航，否则回落地址字符串
+const maps = computed(() => {
+  const c = card.value || {}
+  if (c.latitude != null && c.longitude != null) {
+    const lat = Number(c.latitude), lng = Number(c.longitude), name = encodeURIComponent(c.name || '位置')
+    return [
+      { key: 'amap', label: '高德', href: `https://uri.amap.com/marker?position=${lng},${lat}&name=${name}` },
+      { key: 'baidu', label: '百度', href: `https://api.map.baidu.com/marker?location=${lat},${lng}&title=${name}&content=${name}&output=html` },
+      { key: 'qq', label: '腾讯', href: `https://apis.map.qq.com/uri/v1/marker?marker=coord:${lat},${lng};title:${name}&referer=MCard` },
+      { key: 'apple', label: 'Apple', href: `https://maps.apple.com/?ll=${lat},${lng}&q=${name}` }
+    ]
+  }
+  return mapLinks(c.address || '')
+})
 // 深蓝鎏金模板把「公司」从职位行拆成独立署名行，其余模板保持原拼接口径
 const displayOrg = computed(() => (template.value === 'navygold' ? (card.value?.company || '') : ''))
 const displayTitle = computed(() => {
@@ -481,6 +507,8 @@ async function toggleFavorite() {
 .qr-tile b { font-size: 13px; }
 .qr-tile .btn-row { justify-content: center; margin-top: 4px; }
 .cv-address { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.cv-region-line { font-size: 13px; font-weight: 600; color: var(--t-accent); margin-bottom: 6px; }
+.cv-geo-hint { margin-top: 6px; font-variant-numeric: tabular-nums; }
 .cv-maps { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .cv-maps a { font-size: 12px; padding: 6px 10px; border-radius: 8px; background: rgba(0,0,0,.05); background: color-mix(in srgb, var(--t-accent) 12%, transparent); color: var(--t-accent); font-weight: 600; }
 .cv-qr-card { margin-top: 12px; display: flex; flex-direction: column; align-items: center; text-align: center; background: var(--t-surface); padding: 22px 18px 20px; }

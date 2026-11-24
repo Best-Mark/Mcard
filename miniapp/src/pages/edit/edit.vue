@@ -48,7 +48,25 @@
         <view class="field"><text class="label">微信号</text><input v-model="form.wechat" class="input" /></view>
         <view class="field"><text class="label">支付宝账号</text><input v-model="form.alipay" class="input" /></view>
         <view class="field"><text class="label">WhatsApp</text><input v-model="form.whatsapp" class="input" /></view>
-        <view class="field"><text class="label">地址</text><input v-model="form.address" class="input" placeholder="省市区街道门牌，越详细越好导航" /></view>
+        <view class="field">
+          <text class="label">所在地区（省 / 市 / 区，可选）</text>
+          <view class="region-pickers">
+            <picker :range="provinceNames" :value="provinceIdx" @change="onProvince">
+              <view class="picker">{{ form.province || '省份' }} ▾</view>
+            </picker>
+            <picker :range="cityNames" :value="cityIdx" @change="onCity">
+              <view class="picker">{{ form.city || '城市' }} ▾</view>
+            </picker>
+            <picker :range="districtNames" :value="districtIdx" @change="onDistrict">
+              <view class="picker">{{ form.district || '区县' }} ▾</view>
+            </picker>
+          </view>
+          <view class="region-auto">
+            <text class="small muted">{{ [form.province, form.city, form.district, form.street].filter(Boolean).join(' ') || '未选择地区' }}</text>
+            <button class="btn tiny" :disabled="geoBusy" @tap="autoLocateAddress">{{ geoBusy ? '定位中…' : '◎ 自动定位' }}</button>
+          </view>
+        </view>
+        <view class="field"><text class="label">地址</text><input v-model="form.address" class="input" placeholder="街道门牌，越详细越好导航" /></view>
         <view class="field"><text class="label">门牌补充</text><input v-model="form.address_detail" class="input" /></view>
       </view>
 
@@ -66,11 +84,11 @@
             <view class="picker">{{ form.city || '未选择' }} ▾</view>
           </picker>
         </view>
-        <view class="field"><text class="label">定位坐标（选城市自动填入，也可精确定位）</text>
+        <view class="field"><text class="label">定位坐标（四级定位：原生 → IP → 城市兜底）</text>
           <view class="locate-row">
             <text class="small muted">{{ form.latitude != null ? form.latitude.toFixed(4) : '—' }}, {{ form.longitude != null ? form.longitude.toFixed(4) : '—' }}</text>
             <button class="btn tiny" @tap="openMapPicker">🗺 地图选点</button>
-            <button class="btn tiny" :disabled="locating" @tap="locateMe">{{ locating ? '定位中…' : '⌖ 精确定位' }}</button>
+            <button class="btn tiny" :disabled="locating" @tap="locateMe">{{ locating ? '定位中…' : '⌖ 重新定位' }}</button>
           </view>
         </view>
         <view v-if="form.market_opt_in && form.latitude == null" class="small" style="color:#b45309">已开启上架但尚无坐标，请选城市或精确定位，否则在集市中会排在末尾。</view>
@@ -135,7 +153,7 @@
 <script setup>
 import { ref, computed, onUnmounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { api, toast, uploadImage, uploadLogo, processLogo, getLocation } from '../../utils/request'
+import { api, toast, uploadImage, uploadLogo, processLogo, geoLocate, reverseGeocode, geocodeAddress, getRegions } from '../../utils/request'
 
 const themes = {
   ocean: { label: '深海蓝', accent: '#2563eb' },
@@ -149,8 +167,9 @@ const blank = {
   website: '', shop_url: '',
   bio: '', tags: [], links: [], avatar: '', logo: '', mobile: '', phone: '', email: '', wechat: '', alipay: '', whatsapp: '',
   wechat_qr: '', alipay_qr: '', wechat_pay_qr: '', alipay_pay_qr: '',
-  address: '', address_detail: '', template: 'classic', theme: 'ocean', accent: '#2563eb', qr_fg: '#0f172a', qr_bg: '#ffffff', qr_logo: true,
-  industry: '', city: '', latitude: null, longitude: null, market_opt_in: false
+  address: '', address_detail: '', province: '', city: '', district: '', street: '',
+  template: 'classic', theme: 'ocean', accent: '#2563eb', qr_fg: '#0f172a', qr_bg: '#ffffff', qr_logo: true,
+  industry: '', latitude: null, longitude: null, market_opt_in: false
 }
 const form = ref({ ...blank })
 const tagsText = ref('')
@@ -160,8 +179,22 @@ let templatesCache = []
 const templates = ref(templatesCache)
 const marketMeta = ref({ industries: [], cities: [] })
 const locating = ref(false)
-const cityNames = computed(() => ['未选择', ...(marketMeta.value.cities || []).map(c => c.name)])
-const cityIdx = computed(() => form.value.city ? cityNames.value.indexOf(form.value.city) : 0)
+const geoBusy = ref(false)
+const regions = ref([])
+const provinceNames = computed(() => ['未选择', ...regions.value.filter(r => r.level === 1).map(r => r.name)])
+const provinceIdx = computed(() => Math.max(0, provinceNames.value.indexOf(form.value.province || '未选择')))
+const cityRegions = computed(() => {
+  const p = regions.value.find(r => r.level === 1 && r.name === form.value.province)
+  return p ? regions.value.filter(r => r.level === 2 && r.parent_code === p.code) : []
+})
+const cityNames = computed(() => cityRegions.value.length ? ['未选择', ...cityRegions.value.map(r => r.name)] : ['未选择', ...(marketMeta.value.cities || []).map(c => c.name)])
+const cityIdx = computed(() => Math.max(0, cityNames.value.indexOf(form.value.city || '未选择')))
+const districtRegions = computed(() => {
+  const c = regions.value.find(r => r.level === 2 && r.name === form.value.city && cityRegions.value.some(x => x.code === r.code))
+  return c ? regions.value.filter(r => r.level === 3 && r.parent_code === c.code) : []
+})
+const districtNames = computed(() => ['未选择', ...districtRegions.value.map(r => r.name)])
+const districtIdx = computed(() => Math.max(0, districtNames.value.indexOf(form.value.district || '未选择')))
 const industryLabels = computed(() => ['未选择', ...(marketMeta.value.industries || []).map(i => i.label)])
 const industryIdx = computed(() => {
   const idx = (marketMeta.value.industries || []).findIndex(i => i.key === form.value.industry)
@@ -206,6 +239,7 @@ async function loadTemplates() {
 
 async function loadMarketMeta() {
   try { marketMeta.value = await api.get('/api/cards/public/market/meta', false) } catch {}
+  try { regions.value = await getRegions() } catch {}
 }
 
 function onIndustry(e) {
@@ -213,25 +247,83 @@ function onIndustry(e) {
   const ind = (marketMeta.value.industries || [])[idx - 1]
   form.value.industry = ind ? ind.key : ''
 }
+function onProvince(e) {
+  const name = provinceNames.value[Number(e.detail.value)]
+  form.value.province = (name && name !== '未选择') ? name : ''
+  form.value.city = ''; form.value.district = ''; form.value.street = ''
+  autoGeocodeRegion()
+}
 function onCity(e) {
   const name = cityNames.value[Number(e.detail.value)]
   form.value.city = (name && name !== '未选择') ? name : ''
+  form.value.district = ''; form.value.street = ''
   const hit = (marketMeta.value.cities || []).find(c => c.name === form.value.city)
   if (hit) { form.value.latitude = hit.lat; form.value.longitude = hit.lng }
+  else autoGeocodeRegion()
 }
-function locateMe() {
+function onDistrict(e) {
+  const name = districtNames.value[Number(e.detail.value)]
+  form.value.district = (name && name !== '未选择') ? name : ''
+  form.value.street = ''
+  autoGeocodeRegion()
+}
+function autoGeocodeRegion() {
+  const text = [form.value.province, form.value.city, form.value.district].filter(Boolean).join('')
+  if (!text) return
+  geocodeAddress(text, form.value.city).then(g => {
+    if (g) { form.value.latitude = g.lat; form.value.longitude = g.lng }
+  }).catch(() => {})
+}
+async function locateMe() {
+  if (locating.value) return
   locating.value = true
-  getLocation().then(pos => {
+  try {
+    const pos = await geoLocate(form.value.city || '上海')
     form.value.latitude = pos.lat; form.value.longitude = pos.lng
-    locating.value = false
-    toast('已获取坐标，记得保存', 'success')
-  }).catch(() => { locating.value = false; toast('未获取到定位，请改用城市选择', 'error') })
+    if (!form.value.city && pos.city) form.value.city = pos.city
+    if (pos.source !== 'default' && !form.value.district) {
+      const addr = await reverseGeocode(pos.lat, pos.lng)
+      if (addr) {
+        if (!form.value.province) form.value.province = addr.province || ''
+        if (!form.value.city) form.value.city = addr.city || ''
+        if (!form.value.district) form.value.district = addr.district || ''
+        if (!form.value.street) form.value.street = addr.street || ''
+      }
+    }
+    toast(pos.source === 'default' ? '已用城市中心坐标，可再精确选点' : '定位成功，记得保存', pos.source === 'default' ? 'none' : 'success')
+  } catch (e) { toast(e.message || '定位失败，请改用地区选择', 'error') }
+  finally { locating.value = false }
+}
+// 联系方式区自动定位回填省市区街道
+async function autoLocateAddress() {
+  if (geoBusy.value) return
+  geoBusy.value = true
+  try {
+    const pos = await geoLocate(form.value.city || '上海')
+    const addr = await reverseGeocode(pos.lat, pos.lng)
+    if (!addr) return toast('坐标已获取，但地址解析失败，请用地图选点', 'none')
+    form.value.province = addr.province || form.value.province
+    form.value.city = addr.city || form.value.city
+    form.value.district = addr.district || form.value.district
+    form.value.street = addr.street || form.value.street
+    if (!form.value.address) form.value.address = [addr.street, addr.district].filter(Boolean).join('')
+    form.value.latitude = pos.lat; form.value.longitude = pos.lng
+    toast('已填入所在地区，记得保存', 'success')
+  } catch (e) { toast(e.message || '自动定位失败', 'error') }
+  finally { geoBusy.value = false }
 }
 function openMapPicker() {
   uni.navigateTo({ url: `/pages/map-picker/map-picker?lat=${form.value.latitude || 39.9042}&lng=${form.value.longitude || 116.4074}` })
 }
-function onMapPicked(p) {
+async function onMapPicked(p) {
   form.value.latitude = p.lat; form.value.longitude = p.lng
+  const addr = await reverseGeocode(p.lat, p.lng)
+  if (addr) {
+    form.value.province = addr.province || form.value.province
+    form.value.city = addr.city || form.value.city
+    form.value.district = addr.district || form.value.district
+    form.value.street = addr.street || form.value.street
+  }
   toast('坐标已填入，记得保存', 'success')
 }
 
@@ -313,6 +405,9 @@ async function save() {
 .logo-current { display: flex; align-items: center; gap: 14rpx; margin-bottom: 14rpx; }
 .logo-current image { width: 80rpx; height: 80rpx; background: #f1f5f9; border-radius: 12rpx; padding: 6rpx; box-sizing: border-box; }
 .picker { border: 2rpx solid #e8edf4; border-radius: 12rpx; padding: 16rpx; font-size: 26rpx; margin-top: 14rpx; }
+.region-pickers { display: flex; gap: 10rpx; }
+.region-pickers picker { flex: 1; min-width: 0; }
+.region-auto { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; margin-top: 10rpx; }
 .locate-row { display: flex; align-items: center; gap: 16rpx; flex-wrap: wrap; }
 .slider-label { font-size: 24rpx; color: #6b7688; margin-top: 14rpx; }
 .logo-preview { width: 220rpx; height: 160rpx; background: #f1f5f9; border-radius: 14rpx; margin: 14rpx auto; display: block; }

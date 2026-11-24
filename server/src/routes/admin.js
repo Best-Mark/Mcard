@@ -182,6 +182,7 @@ router.put('/config', superRequired, wrap((req, res) => {
     }
     // 健壮：枚举类配置只接受合法值，避免写入 "0"/"yes" 被判真导致功能意外开启
     if (k === 'pay_mode' && !['mock', 'wechat'].includes(String(v))) return fail(res, 400, '支付模式只能是 mock 或 wechat')
+    if (k === 'map_provider' && !['amap', 'osm'].includes(String(v))) return fail(res, 400, '地图服务商只能是 amap 或 osm')
     if (['sms_enabled', 'wechat_oauth_enabled', 'wechat_oauth_bind_phone'].includes(k) && !['true', 'false'].includes(String(v))) {
       return fail(res, 400, `${k} 只能是 true 或 false`)
     }

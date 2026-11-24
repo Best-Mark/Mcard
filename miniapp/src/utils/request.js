@@ -189,13 +189,13 @@ export function shareCardPath(slug) {
   return `/pages/card/card?slug=${slug}`
 }
 
-// 统一定位入口：微信/支付宝/抖音(api.getLocation) 差异封装，失败走 reject，由调用方降级到城市选择
+// 统一定位入口：微信/支付宝/抖音(api.getLocation) 差异封装，失败走 reject
 export function getLocation() {
   return new Promise((resolve, reject) => {
     // #ifdef MP-WEIXIN || MP-ALIPAY || MP-TOUTIAO
     uni.getLocation({
       type: 'gcj02',
-      success: res => resolve({ lat: res.latitude, lng: res.longitude }),
+      success: res => resolve({ lat: res.latitude, lng: res.longitude, source: 'gps' }),
       fail: err => reject(err)
     })
     // #endif
@@ -203,4 +203,57 @@ export function getLocation() {
     reject(new Error('当前平台不支持定位'))
     // #endif
   })
+}
+
+// 四级降级定位（对齐 Web 端 geo.js）：原生 getLocation → 后端 IP 定位 → 城市中心兜底。
+// 永不 reject（除非网络与定位都异常），返回 { lat, lng, city, source, quality }。
+const MP_CITY_CENTERS = {
+  '北京': { lat: 39.9042, lng: 116.4074 }, '上海': { lat: 31.2304, lng: 121.4737 },
+  '广州': { lat: 23.1291, lng: 113.2644 }, '深圳': { lat: 22.5431, lng: 114.0579 },
+  '杭州': { lat: 30.2741, lng: 120.1551 }, '成都': { lat: 30.5728, lng: 104.0668 },
+  '重庆': { lat: 29.5630, lng: 106.5516 }, '武汉': { lat: 30.5928, lng: 114.3055 },
+  '西安': { lat: 34.3416, lng: 108.9398 }, '南京': { lat: 32.0603, lng: 118.7969 }
+}
+const validCoord = (a, b) => {
+  const x = Number(a), y = Number(b)
+  return Number.isFinite(x) && Number.isFinite(y) && Math.abs(x) <= 90 && Math.abs(y) <= 180 &&
+    !(Math.abs(x) < 0.0001 && Math.abs(y) < 0.0001)
+}
+
+export function geoLocate(defaultCity = '上海') {
+  return new Promise(async resolve => {
+    const fallback = () => {
+      const c = MP_CITY_CENTERS[defaultCity] || MP_CITY_CENTERS['上海']
+      resolve({ lat: c.lat, lng: c.lng, city: defaultCity, source: 'default', quality: 'coarse' })
+    }
+    // L0/L1: 原生定位
+    try {
+      const p = await getLocation()
+      if (validCoord(p.lat, p.lng)) return resolve({ ...p, quality: 'precise' })
+    } catch {}
+    // L2: 后端 IP 定位
+    try {
+      const data = await request('/api/geo/ip-locate')
+      if (validCoord(data?.lat, data?.lng)) {
+        return resolve({ lat: data.lat, lng: data.lng, city: data.city || defaultCity, province: data.province || '', source: 'ip', quality: 'approximate' })
+      }
+    } catch {}
+    // L3: 城市兜底
+    fallback()
+  })
+}
+
+// 逆地理编码（坐标 → 省市区街道）
+export function reverseGeocode(lat, lng) {
+  return request('/api/geo/reverse-geocode', { data: { lat, lng } }).catch(() => null)
+}
+
+// 正向地理编码（地址 → 坐标）
+export function geocodeAddress(address, city) {
+  return request('/api/geo/geocode', { data: { address, city } }).catch(() => null)
+}
+
+// 行政区划树
+export function getRegions() {
+  return request('/api/geo/regions').then(d => d?.regions || []).catch(() => [])
 }

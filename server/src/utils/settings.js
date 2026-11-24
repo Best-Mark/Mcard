@@ -65,6 +65,14 @@ const GROUPS = {
       { key: 'wechat_oauth_verify_name', label: '域名校验文件名（上传后自动填入）', type: 'hidden' },
       { key: 'wechat_oauth_verify_content', label: '域名校验文件（上传 MP_verify_xxx.txt）', type: 'file' }
     ]
+  },
+  map: {
+    label: '定位与地图',
+    fields: [
+      { key: 'amap_key', label: '高德地图 Web 服务 Key（IP 定位/逆地理/地理编码）', type: 'secret' },
+      { key: 'map_provider', label: '地图服务商（amap / osm）', type: 'text' },
+      { key: 'map_default_city', label: '定位兜底城市（如 上海）', type: 'text' }
+    ]
   }
 }
 
@@ -119,6 +127,16 @@ function wechatOauthConfig() {
     bindPhone: fromDb('wechat_oauth_bind_phone') !== 'false',
     verifyName: fromDb('wechat_oauth_verify_name'),
     verifyContent: fromDb('wechat_oauth_verify_content')
+  }
+}
+
+// 读取定位与地图配置（高德 Key 服务端使用，不下发前端）
+function mapConfig() {
+  const fromDb = k => String(get(k, ''))
+  return {
+    amapKey: fromDb('amap_key'),
+    provider: fromDb('map_provider') || 'amap',
+    defaultCity: fromDb('map_default_city') || '上海'
   }
 }
 
@@ -184,7 +202,10 @@ function seedDefaults() {
     wechat_oauth_scope: 'snsapi_userinfo',
     wechat_oauth_bind_phone: 'true',
     wechat_oauth_verify_name: '',
-    wechat_oauth_verify_content: ''
+    wechat_oauth_verify_content: '',
+    amap_key: '',
+    map_provider: 'amap',
+    map_default_city: '上海'
   }
   const tx = db.transaction(() => {
     for (const [k, v] of Object.entries(seeds)) stmt.run(k, JSON.stringify(String(v || '')))
@@ -192,4 +213,4 @@ function seedDefaults() {
   tx()
 }
 
-module.exports = { PUBLIC_KEYS, PUBLIC_DERIVED_KEYS, GROUPS, SENSITIVE_KEYS, ALL_KEYS, MASK, fingerprint, get, payConfig, smsConfig, wechatOauthConfig, wechatLoginEnabled, publicView, adminView, seedDefaults }
+module.exports = { PUBLIC_KEYS, PUBLIC_DERIVED_KEYS, GROUPS, SENSITIVE_KEYS, ALL_KEYS, MASK, fingerprint, get, payConfig, smsConfig, wechatOauthConfig, wechatLoginEnabled, mapConfig, publicView, adminView, seedDefaults }

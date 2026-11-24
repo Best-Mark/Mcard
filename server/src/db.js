@@ -93,7 +93,14 @@ for (const [col, def] of [
   ['longitude', 'REAL'],
   ['market_opt_in', 'INTEGER NOT NULL DEFAULT 0']
 ]) addColumnIfMissing('cards', col, def)
+// 四级行政区划地址（省/市/区/街道）：city 仍保留作兼容短名，新增结构化字段
+for (const [col, def] of [
+  ['province', "TEXT NOT NULL DEFAULT ''"],
+  ['district', "TEXT NOT NULL DEFAULT ''"],
+  ['street', "TEXT NOT NULL DEFAULT ''"]
+]) addColumnIfMissing('cards', col, def)
 db.exec('CREATE INDEX IF NOT EXISTS idx_cards_market ON cards(market_opt_in, status, industry);')
+db.exec('CREATE INDEX IF NOT EXISTS idx_cards_region ON cards(province, city, district);')
 
 // 微信网页授权登录：openid/unionid 用于免密识别，头像来自微信，auth_source 记录账号来源
 for (const [col, def] of [
@@ -167,6 +174,19 @@ CREATE TABLE IF NOT EXISTS site_config (
   value TEXT NOT NULL,
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- 四级行政区划：level 1=省 2=市 3=区/县 4=街道/乡镇；code 为路径编码便于级联
+CREATE TABLE IF NOT EXISTS regions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code TEXT NOT NULL UNIQUE,
+  parent_code TEXT NOT NULL DEFAULT '',
+  name TEXT NOT NULL,
+  level INTEGER NOT NULL,
+  sort INTEGER NOT NULL DEFAULT 0,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_regions_parent ON regions(parent_code, level);
 `)
 
 // ---------------- 种子数据 ----------------
@@ -220,5 +240,34 @@ const defaults = {
 }
 const insertCfg = db.prepare('INSERT OR IGNORE INTO site_config (key, value) VALUES (?,?)')
 Object.entries(defaults).forEach(([k, v]) => insertCfg.run(k, JSON.stringify(v)))
+
+// ---------------- 四级行政区划种子（幂等，仅首次初始化） ----------------
+// 自愈约定：标记键存在即跳过；后台 CRUD 后即使清空也不会被「复活」。
+const { REGIONS, STREET_EXAMPLES } = require('./utils/region-data')
+if (!seeded('seed_regions_v1')) {
+  const insertRegion = db.prepare('INSERT OR IGNORE INTO regions (code, parent_code, name, level, sort) VALUES (?,?,?,?,?)')
+  db.transaction(() => {
+    let sort = 0
+    for (const [province, cities] of Object.entries(REGIONS)) {
+      const pCode = `P${encodeURIComponent(province)}`
+      insertRegion.run(pCode, '', province, 1, sort++)
+      for (const [city, districts] of Object.entries(cities)) {
+        const cCode = `${pCode}|${encodeURIComponent(city)}`
+        insertRegion.run(cCode, pCode, city, 2, sort++)
+        for (const district of districts) {
+          const dCode = `${cCode}|${encodeURIComponent(district)}`
+          insertRegion.run(dCode, cCode, district, 3, sort++)
+          // 街道级：仅对内置示例命中时补几条，其余交由逆地理编码/后台补充
+          for (const [dKey, streets] of Object.entries(STREET_EXAMPLES)) {
+            if (district === dKey || district.startsWith(dKey)) {
+              streets.forEach((s, i) => insertRegion.run(`${dCode}|${encodeURIComponent(s)}`, dCode, s, 4, i))
+            }
+          }
+        }
+      }
+    }
+    insertSeedFlag.run('seed_regions_v1', '1')
+  })()
+}
 
 module.exports = db

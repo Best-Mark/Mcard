@@ -86,7 +86,15 @@
               <div class="field"><label>支付宝账号</label><input v-model="form.alipay" class="input" /></div>
               <div class="field"><label>WhatsApp</label><input v-model="form.whatsapp" class="input" /></div>
             </div>
-            <div class="field"><label>地址（用于一键导航）</label><input v-model="form.address" class="input" placeholder="省市区 + 街道门牌，越详细导航越准" /></div>
+            <div class="field">
+              <label>所在地区 <span class="muted small">（省 / 市 / 区 / 街道，可选到任意一级）</span></label>
+              <div class="locate-row">
+                <span class="small region-path">{{ regionPath || '未选择' }}</span>
+                <button class="btn btn-sm btn-ghost" :disabled="loading" @click="regionOpen = true">⌖ 选择地区</button>
+                <button class="btn btn-sm btn-ghost" :disabled="geoBusy || loading" @click="autoLocateAddress">{{ geoBusy ? '定位中…' : '◎ 自动定位' }}</button>
+              </div>
+            </div>
+            <div class="field"><label>地址（用于一键导航）</label><input v-model="form.address" class="input" placeholder="街道门牌，越详细导航越准" /></div>
             <div class="field"><label>门牌 / 楼层补充</label><input v-model="form.address_detail" class="input" /></div>
             <div class="section-foot">
               <span class="save-state" :class="{ saved: savedSections.contact }">{{ savedSections.contact ? '✓ 已保存' : '未保存' }}</span>
@@ -114,14 +122,15 @@
               </div>
             </div>
             <div class="field">
-              <label>定位坐标 <span class="muted small">（用于按距离排序；选城市会自动填入，也可精确定位）</span></label>
+              <label>定位坐标 <span class="muted small">（四级定位：微信/GPS → IP → 城市兜底；用于按距离排序）</span></label>
               <div class="locate-row">
                 <span class="small mono">{{ form.latitude != null ? form.latitude.toFixed(4) : '—' }}, {{ form.longitude != null ? form.longitude.toFixed(4) : '—' }}</span>
+                <span v-if="positionSource" class="badge small" :class="qualityClass">{{ sourceLabel }}</span>
                 <button class="btn btn-sm btn-ghost" @click="mapOpen = true">🗺 地图选点</button>
-                <button class="btn btn-sm btn-ghost" :disabled="locating" @click="locateMe">{{ locating ? '定位中…' : '⌖ 精确定位' }}</button>
+                <button class="btn btn-sm btn-ghost" :disabled="locating" @click="locateMe">{{ locating ? '定位中…' : '⌖ 重新定位' }}</button>
               </div>
             </div>
-            <p v-if="form.market_opt_in && form.latitude == null" class="small" style="color:#b45309">已开启上架但尚无坐标，请选城市或精确定位，否则在集市中会排在末尾。</p>
+            <p v-if="form.market_opt_in && form.latitude == null" class="small" style="color:#b45309">已开启上架但尚无坐标，请选地区或精确定位，否则在集市中会排在末尾。</p>
             <div class="section-foot">
               <span class="save-state" :class="{ saved: savedSections.market }">{{ savedSections.market ? '✓ 已保存' : '未保存' }}</span>
               <button class="btn btn-sm btn-primary" :disabled="saving" @click="saveSection('market')">{{ saving ? '保存中…' : '保存本节' }}</button>
@@ -232,6 +241,20 @@
       </div>
     </div>
 
+    <!-- 省市区街道级联选择 -->
+    <div v-if="regionOpen" class="map-mask" @click.self="regionOpen = false">
+      <div class="map-modal">
+        <div class="map-modal-head">
+          <b>选择所在地区</b>
+          <button class="btn btn-sm btn-ghost" @click="regionOpen = false">关闭</button>
+        </div>
+        <RegionPicker
+          :province="form.province" :city="form.city" :district="form.district" :street="form.street"
+          @confirm="onRegionPicked"
+        />
+      </div>
+    </div>
+
     <!-- 地图拖拽选点（懒加载，打开才下载地图组件） -->
     <div v-if="mapOpen" class="map-mask" @click.self="mapOpen = false">
       <div class="map-modal">
@@ -242,7 +265,7 @@
         <MapPicker
           :lat="form.latitude || 39.9042"
           :lng="form.longitude || 116.4074"
-          @confirm="p => { form.latitude = p.lat; form.longitude = p.lng; mapOpen = false; showToast('坐标已填入，记得点保存', 'success') }"
+          @confirm="onMapPicked"
         />
       </div>
     </div>
@@ -255,9 +278,11 @@ import { useRouter, useRoute } from 'vue-router'
 import api from '../api'
 import { showToast, openDrawer } from '../store'
 import { THEMES } from '../utils/themes'
+import { refreshPosition, setManualPosition, reverseGeocode, geocode } from '../utils/geo'
 import LogoUploader from '../components/LogoUploader.vue'
 
 const MapPicker = defineAsyncComponent(() => import('../components/MapPicker.vue'))
+const RegionPicker = defineAsyncComponent(() => import('../components/RegionPicker.vue'))
 
 const router = useRouter()
 const route = useRoute()
@@ -265,7 +290,7 @@ const blank = {
   slug: '', name: '', name_en: '', title: '', company: '', company_intro: '', department: '', website: '', shop_url: '',
   mobile: '', phone: '', email: '', wechat: '', alipay: '', whatsapp: '',
   wechat_qr: '', alipay_qr: '', wechat_pay_qr: '', alipay_pay_qr: '',
-  address: '', address_detail: '',
+  address: '', address_detail: '', province: '', city: '', district: '', street: '',
   avatar: '', logo: '', bio: '', tags: [], links: [], template: 'classic', theme: 'ocean', accent: THEMES.ocean.accent,
   industry: '', city: '', latitude: null, longitude: null, market_opt_in: false,
   qr_fg: '#0f172a', qr_bg: '#ffffff', qr_logo: true
@@ -284,7 +309,16 @@ const sections = computed(() => [
 const templates = ref([])
 const marketMeta = ref({ industries: [], cities: [] })
 const locating = ref(false)
+const geoBusy = ref(false)
 const mapOpen = ref(false)
+const regionOpen = ref(false)
+const positionSource = ref('')   // wechat/gps/ip/default/manual，来自四级定位
+const positionQuality = ref('')  // precise/approximate/coarse
+const regionPath = computed(() => [form.value.province, form.value.city, form.value.district, form.value.street].filter(Boolean).join(' / '))
+const qualityClass = computed(() => ({ precise: 'ok', approximate: 'warn', coarse: 'off' }[positionQuality.value] || 'off'))
+const sourceLabel = computed(() => ({
+  wechat: '微信定位', gps: 'GPS 定位', ip: 'IP 定位', default: '城市兜底', manual: '手动选点'
+}[positionSource.value] || '已定位'))
 const qrFields = [
   { key: 'wechat_qr', label: '微信 · 加好友码' },
   { key: 'alipay_qr', label: '支付宝 · 加好友码' },
@@ -345,20 +379,89 @@ function pickCity(name) {
   if (hit) { form.value.latitude = hit.lat; form.value.longitude = hit.lng }
 }
 
-function locateMe() {
-  if (!navigator.geolocation) return showToast('当前浏览器不支持定位，请改用城市选择', 'error')
+// 四级定位主入口（微信/GPS → IP → 城市兜底），成功后逆地理回填省市区
+async function locateMe() {
+  if (locating.value) return
   locating.value = true
-  navigator.geolocation.getCurrentPosition(
-    pos => {
-      form.value.latitude = pos.coords.latitude
-      form.value.longitude = pos.coords.longitude
-      if (!form.value.city) form.value.city = ''
-      locating.value = false
-      showToast('已获取坐标，记得点保存', 'success')
-    },
-    () => { locating.value = false; showToast('未获取到定位，请改用城市选择', 'error') },
-    { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
-  )
+  try {
+    const pos = await refreshPosition(form.value.city || undefined)
+    form.value.latitude = pos.lat
+    form.value.longitude = pos.lng
+    positionSource.value = pos.source || ''
+    positionQuality.value = pos.quality || ''
+    if (!form.value.city && pos.city) form.value.city = pos.city
+    if (pos.source !== 'default' && !form.value.district) {
+      const addr = await reverseGeocode(pos.lat, pos.lng)
+      if (addr) {
+        if (!form.value.province) form.value.province = addr.province || ''
+        if (!form.value.city) form.value.city = addr.city || ''
+        if (!form.value.district) form.value.district = addr.district || ''
+        if (!form.value.street) form.value.street = addr.street || ''
+      }
+    }
+    showToast(pos.source === 'default' ? '已用城市中心坐标兜底，可再精确选点' : '定位成功，记得点保存', pos.source === 'default' ? 'error' : 'success')
+  } catch (e) {
+    showToast(e.message || '定位失败，请手动选点', 'error')
+  } finally { locating.value = false }
+}
+
+// 联系方式区「自动定位」：定位后把省市区写进资料
+async function autoLocateAddress() {
+  if (geoBusy.value) return
+  geoBusy.value = true
+  try {
+    const pos = await refreshPosition(form.value.city || undefined)
+    const addr = await reverseGeocode(pos.lat, pos.lng)
+    if (!addr) return showToast('获取到坐标，但地址解析失败，请用地图选点', 'error')
+    form.value.province = addr.province || form.value.province
+    form.value.city = addr.city || form.value.city
+    form.value.district = addr.district || form.value.district
+    form.value.street = addr.street || form.value.street
+    if (!form.value.address) form.value.address = [addr.street, addr.district].filter(Boolean).join('')
+    form.value.latitude = pos.lat
+    form.value.longitude = pos.lng
+    positionSource.value = pos.source || ''
+    positionQuality.value = pos.quality || ''
+    showToast('已填入所在地区，记得点保存', 'success')
+  } catch (e) { showToast(e.message || '自动定位失败', 'error') }
+  finally { geoBusy.value = false }
+}
+
+function onRegionPicked(r) {
+  form.value.province = r.province
+  form.value.city = r.city
+  form.value.district = r.district
+  form.value.street = r.street
+  regionOpen.value = false
+  // 选中地区后按地址补坐标（不阻塞，失败保留原坐标）
+  const text = [r.province, r.city, r.district, r.street].filter(Boolean).join('')
+  if (text) geocode(text, r.city).then(g => {
+    if (g) {
+      form.value.latitude = g.lat
+      form.value.longitude = g.lng
+      setManualPosition(g.lat, g.lng, r.city)
+      positionSource.value = 'manual'
+      positionQuality.value = 'precise'
+    }
+  }).catch(() => {})
+  showToast('地区已选择，记得点保存', 'success')
+}
+
+async function onMapPicked(p) {
+  form.value.latitude = p.lat
+  form.value.longitude = p.lng
+  mapOpen.value = false
+  setManualPosition(p.lat, p.lng, form.value.city)
+  positionSource.value = 'manual'
+  positionQuality.value = 'precise'
+  const addr = await reverseGeocode(p.lat, p.lng)
+  if (addr) {
+    form.value.province = addr.province || form.value.province
+    form.value.city = addr.city || form.value.city
+    form.value.district = addr.district || form.value.district
+    form.value.street = addr.street || form.value.street
+  }
+  showToast('坐标已填入，记得点保存', 'success')
 }
 
 function chooseTheme(k) {
@@ -383,10 +486,10 @@ async function upload(e, field) {
 const SECTION_FIELDS = {
   identity: ['name', 'name_en', 'title', 'company', 'department', 'avatar', 'logo'],
   bio: ['bio', 'company_intro', 'tags'],
-  contact: ['mobile', 'phone', 'email', 'wechat', 'alipay', 'whatsapp', 'address', 'address_detail'],
+  contact: ['mobile', 'phone', 'email', 'wechat', 'alipay', 'whatsapp', 'province', 'city', 'district', 'street', 'address', 'address_detail'],
   qr: ['wechat_qr', 'alipay_qr', 'wechat_pay_qr', 'alipay_pay_qr'],
   links: ['website', 'shop_url', 'links'],
-  market: ['market_opt_in', 'industry', 'city', 'latitude', 'longitude'],
+  market: ['market_opt_in', 'industry', 'province', 'city', 'district', 'latitude', 'longitude'],
   appearance: ['template', 'theme', 'accent', 'qr_fg', 'qr_bg', 'qr_logo']
 }
 const savedSections = ref({})
@@ -464,6 +567,7 @@ async function finish() {
 .qr-upload-info b { font-size: 13px; }
 .locate-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .locate-row .mono { color: var(--muted); }
+.region-path { color: var(--text); font-weight: 600; min-width: 120px; }
 .map-mask { position: fixed; inset: 0; background: rgba(15,23,42,.55); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 16px; }
 .map-modal { width: 100%; max-width: 680px; background: var(--bg-card, #fff); border-radius: 14px; padding: 14px; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
 .map-modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }

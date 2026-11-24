@@ -207,6 +207,54 @@
           </div>
         </section>
 
+        <!-- 定位管理：行政区划 -->
+        <section v-if="tab === 'regions'" class="region-section">
+          <div class="panel-head stand-alone"><h2>定位管理</h2><span class="small muted">省 / 市 / 区 / 街道四级行政区划 · 高德 Key 在「配置中心 → 定位与地图」设置</span></div>
+          <div class="panel card">
+            <div class="region-toolbar">
+              <div class="region-filters">
+                <select v-model="regionLevel" class="select" @change="loadRegions">
+                  <option :value="0">全部层级</option>
+                  <option :value="1">省 / 直辖市</option>
+                  <option :value="2">城市</option>
+                  <option :value="3">区 / 县</option>
+                  <option :value="4">街道 / 乡镇</option>
+                </select>
+                <button class="btn btn-sm" :disabled="regionBusy" @click="loadRegions">刷新</button>
+              </div>
+              <button class="btn btn-sm btn-primary" :disabled="regionBusy" @click="newRegion">+ 新增区域</button>
+            </div>
+
+            <div class="region-form" v-if="regionForm.code || regionEditing">
+              <div class="field"><label>区域编码</label><input v-model="regionForm.code" class="input" :disabled="regionEditing" placeholder="如 P上海|浦东" /></div>
+              <div class="field"><label>父级编码</label><input v-model="regionForm.parent_code" class="input" placeholder="省级留空；子级填父级 code" /></div>
+              <div class="field"><label>名称</label><input v-model="regionForm.name" class="input" placeholder="如 浦东" /></div>
+              <div class="field"><label>层级</label>
+                <select v-model.number="regionForm.level" class="select">
+                  <option :value="1">省/直辖市</option><option :value="2">城市</option><option :value="3">区/县</option><option :value="4">街道/乡镇</option>
+                </select>
+              </div>
+              <div class="field"><label>排序</label><input v-model.number="regionForm.sort" class="input" type="number" /></div>
+              <div class="field"><label>启用</label><select v-model="regionForm.enabled" class="select"><option :value="true">启用</option><option :value="false">停用</option></select></div>
+              <div class="region-form-actions">
+                <button class="btn btn-sm btn-primary" :disabled="regionBusy" @click="saveRegion">{{ regionEditing ? '保存修改' : '新增' }}</button>
+                <button class="btn btn-sm btn-ghost" @click="regionForm = { code:'', parent_code:'', name:'', level:1, sort:0, enabled:true }; regionEditing = false">取消</button>
+              </div>
+            </div>
+
+            <div class="table-wrap"><table><thead><tr><th>编码</th><th>名称</th><th>层级</th><th>父级编码</th><th>排序</th><th>状态</th><th>操作</th></tr></thead>
+              <tbody><tr v-for="r in regions" :key="r.code">
+                <td class="mono small">{{ r.code }}</td><td>{{ r.name }}</td><td>{{ LEVEL_NAMES[r.level] || r.level }}</td>
+                <td class="mono small">{{ r.parent_code || '—' }}</td><td>{{ r.sort }}</td>
+                <td><span class="badge" :class="r.enabled ? 'ok' : 'off'">{{ r.enabled ? '启用' : '停用' }}</span></td>
+                <td><button class="btn btn-sm btn-ghost" :disabled="regionBusy" @click="editRegion(r)">编辑</button>
+                    <button class="btn btn-sm btn-ghost" :disabled="regionBusy" @click="deleteRegion(r)">删除</button></td>
+              </tr></tbody></table></div>
+            <div v-if="!regions.length && !regionBusy" class="empty">暂无区域数据</div>
+            <p class="small muted" style="margin-top:10px">共 {{ regions.length }} 条。级联编码用「|」连接父级（如 <span class="mono">P上海|浦东</span>）。删除某区域会级联删除其下级。</p>
+          </div>
+        </section>
+
         <!-- 配置中心 -->
         <section v-if="tab === 'config'" class="config-section">
           <div class="panel-head stand-alone"><h2>配置中心</h2><span class="small muted">分组管理 · 保存后立即生效</span></div>
@@ -415,7 +463,8 @@ const ICONS = {
   trend: ['M23 6l-9.5 9.5-5-5L1 18', 'M17 6h6v6'],
   check: ['M20 6 9 17l-5-5'],
   wechat: ['M9 4C5.1 4 2 6.5 2 9.6c0 1.8 1 3.5 2.6 4.6L4 17l2.6-1.3c.8.2 1.6.4 2.4.4h.4a5 5 0 0 1-.2-1.3c0-3 3-5.5 6.7-5.5h.5C15.6 6.3 12.6 4 9 4ZM6.5 8.4a.8.8 0 1 1 0-1.6.8.8 0 0 1 0 1.6Zm4.6 0a.8.8 0 1 1 0-1.6.8.8 0 0 1 0 1.6Z', 'M22 13.7c0-2.5-2.5-4.6-5.6-4.6s-5.6 2-5.6 4.6 2.5 4.6 5.6 4.6c.7 0 1.3-.1 1.9-.3l1.8.9-.5-1.6c1.5-.9 2.4-2.1 2.4-3.6Zm-7.5-1.2a.7.7 0 1 1 0-1.4.7.7 0 0 1 0 1.4Zm3.7 0a.7.7 0 1 1 0-1.4.7.7 0 0 1 0 1.4Z'],
-  yuan: ['M12 2v20', 'M17 6H9a3 3 0 0 0 0 6h6a3 3 0 0 1 0 6H6']
+  yuan: ['M12 2v20', 'M17 6H9a3 3 0 0 0 0 6h6a3 3 0 0 1 0 6H6'],
+  location: ['M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z', 'M12 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6z']
 }
 const ic = n => ICONS[n] || ICONS.overview
 
@@ -423,6 +472,7 @@ const menus = [
   { k: 'overview', t: '数据概览', i: 'overview', group: 'main' }, { k: 'packages', t: '时段套餐', i: 'package', group: 'main' },
   { k: 'cards', t: '名片管理', i: 'card', group: 'main' }, { k: 'orders', t: '订单管理', i: 'order', group: 'main' },
   { k: 'users', t: '用户管理', i: 'users', group: 'main' }, { k: 'config', t: '配置中心', i: 'config', group: 'sys' },
+  { k: 'regions', t: '定位管理', i: 'location', group: 'sys' },
   { k: 'update', t: '版本更新', i: 'update', group: 'sys' }
 ]
 const mainMenus = menus.filter(m => m.group === 'main')
@@ -435,6 +485,8 @@ const tab = ref('overview'); const stats = ref({}); const packages = ref([]); co
 const orders = ref([]); const users = ref([]); const cfg = ref({}); const cfgGroups = ref([])
 const activeGroup = ref('site'); const revealed = ref({})
 const smsPhone = ref(''); const smsBusy = ref(false)
+const regions = ref([]); const regionLevel = ref(0); const regionBusy = ref(false)
+const regionForm = ref({ code: '', parent_code: '', name: '', level: 1, sort: 0, enabled: true }); const regionEditing = ref(false)
 const cardQ = ref(''); const cardStatus = ref(''); const orderStatus = ref('')
 const pkgModal = ref(false); const pkgForm = ref({}); const pkgFeatures = ref('')
 const updateInfo = ref({}); const checkResult = ref(null); const updCfg = ref({})
@@ -504,7 +556,8 @@ const GROUP_META = {
   payment: { i: 'card', desc: '微信支付商户参数。密钥类只写不读，留空即沿用已保存值。' },
   sms: { i: 'mail', desc: '阿里云短信平台参数，用于验证码发送，保存后可测试。' },
   miniapp: { i: 'phone', desc: '微信 / 支付宝 / 抖音小程序的应用标识与密钥。' },
-  wechat_oauth: { i: 'wechat', desc: '公众号网页授权：H5 在微信里免密登录并获取昵称头像。' }
+  wechat_oauth: { i: 'wechat', desc: '公众号网页授权：H5 在微信里免密登录并获取昵称头像。' },
+  map: { i: 'location', desc: '高德地图 Key（IP 定位/逆地理/地理编码），未配置时自动降级到免费 API 与城市中心坐标。' }
 }
 const OPTIONS = {
   pay_mode: [['mock', 'mock · 模拟支付'], ['wechat', 'wechat · 微信支付']],
@@ -512,7 +565,8 @@ const OPTIONS = {
   sms_provider: [['aliyun', '阿里云短信']],
   wechat_oauth_enabled: [['false', '停用'], ['true', '启用']],
   wechat_oauth_bind_phone: [['true', '必须绑定手机号'], ['false', '直接建号（无手机号）']],
-  wechat_oauth_scope: [['snsapi_userinfo', 'snsapi_userinfo · 取昵称头像']]
+  wechat_oauth_scope: [['snsapi_userinfo', 'snsapi_userinfo · 取昵称头像']],
+  map_provider: [['amap', '高德地图'], ['osm', 'OpenStreetMap（免费兜底）']]
 }
 const groupMeta = k => GROUP_META[k] || { i: 'config', desc: '保存后立即生效。' }
 const optionsFor = k => OPTIONS[k] || null
@@ -529,6 +583,41 @@ async function login() {
   } catch (e) { showToast(e.message, 'error') } finally { busy.value = false }
 }
 function logout() { adminLogout(); tab.value = 'overview' }
+// ---------- 定位管理：行政区划 CRUD ----------
+const LEVEL_NAMES = { 1: '省/直辖市', 2: '城市', 3: '区/县', 4: '街道/乡镇' }
+async function loadRegions() {
+  if (regionBusy.value) return
+  regionBusy.value = true
+  try {
+    const params = regionLevel.value ? { level: regionLevel.value } : {}
+    regions.value = (await api.get('/api/geo/admin/regions', { params })).data.data.regions || []
+  } catch (e) { showToast(e.message, 'error') } finally { regionBusy.value = false }
+}
+function editRegion(r) { regionEditing.value = true; regionForm.value = { code: r.code, parent_code: r.parent_code, name: r.name, level: r.level, sort: r.sort, enabled: !!r.enabled } }
+function newRegion() { regionEditing.value = false; regionForm.value = { code: '', parent_code: '', name: '', level: regionLevel.value || 1, sort: 0, enabled: true } }
+async function saveRegion() {
+  if (regionBusy.value) return
+  const f = regionForm.value
+  if (!f.code || !f.name) return showToast('编码与名称必填', 'error')
+  regionBusy.value = true
+  try {
+    if (regionEditing.value) await api.put(`/api/geo/admin/regions/${encodeURIComponent(f.code)}`, f)
+    else await api.post('/api/geo/admin/regions', f)
+    showToast('已保存', 'success')
+    await loadRegions()
+  } catch (e) { showToast(e.message, 'error') } finally { regionBusy.value = false }
+}
+async function deleteRegion(r) {
+  if (regionBusy.value) return
+  if (!window.confirm(`删除「${r.name}」及其所有下级？`)) return
+  regionBusy.value = true
+  try {
+    await api.delete(`/api/geo/admin/regions/${encodeURIComponent(r.code)}`)
+    showToast('已删除', 'success')
+    await loadRegions()
+  } catch (e) { showToast(e.message, 'error') } finally { regionBusy.value = false }
+}
+
 function switchTab(k) { if (tab.value === k && sideOpen.value) { sideOpen.value = false; return } tab.value = k; sideOpen.value = false; loadTab(k) }
 
 async function loadTab(k) {
@@ -550,6 +639,7 @@ async function loadTab(k) {
       cfgGroups.value = Object.entries(d.groups || {}).map(([key, g]) => ({ key, ...g }))
       if (cfgGroups.value.length && !cfgGroups.value.some(g => g.key === activeGroup.value)) activeGroup.value = cfgGroups.value[0].key
     }
+    if (k === 'regions') await loadRegions()
     if (k === 'update') await loadUpdate()
   } catch (e) { showToast(e.message, 'error') } finally { loading.value = false }
 }
@@ -906,6 +996,15 @@ async function saveUpdateConfig() {
 .filter-row { display: flex; gap: 10px; margin-bottom: 14px; max-width: 720px; }
 .filter-row .input { flex: 1; }
 .filter-row .select { width: 170px; }
+
+/* 定位管理 */
+.region-section { max-width: 1100px; }
+.region-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.region-filters { display: flex; gap: 8px; }
+.region-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; padding: 14px; margin-bottom: 14px; background: var(--bg-page, #f8fafc); border-radius: 10px; border: 1px solid var(--line); }
+.region-form .field label { font-size: 12px; }
+.region-form-actions { display: flex; gap: 8px; align-items: flex-end; }
+.mono { font-family: ui-monospace, Menlo, Consolas, monospace; }
 
 /* 配置中心 */
 .config-section { max-width: 1100px; }

@@ -23,9 +23,14 @@
           <text v-for="ind in meta.industries" :key="ind.key" class="chip" :class="{ on: industry === ind.key }" @tap="setIndustry(ind.key)">{{ ind.icon }} {{ ind.label }}</text>
         </view>
       </scroll-view>
-      <picker :range="cityNames" :value="cityIdx" @change="onCity">
-        <view class="picker">{{ city ? '中心城市：' + city : '选择中心城市（按城市距离排序）' }} ▾</view>
-      </picker>
+      <view class="region-pickers">
+        <picker :range="provinceNames" :value="provinceIdx" @change="onProvince">
+          <view class="picker">{{ province || '全部省份' }} ▾</view>
+        </picker>
+        <picker :range="cityNames" :value="cityIdx" @change="onCity">
+          <view class="picker">{{ city || '全部城市' }} ▾</view>
+        </picker>
+      </view>
     </view>
 
     <view class="list">
@@ -75,7 +80,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad, onPullDownRefresh, onShareAppMessage } from '@dcloudio/uni-app'
-import { api, toast, getLocation } from '../../utils/request'
+import { api, toast, geoLocate, getRegions } from '../../utils/request'
 
 const meta = ref({ industries: [], cities: [] })
 const list = ref([])
@@ -84,20 +89,34 @@ const loading = ref(true)
 const error = ref('')
 const keyword = ref('')
 const industry = ref('')
+const province = ref('')
 const city = ref('')
 const coords = ref(null)
 const locating = ref(false)
-const cityNames = computed(() => ['不使用城市', ...(meta.value.cities || []).map(c => c.name)])
+const sourceLabel = ref('')
+const regions = ref([])
+const cityNames = computed(() => ['不使用城市', ...cityOptions.value.map(c => c.name)])
 const cityIdx = computed(() => city.value ? cityNames.value.indexOf(city.value) : 0)
+const provinceNames = computed(() => ['全部省份', ...regions.value.filter(r => r.level === 1).map(r => r.name)])
+const provinceIdx = computed(() => province.value ? provinceNames.value.indexOf(province.value) : 0)
+const provinceOptions = computed(() => regions.value.filter(r => r.level === 1))
+const cityOptions = computed(() => {
+  if (province.value) {
+    const p = provinceOptions.value.find(r => r.name === province.value)
+    return p ? regions.value.filter(r => r.level === 2 && r.parent_code === p.code) : []
+  }
+  return meta.value.cities || []
+})
 const distanceMode = computed(() => !!(coords.value || city.value))
 
 const locateLabel = computed(() => coords.value ? '已获取你的位置' : city.value ? `以 ${city.value} 为中心` : '未定位 · 按热度推荐')
-const locateHint = computed(() => coords.value ? '正在按到你的实际距离排序' : city.value ? '选择城市或重新定位可按距离排序' : '点重新定位或选择城市以按距离发现伙伴')
+const locateHint = computed(() => coords.value ? `按附近距离排序${sourceLabel.value ? ' · ' + sourceLabel.value : ''}` : city.value ? '选择城市或重新定位可按距离排序' : '点重新定位或选择城市以按距离发现伙伴')
 
 function fmtDist(km) { return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km` }
 
 async function loadMeta() {
   try { meta.value = await api.get('/api/cards/public/market/meta', false) } catch {}
+  try { regions.value = await getRegions() } catch {}
 }
 
 async function load() {
@@ -105,6 +124,7 @@ async function load() {
   try {
     const params = { limit: 40 }
     if (industry.value) params.industry = industry.value
+    if (province.value) params.province = province.value
     if (city.value) params.city = city.value
     if (keyword.value.trim()) params.q = keyword.value.trim()
     if (coords.value) { params.lat = coords.value.lat; params.lng = coords.value.lng }
@@ -116,25 +136,43 @@ async function load() {
 
 function applyFilter() { load() }
 function setIndustry(k) { industry.value = k; load() }
+function onProvince(e) {
+  province.value = provinceNames.value[Number(e.detail.value)]
+  if (province.value === '全部省份') province.value = ''
+  city.value = ''
+  load()
+}
 function onCity(e) {
   const name = cityNames.value[Number(e.detail.value)]
   city.value = (name && name !== '不使用城市') ? name : ''
   load()
 }
-function relocate() {
+async function relocate() {
+  if (locating.value) return
   locating.value = true
-  getLocation().then(pos => {
-    coords.value = pos; locating.value = false
-    toast('定位成功，按附近距离排序', 'success'); load()
-  }).catch(() => {
-    locating.value = false
-    toast('未获取到定位，请改用上方城市选择', 'error')
-  })
+  try {
+    const pos = await geoLocate(city.value || '上海')
+    coords.value = pos
+    sourceLabel.value = { wechat: '微信定位', gps: 'GPS 定位', ip: 'IP 定位', default: '城市兜底' }[pos.source] || ''
+    if (!city.value && pos.city) city.value = pos.city
+    toast(pos.source === 'default' ? '已用城市中心坐标，可再点重新定位' : '定位成功，按附近距离排序', pos.source === 'default' ? 'none' : 'success')
+    load()
+  } catch (e) { toast(e.message || '定位失败，请改用城市选择', 'error') }
+  finally { locating.value = false }
 }
 function openCard(slug) { uni.navigateTo({ url: `/pages/card/card?slug=${slug}` }) }
 function goEdit() { uni.navigateTo({ url: '/pages/edit/edit' }) }
 
-onLoad(() => { loadMeta(); load() })
+onLoad(async () => {
+  loadMeta()
+  // 预热四级定位，拿到坐标后再加载列表以按距离排序
+  try {
+    const pos = await geoLocate('上海')
+    coords.value = pos
+    sourceLabel.value = { wechat: '微信定位', gps: 'GPS 定位', ip: 'IP 定位', default: '城市兜底' }[pos.source] || ''
+  } catch {}
+  load()
+})
 onPullDownRefresh(async () => { await Promise.all([loadMeta(), load()]); uni.stopPullDownRefresh() })
 onShareAppMessage(() => ({ title: '名片集市 · 发现附近业务对口伙伴', path: '/pages/market/market' }))
 </script>
@@ -157,6 +195,9 @@ onShareAppMessage(() => ({ title: '名片集市 · 发现附近业务对口伙�
 .chip { flex-shrink: 0; font-size: 24rpx; padding: 10rpx 22rpx; border-radius: 999rpx; border: 2rpx solid #e8edf4; background: #f5f7fb; color: #6b7688; }
 .chip.on { background: #2563eb; border-color: #2563eb; color: #fff; font-weight: 700; }
 .picker { margin-top: 18rpx; border: 2rpx solid #e8edf4; border-radius: 12rpx; padding: 16rpx 18rpx; font-size: 26rpx; color: #162033; }
+.region-pickers { display: flex; gap: 12rpx; }
+.region-pickers picker { flex: 1; min-width: 0; }
+.region-pickers .picker { margin-top: 18rpx; }
 .list { padding: 22rpx 24rpx 40rpx; }
 .state { text-align: center; padding: 80rpx 20rpx; color: #6b7688; font-size: 26rpx; }
 .state .b { display: block; color: #0f172a; font-size: 30rpx; font-weight: 700; margin: 16rpx 0; }

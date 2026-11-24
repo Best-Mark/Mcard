@@ -36,6 +36,7 @@ app.get('/MP_verify_:code.txt', (req, res) => {
 })
 
 app.use('/api/auth', require('./routes/auth'))
+app.use('/api/geo', require('./routes/geo'))
 app.use('/api/pay', require('./routes/pay'))
 app.use('/api/cards', require('./routes/cards'))
 app.use('/api/packages', require('./routes/packages'))

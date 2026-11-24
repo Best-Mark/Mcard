@@ -23,8 +23,9 @@ function cardLogo(row, asDataUrl = false) {
 
 const EDITABLE = ['name', 'name_en', 'title', 'company', 'company_intro', 'department', 'phone', 'mobile', 'email',
   'wechat', 'alipay', 'whatsapp', 'wechat_qr', 'alipay_qr', 'wechat_pay_qr', 'alipay_pay_qr',
-  'address', 'address_detail', 'website', 'shop_url', 'avatar', 'cover', 'logo', 'bio',
-  'tags', 'links', 'template', 'industry', 'city', 'latitude', 'longitude', 'market_opt_in',
+  'address', 'address_detail', 'province', 'city', 'district', 'street',
+  'website', 'shop_url', 'avatar', 'cover', 'logo', 'bio',
+  'tags', 'links', 'template', 'industry', 'latitude', 'longitude', 'market_opt_in',
   'theme', 'accent', 'qr_fg', 'qr_bg', 'qr_logo']
 
 const parseJson = (v, fallback) => { try { const x = JSON.parse(v); return x ?? fallback } catch { return fallback } }
@@ -43,11 +44,12 @@ function publicView(row, origin) {
     wechat_qr: row.wechat_qr, alipay_qr: row.alipay_qr,
     wechat_pay_qr: row.wechat_pay_qr, alipay_pay_qr: row.alipay_pay_qr,
     address: row.address, address_detail: row.address_detail,
+    province: row.province || '', city: row.city || '', district: row.district || '', street: row.street || '',
     website: row.website, shop_url: row.shop_url,
     avatar: row.avatar, cover: row.cover, logo: row.logo, bio: row.bio,
     tags: parseJson(row.tags, []), links: parseJson(row.links, []),
     template: isTemplate(row.template) ? row.template : 'classic',
-    industry: normalizeIndustry(row.industry), city: row.city || '',
+    industry: normalizeIndustry(row.industry),
     latitude: row.latitude ?? null, longitude: row.longitude ?? null, market_opt_in: !!row.market_opt_in,
     theme: row.theme, accent: row.accent, qr_fg: row.qr_fg, qr_bg: row.qr_bg, qr_logo: !!row.qr_logo,
     active: row.status === 'active' && !expired,
@@ -71,7 +73,7 @@ function marketView(row, originLat, originLng, origin) {
     url: `${origin}/c/${row.slug}`,
     name: row.name, name_en: row.name_en, title: row.title, company: row.company,
     industry: normalizeIndustry(row.industry), industryLabel: industry?.label || '',
-    city: row.city || '', distanceKm: distance,
+    province: row.province || '', city: row.city || '', district: row.district || '', distanceKm: distance,
     avatar: row.avatar, logo: row.logo, cover: row.cover,
     tags: parseJson(row.tags, []), bio: row.bio, views: row.views || 0,
     template: isTemplate(row.template) ? row.template : 'classic', theme: row.theme, accent: row.accent
@@ -97,6 +99,8 @@ router.get('/public/market', wrap((req, res) => {
   const industry = String(req.query.industry || '').slice(0, 40)
   const q = String(req.query.q || '').trim().slice(0, 60)
   const city = String(req.query.city || '').trim().slice(0, 30)
+  const province = String(req.query.province || '').trim().slice(0, 30)
+  const district = String(req.query.district || '').trim().slice(0, 30)
   const limit = Math.min(60, Math.max(1, Number(req.query.limit) || 30))
 
   // 定位原点：优先精确经纬度，否则用城市名匹配内置坐标
@@ -113,7 +117,9 @@ router.get('/public/market', wrap((req, res) => {
   const now = new Date()
   rows = rows.filter(r => !r.expires_at || new Date(String(r.expires_at).replace(' ', 'T') + 'Z') >= now)
   if (industry && isIndustry(industry)) rows = rows.filter(r => normalizeIndustry(r.industry) === industry)
+  if (province) rows = rows.filter(r => (r.province || '').includes(province))
   if (city) rows = rows.filter(r => (r.city || '').includes(city))
+  if (district) rows = rows.filter(r => (r.district || '').includes(district))
   if (q) {
     const needle = q.toLowerCase()
     rows = rows.filter(r => [r.name, r.name_en, r.title, r.company, r.bio, r.city, r.tags, r.industry]

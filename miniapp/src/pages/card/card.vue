@@ -84,12 +84,14 @@
           <view class="muted small" style="margin-top:12rpx">付款前请核对收款方与金额；二维码由名片主人自行上传。</view>
         </view>
 
-        <view v-if="card.address" class="card block">
+        <view v-if="fullAddress" class="card block">
           <view class="section">地址</view>
+          <view v-if="regionLine" class="region-line">{{ regionLine }}</view>
           <view class="addr">
-            <text class="content">{{ card.address }} {{ card.address_detail }}</text>
-            <button class="btn tiny" @tap="copyText(card.address + (card.address_detail || ''), '地址已复制，可粘贴到地图')">复制</button>
+            <text class="content">{{ fullAddress }}</text>
+            <button class="btn tiny" @tap="copyText(fullAddress, '地址已复制，可粘贴到地图')">复制</button>
           </view>
+          <view v-if="card.latitude != null && card.longitude != null" class="hint">⌖ {{ card.latitude.toFixed(4) }}, {{ card.longitude.toFixed(4) }} · 可在微信/高德中发送此坐标导航</view>
           <view class="hint">小程序内无法直接唤起所有地图，地址复制后打开高德/百度/Apple 地图粘贴即可导航。</view>
         </view>
 
@@ -165,6 +167,15 @@ const titleText = computed(() => {
   const parts = tpl.value === 'navygold' ? [c.title, c.department] : [c.title, c.company, c.department]
   return parts.filter(Boolean).join(' · ')
 })
+const regionLine = computed(() => {
+  const c = card.value || {}
+  return [c.province, c.city, c.district, c.street].filter(Boolean).join(' · ')
+})
+const fullAddress = computed(() => {
+  const c = card.value || {}
+  const region = [c.province, c.city, c.district, c.street].filter(Boolean).join('')
+  return [region, c.address, c.address_detail].filter(Boolean).join(' ')
+})
 const contactQrs = computed(() => {
   const c = card.value || {}
   return [
@@ -216,7 +227,7 @@ function copyContact() {
     c.alipay ? `支付宝：${c.alipay}` : '',
     c.website ? `公司主页：${c.website}` : '',
     c.shop_url ? `店铺：${c.shop_url}` : '',
-    c.address ? `地址：${c.address} ${c.address_detail || ''}` : '',
+    (c.address || c.address_detail || c.province) ? `地址：${fullAddress.value}` : '',
     c.company_intro ? `公司简介：${c.company_intro}` : '',
     `电子名片：${c.url || baseUrl + '/c/' + c.slug}`
   ].filter(Boolean).join('\n')
@@ -274,6 +285,7 @@ onShareAppMessage(() => ({
 .modal-mask { position: fixed; inset: 0; background: rgba(15,23,42,.55); z-index: 900; display: flex; align-items: center; justify-content: center; padding: 30rpx; }
 .modal { background: #fff; border-radius: 24rpx; padding: 28rpx; width: 100%; }
 .modal-qr { width: 460rpx; height: 460rpx; display: block; margin: 20rpx auto; background: #fff; border: 2rpx solid #e8edf4; border-radius: 16rpx; }
+.region-line { font-size: 26rpx; font-weight: 700; color: #2563eb; margin-bottom: 10rpx; }
 .addr { display: flex; align-items: flex-start; justify-content: space-between; gap: 16rpx; }
 .hint { font-size: 22rpx; color: #94a3b8; margin-top: 14rpx; line-height: 1.6; }
 .qr-card { display: flex; gap: 20rpx; align-items: center; }
