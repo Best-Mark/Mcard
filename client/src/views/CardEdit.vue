@@ -14,13 +14,13 @@
         <button class="btn btn-sm btn-primary" :disabled="loading" @click="loadCard">重新加载</button>
       </div>
       <div class="hint" style="margin-bottom:14px">
-        🔒 <b>二维码永久不变</b>：以下任何资料修改都只影响展示内容，链接 <span class="mono">/c/{{ form.slug }}</span> 与二维码图案始终保持一致，印好的实体名片无需重做。
+        🔒 <b>二维码永久不变 · 修改自动保存</b>：切换分类或输入后自动保存，右侧预览所见即所得；链接 <span class="mono">/c/{{ form.slug }}</span> 与二维码图案始终不变，印好的实体名片无需重做。
       </div>
 
       <div class="edit-layout">
         <!-- 分类导航：一次只显示一类，避免长表单吓跑用户 -->
         <nav class="edit-nav">
-          <button v-for="s in sections" :key="s.key" :class="{ on: active === s.key, dirty: dirtySections[s.key] }" @click="active = s.key">
+          <button v-for="(s, i) in sections" :key="s.key" :class="{ on: active === s.key, dirty: dirtySections[s.key] }" @click="goSection(i)">
             <span class="nav-ico">{{ s.icon }}</span>
             <span class="nav-label">{{ s.label }}</span>
             <span v-if="dirtySections[s.key]" class="nav-dirty" title="有未保存修改"></span>
@@ -54,10 +54,7 @@
               <div class="field"><label>部门</label><input v-model="form.department" class="input" maxlength="40" /></div>
             </div>
             </div>
-            <div class="section-foot">
-              <span class="save-state" :class="{ saved: savedSections.identity }">{{ savedSections.identity ? '✓ 已保存' : '未保存' }}</span>
-              <button class="btn btn-sm btn-primary" :disabled="saving" @click="saveSection('identity')">{{ saving ? '保存中…' : '保存本节' }}</button>
-            </div>
+            <div class="section-foot"><span class="save-state">修改后自动保存 · 所见即所得</span></div>
           </div>
 
           <!-- ② 简介与标签 -->
@@ -67,10 +64,7 @@
             <div class="field"><label>个人简介</label><textarea v-model="form.bio" class="textarea" maxlength="600" placeholder="一句话介绍自己，展示在名片首页"></textarea></div>
             <div class="field"><label>公司简介</label><textarea v-model="form.company_intro" class="textarea" maxlength="1000" placeholder="介绍公司业务、优势与服务，展示在名片「公司简介」区块，并写入通讯录备注"></textarea></div>
             <div class="field"><label>标签（逗号分隔，最多 8 个）</label><input v-model="tagsText" class="input" placeholder="品牌顾问, 设计, 马拉松" /></div>
-            <div class="section-foot">
-              <span class="save-state" :class="{ saved: savedSections.bio }">{{ savedSections.bio ? '✓ 已保存' : '未保存' }}</span>
-              <button class="btn btn-sm btn-primary" :disabled="saving" @click="saveSection('bio')">{{ saving ? '保存中…' : '保存本节' }}</button>
-            </div>
+            <div class="section-foot"><span class="save-state">修改后自动保存 · 所见即所得</span></div>
           </div>
 
           <!-- ③ 联系方式 -->
@@ -94,10 +88,7 @@
             </div>
             <div class="field"><label>地址（用于一键导航）</label><input v-model="form.address" class="input" placeholder="街道门牌，越详细导航越准" /></div>
             <div class="field"><label>门牌 / 楼层补充</label><input v-model="form.address_detail" class="input" /></div>
-            <div class="section-foot">
-              <span class="save-state" :class="{ saved: savedSections.contact }">{{ savedSections.contact ? '✓ 已保存' : '未保存' }}</span>
-              <button class="btn btn-sm btn-primary" :disabled="saving" @click="saveSection('contact')">{{ saving ? '保存中…' : '保存本节' }}</button>
-            </div>
+            <div class="section-foot"><span class="save-state">修改后自动保存 · 所见即所得</span></div>
           </div>
 
           <!-- ⑥ 名片集市 -->
@@ -138,10 +129,7 @@
               </div>
             </div>
             <p v-if="form.market_opt_in && form.latitude == null" class="small" style="color:#b45309">已开启上架但尚无坐标，请选地区或精确定位，否则在集市中会排在末尾。</p>
-            <div class="section-foot">
-              <span class="save-state" :class="{ saved: savedSections.market }">{{ savedSections.market ? '✓ 已保存' : '未保存' }}</span>
-              <button class="btn btn-sm btn-primary" :disabled="saving" @click="saveSection('market')">{{ saving ? '保存中…' : '保存本节' }}</button>
-            </div>
+            <div class="section-foot"><span class="save-state">修改后自动保存 · 所见即所得</span></div>
           </div>
 
           <!-- ④ 二维码 -->
@@ -158,10 +146,7 @@
                 <AssetPicker v-model="form[q.key]" label="素材库" />
               </div>
             </div>
-            <div class="section-foot">
-              <span class="save-state" :class="{ saved: savedSections.qr }">{{ savedSections.qr ? '✓ 已保存' : '未保存' }}</span>
-              <button class="btn btn-sm btn-primary" :disabled="saving" @click="saveSection('qr')">{{ saving ? '保存中…' : '保存本节' }}</button>
-            </div>
+            <div class="section-foot"><span class="save-state">修改后自动保存 · 所见即所得</span></div>
           </div>
 
           <!-- ⑤ 更多链接 -->
@@ -178,10 +163,7 @@
               <button class="btn btn-sm btn-danger" @click="form.links.splice(i, 1)">删</button>
             </div>
             <button class="btn btn-sm btn-ghost" @click="form.links.push({ label: '', url: '' })">+ 添加链接</button>
-            <div class="section-foot">
-              <span class="save-state" :class="{ saved: savedSections.links }">{{ savedSections.links ? '✓ 已保存' : '未保存' }}</span>
-              <button class="btn btn-sm btn-primary" :disabled="saving" @click="saveSection('links')">{{ saving ? '保存中…' : '保存本节' }}</button>
-            </div>
+            <div class="section-foot"><span class="save-state">修改后自动保存 · 所见即所得</span></div>
           </div>
 
           <!-- ⑧ 资料夹 -->
@@ -205,10 +187,7 @@
               </div>
             </div>
             <button class="btn btn-sm btn-ghost" @click="addMaterial">+ 添加资料</button>
-            <div class="section-foot">
-              <span class="save-state" :class="{ saved: savedSections.materials }">{{ savedSections.materials ? '✓ 已保存' : '未保存' }}</span>
-              <button class="btn btn-sm btn-primary" :disabled="saving" @click="saveSection('materials')">{{ saving ? '保存中…' : '保存本节' }}</button>
-            </div>
+            <div class="section-foot"><span class="save-state">修改后自动保存 · 所见即所得</span></div>
           </div>
 
           <!-- ⑦ 外观（模板 + 主题） -->
@@ -281,15 +260,16 @@
               </div>
               <p class="small muted">实时预览见右侧；保存本节后公开名片与分享二维码同步生效。</p>
             </div>
-            <div class="section-foot">
-              <span class="save-state" :class="{ saved: savedSections.appearance }">{{ savedSections.appearance ? '✓ 已保存' : '未保存' }}</span>
-              <button class="btn btn-sm btn-primary" :disabled="saving" @click="saveSection('appearance')">{{ saving ? '保存中…' : '保存本节' }}</button>
-            </div>
+            <div class="section-foot"><span class="save-state">修改后自动保存 · 所见即所得</span></div>
           </div>
 
           <div class="done-bar">
-            <span class="small muted">资料可以慢慢完善，每次只保存当前分类即可。</span>
-            <button class="btn btn-primary" :disabled="saving || loadError || !loaded" @click="finish">完成，返回名片</button>
+            <span class="small muted">{{ autoSaveText }}</span>
+            <div class="done-actions">
+              <button v-if="sectionIndex > 0" class="btn btn-sm btn-ghost" @click="goSection(sectionIndex - 1)">‹ 上一项</button>
+              <button v-if="sectionIndex < sections.length - 1" class="btn btn-sm btn-ghost" @click="goSection(sectionIndex + 1)">下一项 ›</button>
+              <button class="btn btn-sm btn-primary" :disabled="saving || loadError || !loaded" @click="finish">{{ sectionIndex === sections.length - 1 ? '完成，返回名片' : '返回名片' }}</button>
+            </div>
           </div>
         </div>
 
@@ -622,12 +602,13 @@ const SECTION_FIELDS = {
 const savedSections = ref({})
 const dirtySections = ref({})
 
-async function saveSection(key) {
-  if (saving.value || loadError.value || !loaded.value) return
-  if (key === 'materials') return saveMaterials()
+async function saveSection(key, silent = false) {
+  if (loadError.value || !loaded.value) return
+  if (key === 'materials') return saveMaterials(silent)
   const fields = SECTION_FIELDS[key] || []
-  if (key === 'identity' && !form.value.name) return showToast('请填写姓名', 'error')
+  if (key === 'identity' && !form.value.name) return (silent ? null : showToast('请填写姓名', 'error'))
   saving.value = true
+  autoSaveText.value = '正在保存…'
   try {
     const payload = {}
     for (const f of fields) payload[f] = form.value[f]
@@ -636,21 +617,30 @@ async function saveSection(key) {
     await api.put('/api/cards/mine', payload)
     savedSections.value = { ...savedSections.value, [key]: Date.now() }
     dirtySections.value = { ...dirtySections.value, [key]: false }
-    showToast('已保存，可继续完善其它资料', 'success')
-  } catch (e) { showToast(e.message, 'error') } finally { saving.value = false }
+    if (!silent) showToast('已保存', 'success')
+    autoSaveText.value = '✓ 已自动保存 · 所见即所得'
+  } catch (e) {
+    autoSaveText.value = '保存失败，请检查网络后修改任意字段重试'
+    if (!silent) showToast(e.message, 'error')
+  } finally { saving.value = false }
 }
 
 // 资料夹独立保存（整份替换接口，与名片资料解耦）
-async function saveMaterials() {
+async function saveMaterials(silent = false) {
   saving.value = true
+  autoSaveText.value = '正在保存…'
   try {
     const items = materials.value.filter(m => m.url).map((m, i) => ({ ...m, sort: i }))
     const { data } = await api.put('/api/cards/mine/materials', { items })
     materials.value = data.data?.list || []
     savedSections.value = { ...savedSections.value, materials: Date.now() }
     dirtySections.value = { ...dirtySections.value, materials: false }
-    showToast('资料夹已保存', 'success')
-  } catch (e) { showToast(e.message, 'error') } finally { saving.value = false }
+    if (!silent) showToast('资料夹已保存', 'success')
+    autoSaveText.value = '✓ 已自动保存 · 所见即所得'
+  } catch (e) {
+    autoSaveText.value = '保存失败，请检查网络后修改任意字段重试'
+    if (!silent) showToast(e.message, 'error')
+  } finally { saving.value = false }
 }
 function addMaterial() { materials.value.push({ type: 'link', title: '', url: '' }) }
 async function uploadMaterial(e, i) {
@@ -662,24 +652,42 @@ async function uploadMaterial(e, i) {
   try {
     const { data } = await api.post('/api/upload/doc', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
     materials.value[i].url = data?.data?.url || ''
-    showToast('文件已上传，记得点「保存本节」', 'success')
+    showToast('文件已上传，将自动保存', 'success')
   } catch (err) { materials.value[i].url = prev; showToast(err.message, 'error') }
   e.target.value = ''
 }
 
-// 自动追踪「当前分类有未保存修改」：加载完成前不追踪，避免初始化误标脏
+// 所见即所得：字段变更 debounce 后自动保存当前分类，切换分类时立即保存上一分类。
 let formReady = false
-const markActiveDirty = () => {
+let saveTimer = null
+const sectionIndex = computed(() => sections.value.findIndex(s => s.key === active.value))
+const autoSaveText = ref('修改后自动保存 · 所见即所得')
+
+function scheduleAutoSave() {
   if (!formReady) return
   dirtySections.value = { ...dirtySections.value, [active.value]: true }
+  autoSaveText.value = '有修改，即将自动保存…'
+  clearTimeout(saveTimer)
+  saveTimer = setTimeout(() => { if (dirtySections.value[active.value]) saveSection(active.value, true) }, 900)
 }
-watch(form, markActiveDirty, { deep: true, flush: 'sync' })
-watch(tagsText, markActiveDirty, { flush: 'sync' })
-watch(materials, markActiveDirty, { deep: true, flush: 'sync' })
+watch(form, scheduleAutoSave, { deep: true })
+watch(tagsText, scheduleAutoSave)
+watch(materials, scheduleAutoSave, { deep: true })
+
+// 切换分类：先保存上一分类，再切过去（所见即所得，无需手动保存）
+function goSection(index) {
+  const s = sections.value[index]
+  if (!s) return
+  if (formReady && dirtySections.value[active.value]) {
+    clearTimeout(saveTimer)
+    saveSection(active.value, true)
+  }
+  active.value = s.key
+}
 
 async function finish() {
-  const dirty = Object.keys(dirtySections.value).filter(k => dirtySections.value[k])
-  if (dirty.length) return showToast('有未保存的修改，请先保存对应分类', 'error')
+  clearTimeout(saveTimer)
+  if (formReady && dirtySections.value[active.value]) await saveSection(active.value, true)
   router.push('/me')
 }
 </script>
@@ -700,6 +708,7 @@ async function finish() {
 .save-state { font-size: 12px; color: var(--muted); }
 .save-state.saved { color: var(--ok); }
 .done-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; padding: 14px; background: #eff6ff; border: 1px solid #dbeafe; border-radius: 12px; flex-wrap: wrap; }
+.done-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .back-btn { font-size: 16px; color: var(--primary); padding: 4px 8px; margin-left: -8px; }
 @media (max-width: 1080px) { .edit-layout { grid-template-columns: 168px minmax(0, 1fr); } .preview-panel { display: none; } }
 @media (max-width: 720px) {
