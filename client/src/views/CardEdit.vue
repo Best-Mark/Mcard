@@ -32,31 +32,44 @@
           <!-- ① 身份信息 -->
           <div v-show="active === 'identity'" class="card card-pad" id="focus-identity">
             <div class="section-title" style="margin-top:0">基本信息</div>
-            <div class="avatar-row">
-              <div class="avatar-preview">
-                <img v-if="form.avatar" :src="form.avatar" alt="头像" />
-                <span v-else>{{ (form.name || 'M').slice(0, 1) }}</span>
-              </div>
-              <div>
-                <label class="btn btn-sm btn-ghost upload-btn">上传头像
-                  <input type="file" accept="image/*" @change="e => upload(e, 'avatar')" />
-                </label>
-                <AssetPicker v-model="form.avatar" label="从素材库选" />
-                <p class="small muted" style="margin-top:6px">建议正方形；上传自动压缩转 WebP，≤5MB</p>
+
+            <!-- 个人头像：账号形象，与个人资料页共用，和名片 LOGO 明确分开 -->
+            <div class="identity-block">
+              <div class="block-title">👤 个人头像 <span class="muted small">代表你本人 · 显示在名片与通讯录</span></div>
+              <div class="avatar-row">
+                <div class="avatar-preview">
+                  <img v-if="form.avatar" :src="form.avatar" alt="头像" />
+                  <span v-else>{{ (form.name || 'M').slice(0, 1) }}</span>
+                </div>
+                <div>
+                  <label class="btn btn-sm btn-ghost upload-btn">上传头像
+                    <input type="file" accept="image/*" @change="e => upload(e, 'avatar')" />
+                  </label>
+                  <AssetPicker v-model="form.avatar" label="从素材库选" />
+                  <p class="small muted" style="margin-top:6px">建议正方形；上传自动压缩转 WebP，≤5MB</p>
+                </div>
               </div>
             </div>
-            <div class="field">
-              <label>公司 / 个人 LOGO <span class="muted small">（自动去底成透明 PNG）</span></label>
-              <div v-if="form.logo" class="logo-current"><img :src="form.logo" alt="当前 LOGO" /><span>当前 LOGO · 重新上传可替换</span></div>
-              <LogoUploader v-model="form.logo" />
-              <AssetPicker v-model="form.logo" label="从素材库选" />
+
+            <!-- 品牌 LOGO：名片视觉主体，代表公司/品牌，与个人头像分块 -->
+            <div class="identity-block divided">
+              <div class="block-title">🏢 公司 / 品牌 LOGO <span class="muted small">代表企业或品牌 · 名片的视觉主体（自动去底成透明 PNG）</span></div>
+              <div class="field">
+                <div v-if="form.logo" class="logo-current"><img :src="form.logo" alt="当前 LOGO" /><span>当前 LOGO · 重新上传可替换</span></div>
+                <LogoUploader v-model="form.logo" />
+                <AssetPicker v-model="form.logo" label="从素材库选" />
+              </div>
             </div>
+
+            <div class="identity-block divided">
+              <div class="block-title">✎ 姓名与职位</div>
             <div class="grid2">
               <div class="field"><label>姓名 *</label><input v-model="form.name" class="input" maxlength="30" /></div>
               <div class="field"><label>英文名（选填）</label><input v-model="form.name_en" class="input" maxlength="40" /></div>
               <div class="field"><label>职位</label><input v-model="form.title" class="input" maxlength="60" /></div>
               <div class="field"><label>公司</label><input v-model="form.company" class="input" maxlength="60" /></div>
               <div class="field"><label>部门</label><input v-model="form.department" class="input" maxlength="40" /></div>
+            </div>
             </div>
             <div class="section-foot">
               <span class="save-state" :class="{ saved: savedSections.identity }">{{ savedSections.identity ? '✓ 已保存' : '未保存' }}</span>
@@ -712,7 +725,11 @@ async function finish() {
   .edit-nav button { width: auto; flex: 0 0 auto; padding: 8px 12px; }
   .nav-ico { display: none; }
 }
-.avatar-row { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+.identity-block { margin-bottom: 4px; }
+.identity-block.divided { border-top: 1px solid var(--line, #e8edf4); margin-top: 16px; padding-top: 16px; }
+.block-title { font-size: 14px; font-weight: 700; color: var(--text, #0f172a); margin-bottom: 12px; }
+.block-title .muted { font-weight: 400; margin-left: 6px; }
+.avatar-row { display: flex; align-items: center; gap: 14px; margin-bottom: 4px; }
 .logo-current { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 12px; color: var(--muted); }
 .logo-current img { width: 48px; height: 48px; object-fit: contain; border: 1px solid var(--line); border-radius: 10px; background: #fff; padding: 4px; }
 .avatar-preview { width: 64px; height: 64px; border-radius: 16px; background: var(--primary); color: #fff; display: grid; place-items: center; font-size: 26px; font-weight: 800; overflow: hidden; }
