@@ -149,9 +149,12 @@ CREATE TABLE IF NOT EXISTS card_views (
   ip TEXT NOT NULL DEFAULT '',
   ua TEXT NOT NULL DEFAULT '',
   referer TEXT NOT NULL DEFAULT '',
+  source TEXT NOT NULL DEFAULT '',
+  city TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_views_card ON card_views(card_id);
+CREATE INDEX IF NOT EXISTS idx_views_source ON card_views(card_id, source);
 
 CREATE TABLE IF NOT EXISTS card_exchanges (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -165,8 +168,45 @@ CREATE TABLE IF NOT EXISTS card_favorites (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
   card_id INTEGER NOT NULL,
+  note TEXT NOT NULL DEFAULT '',
+  tags TEXT NOT NULL DEFAULT '[]',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(user_id, card_id)
+);
+
+-- 名片资料夹：产品册/作品/链接，分享时每份都带名片落款二维码（内容仍是 /c/{slug} URL，微信可扫）
+CREATE TABLE IF NOT EXISTS card_materials (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  card_id INTEGER NOT NULL,
+  type TEXT NOT NULL DEFAULT 'link',
+  title TEXT NOT NULL DEFAULT '',
+  url TEXT NOT NULL DEFAULT '',
+  sort INTEGER NOT NULL DEFAULT 0,
+  views INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_materials_card ON card_materials(card_id, sort);
+
+-- 通知：名片资料变更提醒、系统消息（唯一真相源，前端只读展示）
+CREATE TABLE IF NOT EXISTS notifications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  type TEXT NOT NULL DEFAULT '',
+  card_id INTEGER,
+  title TEXT NOT NULL DEFAULT '',
+  body TEXT NOT NULL DEFAULT '',
+  link TEXT NOT NULL DEFAULT '',
+  is_read INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, is_read, id);
+
+-- 名片资料快照：仅保存用于「变更提醒」比对的字段，避免全量存库
+CREATE TABLE IF NOT EXISTS card_snapshots (
+  card_id INTEGER PRIMARY KEY,
+  fields TEXT NOT NULL DEFAULT '{}',
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS site_config (
@@ -188,6 +228,13 @@ CREATE TABLE IF NOT EXISTS regions (
 );
 CREATE INDEX IF NOT EXISTS idx_regions_parent ON regions(parent_code, level);
 `)
+
+// 访客画像/来源分析 + 名片夹打标：存量库补列（自愈，CREATE TABLE IF NOT EXISTS 不改老表）
+// 必须放在上面的建表 exec 之后——card_views/card_favorites 表此时才存在
+addColumnIfMissing('card_views', 'source', "TEXT NOT NULL DEFAULT ''")
+addColumnIfMissing('card_views', 'city', "TEXT NOT NULL DEFAULT ''")
+addColumnIfMissing('card_favorites', 'note', "TEXT NOT NULL DEFAULT ''")
+addColumnIfMissing('card_favorites', 'tags', "TEXT NOT NULL DEFAULT '[]'")
 
 // ---------------- 种子数据 ----------------
 const seedPackages = [

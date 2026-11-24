@@ -1,0 +1,145 @@
+<template>
+  <div class="page">
+    <header class="topbar">
+      <button class="back" @click="router.back ? router.back() : router.push('/me/contacts')">‹</button>
+      <span class="title">展会连扫收名片</span>
+      <div class="spacer"></div>
+      <button class="nav-menu-btn" aria-label="菜单" @click="toggleDrawer"><i class="menu-glyph"></i></button>
+    </header>
+
+    <div class="container" style="margin-top:16px">
+      <div class="card card-pad intro">
+        <b>一次参会，批量收名片</b>
+        <p class="small muted">连续扫描对方的名片二维码（或粘贴名片链接），全部收集后统一打标签、写备注，一次性存进名片夹。比扫一张存一张快得多。</p>
+      </div>
+
+      <div class="card card-pad scan-card">
+        <div class="scan-buttons">
+          <button class="btn btn-primary" :disabled="scanning" @click="wxScan">{{ scanning ? '调起扫码中…' : '📷 微信扫一扫' }}</button>
+        </div>
+        <p v-if="!isWx" class="small muted" style="margin-top:8px">当前不是微信环境，微信扫一扫不可用，请用下方手动粘贴。</p>
+        <div class="manual-row">
+          <input v-model="manualInput" class="input" placeholder="粘贴名片链接或短码，回车添加" @keyup.enter="addManual" />
+          <button class="btn btn-ghost" :disabled="!manualInput.trim()" @click="addManual">添加</button>
+        </div>
+      </div>
+
+      <div class="card card-pad" style="margin-top:12px">
+        <div class="list-head"><b>本次已收集 {{ collected.length }} 张</b>
+          <button v-if="collected.length" class="btn btn-sm btn-ghost" @click="collected = []">清空</button>
+        </div>
+        <div v-if="!collected.length" class="small muted" style="padding:16px 0">还没有扫描到名片。</div>
+        <div v-for="(s, i) in collected" :key="s + i" class="slug-chip">
+          <span class="mono">{{ s }}</span>
+          <button @click="collected.splice(i, 1)">✕</button>
+        </div>
+
+        <div class="field" style="margin-top:14px"><label>统一标签（逗号分隔，如 展会,潜在客户）</label>
+          <input v-model="tagsText" class="input" placeholder="给这一批名片打标，方便事后筛选" />
+        </div>
+        <div class="field"><label>统一备注</label>
+          <input v-model="note" class="input" maxlength="200" placeholder="如：2026 上海展会认识" />
+        </div>
+        <button class="btn btn-primary" style="width:100%;margin-top:8px" :disabled="saving || !collected.length" @click="submit">
+          {{ saving ? '保存中…' : `保存到名片夹（${collected.length} 张）` }}
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import api from '../api'
+import { toggleDrawer, showToast } from '../store'
+import { isWeChat } from '../utils/save-image'
+import { configWx } from '../utils/wx-sdk'
+
+const router = useRouter()
+const isWx = computed(() => isWeChat())
+const collected = ref([])
+const manualInput = ref('')
+const tagsText = ref('')
+const note = ref('')
+const scanning = ref(false)
+const saving = ref(false)
+
+// 从任意文本里提取名片短码：支持 /c/xxx、完整 URL、纯短码
+function extractSlug(text) {
+  const s = String(text || '').trim()
+  if (!s) return ''
+  let m = s.match(/\/c\/([a-z0-9-]+)/i)
+  if (m) return m[1].toLowerCase()
+  m = s.match(/[?&](?:slug|invite)=([a-z0-9-]+)/i)
+  if (m) return m[1].toLowerCase()
+  if (/^[a-z0-9-]{3,40}$/i.test(s)) return s.toLowerCase()
+  return ''
+}
+function addSlug(slug) {
+  if (!slug) return showToast('没识别到名片短码', 'error')
+  if (collected.value.includes(slug)) return showToast('这张已在本次列表里')
+  collected.value.push(slug)
+}
+function addManual() {
+  addSlug(extractSlug(manualInput.value))
+  manualInput.value = ''
+}
+async function wxScan() {
+  if (scanning.value) return
+  scanning.value = true
+  try {
+    const { wx, ok } = await configWx(api)
+    if (!ok) { showToast('微信权限未就绪，请稍后重试', 'error'); return }
+    await new Promise((resolve, reject) => {
+      let settled = false
+      const finish = (fn, v) => { if (!settled) { settled = true; fn(v) } }
+      try {
+        wx.scanQRCode({
+          needResult: 1,
+          scanType: ['qrCode', 'barCode'],
+          success: res => finish(resolve, res?.resultStr || ''),
+          fail: err => finish(reject, new Error(err?.errMsg || '扫码失败'))
+        })
+      } catch (e) { finish(reject, e) }
+      setTimeout(() => finish(reject, new Error('扫码超时')), 30000)
+    }).then(result => {
+      const slug = extractSlug(result)
+      if (slug) { addSlug(slug); showToast('已收集，继续扫下一张', 'success') }
+      else showToast('二维码不是本系统的名片', 'error')
+    })
+  } catch (e) { showToast(e.message || '扫码失败', 'error') }
+  finally { scanning.value = false }
+}
+async function submit() {
+  if (saving.value) return
+  saving.value = true
+  try {
+    const tags = tagsText.value.split(/[,，]/).map(s => s.trim()).filter(Boolean).slice(0, 8)
+    const { data } = await api.post('/api/cards/mine/contacts/batch', {
+      slugs: collected.value, tags, note: note.value.trim()
+    })
+    const { added = 0, updated = 0, skipped = 0 } = data.data || {}
+    showToast(`已存 ${added} 张${updated ? `，更新 ${updated} 张` : ''}${skipped ? `，跳过 ${skipped} 张` : ''}`, 'success')
+    collected.value = []
+    router.push('/me/contacts')
+  } catch (e) { showToast(e.message || '保存失败', 'error') }
+  finally { saving.value = false }
+}
+</script>
+
+<style scoped>
+.back { width: 34px; height: 34px; display: grid; place-items: center; font-size: 26px; color: var(--primary); }
+.title { font-size: 15px; font-weight: 700; }
+.spacer { flex: 1; }
+.intro b { font-size: 15px; }
+.intro p { margin: 6px 0 0; line-height: 1.6; }
+.scan-card { margin-top: 12px; }
+.scan-buttons .btn { width: 100%; }
+.manual-row { display: flex; gap: 8px; margin-top: 10px; }
+.manual-row .input { flex: 1; }
+.list-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.slug-chip { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; margin-bottom: 6px; background: var(--bg-page, #f4f6fb); border-radius: 8px; font-size: 13px; }
+.slug-chip button { color: var(--muted); }
+.field label { display: block; font-size: 13px; margin-bottom: 5px; }
+</style>

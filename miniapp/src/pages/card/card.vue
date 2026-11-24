@@ -95,6 +95,11 @@
           <view class="hint">小程序内无法直接唤起所有地图，地址复制后打开高德/百度/Apple 地图粘贴即可导航。</view>
         </view>
 
+        <view v-if="materials.length" class="card block" @tap="goMaterials">
+          <view class="section">资料夹 · {{ materials.length }} 份 <text class="muted small">（产品册/作品，末尾可扫码存名片）</text></view>
+          <view v-for="m in materials.slice(0, 3)" :key="m.id" class="m-row"><text>{{ m.type === 'file' ? '📄' : '🔗' }}</text><text class="m-title">{{ m.title }}</text><text class="m-more">›</text></view>
+        </view>
+
         <view class="card qr-card">
           <image class="qr" :src="baseUrl + '/api/cards/public/' + card.slug + '/qr.png?size=440'" mode="aspectFit" />
           <view class="qr-info">
@@ -141,7 +146,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad, onShareAppMessage } from '@dcloudio/uni-app'
-import { api, baseUrl, toast, copyText, callPhone, saveQrImage, saveImageByUrl, currentPlatform, parseSlug } from '../../utils/request'
+import { api, baseUrl, toast, copyText, callPhone, saveQrImage, saveImageByUrl, currentPlatform, parseSlug, getPublicMaterials, traceVisit } from '../../utils/request'
 
 const slug = ref('')
 const card = ref(null)
@@ -151,6 +156,7 @@ const mySlug = ref('')
 const exchanging = ref(false)
 const qrPreview = ref('')
 const tpl = ref('classic')
+const materials = ref([])
 
 const coverBg = computed(() => {
   const c = card.value?.accent || '#2563eb'
@@ -209,11 +215,18 @@ async function load() {
     tpl.value = card.value?.template || 'classic'
   }
   catch (e) { error.value = e.message } finally { loading.value = false }
+  // 资料夹 + 来源上报（扫码进入 scene 记为 qr），失败静默
+  getPublicMaterials(slug.value).then(d => { materials.value = d.list || [] }).catch(() => {})
+  const src = String(entrySrc.value || '')
+  if (src) traceVisit(slug.value, src)
 }
+const entrySrc = ref('')
 onLoad(options => {
   slug.value = parseSlug(options.slug || options.scene || '') || 'zhangsan'
+  if (options.scene || options.src) entrySrc.value = options.src || 'qr'
   load()
 })
+function goMaterials() { uni.navigateTo({ url: '/pages/materials/materials?slug=' + slug.value }) }
 
 function copyContact() {
   if (!card.value) return
@@ -275,6 +288,10 @@ onShareAppMessage(() => ({
 .act::after { border: 0; }
 .ico { width: 68rpx; height: 68rpx; border-radius: 50%; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 30rpx; font-weight: 700; }
 .section { font-size: 30rpx; font-weight: 700; margin-bottom: 12rpx; }
+.m-row { display: flex; align-items: center; gap: 14rpx; padding: 14rpx 0; border-bottom: 1rpx solid #eef2f7; font-size: 26rpx; }
+.m-row:last-child { border-bottom: 0; }
+.m-title { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.m-more { color: #2563eb; font-size: 32rpx; }
 .content { font-size: 26rpx; color: #475569; line-height: 1.7; }
 .link { display: flex; flex-direction: column; padding: 14rpx 0; border-bottom: 2rpx solid #f1f5f9; }
 .link .b { font-size: 26rpx; font-weight: 600; }

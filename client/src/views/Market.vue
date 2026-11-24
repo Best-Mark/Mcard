@@ -62,7 +62,7 @@
           <router-link to="/me/card" class="btn btn-primary btn-sm">上架我的名片</router-link>
         </div>
 
-        <router-link v-for="c in list" :key="c.slug" :to="'/c/' + c.slug" class="mk-card">
+        <router-link v-for="c in list" :key="c.slug" :to="'/c/' + c.slug + '?src=market'" class="mk-card">
           <div class="mk-card-top">
             <div class="mk-avatar">
               <img v-if="c.avatar" :src="c.avatar" :alt="c.name" loading="lazy" />

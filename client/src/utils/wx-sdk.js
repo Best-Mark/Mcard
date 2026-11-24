@@ -3,9 +3,10 @@
 // 铁律：wx.ready 只代表 SDK ready，不等于本次 config 的权限已就绪（getLocation/分享都需容错重试）。
 import { isWeChat } from './save-image'
 
-// 统一接口清单：分享 + 定位，一次配齐，避免分享与定位互相冲掉权限
+// 统一接口清单：分享 + 定位 + 扫码，一次配齐，避免分享/定位/扫码互相冲掉权限。
+// 铁律：wx.config 的 jsApiList 是覆盖式，任何页面都只用这一份，绝不各写一份。
 const UNIFIED_API_LIST = [
-  'getLocation',
+  'getLocation', 'scanQRCode',
   'updateAppMessageShareData', 'updateTimelineShareData',
   'onMenuShareAppMessage', 'onMenuShareTimeline'
 ]

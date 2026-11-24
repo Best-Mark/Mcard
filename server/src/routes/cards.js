@@ -11,6 +11,8 @@ const qr = require('../services/qrcode')
 const vcard = require('../services/vcard')
 const { CARD_TEMPLATES, isTemplate } = require('../utils/cardTemplates')
 const { INDUSTRIES, CITIES, isIndustry, normalizeIndustry, distanceKm } = require('../utils/market')
+const { MATERIAL_TYPES, VISIT_SOURCES, isMaterialType, isVisitSource, CARD_WATCH_FIELDS, NOTIFY_TYPES } = require('../utils/constants')
+const notify = require('../services/notify')
 
 const router = express.Router()
 
@@ -30,6 +32,27 @@ const EDITABLE = ['name', 'name_en', 'title', 'company', 'company_intro', 'depar
 
 const parseJson = (v, fallback) => { try { const x = JSON.parse(v); return x ?? fallback } catch { return fallback } }
 const isColor = v => /^#[0-9a-fA-F]{6}$/.test(String(v || ''))
+
+// 访客来源：优先显式 query.src（分享/集市链接携带，不改二维码本身），再按 referer 兜底推断。
+// 二维码内容恒为 /c/{slug}（微信可扫），扫码进入的 src 由前端在 hash/首次跳转时补，兜底记 direct。
+function detectSource(req) {
+  const explicit = String(req.query.src || '').toLowerCase()
+  if (isVisitSource(explicit)) return explicit
+  const ref = String(req.headers.referer || '')
+  if (/market|集市/i.test(ref)) return 'market'
+  if (/share|forward/i.test(ref)) return 'share'
+  if (/baidu|google|bing|sogou|so\.com|360/i.test(ref)) return 'search'
+  return 'direct'
+}
+// 城市兜底：card_views.city 目前由前端上报（见 POST /public/:slug/trace），这里仅预留空值。
+
+function materialView(r) {
+  return {
+    id: r.id, type: isMaterialType(r.type) ? r.type : 'link',
+    title: r.title || '', url: r.url || '', sort: r.sort || 0,
+    views: r.views || 0, createdAt: r.created_at
+  }
+}
 
 function publicView(row, origin) {
   const now = new Date()
@@ -85,6 +108,12 @@ function marketView(row, originLat, originLng, origin) {
 router.get('/public/templates', wrap((req, res) => {
   res.set('Cache-Control', 'public, max-age=3600')
   ok(res, { templates: CARD_TEMPLATES })
+}))
+
+// 资料夹类型 + 访客来源清单（前端编辑器/统计页唯一真相源，不各自硬编码）
+router.get('/public/meta', wrap((req, res) => {
+  res.set('Cache-Control', 'public, max-age=3600')
+  ok(res, { materialTypes: MATERIAL_TYPES, sources: VISIT_SOURCES })
 }))
 
 // 名片集市元数据（行业清单 + 内置城市坐标）——固定路径，必须在 /public/:slug 之前
@@ -155,8 +184,9 @@ router.get('/public/:slug', wrap((req, res) => {
   const payload = parseToken(req)
   const isOwner = payload && payload.id === row.user_id
   if (!isOwner) {
-    db.prepare('INSERT INTO card_views (card_id, ip, ua, referer) VALUES (?,?,?,?)')
-      .run(row.id, req.ip || '', String(req.headers['user-agent'] || '').slice(0, 300), String(req.headers.referer || '').slice(0, 500))
+    const source = detectSource(req)
+    db.prepare('INSERT INTO card_views (card_id, ip, ua, referer, source) VALUES (?,?,?,?,?)')
+      .run(row.id, req.ip || '', String(req.headers['user-agent'] || '').slice(0, 300), String(req.headers.referer || '').slice(0, 500), source)
     db.prepare('UPDATE cards SET views = views + 1 WHERE id = ?').run(row.id)
     row.views += 1
   }
@@ -223,10 +253,14 @@ router.get('/public/:slug/card.vcf', wrap((req, res) => {
 }))
 
 router.post('/public/:slug/exchange', wrap((req, res) => {
-  const from = db.prepare('SELECT id FROM cards WHERE slug = ?').get(req.params.slug)
-  const to = db.prepare('SELECT id FROM cards WHERE slug = ?').get(String(req.body?.slug || '').toLowerCase())
+  const from = db.prepare('SELECT * FROM cards WHERE slug = ?').get(req.params.slug)
+  const to = db.prepare('SELECT * FROM cards WHERE slug = ?').get(String(req.body?.slug || '').toLowerCase())
   if (!from || !to || from.id === to.id) return fail(res, 400, '交换失败：请确认对方名片链接')
-  db.prepare('INSERT OR IGNORE INTO card_exchanges (from_card_id, to_card_id) VALUES (?,?)').run(from.id, to.id)
+  const r = db.prepare('INSERT OR IGNORE INTO card_exchanges (from_card_id, to_card_id) VALUES (?,?)').run(from.id, to.id)
+  // 仅首次建立互换时提醒对方名片主人（UNIQUE 去重），失败不影响主流程
+  if (r.changes) {
+    try { notify.notifyOwner(to, NOTIFY_TYPES.NEW_EXCHANGE, from.name || '一位名片用户') } catch (e) { console.error('[Notify] 交换提醒失败', e.message) }
+  }
   ok(res, { exchanged: true, with: req.body.slug })
 }))
 
@@ -240,8 +274,56 @@ router.post('/public/:slug/favorite', authRequired, wrap((req, res) => {
     db.prepare('DELETE FROM card_favorites WHERE id = ?').run(exists.id)
     return ok(res, { favorite: false })
   }
-  db.prepare('INSERT INTO card_favorites (user_id, card_id) VALUES (?,?)').run(req.user.id, target.id)
+  const note = String(req.body?.note || '').trim().slice(0, 200)
+  const tags = Array.isArray(req.body?.tags) ? JSON.stringify(req.body.tags.slice(0, 8).map(x => String(x).slice(0, 20))) : '[]'
+  db.prepare('INSERT INTO card_favorites (user_id, card_id, note, tags) VALUES (?,?,?,?)').run(req.user.id, target.id, note, tags)
+  try {
+    const card = db.prepare('SELECT * FROM cards WHERE id = ?').get(target.id)
+    const me = db.prepare('SELECT nickname FROM users WHERE id = ?').get(req.user.id)
+    notify.notifyOwner(card, NOTIFY_TYPES.NEW_FAVORITE, me?.nickname || '有人')
+  } catch (e) { console.error('[Notify] 收藏提醒失败', e.message) }
   ok(res, { favorite: true })
+}))
+
+// 展会连扫：批量收藏多张名片 + 统一打标/备注（一次参会扫一批，事后好找）。
+// 遇到已收藏的只补标不重复插；跳过自己、不存在的短码。
+router.post('/mine/contacts/batch', authRequired, wrap((req, res) => {
+  const slugs = Array.isArray(req.body?.slugs) ? req.body.slugs.slice(0, 50) : []
+  const tags = Array.isArray(req.body?.tags) ? JSON.stringify(req.body.tags.slice(0, 8).map(x => String(x).slice(0, 20))) : '[]'
+  const note = String(req.body?.note || '').trim().slice(0, 200)
+  if (!slugs.length) return fail(res, 400, '没有可保存的名片')
+  const mine = db.prepare('SELECT id FROM cards WHERE user_id = ?').get(req.user.id)
+  const myId = mine?.id || -1
+  let added = 0, updated = 0, skipped = 0
+  db.transaction(() => {
+    for (const raw of slugs) {
+      const slug = String(raw || '').toLowerCase().trim()
+      const card = db.prepare('SELECT id FROM cards WHERE slug = ?').get(slug)
+      if (!card || card.id === myId) { skipped++; continue }
+      const exists = db.prepare('SELECT id FROM card_favorites WHERE user_id = ? AND card_id = ?').get(req.user.id, card.id)
+      if (exists) {
+        db.prepare('UPDATE card_favorites SET note = CASE WHEN ? <> \'\' THEN ? ELSE note END, tags = ? WHERE id = ?')
+          .run(note, note, tags === '[]' ? db.prepare('SELECT tags FROM card_favorites WHERE id = ?').get(exists.id).tags : tags, exists.id)
+        updated++
+      } else {
+        db.prepare('INSERT INTO card_favorites (user_id, card_id, note, tags) VALUES (?,?,?,?)').run(req.user.id, card.id, note, tags)
+        added++
+      }
+    }
+  })()
+  ok(res, { added, updated, skipped })
+}))
+
+// 更新收藏的备注/标签（名片夹里编辑）
+router.put('/mine/contacts/:slug', authRequired, wrap((req, res) => {
+  const card = db.prepare('SELECT id FROM cards WHERE slug = ?').get(req.params.slug)
+  if (!card) return fail(res, 404, '名片不存在')
+  const fav = db.prepare('SELECT id FROM card_favorites WHERE user_id = ? AND card_id = ?').get(req.user.id, card.id)
+  if (!fav) return fail(res, 404, '尚未收藏该名片')
+  const note = String(req.body?.note ?? '').trim().slice(0, 200)
+  const tags = Array.isArray(req.body?.tags) ? JSON.stringify(req.body.tags.slice(0, 8).map(x => String(x).slice(0, 20))) : '[]'
+  db.prepare('UPDATE card_favorites SET note = ?, tags = ? WHERE id = ?').run(note, tags, fav.id)
+  ok(res, { updated: true })
 }))
 
 // 查询当前用户是否已收藏某名片（公开页加载时判定按钮态）
@@ -268,11 +350,19 @@ router.post('/mine', authRequired, wrap((req, res) => {
   ok(res, ownerView(row, originOf(req)))
 }))
 
+const FIELD_LABELS = {
+  name: '姓名', name_en: '英文名', title: '职位', company: '公司', company_intro: '公司简介', department: '部门',
+  mobile: '手机', phone: '座机', email: '邮箱', wechat: '微信', whatsapp: 'WhatsApp',
+  address: '地址', address_detail: '门牌', province: '省', city: '城市', district: '区', street: '街道',
+  website: '主页', shop_url: '店铺', bio: '简介', industry: '行业'
+}
+
 router.put('/mine', authRequired, wrap((req, res) => {
   const row = db.prepare('SELECT * FROM cards WHERE user_id = ?').get(req.user.id)
   if (!row) return fail(res, 404, '请先创建名片')
   const sets = []
   const values = []
+  const changedLabels = []
   for (const key of EDITABLE) {
     if (!(key in (req.body || {}))) continue
     let v = req.body[key]
@@ -303,6 +393,9 @@ router.put('/mine', authRequired, wrap((req, res) => {
     } else {
       v = String(v ?? '').slice(0, 2000)
     }
+    if (CARD_WATCH_FIELDS.includes(key) && String(row[key] ?? '') !== String(v ?? '')) {
+      changedLabels.push(FIELD_LABELS[key] || key)
+    }
     sets.push(`${key} = ?`)
     values.push(v)
   }
@@ -310,16 +403,103 @@ router.put('/mine', authRequired, wrap((req, res) => {
   // 铁律：slug / status / expires_at / views 绝不在更新白名单内 —— 改资料不动二维码
   sets.push("updated_at = datetime('now')")
   db.prepare(`UPDATE cards SET ${sets.join(', ')} WHERE id = ?`).run(...values, row.id)
-  ok(res, ownerView(db.prepare('SELECT * FROM cards WHERE id = ?').get(row.id), originOf(req)))
+  const updated = db.prepare('SELECT * FROM cards WHERE id = ?').get(row.id)
+  // 资料变更提醒：通知所有收藏/交换过这张名片的人（失败不影响主流程）
+  if (changedLabels.length) {
+    try { notify.notifyCardUpdated(updated, changedLabels) } catch (e) { console.error('[Notify] 变更提醒失败', e.message) }
+  }
+  ok(res, ownerView(updated, originOf(req)))
 }))
 
 router.get('/mine/stats', authRequired, wrap((req, res) => {
   const card = db.prepare('SELECT id, views FROM cards WHERE user_id = ?').get(req.user.id)
-  if (!card) return ok(res, { views: 0, exchanges: 0, daily: [] })
+  if (!card) return ok(res, { views: 0, exchanges: 0, daily: [], sources: [], cities: [], hourly: [] })
   const exchanges = db.prepare('SELECT COUNT(*) AS n FROM card_exchanges WHERE from_card_id = ? OR to_card_id = ?').get(card.id, card.id).n
   const daily = db.prepare(`SELECT date(created_at) AS day, COUNT(*) AS n FROM card_views
     WHERE card_id = ? GROUP BY date(created_at) ORDER BY day DESC LIMIT 14`).all(card.id)
-  ok(res, { views: card.views || 0, exchanges, daily })
+  // 访客画像：来源渠道 / 城市分布 / 时段热力（近 30 天）
+  const since = new Date(Date.now() - 30 * 86400000).toISOString().replace('T', ' ').slice(0, 19)
+  const sources = db.prepare(`SELECT CASE WHEN source = '' THEN 'direct' ELSE source END AS key, COUNT(*) AS n
+    FROM card_views WHERE card_id = ? AND created_at >= ? GROUP BY key ORDER BY n DESC`).all(card.id, since)
+  const cities = db.prepare(`SELECT city AS key, COUNT(*) AS n FROM card_views
+    WHERE card_id = ? AND created_at >= ? AND city <> '' GROUP BY city ORDER BY n DESC LIMIT 8`).all(card.id, since)
+  const hourly = db.prepare(`SELECT CAST(strftime('%H', created_at) AS INTEGER) AS hour, COUNT(*) AS n
+    FROM card_views WHERE card_id = ? AND created_at >= ? GROUP BY hour ORDER BY hour`).all(card.id, since)
+  ok(res, { views: card.views || 0, exchanges, daily, sources, cities, hourly })
+}))
+
+// 访客城市上报：前端精确/兜底定位成功后轻量上报，与浏览记录按最近一条同城匹配（避免每条浏览都带定位）
+router.post('/public/:slug/trace', wrap((req, res) => {
+  const row = db.prepare('SELECT id FROM cards WHERE slug = ?').get(req.params.slug)
+  if (!row) return fail(res, 404, '名片不存在')
+  const city = String(req.body?.city || '').trim().slice(0, 30)
+  const source = String(req.body?.source || '').trim().toLowerCase()
+  if (!city && !isVisitSource(source)) return ok(res, { traced: false })
+  // 更新该名片最近一条浏览记录的 city/source（仅当仍为空，避免覆盖更早的准确值）
+  db.prepare(`UPDATE card_views SET
+      city = CASE WHEN city = '' AND ? <> '' THEN ? ELSE city END,
+      source = CASE WHEN (source = '' OR source = 'direct') AND ? <> '' THEN ? ELSE source END
+    WHERE id = (SELECT MAX(id) FROM card_views WHERE card_id = ?)`)
+    .run(city, city, source, source, row.id)
+  ok(res, { traced: true })
+}))
+
+// ---------- 名片资料夹（产品册/作品/链接，分享时带名片落款二维码） ----------
+// 公开读：访客打开某张名片的资料夹（只收录 active 名片）
+router.get('/public/:slug/materials', wrap((req, res) => {
+  const card = db.prepare('SELECT id, slug, name, status, expires_at, theme, accent, qr_fg, qr_bg, qr_logo, logo FROM cards WHERE slug = ?').get(req.params.slug)
+  if (!card) return fail(res, 404, '名片不存在')
+  const rows = db.prepare('SELECT * FROM card_materials WHERE card_id = ? ORDER BY sort ASC, id ASC').all(card.id)
+  const origin = originOf(req)
+  ok(res, {
+    list: rows.map(materialView),
+    owner: {
+      name: card.name, slug: card.slug, url: `${origin}/c/${card.slug}`,
+      qr: `${origin}/api/cards/public/${card.slug}/qr.svg?size=360`,
+      theme: card.theme, accent: card.accent
+    }
+  })
+}))
+
+// 我的资料夹列表
+router.get('/mine/materials', authRequired, wrap((req, res) => {
+  const card = db.prepare('SELECT id FROM cards WHERE user_id = ?').get(req.user.id)
+  if (!card) return ok(res, { list: [] })
+  const rows = db.prepare('SELECT * FROM card_materials WHERE card_id = ? ORDER BY sort ASC, id ASC').all(card.id)
+  ok(res, { list: rows.map(materialView) })
+}))
+
+// 批量保存资料夹（整份替换，前端一次提交数组；幂等，先删后插在同事务内）
+router.put('/mine/materials', authRequired, wrap((req, res) => {
+  const card = db.prepare('SELECT id FROM cards WHERE user_id = ?').get(req.user.id)
+  if (!card) return fail(res, 404, '请先创建名片')
+  const items = req.body?.items
+  if (!Array.isArray(items)) return fail(res, 400, '资料列表格式不正确')
+  const clean = items.slice(0, 20).map((it, i) => {
+    const type = isMaterialType(it.type) ? it.type : 'link'
+    let url = String(it.url || '').trim().slice(0, 1000)
+    // link 仅允许 http(s)；file 允许站内 /uploads 或 http(s) 外链
+    if (type === 'link' && url && !/^https?:\/\//i.test(url)) url = ''
+    if (type === 'file' && url && !/^https?:\/\//i.test(url) && !/^\/uploads\/[A-Za-z0-9_.-]+$/.test(url)) url = ''
+    return {
+      type, url,
+      title: String(it.title || '').trim().slice(0, 60) || (type === 'link' ? '网页链接' : '文件资料'),
+      sort: Number.isFinite(Number(it.sort)) ? Number(it.sort) : i
+    }
+  }).filter(it => it.url)
+  db.transaction(() => {
+    db.prepare('DELETE FROM card_materials WHERE card_id = ?').run(card.id)
+    const ins = db.prepare('INSERT INTO card_materials (card_id, type, title, url, sort) VALUES (?,?,?,?,?)')
+    for (const it of clean) ins.run(card.id, it.type, it.title, it.url, it.sort)
+  })()
+  const rows = db.prepare('SELECT * FROM card_materials WHERE card_id = ? ORDER BY sort ASC, id ASC').all(card.id)
+  ok(res, { list: rows.map(materialView) })
+}))
+
+// 资料点击/打开计数（公开，轻量，失败不影响浏览）
+router.post('/public/materials/:id/view', wrap((req, res) => {
+  db.prepare('UPDATE card_materials SET views = views + 1 WHERE id = ?').run(req.params.id)
+  ok(res, { ok: true })
 }))
 
 // 我的收藏夹：我收藏的名片 + 与我交换过的名片（合并去重，标注来源）
@@ -334,8 +514,8 @@ router.get('/mine/contacts', authRequired, wrap((req, res) => {
       CASE WHEN e.from_card_id = ? THEN e.to_card_id ELSE e.from_card_id END
     ) WHERE e.from_card_id = ? OR e.to_card_id = ? ORDER BY e.created_at DESC`).all(myId, myId, myId)
   const map = new Map()
-  for (const r of favs) map.set(r.id, { ...publicView(r, origin), source: 'favorite', relAt: r.rel_at })
-  for (const r of ex) if (!map.has(r.id)) map.set(r.id, { ...publicView(r, origin), source: 'exchange', relAt: r.rel_at })
+  for (const r of favs) map.set(r.id, { ...publicView(r, origin), source: 'favorite', relAt: r.rel_at, note: r.note || '', tags: parseJson(r.tags, []) })
+  for (const r of ex) if (!map.has(r.id)) map.set(r.id, { ...publicView(r, origin), source: 'exchange', relAt: r.rel_at, note: '', tags: [] })
   ok(res, { contacts: [...map.values()] })
 }))
 

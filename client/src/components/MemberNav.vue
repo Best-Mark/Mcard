@@ -26,13 +26,16 @@
           <button @click="go('/me/card')"><i>✎</i>编辑资料</button>
           <button @click="go('/me/card?focus=appearance')"><i>🎨</i>模板与配色</button>
           <button @click="go('/me/card?focus=bio')"><i>📝</i>完善资料</button>
+          <button @click="go('/me/card?focus=materials')"><i>📚</i>资料夹（产品册/作品）</button>
           <button @click="go('/me/print')"><i>🖨</i>实体名片版式</button>
         </section>
 
         <section class="m-group">
           <div class="m-group-title">我的</div>
+          <button @click="go('/me/notifications')"><i>🔔</i>消息通知 <span v-if="unread" class="m-badge">{{ unread }}</span></button>
           <button @click="go('/me/profile')"><i>◉</i>账户信息</button>
           <button @click="go('/me/contacts')"><i>▤</i>我的名片夹</button>
+          <button @click="go('/me/batch-scan')"><i>📷</i>展会连扫收名片</button>
           <button @click="go('/me/stats')"><i>📊</i>浏览统计 / 订单</button>
           <button @click="go('/me/plans')"><i>💎</i>套餐 / 续期</button>
           <button class="danger" @click="logoutNow"><i>⏻</i>退出登录</button>
@@ -50,7 +53,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
 import { auth, ui, closeDrawer, logout, showToast } from '../store'
@@ -69,7 +72,18 @@ const tabs = [
   { path: '/me/profile', label: '我的', ico: '◉', exact: false }
 ]
 const slug = ref('')
+const unread = ref(0)
 let slugBusy = false
+let unreadTimer = null
+
+async function loadUnread() {
+  if (!localStorage.getItem('mcard_token')) return
+  try {
+    const { data } = await api.get('/api/notifications/unread')
+    unread.value = data?.data?.unread || 0
+  } catch { /* 角标失败静默，不打扰 */ }
+}
+onMounted(() => { loadUnread(); unreadTimer = setInterval(loadUnread, 60000) })
 
 function isActive(t) { return t.exact ? route.path === t.path : route.path.startsWith(t.path) }
 function go(path) {
@@ -113,9 +127,10 @@ watch(show, v => {
 watch(() => route.path, () => closeDrawer())
 watch(() => ui.drawerOpen, v => {
   document.body.classList.toggle('drawer-open', v) // 菜单图标三横↔三竖状态
-  if (v) loadSlug()
+  if (v) { loadSlug(); loadUnread() }
 })
 onBeforeUnmount(() => {
+  clearInterval(unreadTimer)
   document.body.classList.remove('member-shell')
   document.body.classList.remove('drawer-open')
 })
@@ -143,6 +158,7 @@ onBeforeUnmount(() => {
 .m-group button i { width: 22px; text-align: center; font-style: normal; color: var(--primary); }
 .m-group button.danger { color: var(--danger); }
 .m-group button.danger i { color: var(--danger); }
+.m-badge { margin-left: auto; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: #ef4444; color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
 .m-drawer-note { padding: 14px 18px 0; font-size: 11px; line-height: 1.6; color: var(--muted); }
 .m-tabs {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 110; display: grid; grid-template-columns: repeat(5, 1fr);

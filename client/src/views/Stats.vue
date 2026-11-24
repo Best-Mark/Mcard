@@ -78,6 +78,39 @@
         </div>
       </div>
 
+      <!-- 访客画像：来源 / 城市 / 时段（借鉴同类 analytics，用现有浏览数据落地） -->
+      <div class="section-title">访客画像 <span class="small muted">· 近 30 天</span></div>
+      <div class="profile-grid">
+        <div class="card card-pad profile-card">
+          <h4>访客来源</h4>
+          <div v-if="!stats.sources?.length" class="empty small">暂无数据</div>
+          <div v-else v-for="s in stats.sources" :key="s.key" class="dist-row">
+            <span class="dist-label">{{ sourceLabel(s.key) }}</span>
+            <div class="dist-track"><div class="dist-fill" :style="{ width: pct(s.n, sourceTotal) + '%' }"></div></div>
+            <b class="dist-num">{{ s.n }}</b>
+          </div>
+        </div>
+        <div class="card card-pad profile-card">
+          <h4>访客城市 TOP</h4>
+          <div v-if="!stats.cities?.length" class="empty small">定位成功后显示</div>
+          <div v-else v-for="c in stats.cities" :key="c.key" class="dist-row">
+            <span class="dist-label">{{ c.key }}</span>
+            <div class="dist-track"><div class="dist-fill c2" :style="{ width: pct(c.n, cityTotal) + '%' }"></div></div>
+            <b class="dist-num">{{ c.n }}</b>
+          </div>
+        </div>
+      </div>
+      <div class="card card-pad profile-card" style="margin-top:12px">
+        <h4>浏览时段分布（24 小时）</h4>
+        <div v-if="!stats.hourly?.length" class="empty small">暂无数据</div>
+        <div v-else class="hour-chart">
+          <div v-for="h in 24" :key="h" class="hour-col" :title="`${h - 1}:00 · ${hourMap[h - 1] || 0} 次`">
+            <div class="hour-bar" :style="{ height: Math.max(3, (hourMap[h - 1] || 0) / hourMax * 100) + '%' }"></div>
+          </div>
+        </div>
+        <div class="hour-axis"><span>0 点</span><span>6 点</span><span>12 点</span><span>18 点</span><span>23 点</span></div>
+      </div>
+
       <div class="section-title">最近订单</div>
       <div v-if="!orders.length" class="card card-pad small muted">还没有订单</div>
       <div v-else class="table-wrap">
@@ -103,7 +136,7 @@ import CountUp from '../components/CountUp.vue'
 
 const router = useRouter()
 const card = ref(null)
-const stats = ref({ views: 0, exchanges: 0, daily: [] })
+const stats = ref({ views: 0, exchanges: 0, daily: [], sources: [], cities: [], hourly: [] })
 const orders = ref([])
 const loading = ref(true)
 const error = ref('')
@@ -116,6 +149,17 @@ const dailyAvg = computed(() => {
   return Math.round(recentTotal.value / days)
 })
 const expireDays = computed(() => card.value?.expires_at ? Math.max(0, Math.ceil((new Date(String(card.value.expires_at).replace(' ', 'T') + 'Z') - Date.now()) / 86400000)) : 0)
+const SOURCE_LABELS = { qr: '扫码', market: '名片集市', share: '好友分享', search: '搜索引擎', direct: '直接访问' }
+function sourceLabel(k) { return SOURCE_LABELS[k] || k || '其他' }
+const sourceTotal = computed(() => (stats.value.sources || []).reduce((s, x) => s + Number(x.n || 0), 0))
+const cityTotal = computed(() => Math.max(1, ...(stats.value.cities || []).map(x => Number(x.n) || 0)))
+const hourMap = computed(() => {
+  const m = {}
+  for (const h of stats.value.hourly || []) m[h.hour] = h.n
+  return m
+})
+const hourMax = computed(() => Math.max(1, ...Object.values(hourMap.value)))
+function pct(n, total) { return total ? Math.round(Number(n || 0) / total * 100) : 0 }
 
 async function load() {
   if (loadStarted && loading.value) return
@@ -181,6 +225,22 @@ function statusText(s) { return ({ paid: '已支付', pending: '待支付', canc
 .bar.peak { background: linear-gradient(180deg, #f59e0b, #ef4444); }
 .bar-day { height: 18px; margin-top: 6px; font-size: 10px; color: var(--muted, #6b7688); white-space: nowrap; }
 
+/* 访客画像 */
+.profile-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.profile-card { animation: rise .55s ease both; }
+.profile-card h4 { font-size: 13px; margin: 0 0 10px; }
+.dist-row { display: flex; align-items: center; gap: 8px; margin: 7px 0; font-size: 12px; }
+.dist-label { flex: 0 0 66px; color: var(--muted, #6b7688); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dist-track { flex: 1; height: 7px; border-radius: 99px; background: var(--line, #eef2f7); overflow: hidden; }
+.dist-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #2563eb, #06b6d4); animation: barFill .9s ease-out both; }
+.dist-fill.c2 { background: linear-gradient(90deg, #7c3aed, #ec4899); }
+.dist-num { flex: 0 0 26px; text-align: right; font-variant-numeric: tabular-nums; }
+.hour-chart { display: flex; align-items: flex-end; gap: 2px; height: 90px; }
+.hour-col { flex: 1; height: 100%; display: flex; align-items: flex-end; }
+.hour-bar { width: 100%; background: linear-gradient(180deg, #8b5cf6, #2563eb); border-radius: 3px 3px 0 0; min-height: 3px; }
+.hour-axis { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10px; color: var(--muted, #6b7688); }
+.empty { padding: 10px 0; }
+
 @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @keyframes breathe { 0%, 100% { opacity: .45; transform: scale(1); } 50% { opacity: .85; transform: scale(1.12); } }
 @keyframes barFill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
@@ -188,6 +248,7 @@ function statusText(s) { return ({ paid: '已支付', pending: '待支付', canc
 
 @media (max-width: 520px) {
   .stat-grid { grid-template-columns: 1fr; }
+  .profile-grid { grid-template-columns: 1fr; }
   .stat-card { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 0 12px; }
   .stat-ico { grid-row: span 2; }
   .stat-num { margin: 0; }

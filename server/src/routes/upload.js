@@ -10,6 +10,8 @@ const logoService = require('../services/logo')
 const oss = require('../services/oss')
 
 const ALLOW = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg'])
+// 资料夹文档：放行常见文档 + 图片，坚决不放行 svg/html/js（脚本/钓鱼风险）
+const ALLOW_DOC = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt'])
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, config.UPLOAD_DIR),
   filename: (_req, file, cb) => {
@@ -37,6 +39,28 @@ async function publicUrlOf(file) {
 }
 
 router.post('/', authRequired, upload.single('file'), wrap(async (req, res) => {
+  if (!req.file) return fail(res, 400, '请选择文件')
+  ok(res, await publicUrlOf(req.file))
+}))
+
+// 资料夹文档上传：保留原始扩展名，放行 pdf/office/图片，拒 svg/html 等可执行内容
+const docStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, config.UPLOAD_DIR),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase()
+    cb(null, `${Date.now()}-${randomHex(8)}${ALLOW_DOC.has(ext) ? ext : '.bin'}`)
+  }
+})
+const docUpload = multer({
+  storage: docStorage,
+  limits: { fileSize: config.MAX_UPLOAD_MB * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase()
+    if (!ALLOW_DOC.has(ext)) return cb(new Error('仅支持 PDF / Word / Excel / PPT / 图片 / TXT'))
+    cb(null, true)
+  }
+})
+router.post('/doc', authRequired, docUpload.single('file'), wrap(async (req, res) => {
   if (!req.file) return fail(res, 400, '请选择文件')
   ok(res, await publicUrlOf(req.file))
 }))

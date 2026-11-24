@@ -44,14 +44,33 @@
               <b>{{ c.name || '未填写姓名' }}</b>
               <span class="small muted">{{ [c.title, c.company].filter(Boolean).join(' · ') || '暂无职位信息' }}</span>
               <span v-if="c.mobile" class="small mono">{{ c.mobile }}</span>
+              <div v-if="c.tags?.length" class="cc-tags"><i v-for="tag in c.tags" :key="tag">{{ tag }}</i></div>
+              <span v-if="c.note" class="small cc-note">备注：{{ c.note }}</span>
             </div>
           </router-link>
           <div class="cc-side">
             <span class="src-badge" :class="c.source">{{ c.source === 'favorite' ? '收藏' : '交换' }}</span>
             <a v-if="c.mobile" :href="`tel:${c.mobile}`" class="btn btn-sm btn-ghost">拨号</a>
+            <button v-if="c.source === 'favorite'" class="btn btn-sm btn-ghost" @click="editContact(c)">标注</button>
           </div>
         </div>
       </template>
+    </div>
+
+    <div v-if="editOpen" class="modal-mask" @click.self="editOpen = false">
+      <div class="modal">
+        <h3>标注名片</h3>
+        <div class="field" style="margin-top:12px"><label>标签（逗号分隔）</label>
+          <input v-model="editTags" class="input" placeholder="如 客户,潜在合作" />
+        </div>
+        <div class="field"><label>备注</label>
+          <input v-model="editNote" class="input" maxlength="200" placeholder="在哪里认识、跟进事项…" />
+        </div>
+        <div class="btn-row" style="justify-content:flex-end;margin-top:14px">
+          <button class="btn btn-ghost" @click="editOpen = false">取消</button>
+          <button class="btn btn-primary" :disabled="saving" @click="saveContact">{{ saving ? '保存中…' : '保存' }}</button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -59,14 +78,38 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import api from '../api'
-import { toggleDrawer } from '../store'
+import { toggleDrawer, showToast } from '../store'
 
 const contacts = ref([])
 const loading = ref(true)
 const error = ref('')
 const filter = ref('all')
+const editOpen = ref(false)
+const editSlug = ref('')
+const editTags = ref('')
+const editNote = ref('')
+const saving = ref(false)
 let loadStarted = false
 const filtered = computed(() => filter.value === 'all' ? contacts.value : contacts.value.filter(c => c.source === filter.value))
+
+function editContact(c) {
+  editSlug.value = c.slug
+  editTags.value = (c.tags || []).join(', ')
+  editNote.value = c.note || ''
+  editOpen.value = true
+}
+async function saveContact() {
+  if (saving.value) return
+  saving.value = true
+  try {
+    const tags = editTags.value.split(/[,，]/).map(s => s.trim()).filter(Boolean).slice(0, 8)
+    await api.put(`/api/cards/mine/contacts/${editSlug.value}`, { tags, note: editNote.value.trim() })
+    const c = contacts.value.find(x => x.slug === editSlug.value)
+    if (c) { c.tags = tags; c.note = editNote.value.trim() }
+    editOpen.value = false
+    showToast('标注已保存', 'success')
+  } catch (e) { showToast(e.message || '保存失败', 'error') } finally { saving.value = false }
+}
 
 async function load() {
   if (loadStarted && loading.value) return
@@ -97,4 +140,12 @@ onMounted(load)
 .src-badge { font-size: 10px; padding: 3px 8px; border-radius: 999px; }
 .src-badge.favorite { background: #fffbeb; color: #b45309; }
 .src-badge.exchange { background: #eff6ff; color: #1d4ed8; }
+.cc-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 3px; }
+.cc-tags i { font-style: normal; font-size: 10px; padding: 2px 7px; border-radius: 999px; background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--primary); }
+.cc-note { color: var(--muted); margin-top: 3px; }
+.modal-mask { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.55); display: grid; place-items: center; padding: 20px; }
+.modal { width: 100%; max-width: 360px; background: var(--bg-card, #fff); border-radius: 14px; padding: 20px; }
+.modal h3 { margin: 0; font-size: 16px; }
+.field { margin-top: 12px; }
+.field label { display: block; font-size: 13px; margin-bottom: 5px; }
 </style>

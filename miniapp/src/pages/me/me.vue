@@ -28,8 +28,12 @@
       <view class="grid">
         <view class="cell" @tap="go('/pages/card/card?slug=' + card.slug)"><view class="ico">◎</view><view>查看名片</view></view>
         <view class="cell" @tap="go('/pages/edit/edit')"><view class="ico">✎</view><view>编辑资料</view></view>
+        <view class="cell" @tap="go('/pages/materials/materials?slug=' + card.slug)"><view class="ico">📚</view><view>资料夹</view></view>
+        <view class="cell" @tap="go('/pages/notifications/notifications')"><view class="ico">🔔</view><view>消息通知<text v-if="unread" class="cdot">{{ unread }}</text></view></view>
+        <view class="cell" @tap="go('/pages/batch-scan/batch-scan')"><view class="ico">📷</view><view>展会连扫</view></view>
         <view class="cell" @tap="go('/pages/plans/plans')"><view class="ico">¥</view><view>开通 / 续期</view></view>
         <view class="cell" @tap="go('/pages/print/print')"><view class="ico">▤</view><view>实体版式</view></view>
+        <view class="cell" @tap="go('/pages/market/market')"><view class="ico">⌕</view><view>名片集市</view></view>
       </view>
 
       <!-- 上架集市：把名片变成 7×24 小时获客入口 -->
@@ -74,10 +78,11 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { api, baseUrl, isLogged, goLogin, logout, toast } from '../../utils/request'
+import { api, baseUrl, isLogged, goLogin, logout, toast, getUnreadCount } from '../../utils/request'
 
 const logged = ref(false); const loading = ref(true); const card = ref(null)
 const stats = ref({}); const orders = ref([]); const newSlug = ref(''); const busy = ref(false)
+const unread = ref(0)
 const go = url => uni.navigateTo({ url })
 const days = computed(() => card.value?.expires_at
   ? Math.max(0, Math.ceil((new Date(String(card.value.expires_at).replace(' ', 'T') + 'Z').getTime() - Date.now()) / 86400000))
@@ -93,6 +98,7 @@ async function load() {
     ])
     card.value = c; stats.value = s; orders.value = o
   } catch (e) { toast(e.message) } finally { loading.value = false }
+  getUnreadCount().then(n => { unread.value = n }).catch(() => {})
 }
 onShow(load)
 
@@ -124,7 +130,8 @@ function logoutNow() { logout(); logged.value = false; card.value = null; uni.na
 .mb-title { font-size: 28rpx; font-weight: 800; line-height: 1.3; }
 .mb-desc { margin-top: 8rpx; font-size: 22rpx; line-height: 1.5; opacity: .92; }
 .mb-arrow { font-size: 40rpx; opacity: .85; }
-.cell { background: #fff; border-radius: 20rpx; padding: 22rpx 4rpx; text-align: center; font-size: 22rpx; box-shadow: 0 6rpx 20rpx rgba(15,23,42,.04); }
+.cell { background: #fff; border-radius: 20rpx; padding: 22rpx 4rpx; text-align: center; font-size: 22rpx; box-shadow: 0 6rpx 20rpx rgba(15,23,42,.04); position: relative; }
+.cdot { position: absolute; top: 14rpx; right: 20rpx; min-width: 30rpx; height: 30rpx; line-height: 30rpx; padding: 0 6rpx; border-radius: 15rpx; background: #ef4444; color: #fff; font-size: 18rpx; }
 .ico { width: 56rpx; height: 56rpx; border-radius: 16rpx; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 28rpx; margin: 0 auto 10rpx; }
 .section { font-size: 30rpx; font-weight: 700; margin-bottom: 14rpx; }
 .stat-row { display: flex; }

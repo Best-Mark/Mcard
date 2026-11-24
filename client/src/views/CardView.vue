@@ -52,6 +52,15 @@
           <button @click="copy(card.alipay, '支付宝账号')"><i>支</i><span>支付宝</span></button>
         </div>
 
+        <div v-if="contactFields.length" class="card card-pad cv-block">
+          <h3>联系方式 <span class="small muted">· 点右侧复制</span></h3>
+          <div v-for="f in contactFields" :key="f.key" class="cv-contact-row">
+            <div class="cv-contact-label">{{ f.label }}</div>
+            <div class="cv-contact-value">{{ f.value }}</div>
+            <button class="btn btn-sm btn-ghost" @click="copy(f.value, f.label)">复制</button>
+          </div>
+        </div>
+
         <div v-if="card.bio" class="card card-pad cv-block">
           <h3>关于我</h3><p class="cv-bio">{{ card.bio }}</p>
         </div>
@@ -68,6 +77,15 @@
               <b>{{ l.label || '链接' }}</b><span>{{ shortUrl(l.url) }} ↗</span>
             </a>
           </div>
+        </div>
+
+        <div v-if="materialsList.length" class="card card-pad cv-block">
+          <h3>资料夹 <span class="small muted">· 点击查看，可扫码存我名片</span></h3>
+          <router-link v-for="m in materialsList" :key="m.id" :to="`/m/${card.slug}`" class="cv-material-row">
+            <span class="cv-material-ico">{{ m.type === 'file' ? '📄' : '🔗' }}</span>
+            <span class="cv-material-title">{{ m.title }}</span>
+            <span class="cv-material-more">查看 ›</span>
+          </router-link>
         </div>
 
         <div v-if="siteLinks.length" class="card card-pad cv-block">
@@ -216,6 +234,7 @@ import { THEMES, themeOf, themeVars } from '../utils/themes'
 import { isWeChat, isIOS, saveImageUrl, prepareExternalOpen, openVcfInline } from '../utils/save-image'
 import { shareOrCopy, mapLinks } from '../utils/share'
 import { setupWechatShare, absoluteMediaUrl } from '../utils/wx-share'
+import { getCachedPosition } from '../utils/geo'
 // QRCode 动态加载：只在进入名片页、需要本地生成 vCard 高清二维码时才下载，不拖慢首屏
 
 const route = useRoute(); const router = useRouter()
@@ -231,6 +250,7 @@ const template = ref('classic')
 const qrModal = ref(false); const vcardQrModal = ref(false); const guide = ref(''); const guideImage = ref(''); const exchangeOpen = ref(false)
 const mySlug = ref(''); const exchanging = ref(false)
 const favorite = ref(false); const favBusy = ref(false)
+const materialsList = ref([])
 
 const t = computed(() => themeOf({ theme: currentTheme.value, accent: card.value?.accent }))
 const vars = computed(() => themeVars(t.value))
@@ -278,6 +298,18 @@ const contactQrs = computed(() => {
   ].filter(q => q.url)
 })
 const hasAnyQr = computed(() => contactQrs.value.length > 0)
+// 联系方式逐项一键复制（借鉴名片全能王「点字段直接复制」，比只打电话更通用）
+const contactFields = computed(() => {
+  const c = card.value || {}
+  return [
+    { key: 'mobile', label: '手机', value: c.mobile },
+    { key: 'phone', label: '座机', value: c.phone },
+    { key: 'email', label: '邮箱', value: c.email },
+    { key: 'wechat', label: '微信', value: c.wechat },
+    { key: 'alipay', label: '支付宝', value: c.alipay },
+    { key: 'whatsapp', label: 'WhatsApp', value: c.whatsapp }
+  ].filter(f => f.value)
+})
 const siteLinks = computed(() => {
   const c = card.value || {}
   const arr = []
@@ -396,6 +428,19 @@ async function load() {
       if (changed) windowRef.history.replaceState(null, '', u.toString())
     }
   } catch (e) { error.value = e.message } finally { loading.value = false }
+  // 资料夹与来源/城市上报：不阻塞名片主流程，失败静默
+  try { materialsList.value = (await api.get(`${qrApi}/materials`)).data.data?.list || [] } catch { /* 忽略 */ }
+  traceVisit()
+}
+async function traceVisit() {
+  try {
+    const src = String(route.query.src || '')
+    // 只读已缓存位置，不主动触发定位授权（看名片不该弹定位框）；
+    // 默认城市兜底不算真实定位，不上报，避免把未授权访客都记成「上海」脏数据
+    let city = ''
+    try { const p = getCachedPosition(); city = p.source && p.source !== 'default' ? (p.city || '') : '' } catch { /* 无缓存 */ }
+    if (src || city) await api.post(`${qrApi}/trace`, { source: src, city })
+  } catch { /* 上报失败静默 */ }
 }
 onMounted(load)
 
@@ -511,6 +556,15 @@ async function toggleFavorite() {
 .qr-tile .btn-row { justify-content: center; margin-top: 4px; }
 .cv-address { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
 .cv-region-line { font-size: 13px; font-weight: 600; color: var(--t-accent); margin-bottom: 6px; }
+.cv-contact-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--t-line, rgba(0,0,0,.06)); }
+.cv-contact-row:last-child { border-bottom: 0; }
+.cv-contact-label { flex: 0 0 56px; font-size: 12px; color: var(--t-muted); }
+.cv-contact-value { flex: 1; min-width: 0; font-size: 13px; word-break: break-all; }
+.cv-material-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--t-line, rgba(0,0,0,.06)); color: inherit; text-decoration: none; }
+.cv-material-row:last-child { border-bottom: 0; }
+.cv-material-ico { font-size: 18px; }
+.cv-material-title { flex: 1; min-width: 0; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cv-material-more { font-size: 12px; color: var(--t-accent); }
 .cv-geo-hint { margin-top: 6px; font-variant-numeric: tabular-nums; }
 .cv-maps { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .cv-maps a { font-size: 12px; padding: 6px 10px; border-radius: 8px; background: rgba(0,0,0,.05); background: color-mix(in srgb, var(--t-accent) 12%, transparent); color: var(--t-accent); font-weight: 600; }

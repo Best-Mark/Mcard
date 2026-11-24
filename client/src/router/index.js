@@ -19,11 +19,15 @@ const PayResult = () => import('../views/PayResult.vue')
 const Contacts = () => import('../views/Contacts.vue')
 const Stats = () => import('../views/Stats.vue')
 const PrintDesign = () => import('../views/PrintDesign.vue')
+const Notifications = () => import('../views/Notifications.vue')
+const MaterialView = () => import('../views/MaterialView.vue')
+const BatchScan = () => import('../views/BatchScan.vue')
 const Admin = () => import('../views/Admin.vue')
 
 const routes = [
   { path: '/', redirect: '/market' },
   { path: '/c/:slug', name: 'card', component: CardView },
+  { path: '/m/:slug', name: 'material', component: MaterialView },
   { path: '/market', name: 'market', component: Market },
   { path: '/login', name: 'login', component: Login },
   { path: '/wechat/callback', name: 'wechat-callback', component: WechatCallback },
@@ -37,6 +41,8 @@ const routes = [
   { path: '/me/print', name: 'print', component: PrintDesign, meta: { auth: true } },
   { path: '/me/contacts', name: 'contacts', component: Contacts, meta: { auth: true } },
   { path: '/me/stats', name: 'stats', component: Stats, meta: { auth: true } },
+  { path: '/me/notifications', name: 'notifications', component: Notifications, meta: { auth: true } },
+  { path: '/me/batch-scan', name: 'batch-scan', component: BatchScan, meta: { auth: true } },
   { path: '/admin/login', name: 'admin-login', component: Admin },
   { path: '/admin', name: 'admin', component: Admin, meta: { admin: true } },
   { path: '/:pathMatch(.*)*', redirect: '/' }

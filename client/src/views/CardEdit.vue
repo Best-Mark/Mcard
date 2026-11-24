@@ -185,6 +185,33 @@
             </div>
           </div>
 
+          <!-- ⑧ 资料夹 -->
+          <div v-show="active === 'materials'" class="card card-pad" id="focus-materials">
+            <div class="section-title" style="margin-top:0">资料夹 <span class="small muted">· 让名片成为获客入口</span></div>
+            <p class="small muted" style="margin-bottom:12px">挂上产品册、作品集、报价单或公众号文章，分享出去的每一份资料末尾都带你的名片落款二维码——对方扫码即可存下你的名片。微信扫一扫可直接打开。</p>
+            <div v-if="!materials.length" class="small muted" style="padding:12px 0">还没有资料，添加第一条吧。</div>
+            <div v-for="(m, i) in materials" :key="i" class="material-row">
+              <div class="mr-head">
+                <select v-model="m.type" class="input mr-type">
+                  <option v-for="t in materialTypes" :key="t.key" :value="t.key">{{ t.label }}</option>
+                </select>
+                <input v-model="m.title" class="input" placeholder="标题，如 2026 产品手册" maxlength="60" />
+                <button class="btn btn-sm btn-danger" @click="materials.splice(i, 1)">删</button>
+              </div>
+              <div class="mr-url">
+                <input v-model="m.url" class="input" :placeholder="m.type === 'link' ? 'https://…' : '上传文件或粘贴链接'" />
+                <label v-if="m.type === 'file'" class="btn btn-sm btn-ghost upload-btn">上传文件
+                  <input type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" @change="e => uploadMaterial(e, i)" />
+                </label>
+              </div>
+            </div>
+            <button class="btn btn-sm btn-ghost" @click="addMaterial">+ 添加资料</button>
+            <div class="section-foot">
+              <span class="save-state" :class="{ saved: savedSections.materials }">{{ savedSections.materials ? '✓ 已保存' : '未保存' }}</span>
+              <button class="btn btn-sm btn-primary" :disabled="saving" @click="saveSection('materials')">{{ saving ? '保存中…' : '保存本节' }}</button>
+            </div>
+          </div>
+
           <!-- ⑦ 外观（模板 + 主题） -->
           <div v-show="active === 'appearance'" class="card card-pad">
             <div class="section-title" style="margin-top:0">展示模板</div>
@@ -312,11 +339,14 @@ const sections = computed(() => [
   { key: 'contact', label: '联系方式', icon: '📞', done: !!(form.value.mobile || form.value.phone || form.value.email || form.value.wechat || form.value.address) },
   { key: 'qr', label: '二维码', icon: '▦', done: !!(form.value.wechat_qr || form.value.alipay_qr || form.value.wechat_pay_qr || form.value.alipay_pay_qr) },
   { key: 'links', label: '更多链接', icon: '🔗', done: !!(form.value.website || form.value.shop_url || form.value.links?.length) },
+  { key: 'materials', label: '资料夹', icon: '📚', done: !!materials.value.length },
   { key: 'market', label: '名片集市', icon: '🧭', done: !!form.value.market_opt_in },
   { key: 'appearance', label: '外观风格', icon: '🎨', done: true }
 ])
 const templates = ref([])
 const marketMeta = ref({ industries: [], cities: [] })
+const materials = ref([])
+const materialTypes = ref([])
 const locating = ref(false)
 const geoBusy = ref(false)
 const mapOpen = ref(false)
@@ -362,6 +392,8 @@ async function loadCard() {
 onMounted(async () => {
   loadTemplates()
   loadMarketMeta()
+  loadCommonMeta()
+  loadMaterials()
   await loadCard()
   applyFocus()
 })
@@ -371,7 +403,7 @@ onMounted(async () => {
 // 必须在 query 变化时也切换，否则点了没反应。
 function applyFocus() {
   const focus = String(route.query.focus || '')
-  if (['identity', 'bio', 'contact', 'qr', 'links', 'market', 'appearance'].includes(focus)) active.value = focus
+  if (['identity', 'bio', 'contact', 'qr', 'links', 'materials', 'market', 'appearance'].includes(focus)) active.value = focus
 }
 watch(() => route.query.focus, () => applyFocus())
 
@@ -387,6 +419,21 @@ async function loadMarketMeta() {
     const { data } = await api.get('/api/cards/public/market/meta')
     marketMeta.value = data.data
   } catch { /* 集市元数据失败不影响资料编辑 */ }
+}
+
+async function loadCommonMeta() {
+  try {
+    const { data } = await api.get('/api/cards/public/meta')
+    materialTypes.value = data.data?.materialTypes || [{ key: 'link', label: '网页链接' }, { key: 'file', label: '文件资料' }]
+  } catch { materialTypes.value = [{ key: 'link', label: '网页链接' }, { key: 'file', label: '文件资料' }] }
+}
+
+async function loadMaterials() {
+  try {
+    const { data } = await api.get('/api/cards/mine/materials')
+    materials.value = (data.data?.list || []).map(m => ({ type: m.type, title: m.title, url: m.url }))
+    savedSections.value = { ...savedSections.value, materials: Date.now() }
+  } catch { /* 资料夹加载失败不阻断其它资料编辑 */ }
 }
 
 function pickCity(name) {
@@ -513,6 +560,7 @@ const dirtySections = ref({})
 
 async function saveSection(key) {
   if (saving.value || loadError.value || !loaded.value) return
+  if (key === 'materials') return saveMaterials()
   const fields = SECTION_FIELDS[key] || []
   if (key === 'identity' && !form.value.name) return showToast('请填写姓名', 'error')
   saving.value = true
@@ -528,6 +576,33 @@ async function saveSection(key) {
   } catch (e) { showToast(e.message, 'error') } finally { saving.value = false }
 }
 
+// 资料夹独立保存（整份替换接口，与名片资料解耦）
+async function saveMaterials() {
+  saving.value = true
+  try {
+    const items = materials.value.filter(m => m.url).map((m, i) => ({ ...m, sort: i }))
+    const { data } = await api.put('/api/cards/mine/materials', { items })
+    materials.value = data.data?.list || []
+    savedSections.value = { ...savedSections.value, materials: Date.now() }
+    dirtySections.value = { ...dirtySections.value, materials: false }
+    showToast('资料夹已保存', 'success')
+  } catch (e) { showToast(e.message, 'error') } finally { saving.value = false }
+}
+function addMaterial() { materials.value.push({ type: 'link', title: '', url: '' }) }
+async function uploadMaterial(e, i) {
+  const file = e.target?.files?.[0]
+  if (!file) return
+  const prev = materials.value[i].url
+  const fd = new FormData()
+  fd.append('file', file)
+  try {
+    const { data } = await api.post('/api/upload/doc', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+    materials.value[i].url = data?.data?.url || ''
+    showToast('文件已上传，记得点「保存本节」', 'success')
+  } catch (err) { materials.value[i].url = prev; showToast(err.message, 'error') }
+  e.target.value = ''
+}
+
 // 自动追踪「当前分类有未保存修改」：加载完成前不追踪，避免初始化误标脏
 let formReady = false
 const markActiveDirty = () => {
@@ -536,6 +611,7 @@ const markActiveDirty = () => {
 }
 watch(form, markActiveDirty, { deep: true, flush: 'sync' })
 watch(tagsText, markActiveDirty, { flush: 'sync' })
+watch(materials, markActiveDirty, { deep: true, flush: 'sync' })
 
 async function finish() {
   const dirty = Object.keys(dirtySections.value).filter(k => dirtySections.value[k])
@@ -594,6 +670,11 @@ async function finish() {
 .map-modal { width: 100%; max-width: 680px; background: var(--bg-card, #fff); border-radius: 14px; padding: 14px; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
 .map-modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .link-row { display: grid; grid-template-columns: 1fr 1.5fr auto; gap: 8px; margin-bottom: 8px; }
+.material-row { padding: 10px; margin-bottom: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-page, rgba(0,0,0,.02)); }
+.material-row .mr-head { display: grid; grid-template-columns: 110px 1fr auto; gap: 8px; align-items: center; margin-bottom: 8px; }
+.material-row .mr-url { display: flex; gap: 8px; align-items: center; }
+.material-row .mr-url .input { flex: 1; }
+.material-row .mr-type { padding: 8px 6px; }
 .theme-list { display: flex; flex-wrap: wrap; gap: 8px; }
 .theme-item { border: 1px solid var(--line); border-radius: 10px; padding: 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; }
 .theme-item.on { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37,99,235,.12); }

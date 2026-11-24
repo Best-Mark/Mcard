@@ -257,3 +257,29 @@ export function geocodeAddress(address, city) {
 export function getRegions() {
   return request('/api/geo/regions').then(d => d?.regions || []).catch(() => [])
 }
+
+// ---------- 借鉴同类亮点：通知 / 资料夹 / 展会连扫 / 来源追踪 ----------
+export function getNotifications(before = 0) {
+  return request('/api/notifications', { auth: true, data: before ? { before } : {} }).catch(() => ({ list: [], unread: 0, hasMore: false }))
+}
+export function getUnreadCount() {
+  return request('/api/notifications/unread', { auth: true }).then(d => d?.unread || 0).catch(() => 0)
+}
+export function markNotificationRead(id) {
+  return request('/api/notifications/read', { method: 'POST', auth: true, data: id ? { id } : { all: true } })
+}
+export function getMyMaterials() {
+  return request('/api/cards/mine/materials', { auth: true }).then(d => d?.list || []).catch(() => [])
+}
+export function saveMyMaterials(items) {
+  return request('/api/cards/mine/materials', { method: 'PUT', auth: true, data: { items } })
+}
+export function getPublicMaterials(slug) {
+  return request(`/api/cards/public/${slug}/materials`).catch(() => ({ list: [], owner: null }))
+}
+export function batchSaveContacts(slugs, tags = [], note = '') {
+  return request('/api/cards/mine/contacts/batch', { method: 'POST', auth: true, data: { slugs, tags, note } })
+}
+export function traceVisit(slug, source = '', city = '') {
+  return request(`/api/cards/public/${slug}/trace`, { method: 'POST', data: { source, city } }).catch(() => null)
+}
