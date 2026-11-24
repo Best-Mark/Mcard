@@ -103,14 +103,14 @@
           </div>
         </div>
 
-        <!-- 我的二维码：干净居中，点击放大 -->
+        <!-- 通讯录/分享二维码统一到公开名片页（那里有本地 vCard 二维码，各环境都能存通讯录） -->
         <div class="card cv-qr-card">
-          <button class="cv-qr-img" @click="qrModal = true" title="点击放大">
+          <button class="cv-qr-img" @click="router.push(`/c/${card.slug}?save=1`)" title="点击查看存入通讯录二维码">
             <img :src="qrApi + '/qr.svg?size=440'" alt="我的名片二维码" />
           </button>
           <div class="cv-qr-text">
             <h3>我的名片二维码</h3>
-            <p>扫一扫查看名片 · 点击上方二维码可放大保存</p>
+            <p>点击查看「存入通讯录」二维码 · 相机扫一扫即可保存</p>
           </div>
         </div>
 
@@ -120,8 +120,8 @@
       <!-- 底部常驻操作：拨号优先，分享放右下悬浮主按钮（拇指最顺手） -->
       <div class="cv-dock">
         <button v-if="card.mobile || card.phone" class="btn btn-primary" @click="tel(card.mobile || card.phone)">📞 打电话</button>
-        <button class="btn btn-ghost" @click="saveContact">存入通讯录</button>
-        <button class="btn btn-ghost" @click="qrModal = true">二维码</button>
+        <button class="btn btn-ghost" @click="router.push(`/c/${card.slug}?save=1`)">存入通讯录</button>
+        <button class="btn btn-ghost" @click="router.push(`/c/${card.slug}`)">二维码</button>
       </div>
       <button class="share-fab" @click="doShare" aria-label="分享名片">↗<span>分享</span></button>
     </template>
@@ -275,12 +275,21 @@ async function saveContact() {
   showToast(r.kind === 'downloaded' ? '已下载，打开即可导入通讯录' : '已打开名片文件，请选择导入通讯录', 'success')
 }
 async function doShare() {
+  // 分享前先抹掉地址栏里的 wx_ticket：这是登录凭证，绝不能随分享发出去
+  const cur = new URL(window.location.href)
+  if (cur.searchParams.has('wx_ticket')) {
+    cur.searchParams.delete('wx_ticket')
+    window.history.replaceState(null, '', cur.toString())
+  }
+  // 分享链接永远是公开名片页，绝不分享工作台 /me（含个人信息与凭证）
+  const shareUrl = card.value?.slug ? `${window.location.origin}/c/${card.value.slug}` : (card.value?.url || `${window.location.origin}/`)
   if (isWeChat()) {
-    // 微信不允许 JS 主动拉起转发面板，只能配置好卡片内容后引导用户走右上角菜单
+    // 微信原生转发的是当前页面 URL，先把当前页也切到干净的名片页再提示转发
+    if (card.value?.slug) window.history.replaceState(null, '', shareUrl)
     showToast('已设为名片卡片：点右上角「···」→ 发送给朋友 / 分享到朋友圈', 'error')
     return
   }
-  const r = await shareOrCopy({ title: card.value?.name || '电子名片', text: card.value?.title || '扫一扫保存我的名片', url: card.value?.url || window.location.href })
+  const r = await shareOrCopy({ title: card.value?.name || '电子名片', text: card.value?.title || '扫一扫保存我的名片', url: shareUrl })
   if (r === 'copied') showToast('链接已复制，快分享给朋友', 'success')
   else if (r === 'failed') showToast('复制失败，请手动复制地址栏链接', 'error')
 }

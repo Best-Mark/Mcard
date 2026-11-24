@@ -349,6 +349,15 @@ async function load() {
         try { favorite.value = !!(await api.get(`/api/cards/public/${slug}/favorite`)).data.data?.favorite } catch { /* 忽略 */ }
       }
     }
+    // 工作台「存入通讯录」跳过来：vCard 二维码生成后自动弹层，直接可扫
+    if (String(route.query.save) === '1') {
+      setTimeout(() => { if (vcardQrDataUrl.value) vcardQrModal.value = true }, 400)
+      // save 是一次性展示参数，清掉它和可能残留的登录凭证，避免被原生转发带出去
+      const u = new URL(windowRef.location.href)
+      let changed = false
+      for (const k of ['save', 'wx_ticket']) if (u.searchParams.has(k)) { u.searchParams.delete(k); changed = true }
+      if (changed) windowRef.history.replaceState(null, '', u.toString())
+    }
   } catch (e) { error.value = e.message } finally { loading.value = false }
 }
 onMounted(load)
