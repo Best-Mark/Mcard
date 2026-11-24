@@ -169,12 +169,13 @@ import { ref, computed, onUnmounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { api, toast, uploadImage, uploadLogo, processLogo, geoLocate, reverseGeocode, geocodeAddress, getRegions } from '../../utils/request'
 
+// ⚠️ 与 client/src/utils/themes.js 保持同步（小程序独立渲染，无 web-view）
 const themes = {
-  ocean: { label: '深海蓝', accent: '#2563eb' },
-  ink: { label: '墨黑金', accent: '#c9a227' },
-  sunset: { label: '暖阳橘', accent: '#ea580c' },
-  mint: { label: '青竹绿', accent: '#0d9488' },
-  royal: { label: '典雅紫', accent: '#7c3aed' }
+  ocean: { label: '经典蓝', accent: '#2563eb' },
+  ink: { label: '曜石黑金', accent: '#b99355' },
+  sunset: { label: '活力橙', accent: '#ea580c' },
+  mint: { label: '翡翠绿', accent: '#0f766e' },
+  royal: { label: '皇家紫', accent: '#7c3aed' }
 }
 const QR_PRESETS = [
   { key: 'classic', label: '经典', dot: 'square', eye: 'square', gradTo: '' },
@@ -484,10 +485,11 @@ async function save() {
 .tpl-thumb { height: 90rpx; border-radius: 12rpx; position: relative; overflow: hidden; }
 .tpl-ava { position: absolute; width: 44rpx; height: 44rpx; left: 20rpx; bottom: -12rpx; background: #fff; box-shadow: 0 2rpx 10rpx rgba(0,0,0,.2); }
 .ava-classic { border-radius: 10rpx; }
-.ava-minimal { border-radius: 50%; left: 50%; transform: translateX(-50%); background: #e2e8f0; }
-.ava-elite { border-radius: 50%; left: 50%; transform: translateX(-50%); width: 50rpx; height: 50rpx; border: 3rpx solid #c9a227; }
-.ava-vivid { border-radius: 16rpx; width: 50rpx; height: 50rpx; }
-.ava-seal { border-radius: 6rpx; width: 50rpx; height: 50rpx; border: 4rpx solid #93c5fd; }
+.ava-minimal { border-radius: 50%; left: 50%; transform: translateX(-50%); background: #e2e8f0; width: 36rpx; height: 36rpx; bottom: -6rpx; }
+.ava-elite { border-radius: 50%; left: 50%; transform: translateX(-50%); width: 46rpx; height: 46rpx; border: 3rpx solid #b99355; bottom: -10rpx; }
+.ava-vivid { border-radius: 16rpx; width: 50rpx; height: 50rpx; bottom: -16rpx; }
+.ava-seal { border-radius: 0; width: 46rpx; height: 46rpx; border: 4rpx solid #111827; background: #fff; }
+.ava-contact { border-radius: 10rpx; width: 46rpx; height: 46rpx; border: 3rpx solid #fff; background: #eff4ff; }
 .ava-navygold { border-radius: 12rpx; width: 50rpx; height: 50rpx; border: 4rpx solid #d8bb85; background: #f4f1ea; }
 .tpl-name { font-size: 28rpx; font-weight: 700; }
 .tpl-desc { font-size: 22rpx; color: #6b7688; }

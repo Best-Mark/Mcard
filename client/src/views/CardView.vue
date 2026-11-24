@@ -710,33 +710,128 @@ async function toggleFavorite() {
 .cv-tpl-contact .cv-dock { background: rgba(11,26,58,.97); border-top: 2px solid #1e40af; }
 .cv-tpl-contact .cv-dock .btn-ghost { background: rgba(255,255,255,.14); color: #fff; border-color: transparent; }
 
-/* ============ 参考商务名片风（统一强化，放在最后覆盖）============ */
-.cv-page { background: #eef3f8; }
-.cv-page .card { border: 1px solid #dbe3ef; border-radius: 14px; box-shadow: 0 2px 10px rgba(16,36,70,.10); }
-.cv-page .cv-block h3, .cv-page .cv-sec-title { font-size: 16px; font-weight: 700; color: #17233c; border-left: 4px solid #2454e8; padding-left: 10px; margin-bottom: 10px; }
-.cv-page .small.muted, .cv-page .cv-qr-lead { color: #6c788c; }
-
-/* 通讯录二维码卡：一眼就知道「扫这个存通讯录」 */
-.cv-contact-qr { background: #fff; text-align: center; padding: 20px 16px; }
+/* ============ 通讯录二维码卡（各模板通用，不属于骨架）============ */
+.cv-contact-qr { background: var(--t-surface, #fff); text-align: center; padding: 20px 16px; }
 .cv-contact-qr .cv-sec-title { text-align: left; }
 .cv-contact-qr .cv-qr-lead { text-align: left; line-height: 1.6; margin-bottom: 14px; font-size: 12px; }
-.cv-vcard-qr { display: block; width: 240px; height: 240px; margin: 0 auto 14px; padding: 10px; background: #fff; border: 2px solid #1a3f86; border-radius: 12px; box-shadow: 0 6px 20px rgba(26,63,134,.14); }
+.cv-vcard-qr { display: block; width: 240px; height: 240px; margin: 0 auto 14px; padding: 10px; background: #fff; border: 2px solid var(--t-accent, #1a3f86); border-radius: 12px; box-shadow: 0 6px 20px rgba(26,63,134,.14); }
 .cv-vcard-qr img { display: block; width: 100%; height: 100%; }
 .cv-qr-actions { display: flex; gap: 10px; justify-content: center; }
 .cv-qr-actions .btn { min-width: 128px; }
-.cv-share-qr { display: block; width: 160px; height: 160px; margin: 8px auto 0; padding: 8px; background: #fff; border: 1px solid #d9e1ee; border-radius: 10px; }
+.cv-share-qr { display: block; width: 160px; height: 160px; margin: 8px auto 0; padding: 8px; background: #fff; border: 1px solid var(--line, #d9e1ee); border-radius: 10px; }
 .cv-share-qr img { display: block; width: 100%; height: 100%; }
 
-/* 身份卡：深蓝金高档质感 */
-.cv-page .cv-profile { border-radius: 16px; border: 1px solid #dbe4f5; box-shadow: 0 8px 26px rgba(16,36,70,.12); background: #fff; }
-.cv-page .cv-name { color: #132a53; font-size: 23px; }
-.cv-page .cv-title { color: #2454e8; font-weight: 600; }
+/* ============ 7 套模板骨架差异化 ============
+   换「模板」= 换排版骨架（封面形态 / 头像位置 / 信息排布 / 底栏）；
+   换「主题」= 只换 --t-* 颜色。两者正交，任何模板都跟随主题配色。
+   navygold 是唯一例外：品牌金蓝固定（用户指定的高端名片）。 */
 
-/* 底部深蓝操作栏 */
-.cv-page .cv-dock { background: #0f1c33; border-top: 1px solid #1e3a8a; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); }
-.cv-page .cv-dock .btn { font-size: 13px; border-radius: 8px; }
-.cv-page .cv-dock .btn-ghost { background: #263550; color: #fff; border-color: transparent; }
-.cv-page .cv-share-fab { background: #2454e8; border-radius: 16px; width: 60px; height: 60px; }
+/* ① 经典商务 classic：渐变横幅 + 左对齐头像 + 白卡列表（最通用） */
+.cv-tpl-classic { background: var(--t-bg); }
+.cv-tpl-classic .card { border: 1px solid var(--line, #dbe3ef); border-radius: 14px; box-shadow: 0 2px 10px rgba(16,36,70,.09); }
+.cv-tpl-classic .cv-block h3, .cv-tpl-classic .cv-sec-title { font-size: 16px; font-weight: 700; color: var(--t-text); border-left: 4px solid var(--t-accent); padding-left: 10px; margin-bottom: 10px; }
+.cv-tpl-classic .small.muted, .cv-tpl-classic .cv-qr-lead { color: var(--t-muted); }
+.cv-tpl-classic .cv-profile { border-radius: 16px; border: 1px solid var(--line, #dbe4f5); box-shadow: 0 8px 26px rgba(16,36,70,.12); background: var(--t-surface); }
+.cv-tpl-classic .cv-name { color: var(--t-text); font-size: 23px; }
+.cv-tpl-classic .cv-title { color: var(--t-accent); font-weight: 600; }
+.cv-tpl-classic .cv-dock { background: #0f1c33; border-top: 1px solid var(--t-accent); padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); }
+.cv-tpl-classic .cv-dock .btn { font-size: 13px; border-radius: 8px; }
+.cv-tpl-classic .cv-dock .btn-ghost { background: #263550; color: #fff; border-color: transparent; }
+.cv-tpl-classic .cv-share-fab { background: var(--t-accent); border-radius: 16px; width: 60px; height: 60px; }
+
+/* ② 极简白 minimal：无封面 + 大留白 + 超大姓名 + 细线分隔（瑞士极简） */
+.cv-tpl-minimal { background: #fff; }
+.cv-tpl-minimal .cv-cover { height: 54px; border-radius: 0; background: #fff; border-bottom: 1px solid #e5e7eb; }
+.cv-tpl-minimal .cv-brand { color: #111827; opacity: 1; top: calc(16px + env(safe-area-inset-top)); }
+.cv-tpl-minimal .cv-back { color: #111827; }
+.cv-tpl-minimal .cv-themes { display: none; }
+.cv-tpl-minimal .cv-main { margin-top: 0; }
+.cv-tpl-minimal .card { border: 0; border-bottom: 1px solid #eef0f3; border-radius: 0; box-shadow: none; background: transparent; }
+.cv-tpl-minimal .cv-profile { padding: 26px 18px 22px; align-items: flex-start; gap: 16px; }
+.cv-tpl-minimal .cv-avatar { width: 54px; height: 54px; flex-basis: 54px; border-radius: 50%; }
+.cv-tpl-minimal .cv-name { font-size: 30px; font-weight: 800; letter-spacing: -1.2px; line-height: 1.15; color: #111827; }
+.cv-tpl-minimal .cv-en { display: block; margin-top: 2px; letter-spacing: .5px; }
+.cv-tpl-minimal .cv-title { font-size: 13px; color: #6b7280; margin-top: 8px; }
+.cv-tpl-minimal .cv-tags span { border-radius: 0; background: transparent; border-bottom: 1px solid var(--t-accent); color: var(--t-accent); padding: 2px 0; }
+.cv-tpl-minimal .cv-block h3, .cv-tpl-minimal .cv-sec-title { font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #9ca3af; border-left: 0; padding-left: 0; }
+.cv-tpl-minimal .cv-actions { padding: 14px 0; }
+.cv-tpl-minimal .cv-actions i { border-radius: 50%; border: 1px solid #e5e7eb; background: transparent; color: #374151; }
+.cv-tpl-minimal .cv-dock { background: #fff; border-top: 1px solid #e5e7eb; }
+.cv-tpl-minimal .cv-dock .btn-primary { background: var(--t-accent); }
+.cv-tpl-minimal .cv-dock .btn-ghost { background: #f3f4f6; color: #374151; }
+.cv-tpl-minimal .cv-share-fab { background: #fff; border: 2px solid var(--t-accent); color: var(--t-accent); box-shadow: 0 4px 14px rgba(0,0,0,.12); }
+
+/* ③ 尊享黑金 elite：深色沉浸 + 居中大头像金环 + 衬线署名（固定深底，强调色跟主题） */
+.cv-tpl-elite { background: #0b0d12; color: #f5f5f4; }
+.cv-tpl-elite .cv-cover { height: 210px; border-radius: 0 0 40px 40px; background: var(--t-cover); }
+.cv-tpl-elite .cv-main { margin-top: -70px; }
+.cv-tpl-elite .card { background: #15171c; border: 1px solid rgba(255,255,255,.09); }
+.cv-tpl-elite .cv-profile { flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 24px 18px; background: #15171c; border-color: rgba(255,255,255,.1); }
+.cv-tpl-elite .cv-avatar { width: 92px; height: 92px; flex: 0 0 92px; border-radius: 50%; border: 3px solid var(--t-accent); box-shadow: 0 0 0 5px #15171c, 0 12px 30px rgba(0,0,0,.4); }
+.cv-tpl-elite .cv-name-row { justify-content: center; }
+.cv-tpl-elite .cv-name { font-family: Georgia,'Songti SC',serif; font-size: 26px; letter-spacing: 4px; color: #f5f5f4; }
+.cv-tpl-elite .cv-en { display: block; margin: 4px 0 0; letter-spacing: 2px; }
+.cv-tpl-elite .cv-title { letter-spacing: 2px; color: var(--t-muted); }
+.cv-tpl-elite .cv-tags { justify-content: center; }
+.cv-tpl-elite .cv-tags span { border-radius: 0; border-bottom: 1px solid var(--t-accent); background: transparent; color: var(--t-accent); }
+.cv-tpl-elite .cv-block h3, .cv-tpl-elite .cv-sec-title { text-align: center; font-size: 12px; letter-spacing: 4px; color: var(--t-accent); border-left: 0; padding-left: 0; }
+.cv-tpl-elite .cv-bio, .cv-tpl-elite .small.muted, .cv-tpl-elite .cv-qr-lead { color: #a1a1aa; }
+.cv-tpl-elite .cv-links a, .cv-tpl-elite .qr-tile { background: #1c1f26; border-color: rgba(255,255,255,.09); }
+.cv-tpl-elite .cv-dock { background: #0b0d12; border-top: 2px solid var(--t-accent); }
+.cv-tpl-elite .cv-dock .btn-ghost { background: rgba(255,255,255,.1); color: #f5f5f4; }
+.cv-tpl-elite .cv-share-fab { background: var(--t-accent); }
+
+/* ④ 活力渐变 vivid：大圆角渐变封面 + 悬浮头像 + 胶囊标签（年轻创业） */
+.cv-tpl-vivid { background: var(--t-bg); }
+.cv-tpl-vivid .cv-cover { height: 188px; border-radius: 0 0 48px 48px; background: var(--t-cover); }
+.cv-tpl-vivid .cv-main { margin-top: -56px; }
+.cv-tpl-vivid .card { border: 0; border-radius: 20px; box-shadow: 0 12px 34px rgba(15,23,42,.10); }
+.cv-tpl-vivid .cv-profile { padding: 20px 18px; }
+.cv-tpl-vivid .cv-avatar { border-radius: 26px; width: 84px; height: 84px; flex-basis: 84px; box-shadow: 0 8px 24px color-mix(in srgb, var(--t-accent) 35%, transparent); }
+.cv-tpl-vivid .cv-name { font-size: 24px; }
+.cv-tpl-vivid .cv-tags span { border-radius: 999px; padding: 4px 12px; }
+.cv-tpl-vivid .cv-actions i { border-radius: 14px; }
+.cv-tpl-vivid .cv-block h3, .cv-tpl-vivid .cv-sec-title { color: var(--t-accent); }
+.cv-tpl-vivid .cv-dock { background: var(--t-cover); border-top: 0; }
+
+/* ⑤ 杂志方格 seal：黑白高对比 + 超大首字 + 直角细框（设计媒体风） */
+.cv-tpl-seal { background: #fafafa; }
+.cv-tpl-seal .cv-cover { height: 96px; border-radius: 0; background: #111827; border-bottom: 5px solid var(--t-accent); }
+.cv-tpl-seal .cv-cover::after { display: none; }
+.cv-tpl-seal .cv-brand { color: #fff; letter-spacing: 3px; }
+.cv-tpl-seal .cv-back { color: #fff; }
+.cv-tpl-seal .cv-themes { display: none; }
+.cv-tpl-seal .cv-main { margin-top: -20px; }
+.cv-tpl-seal .card { border-radius: 0; border: 2px solid #111827; box-shadow: 4px 4px 0 rgba(17,24,39,.12); background: #fff; }
+.cv-tpl-seal .cv-profile { border-top: 6px solid #111827; padding: 18px 16px; align-items: flex-end; }
+.cv-tpl-seal .cv-avatar { border-radius: 0; width: 76px; height: 76px; flex-basis: 76px; border: 3px solid #111827; }
+.cv-tpl-seal .cv-name { font-weight: 900; font-size: 34px; letter-spacing: -1px; line-height: 1; color: #111827; }
+.cv-tpl-seal .cv-name::first-letter { font-size: 1.45em; }
+.cv-tpl-seal .cv-title { font-weight: 700; color: var(--t-accent); }
+.cv-tpl-seal .cv-tags span { border-radius: 0; border: 2px solid #111827; background: #fff; color: #111827; }
+.cv-tpl-seal .cv-actions i { border-radius: 0; border: 2px solid #111827; background: #fff; color: #111827; }
+.cv-tpl-seal .cv-block h3, .cv-tpl-seal .cv-sec-title { color: #111827; border-left: 6px solid #111827; padding-left: 10px; letter-spacing: 1px; }
+.cv-tpl-seal .cv-links a, .cv-tpl-seal .qr-tile { border-radius: 0; border: 2px solid #111827; }
+.cv-tpl-seal .cv-map-launch { border-radius: 0; border: 2px solid #111827; }
+.cv-tpl-seal .cv-dock { background: #111827; border-top: 5px solid var(--t-accent); }
+.cv-tpl-seal .cv-dock .btn-ghost { background: #fff; color: #111827; }
+
+/* ⑥ 联络卡 contact：深蓝封面 + 居中身份 + 业务标签 + 拨号卡（扫码即联系） */
+.cv-tpl-contact { background: var(--t-bg); }
+.cv-tpl-contact .cv-cover { height: 150px; border-radius: 0 0 20px 20px; background: var(--t-cover); }
+.cv-tpl-contact .cv-main { margin-top: -34px; }
+.cv-tpl-contact .cv-profile { border-radius: 12px; border: 1px solid var(--line, #dbe4f5); box-shadow: 0 8px 24px rgba(30,64,175,.12); padding: 20px 18px; align-items: center; background: var(--t-surface); }
+.cv-tpl-contact .cv-avatar { border-radius: 10px; width: 78px; height: 78px; flex-basis: 78px; border: 2px solid #fff; box-shadow: 0 4px 14px rgba(0,0,0,.2); }
+.cv-tpl-contact .cv-name { color: var(--t-text); font-size: 24px; letter-spacing: .5px; }
+.cv-tpl-contact .cv-title { color: var(--t-accent); font-weight: 600; }
+.cv-tpl-contact .cv-tags span { border-radius: 4px; border: 1px solid var(--t-accent); background: color-mix(in srgb, var(--t-accent) 8%, #fff); color: var(--t-accent); padding: 4px 10px; }
+.cv-tpl-contact .cv-actions { border-radius: 12px; border: 1px solid var(--line, #dbe4f5); background: var(--t-surface); }
+.cv-tpl-contact .cv-actions i { border-radius: 10px; background: color-mix(in srgb, var(--t-accent) 10%, #fff); color: var(--t-accent); }
+.cv-tpl-contact .card { border-radius: 12px; }
+.cv-tpl-contact .cv-block h3, .cv-tpl-contact .cv-sec-title { color: var(--t-text); border-left: 3px solid var(--t-accent); }
+.cv-tpl-contact .cv-exchange { background: color-mix(in srgb, var(--t-accent) 8%, #fff); }
+.cv-tpl-contact .cv-dock { background: #0b1a3a; border-top: 2px solid var(--t-accent); }
+.cv-tpl-contact .cv-dock .btn-ghost { background: rgba(255,255,255,.14); color: #fff; }
 
 /* ============ 深蓝鎏金 navygold：参考名片配色与结构（放在最后覆盖通用商务风）============ */
 .cv-tpl-navygold { color: var(--ng-ink); background: var(--ng-page-bg); }

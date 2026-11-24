@@ -1,5 +1,5 @@
 <template>
-  <view class="page" :class="'tpl-' + tpl">
+  <view class="page" :class="'tpl-' + tpl" :style="{ '--t-accent': card?.accent || '#2563eb' }">
     <view v-if="loading" class="state">名片加载中…</view>
     <view v-else-if="error" class="state">
       <view class="big">!</view>
@@ -160,10 +160,11 @@ const materials = ref([])
 
 const coverBg = computed(() => {
   const c = card.value?.accent || '#2563eb'
-  if (tpl.value === 'minimal') return '#f1f5f9'
-  if (tpl.value === 'elite') return `linear-gradient(135deg, ${c}, #1c1917 70%)`
+  if (tpl.value === 'minimal') return '#ffffff'
+  if (tpl.value === 'elite') return 'linear-gradient(135deg,#18181b 0%,#27272a 55%,#0c0c0f 100%)'
   if (tpl.value === 'vivid') return `linear-gradient(135deg, ${c}, #db2777 60%, #f59e0b)`
-  if (tpl.value === 'seal') return '#12213c'
+  if (tpl.value === 'seal') return '#111827'
+  if (tpl.value === 'contact') return `linear-gradient(135deg, #0b1a3a 0%, ${c} 100%)`
   if (tpl.value === 'navygold') return 'linear-gradient(135deg,#1d3a55 0%,#2f5a7d 40%,#d8bb85 78%,#b99355 100%)'
   return `linear-gradient(135deg, ${c}, #0f172a)`
 })
@@ -321,55 +322,84 @@ onShareAppMessage(() => ({
 .muted { color: #6b7688; }
 .small { font-size: 22rpx; }
 
-/* ============ 布局模板：template × theme 正交，模板只改布局/形状 ============ */
+/* ============ 布局模板：template × theme 正交，模板只改布局/形状，颜色走 --t-accent ============ */
 /* 经典 classic：默认样式即经典 */
 .tpl-classic .avatar { border-radius: 24rpx; }
 
-/* 极简 minimal：浅色细封面、无阴影卡片、圆形头像、细线分割 */
-.tpl-minimal .cover { height: 100rpx; border-radius: 0; border-bottom: 2rpx solid #e8edf4; }
-.tpl-minimal .brand { color: #2563eb; }
+/* ① 极简白 minimal：无封面大留白 + 超大姓名 + 细线分割 */
+.tpl-minimal .cover { height: 100rpx; border-radius: 0; border-bottom: 2rpx solid #e5e7eb; }
+.tpl-minimal .brand { color: #111827; }
 .tpl-minimal .body { margin-top: 0; }
-.tpl-minimal .card { box-shadow: none; border-radius: 0; background: transparent; border-bottom: 2rpx solid #e8edf4; padding: 24rpx 8rpx; }
-.tpl-minimal .avatar { border-radius: 50%; }
-.tpl-minimal .tags text { border-radius: 6rpx; }
-.tpl-minimal .section { font-size: 24rpx; color: #94a3b8; letter-spacing: 2rpx; }
+.tpl-minimal .card { box-shadow: none; border-radius: 0; background: transparent; border-bottom: 2rpx solid #eef0f3; padding: 28rpx 8rpx; }
+.tpl-minimal .avatar { border-radius: 50%; width: 104rpx; height: 104rpx; }
+.tpl-minimal .name { font-size: 48rpx; font-weight: 800; letter-spacing: -2rpx; color: #111827; }
+.tpl-minimal .tags text { border-radius: 0; background: transparent; border-bottom: 2rpx solid var(--t-accent); color: var(--t-accent); padding: 2rpx 0; }
+.tpl-minimal .section { font-size: 22rpx; color: #9ca3af; letter-spacing: 3rpx; }
+.tpl-minimal .ico { border-radius: 50%; border: 2rpx solid #e5e7eb; background: transparent; }
+.tpl-minimal .dock { background: #fff; }
+.tpl-minimal .dock .btn { background: #f3f4f6; color: #374151; }
+.tpl-minimal .dock .btn.primary { background: var(--t-accent); color: #fff; }
 
-/* 尊享 elite：高封面、居中圆形头像金色描边、居中信息 */
+/* ② 尊享黑金 elite：深色沉浸 + 居中金环头像 + 衬线署名（固定深底，强调色跟主题） */
+.tpl-elite { background: #0b0d12; min-height: 100vh; }
 .tpl-elite .cover { height: 300rpx; border-radius: 0 0 48rpx 48rpx; }
 .tpl-elite .body { margin-top: -80rpx; }
+.tpl-elite .card { background: #15171c; border: 2rpx solid rgba(255,255,255,.09); box-shadow: none; }
 .tpl-elite .profile { flex-direction: column; align-items: center; text-align: center; gap: 12rpx; }
-.tpl-elite .avatar { width: 140rpx; height: 140rpx; border-radius: 50%; border: 4rpx solid #c9a227; box-shadow: 0 0 0 8rpx #fff, 0 12rpx 30rpx rgba(0,0,0,.2); }
+.tpl-elite .avatar { width: 140rpx; height: 140rpx; border-radius: 50%; border: 4rpx solid var(--t-accent); box-shadow: 0 0 0 8rpx #15171c, 0 12rpx 30rpx rgba(0,0,0,.4); }
 .tpl-elite .name-row { justify-content: center; }
-.tpl-elite .name { font-size: 40rpx; letter-spacing: 3rpx; }
+.tpl-elite .name { font-size: 42rpx; letter-spacing: 6rpx; color: #f5f5f4; }
+.tpl-elite .title, .tpl-elite .content { color: #a1a1aa; }
 .tpl-elite .tags { justify-content: center; }
+.tpl-elite .tags text { border-radius: 0; border-bottom: 2rpx solid var(--t-accent); background: transparent; color: var(--t-accent); }
 .tpl-elite .inactive { position: static; margin-left: 20rpx; }
-.tpl-elite .section { text-align: center; color: #b48b20; letter-spacing: 4rpx; }
+.tpl-elite .section { text-align: center; color: var(--t-accent); letter-spacing: 6rpx; }
 .tpl-elite .qr-card { flex-direction: column; text-align: center; }
+.tpl-elite .dock { background: #0b0d12; box-shadow: none; border-top: 4rpx solid var(--t-accent); }
+.tpl-elite .dock .btn { background: rgba(255,255,255,.1); color: #f5f5f4; }
+.tpl-elite .dock .btn.primary { background: var(--t-accent); }
 
-/* 活力 vivid：大圆角封面、方形大头像、彩色圆角标签 */
+/* ③ 活力渐变 vivid：大圆角封面 + 悬浮大头像 + 胶囊标签 */
 .tpl-vivid .cover { height: 260rpx; border-radius: 0 0 56rpx 56rpx; }
 .tpl-vivid .body { margin-top: -66rpx; }
 .tpl-vivid .card { border-radius: 28rpx; box-shadow: 0 12rpx 34rpx rgba(15,23,42,.1); }
-.tpl-vivid .avatar { width: 130rpx; height: 130rpx; border-radius: 34rpx; box-shadow: 0 8rpx 24rpx rgba(37,99,235,.3); }
+.tpl-vivid .avatar { width: 130rpx; height: 130rpx; border-radius: 34rpx; box-shadow: 0 8rpx 24rpx var(--t-accent); }
 .tpl-vivid .name { font-size: 40rpx; }
-.tpl-vivid .tags text { border-radius: 10rpx; padding: 6rpx 18rpx; }
+.tpl-vivid .tags text { border-radius: 999rpx; padding: 6rpx 18rpx; }
 .tpl-vivid .ico { border-radius: 18rpx; }
 
-/* 印章方格 seal：深蓝方块印章风，直角、深蓝描边、几何对称 */
-.tpl-seal .cover { height: 230rpx; border-radius: 0; border-bottom: 8rpx solid #1e3a8a; }
-.tpl-seal .brand { color: #fff; }
-.tpl-seal .body { margin-top: -52rpx; }
-.tpl-seal .card { border-radius: 6rpx; border: 2rpx solid #cbd5e1; box-shadow: 6rpx 6rpx 0 rgba(30,58,138,.12); }
-.tpl-seal .profile { border-top: 6rpx solid #1e3a8a; }
-.tpl-seal .avatar { border-radius: 6rpx; border: 4rpx solid #1e3a8a; box-shadow: 4rpx 4rpx 0 rgba(30,58,138,.18); }
-.tpl-seal .name { color: #12213c; letter-spacing: 2rpx; }
-.tpl-seal .title { color: #1e3a8a; font-weight: 600; }
-.tpl-seal .tags text { border-radius: 4rpx; border: 2rpx solid #1e3a8a; background: transparent; color: #1e3a8a; }
-.tpl-seal .ico { border-radius: 6rpx; border: 2rpx solid #1e3a8a; background: transparent; color: #1e3a8a; }
-.tpl-seal .section { color: #12213c; letter-spacing: 2rpx; border-left: 8rpx solid #1e3a8a; padding-left: 14rpx; }
-.tpl-seal .qr, .tpl-seal .modal-qr { border-radius: 6rpx; border: 4rpx solid #1e3a8a; }
-.tpl-seal .btn.primary { background: #1e3a8a; }
+/* ④ 杂志方格 seal：黑白高对比 + 直角细框 + 大字号（设计媒体风） */
+.tpl-seal { background: #fafafa; }
+.tpl-seal .cover { height: 120rpx; border-radius: 0; border-bottom: 8rpx solid #111827; }
+.tpl-seal .brand { color: #fff; letter-spacing: 4rpx; }
+.tpl-seal .body { margin-top: -20rpx; }
+.tpl-seal .card { border-radius: 0; border: 4rpx solid #111827; box-shadow: 8rpx 8rpx 0 rgba(17,24,39,.12); background: #fff; }
+.tpl-seal .profile { border-top: 10rpx solid #111827; padding: 24rpx 20rpx; }
+.tpl-seal .avatar { border-radius: 0; width: 120rpx; height: 120rpx; border: 4rpx solid #111827; box-shadow: none; }
+.tpl-seal .name { color: #111827; font-size: 52rpx; font-weight: 900; letter-spacing: -2rpx; }
+.tpl-seal .title { color: var(--t-accent); font-weight: 700; }
+.tpl-seal .tags text { border-radius: 0; border: 4rpx solid #111827; background: #fff; color: #111827; }
+.tpl-seal .ico { border-radius: 0; border: 4rpx solid #111827; background: #fff; color: #111827; }
+.tpl-seal .section { color: #111827; letter-spacing: 2rpx; border-left: 12rpx solid #111827; padding-left: 14rpx; }
+.tpl-seal .qr, .tpl-seal .modal-qr { border-radius: 0; border: 4rpx solid #111827; }
+.tpl-seal .dock { background: #111827; box-shadow: none; }
+.tpl-seal .dock .btn { background: #fff; color: #111827; }
+.tpl-seal .dock .btn.primary { background: var(--t-accent); color: #fff; }
 .tpl-seal .foot { color: #64748b; letter-spacing: 2rpx; }
+
+/* ⑤ 联络卡 contact：深蓝封面 + 居中身份 + 业务标签 */
+.tpl-contact .cover { height: 200rpx; border-radius: 0 0 28rpx 28rpx; }
+.tpl-contact .body { margin-top: -40rpx; }
+.tpl-contact .profile { border-radius: 18rpx; border: 2rpx solid #e8edf4; padding: 28rpx 20rpx; }
+.tpl-contact .avatar { border-radius: 14rpx; width: 124rpx; height: 124rpx; border: 4rpx solid #fff; }
+.tpl-contact .name { font-size: 40rpx; letter-spacing: 1rpx; }
+.tpl-contact .tags text { border-radius: 6rpx; border: 2rpx solid var(--t-accent); background: transparent; color: var(--t-accent); padding: 6rpx 16rpx; }
+.tpl-contact .actions { border-radius: 18rpx; border: 2rpx solid #e8edf4; }
+.tpl-contact .ico { border-radius: 14rpx; }
+.tpl-contact .card { border-radius: 18rpx; }
+.tpl-contact .section { border-left: 6rpx solid var(--t-accent); }
+.tpl-contact .dock { background: #0b1a3a; box-shadow: none; }
+.tpl-contact .dock .btn { background: rgba(255,255,255,.14); color: #fff; }
 
 /* 深蓝鎏金 navygold：深蓝放射底 + 白卡金线 + 沙金标签 + 表格化署名（与 Web 端同口径） */
 .tpl-navygold { background: radial-gradient(1200rpx 500rpx at 50% -10%, #1d3a55 0%, #132a3d 45%, #0c1a26 100%); min-height: 100vh; }
