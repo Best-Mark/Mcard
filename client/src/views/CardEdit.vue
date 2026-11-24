@@ -808,6 +808,10 @@ async function finish() {
 .ava-paper { border-radius: 3px; width: 26px; height: 26px; background: #111; }
 .ava-glass { border-radius: 12px; width: 28px; height: 28px; background: rgba(127,211,193,.22); box-shadow: inset 0 0 0 1px rgba(127,211,193,.6); }
 .ava-wood { border-radius: 50%; width: 26px; height: 26px; background: #8b5e3c; box-shadow: inset 0 0 0 2px rgba(255,255,255,.35); }
+.ava-neon { border-radius: 50%; width: 26px; height: 26px; background: linear-gradient(135deg,#ff4fa3,#4fd8ff); box-shadow: 0 0 8px rgba(255,79,163,.8); }
+.ava-acid { border-radius: 0; width: 26px; height: 26px; background: #ccff00; box-shadow: 3px 3px 0 rgba(204,255,0,.5); }
+.ava-pop { border-radius: 50%; width: 26px; height: 26px; background: #ff6b6b; border: 2px solid #241b3a; box-shadow: 2px 2px 0 #241b3a; }
+.ava-magazine { border-radius: 0; width: 26px; height: 26px; background: #1a1a1a; }
 .tpl-item b { font-size: 13px; }
 .tpl-desc { font-size: 11px; color: var(--muted); line-height: 1.45; min-height: 30px; }
 .tpl-check { font-size: 11px; color: var(--primary); font-weight: 700; }
@@ -864,5 +868,32 @@ async function finish() {
 .pv-wood .preview-body { color: #3b2f24; font-family: "Songti SC","Noto Serif SC",serif; }
 .pv-wood .preview-body b { font-size: 25px; font-weight: 600; letter-spacing: .16em; }
 .pv-wood .preview-tags i { border-radius: 2px; background: #faf4e9; color: #7b6344; box-shadow: inset 0 0 0 1px #e3d5bf; }
+/* E 霓虹夜景：粉紫冰蓝玻璃 + 渐变字 */
+.preview-card.pv-neon { border-radius: 26px; border: 1px solid rgba(255,255,255,.16); background: linear-gradient(160deg,rgba(255,79,163,.13),rgba(79,216,255,.09),rgba(255,255,255,.03)); backdrop-filter: blur(16px); box-shadow: 0 0 50px -14px rgba(255,79,163,.55),inset 0 1px 0 rgba(255,255,255,.22); }
+.pv-neon .preview-head { background: radial-gradient(760px 540px at 82% 0%,#3d1a72 0%,#190b32 46%,#08040f 100%) !important; border-radius: 0; }
+.pv-neon .preview-avatar { border-radius: 50%; background: linear-gradient(135deg,#ff4fa3,#4fd8ff); color: #0a0416; box-shadow: 0 0 18px -4px rgba(255,79,163,.85); }
+.pv-neon .preview-body { color: #ece7ff; }
+.pv-neon .preview-body b { background: linear-gradient(115deg,#ffd3ea,#ff4fa3 45%,#4fd8ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.pv-neon .preview-tags i { background: rgba(255,255,255,.07); color: #c3b7ef; box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
+/* F 酸性荧光：黑底荧光绿直角硬投影 */
+.preview-card.pv-acid { border-radius: 0; border: 1px solid #ccff00; background: #0a0a0a; box-shadow: 8px 8px 0 rgba(204,255,0,.9); }
+.pv-acid .preview-head { background: #050505 !important; border-radius: 0; }
+.pv-acid .preview-avatar { border-radius: 0; background: #ccff00; color: #000; }
+.pv-acid .preview-body { color: #ccff00; }
+.pv-acid .preview-tags i { background: transparent; color: #ccff00; box-shadow: inset 0 0 0 1px rgba(204,255,0,.5); border-radius: 0; }
+/* G 多巴胺：厚描边 + 硬投影 */
+.preview-card.pv-pop { border-radius: 26px; border: 3px solid #241b3a; background: #fff; box-shadow: 10px 10px 0 #ffd166; }
+.pv-pop .preview-head { background: linear-gradient(165deg,#fff4e8,#ffe4f0 52%,#e8f0ff) !important; }
+.pv-pop .preview-avatar { border-radius: 50%; background: #ff6b6b; color: #fff; border: 3px solid #241b3a; }
+.pv-pop .preview-body { color: #241b3a; }
+.pv-pop .preview-body b { font-weight: 900; }
+.pv-pop .preview-tags i { border-radius: 99px; border: 2px solid #241b3a; color: #241b3a; }
+/* H 杂志编辑：番茄红顶条 + 衬线大标题 */
+.preview-card.pv-magazine { border-radius: 2px; border: 1px solid #ddd7c9; background: #faf8f3; box-shadow: 0 20px 40px -30px rgba(60,50,35,.5); }
+.pv-magazine .preview-head { background: #f2efe9 !important; border-radius: 0; border-bottom: 8px solid #d1462f; }
+.pv-magazine .preview-avatar { border-radius: 2px; background: #1a1a1a; color: #f2efe9; }
+.pv-magazine .preview-body { color: #1a1a1a; font-family: "Songti SC","Noto Serif SC",serif; }
+.pv-magazine .preview-body b { font-size: 26px; font-weight: 700; }
+.pv-magazine .preview-tags i { border-radius: 0; background: transparent; color: #5c5850; box-shadow: inset 0 0 0 1px #cdc7b8; }
 @media (max-width: 520px) { .tpl-list { grid-template-columns: 1fr; } }
 </style>

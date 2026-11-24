@@ -285,8 +285,9 @@ const vcfApi = `${qrApi}/card.vcf`
 const card = ref(null); const loading = ref(true); const error = ref('')
 const currentTheme = ref('ocean'); const isOwner = ref(false)
 const template = ref('contact')
-// 四套「简洁舒适」模板共用单卡骨架与卡内操作区：contact 金黑 / paper 纸白 / glass 墨夜 / wood 暖木
-const CLEAN_TEMPLATES = ['contact', 'paper', 'glass', 'wood']
+// 八套「简洁舒适」模板共用单卡骨架与卡内操作区：
+// contact 金黑 / paper 纸白 / glass 墨夜 / wood 暖木 / neon 霓虹 / acid 荧光 / pop 多巴胺 / magazine 杂志
+const CLEAN_TEMPLATES = ['contact', 'paper', 'glass', 'wood', 'neon', 'acid', 'pop', 'magazine']
 const isCleanTpl = computed(() => CLEAN_TEMPLATES.includes(template.value))
 const qrModal = ref(false); const guide = ref(''); const guideImage = ref(''); const exchangeOpen = ref(false)
 const mapOpen = ref(false)
@@ -957,7 +958,97 @@ async function toggleFavorite() {
   --cv-block-title: #8b5e3c; --cv-link-color: #6b4a2e; --cv-foot-color: #b3a08a; --cv-foot-b: #8b5e3c; --cv-hint-color: #9c8871;
   --cv-back-color: #8b5e3c; --cv-back-bg: rgba(255,253,248,.75); --cv-brand-color: #8b5e3c;
 }
+/* E 霓虹夜景：粉紫→冰蓝渐变玻璃 + 渐变文字 + 霓虹光晕 */
+.cv-tpl-neon {
+  --cv-page-bg: radial-gradient(760px 540px at 82% 0%,#3d1a72 0%,#190b32 46%,#08040f 100%);
+  --cv-ink: #ece7ff; --cv-ink-2: #a99bd8; --cv-line: rgba(255,255,255,.09);
+  --cv-card-bg: linear-gradient(160deg,rgba(255,79,163,.13),rgba(79,216,255,.09) 60%,rgba(255,255,255,.03));
+  --cv-card-border: 1px solid rgba(255,255,255,.16); --cv-card-radius: 26px; --cv-card-pad: 30px 24px 22px;
+  --cv-card-shadow: 0 0 70px -14px rgba(255,79,163,.55),0 30px 70px -34px #000,inset 0 1px 0 rgba(255,255,255,.22); --cv-card-blur: blur(16px);
+  --cv-topbar-h: 0; --cv-topbar-bg: transparent;
+  --cv-logo-bg: linear-gradient(135deg,#ff4fa3,#4fd8ff); --cv-logo-radius: 50%; --cv-logo-shadow: 0 0 26px -6px rgba(255,79,163,.85);
+  --cv-name-size: 29px; --cv-name-weight: 700; --cv-name-spacing: .1em; --cv-name-color: transparent;
+  --cv-name-gradient: linear-gradient(115deg,#ffd3ea,#ff4fa3 45%,#4fd8ff);
+  --cv-role-color: #a99bd8; --cv-role-size: 12.5px; --cv-role-spacing: .1em;
+  --cv-org-color: #d7d0ff; --cv-org-border: 1px solid rgba(255,255,255,.14);
+  --cv-tag-bg: rgba(255,255,255,.07); --cv-tag-color: #c3b7ef; --cv-tag-shadow: inset 0 0 0 1px rgba(255,255,255,.14); --cv-tag-radius: 99px;
+  --cv-btn-main-bg: linear-gradient(135deg,#ff4fa3,#b13cf0); --cv-btn-main-color: #fff; --cv-btn-main-shadow: 0 14px 30px -14px rgba(255,79,163,.9);
+  --cv-btn-ghost-bg: rgba(255,255,255,.08); --cv-btn-ghost-color: #dcd5ff; --cv-btn-ghost-shadow: inset 0 0 0 1px rgba(255,255,255,.18);
+  --cv-btn-save-bg: linear-gradient(135deg,#4fd8ff,#3f8bff); --cv-btn-save-color: #05121d; --cv-btn-save-shadow: 0 14px 30px -16px rgba(79,216,255,.85);
+  --cv-steps-bg: rgba(255,255,255,.05); --cv-steps-color: #a99bd8; --cv-steps-shadow: inset 0 0 0 1px rgba(255,255,255,.1); --cv-steps-title: #4fd8ff; --cv-steps-b: #ffd3ea;
+  --cv-mini-bg: rgba(255,255,255,.07); --cv-mini-color: #dcd5ff; --cv-mini-shadow: inset 0 0 0 1px rgba(255,255,255,.14); --cv-mini-on-bg: linear-gradient(135deg,#ff4fa3,#4fd8ff); --cv-mini-on-color: #0a0416;
+  --cv-block-title: #4fd8ff; --cv-link-color: #8fe6ff; --cv-foot-color: #7b6cae; --cv-foot-b: #ff4fa3; --cv-hint-color: #7b6cae;
+  --cv-wm-color: #ff4fa3; --cv-wm-opacity: .03; --cv-back-color: #4fd8ff; --cv-back-bg: rgba(8,4,15,.5); --cv-brand-color: #b3a7e2;
+}
+/* F 酸性荧光：黑底荧光绿网格 + 直角硬边 + 8px 硬投影 */
+.cv-tpl-acid {
+  --cv-page-bg: #050505; --cv-page-grid: repeating-linear-gradient(0deg,rgba(204,255,0,.055) 0 1px,transparent 1px 20px),repeating-linear-gradient(90deg,rgba(204,255,0,.035) 0 1px,transparent 1px 20px);
+  --cv-ink: #ccff00; --cv-ink-2: #7f8f2e; --cv-line: rgba(204,255,0,.22);
+  --cv-card-bg: #0a0a0a; --cv-card-border: 1px solid #ccff00; --cv-card-radius: 0; --cv-card-pad: 30px 24px 22px;
+  --cv-card-shadow: 8px 8px 0 rgba(204,255,0,.9),0 30px 60px -30px #000;
+  --cv-topbar-h: 0; --cv-topbar-bg: transparent;
+  --cv-logo-bg: #ccff00; --cv-logo-radius: 0; --cv-logo-shadow: none;
+  --cv-name-size: 32px; --cv-name-weight: 900; --cv-name-spacing: .02em; --cv-name-color: #ccff00;
+  --cv-role-color: #7f8f2e; --cv-role-size: 10.5px; --cv-role-spacing: .22em;
+  --cv-org-color: #e8ff8a; --cv-org-border: 1px solid rgba(204,255,0,.4);
+  --cv-tag-bg: transparent; --cv-tag-color: #ccff00; --cv-tag-shadow: inset 0 0 0 1px rgba(204,255,0,.5); --cv-tag-radius: 0;
+  --cv-btn-radius: 0; --cv-btn-main-bg: #ccff00; --cv-btn-main-color: #000; --cv-btn-main-shadow: 4px 4px 0 rgba(255,255,255,.28);
+  --cv-btn-ghost-bg: transparent; --cv-btn-ghost-color: #ccff00; --cv-btn-ghost-shadow: inset 0 0 0 1px #ccff00;
+  --cv-btn-save-bg: transparent; --cv-btn-save-color: #ccff00; --cv-btn-save-shadow: inset 0 0 0 1px rgba(204,255,0,.55);
+  --cv-steps-bg: #111; --cv-steps-color: #8d9a52; --cv-steps-shadow: inset 0 0 0 1px rgba(204,255,0,.25); --cv-steps-radius: 0; --cv-steps-title: #ccff00; --cv-steps-b: #e8ff8a;
+  --cv-mini-bg: transparent; --cv-mini-color: #ccff00; --cv-mini-shadow: inset 0 0 0 1px rgba(204,255,0,.4); --cv-mini-on-bg: #ccff00; --cv-mini-on-color: #000;
+  --cv-block-title: #ccff00; --cv-link-color: #ccff00; --cv-foot-color: #6f7a3a; --cv-foot-b: #ccff00; --cv-hint-color: #6f7a3a;
+  --cv-back-color: #ccff00; --cv-back-bg: #0d0d0d; --cv-brand-color: #ccff00;
+}
+/* G 多巴胺：3px 厚黑描边 + 硬投影 + 彩色标签轮换 */
+.cv-tpl-pop {
+  --cv-page-bg: linear-gradient(165deg,#fff4e8 0%,#ffe4f0 52%,#e8f0ff 100%);
+  --cv-ink: #241b3a; --cv-ink-2: #6d5f8c; --cv-line: #eee6f6;
+  --cv-panel-bg: #fff; --cv-card-bg: #fff; --cv-card-border: 3px solid #241b3a; --cv-card-radius: 26px; --cv-card-pad: 30px 24px 22px;
+  --cv-card-shadow: 10px 10px 0 #ffd166,0 26px 54px -30px rgba(36,27,58,.42);
+  --cv-topbar-h: 0; --cv-topbar-bg: transparent;
+  --cv-logo-bg: #ff6b6b; --cv-logo-radius: 50%; --cv-logo-shadow: inset 0 0 0 3px #241b3a;
+  --cv-name-size: 29px; --cv-name-weight: 900; --cv-name-spacing: 0; --cv-name-color: #241b3a;
+  --cv-role-color: #6d5f8c; --cv-role-size: 12.5px; --cv-role-spacing: .1em;
+  --cv-org-color: #241b3a; --cv-org-border: 3px dashed #ffd166;
+  --cv-tag-bg: #ffe066; --cv-tag-color: #241b3a; --cv-tag-shadow: none; --cv-tag-radius: 99px; --cv-tag-alt: 1;
+  --cv-btn-radius: 14px; --cv-btn-main-bg: #ff6b6b; --cv-btn-main-color: #fff; --cv-btn-main-shadow: 4px 4px 0 #241b3a;
+  --cv-btn-ghost-bg: #a0e7e5; --cv-btn-ghost-color: #241b3a; --cv-btn-ghost-shadow: 4px 4px 0 #241b3a;
+  --cv-btn-save-bg: #b8a1ff; --cv-btn-save-color: #241b3a; --cv-btn-save-shadow: 4px 4px 0 #241b3a;
+  --cv-steps-bg: #fffaf2; --cv-steps-color: #6d5f8c; --cv-steps-shadow: none; --cv-steps-radius: 14px; --cv-steps-title: #d1462f; --cv-steps-b: #241b3a; --cv-steps-border: 2px dashed #ffd166;
+  --cv-mini-bg: #fff; --cv-mini-color: #241b3a; --cv-mini-shadow: inset 0 0 0 2px #241b3a; --cv-mini-on-bg: #ffd166; --cv-mini-on-color: #241b3a;
+  --cv-block-title: #d1462f; --cv-link-color: #7a4fd6; --cv-foot-color: #a99cc4; --cv-foot-b: #d1462f; --cv-hint-color: #8d80a8;
+  --cv-back-color: #241b3a; --cv-back-bg: #fff; --cv-brand-color: #241b3a;
+}
+/* H 杂志编辑：米色 + 番茄红 + 2px 直角 + 衬线大标题 + 红顶条 */
+.cv-tpl-magazine {
+  --cv-page-bg: #f2efe9; --cv-ink: #1a1a1a; --cv-ink-2: #6b675f; --cv-line: #e6e1d5;
+  --cv-card-bg: #faf8f3; --cv-card-border: 1px solid #ddd7c9; --cv-card-radius: 2px; --cv-card-x: 26px; --cv-card-pad: 34px 26px 22px;
+  --cv-card-shadow: 0 24px 46px -36px rgba(60,50,35,.5);
+  --cv-topbar-h: 8px; --cv-topbar-bg: #d1462f;
+  --cv-logo-bg: #1a1a1a; --cv-logo-radius: 2px; --cv-logo-shadow: none;
+  --cv-name-size: 34px; --cv-name-weight: 700; --cv-name-spacing: .02em; --cv-name-color: #1a1a1a; --cv-name-font: "Noto Serif SC","Songti SC",serif;
+  --cv-role-color: #d1462f; --cv-role-size: 10px; --cv-role-spacing: .24em;
+  --cv-org-color: #1a1a1a; --cv-org-border: 2px solid #1a1a1a;
+  --cv-tag-bg: transparent; --cv-tag-color: #5c5850; --cv-tag-shadow: inset 0 0 0 1px #cdc7b8; --cv-tag-radius: 0;
+  --cv-btn-radius: 0; --cv-btn-main-bg: #d1462f; --cv-btn-main-color: #fff; --cv-btn-main-shadow: none;
+  --cv-btn-ghost-bg: transparent; --cv-btn-ghost-color: #1a1a1a; --cv-btn-ghost-shadow: inset 0 0 0 1px #1a1a1a;
+  --cv-btn-save-bg: #1a1a1a; --cv-btn-save-color: #f7f4ee; --cv-btn-save-shadow: none;
+  --cv-steps-bg: #fff; --cv-steps-color: #6b675f; --cv-steps-shadow: none; --cv-steps-radius: 0; --cv-steps-title: #d1462f; --cv-steps-b: #1a1a1a; --cv-steps-border-left: 3px solid #d1462f;
+  --cv-mini-bg: transparent; --cv-mini-color: #1a1a1a; --cv-mini-shadow: inset 0 0 0 1px #1a1a1a; --cv-mini-on-bg: #d1462f; --cv-mini-on-color: #fff;
+  --cv-block-title: #d1462f; --cv-link-color: #b83a25; --cv-foot-color: #a8a299; --cv-foot-b: #d1462f; --cv-hint-color: #8b867c;
+  --cv-back-color: #d1462f; --cv-back-bg: #fff; --cv-brand-color: #1a1a1a;
+}
 .cv-clean.cv-page { font-family: var(--cv-name-font, inherit); padding-bottom: 34px; }
+.cv-tpl-acid.cv-page { background-image: var(--cv-page-grid); }
+/* 渐变文字（E 霓虹） */
+.cv-tpl-neon .cv-name { -webkit-background-clip: text; background-clip: text; background-image: var(--cv-name-gradient); color: transparent; -webkit-text-fill-color: transparent; }
+/* 彩色标签轮换（G 多巴胺） */
+.cv-tpl-pop .cv-tags span:nth-child(4n+2) { background: #a0e7e5; }
+.cv-tpl-pop .cv-tags span:nth-child(4n+3) { background: #ffb3c1; }
+.cv-tpl-pop .cv-tags span:nth-child(4n+4) { background: #c9b8ff; }
+/* 指引块补充：虚线边（G）/ 左侧色条（H） */
+.cv-tpl-pop .cv-cta-steps, .cv-tpl-magazine .cv-cta-steps { border: var(--cv-steps-border, 0); border-left: var(--cv-steps-border-left, 0); }
 .cv-clean .cv-cover { height: 0; border-radius: 0; background: transparent; }
 .cv-clean .cv-back { top: calc(10px + env(safe-area-inset-top)); left: 12px; color: var(--cv-back-color); background: var(--cv-back-bg); border-radius: 50%; width: 34px; height: 34px; display: grid; place-items: center; font-size: 24px; backdrop-filter: blur(6px); }
 .cv-clean .cv-brand { top: calc(18px + env(safe-area-inset-top)); color: var(--cv-brand-color); }

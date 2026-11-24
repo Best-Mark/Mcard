@@ -488,6 +488,10 @@ async function save() {
 .ava-paper { border-radius: 6rpx; width: 40rpx; height: 40rpx; background: #111; }
 .ava-glass { border-radius: 24rpx; width: 44rpx; height: 44rpx; background: rgba(127,211,193,.22); border: 2rpx solid rgba(127,211,193,.6); }
 .ava-wood { border-radius: 50%; width: 40rpx; height: 40rpx; background: #8b5e3c; box-shadow: inset 0 0 0 4rpx rgba(255,255,255,.35); }
+.ava-neon { border-radius: 50%; width: 42rpx; height: 42rpx; background: linear-gradient(135deg,#ff4fa3,#4fd8ff); }
+.ava-acid { border-radius: 0; width: 42rpx; height: 42rpx; background: #ccff00; box-shadow: 4rpx 4rpx 0 rgba(204,255,0,.6); }
+.ava-pop { border-radius: 50%; width: 42rpx; height: 42rpx; background: #ff6b6b; border: 4rpx solid #241b3a; }
+.ava-magazine { border-radius: 0; width: 42rpx; height: 42rpx; background: #1a1a1a; }
 .tpl-name { font-size: 28rpx; font-weight: 700; }
 .tpl-desc { font-size: 22rpx; color: #6b7688; }
 .tpl-check { font-size: 22rpx; color: #2563eb; font-weight: 700; }

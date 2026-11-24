@@ -65,6 +65,30 @@ const CARD_TEMPLATES = [
     label: '暖木衬线',
     desc: '暖棕渐变底 + 直角双层细框 + 衬线字体，温润书卷气（参考风格 D）',
     cover: 'radial-gradient(circle at 20% 0%,#f6eee1 0%,#e8dbc8 60%,#ddcdb6 100%)'
+  },
+  {
+    key: 'neon',
+    label: '霓虹夜景',
+    desc: '粉紫→冰蓝渐变玻璃 + 26px 大圆角 + 渐变文字与霓虹光晕（参考风格 E）',
+    cover: 'radial-gradient(760px 540px at 82% 0%,#3d1a72 0%,#190b32 46%,#08040f 100%)'
+  },
+  {
+    key: 'acid',
+    label: '酸性荧光',
+    desc: '黑底荧光绿网格 + 直角硬边 + 8px 硬投影，赛博酸性风（参考风格 F）',
+    cover: 'linear-gradient(135deg,#050505 0%,#1a2600 100%)'
+  },
+  {
+    key: 'pop',
+    label: '多巴胺',
+    desc: '3px 厚黑描边 + 硬投影 + 彩色标签轮换，明亮跳脱（参考风格 G）',
+    cover: 'linear-gradient(165deg,#fff4e8 0%,#ffe4f0 52%,#e8f0ff 100%)'
+  },
+  {
+    key: 'magazine',
+    label: '杂志编辑',
+    desc: '米色 + 番茄红 + 2px 直角 + 衬线大标题，编辑排版感（参考风格 H）',
+    cover: 'linear-gradient(135deg,#f2efe9 0%,#e8e2d5 100%)'
   }
 ]
 
