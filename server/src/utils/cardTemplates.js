@@ -32,6 +32,12 @@ const CARD_TEMPLATES = [
     label: '印章方格',
     desc: '深蓝方块印章风，几何对称、稳重有辨识度',
     cover: 'linear-gradient(135deg,#0f172a 0%,#1e3a8a 55%,#3b82f6 100%)'
+  },
+  {
+    key: 'contact',
+    label: '联络卡',
+    desc: '简洁商务联络卡，身份+业务标签+拨号/复制/存档，扫码即联系',
+    cover: 'linear-gradient(135deg,#0b1a3a 0%,#1e40af 55%,#3b82f6 100%)'
   }
 ]
 

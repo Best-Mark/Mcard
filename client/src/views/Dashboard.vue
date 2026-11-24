@@ -1,5 +1,5 @@
 <template>
-  <div class="dash-page" :style="cardVars">
+  <div class="dash-page" :class="'dash-tpl-' + (card?.template || 'classic')" :style="cardVars">
     <!-- 顶部栏：品牌 + 分享/扫码 + 菜单 -->
     <header class="dash-top">
       <button class="dash-icon" aria-label="菜单" @click="menuOpen = true">☰</button>
@@ -390,5 +390,14 @@ function doLogout() { logout(); router.push('/') }
 .drawer-sep { padding: 14px 18px 6px; font-size: 11px; color: var(--muted); }
 .drawer-foot { padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
 .dash-data { margin-top: 24px; padding-bottom: 20px; }
+/* 联络卡模板在工作台的呼应 */
+.dash-tpl-contact .cv-cover { background: linear-gradient(135deg,#0b1a3a 0%,#1e40af 58%,#3b82f6 100%); }
+.dash-tpl-contact .cv-profile { border-radius: 12px; border: 1px solid #dbe4f5; box-shadow: 0 8px 24px rgba(30,64,175,.10); }
+.dash-tpl-contact .cv-avatar { border-radius: 10px; border: 2px solid #fff; }
+.dash-tpl-contact .cv-tags span { border-radius: 4px; border: 1px solid #1e40af; background: #eff4ff; }
+.dash-tpl-contact .cv-actions i { border-radius: 10px; background: #eff4ff; color: #1e40af; }
+.dash-tpl-contact .cv-qr-card { border: 2px solid #1e40af; }
+.dash-tpl-contact .cv-dock { background: rgba(11,26,58,.97); border-top: 2px solid #1e40af; }
+.dash-tpl-contact .cv-dock .btn-ghost { background: rgba(255,255,255,.14); color: #fff; border-color: transparent; }
 @media (min-width: 720px) { .cv-main { max-width: 640px; } }
 </style>

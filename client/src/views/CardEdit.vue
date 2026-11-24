@@ -376,6 +376,7 @@ async function save() {
 .ava-elite { border-radius: 50%; left: 50%; transform: translateX(-50%); width: 34px; height: 34px; border: 2px solid #c9a227; }
 .ava-vivid { border-radius: 12px; width: 34px; height: 34px; background: #fff; }
 .ava-seal { border-radius: 3px; width: 34px; height: 34px; border: 3px solid #93c5fd; }
+.ava-contact { border-radius: 3px; width: 34px; height: 34px; border: 2px solid #1e40af; background: #eff4ff; }
 .tpl-item b { font-size: 13px; }
 .tpl-desc { font-size: 11px; color: var(--muted); line-height: 1.45; min-height: 30px; }
 .tpl-check { font-size: 11px; color: var(--primary); font-weight: 700; }
@@ -391,5 +392,10 @@ async function save() {
 .pv-seal .preview-head { background: #12213c !important; border-radius: 0; }
 .pv-seal .preview-avatar { border-radius: 3px; border: 2px solid #93c5fd; background: #12213c; }
 .pv-seal .preview-body { color: #12213c; }
+.pv-contact { border-radius: 12px; border: 2px solid #1e40af; }
+.pv-contact .preview-head { background: linear-gradient(135deg,#0b1a3a 0%,#1e40af 58%,#3b82f6 100%) !important; }
+.pv-contact .preview-avatar { border-radius: 6px; border: 2px solid #fff; background: #eff4ff; color: #1e40af; }
+.pv-contact .preview-body { color: #0f2147; }
+.pv-contact .preview-tags i { border-radius: 3px; border: 1px solid #1e40af; background: #eff4ff; }
 @media (max-width: 520px) { .tpl-list { grid-template-columns: 1fr; } }
 </style>

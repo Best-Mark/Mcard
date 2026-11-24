@@ -432,4 +432,32 @@ async function doExchange() {
 .cv-tpl-seal .cv-footer { color: #64748b; letter-spacing: 1px; }
 .cv-tpl-seal .cv-dock { background: rgba(18,33,60,.96); border-top: 3px solid #1e3a8a; }
 .cv-tpl-seal .cv-dock .btn-ghost { background: rgba(255,255,255,.14); color: #fff; border-color: transparent; }
+
+/* 联络卡 contact：简洁商务联络卡（参考「扫码即联系 / 一键拨号 / 一键存档」形态）
+   深蓝封面 + 白底信息卡 + 业务范围标签 + 表格化联系方式 + 深色底栏 */
+.cv-tpl-contact { background: #f4f6fb; }
+.cv-tpl-contact .cv-cover { height: 150px; border-radius: 0 0 20px 20px; background: linear-gradient(135deg,#0b1a3a 0%,#1e40af 58%,#3b82f6 100%); }
+.cv-tpl-contact .cv-brand { letter-spacing: 1px; }
+.cv-tpl-contact .cv-main { margin-top: -34px; }
+.cv-tpl-contact .cv-profile { border-radius: 14px; border: 1px solid #dbe4f5; box-shadow: 0 8px 24px rgba(30,64,175,.10); padding: 20px 18px; align-items: center; }
+.cv-tpl-contact .cv-avatar { border-radius: 10px; width: 78px; height: 78px; flex-basis: 78px; border: 2px solid #fff; box-shadow: 0 4px 14px rgba(30,64,175,.22); }
+.cv-tpl-contact .cv-name { color: #0f2147; font-size: 24px; letter-spacing: .5px; }
+.cv-tpl-contact .cv-title { color: #1e40af; font-weight: 600; }
+.cv-tpl-contact .cv-tags span { border-radius: 4px; border: 1px solid #1e40af; background: #eff4ff; color: #1e40af; padding: 4px 10px; }
+.cv-tpl-contact .cv-actions { border-radius: 12px; border: 1px solid #dbe4f5; background: #fff; }
+.cv-tpl-contact .cv-actions i { border-radius: 10px; background: #eff4ff; color: #1e40af; }
+.cv-tpl-contact .card { border-radius: 12px; }
+.cv-tpl-contact .cv-block h3 { color: #0f2147; font-size: 13px; letter-spacing: 1px; border-left: 3px solid #1e40af; padding-left: 9px; }
+.cv-tpl-contact .cv-bio { color: #475569; }
+.cv-tpl-contact .contact-row { border-bottom: 1px dashed #e2e8f0; padding: 8px 0; }
+.cv-tpl-contact .contact-row:last-child { border-bottom: 0; }
+.cv-tpl-contact .contact-row b { color: #0f2147; }
+.cv-tpl-contact .cv-qr-card { border: 2px solid #1e40af; background: #fff; }
+.cv-tpl-contact .cv-qr-info h3 { color: #0f2147; }
+.cv-tpl-contact .cv-qr-img { border-radius: 8px; border: 1px solid #cbd5e1; }
+.cv-tpl-contact .cv-exchange { background: #eff4ff; }
+.cv-tpl-contact .cv-footer { color: #64748b; letter-spacing: 1px; padding-top: 18px; }
+.cv-tpl-contact .cv-footer b { color: #1e40af; }
+.cv-tpl-contact .cv-dock { background: rgba(11,26,58,.97); border-top: 2px solid #1e40af; }
+.cv-tpl-contact .cv-dock .btn-ghost { background: rgba(255,255,255,.14); color: #fff; border-color: transparent; }
 </style>
