@@ -20,7 +20,7 @@
 
         <div v-for="m in list" :key="m.id" class="card card-pad mv-item">
           <div class="mv-item-head">
-            <span class="mv-type">{{ m.type === 'file' ? '📄' : '🔗' }}</span>
+            <span class="mv-type"><AppIcon :name="m.type === 'file' ? 'file' : 'link'" :size="20" /></span>
             <div class="mv-item-title">
               <b>{{ m.title }}</b>
               <span class="small muted">{{ m.type === 'file' ? '文件资料' : '网页链接' }} · {{ m.views }} 次查看</span>
@@ -66,6 +66,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
 import { showToast } from '../store'
+import AppIcon from '../components/AppIcon.vue'
 
 const route = useRoute()
 const router = useRouter()

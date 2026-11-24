@@ -11,7 +11,7 @@
         <label class="me-ava" title="点击更换账号头像">
           <img v-if="avatar" :src="avatar" alt="账号头像" />
           <span v-else>{{ (auth.user?.phone || '名').slice(0, 1) }}</span>
-          <i class="me-ava-cam">✎</i>
+          <i class="me-ava-cam"><AppIcon name="camera" :size="13" /></i>
           <input type="file" accept="image/*" :disabled="avatarSaving" @change="onAvatarFile" />
         </label>
         <div class="me-ident">
@@ -68,6 +68,7 @@ import { useRouter } from 'vue-router'
 import api from '../api'
 import { auth, logout, toggleDrawer, showToast } from '../store'
 import AssetPicker from '../components/AssetPicker.vue'
+import AppIcon from '../components/AppIcon.vue'
 
 const router = useRouter()
 const card = ref(null)

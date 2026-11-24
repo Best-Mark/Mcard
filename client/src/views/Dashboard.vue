@@ -61,11 +61,11 @@
 
         <!-- 快速联系操作（访客视角同款） -->
         <div class="card cv-actions" v-if="hasContact">
-          <button @click="tel(card.mobile || card.phone)"><i>✆</i><span>打电话</span></button>
-          <button @click="sms(card.mobile)"><i>✎</i><span>发短信</span></button>
-          <button @click="mailto(card.email)"><i>✉</i><span>写邮件</span></button>
-          <button @click="copy(card.wechat, '微信号')"><i>微</i><span>微信</span></button>
-          <button @click="copy(card.alipay, '支付宝账号')"><i>支</i><span>支付宝</span></button>
+          <button @click="tel(card.mobile || card.phone)"><i><AppIcon name="phone" :size="20" /></i><span>打电话</span></button>
+          <button @click="sms(card.mobile)"><i><AppIcon name="sms" :size="20" /></i><span>发短信</span></button>
+          <button @click="mailto(card.email)"><i><AppIcon name="mail" :size="20" /></i><span>写邮件</span></button>
+          <button @click="copy(card.wechat, '微信号')"><i><AppIcon name="wechat" :size="20" /></i><span>微信</span></button>
+          <button @click="copy(card.alipay, '支付宝账号')"><i><AppIcon name="alipay" :size="20" /></i><span>支付宝</span></button>
         </div>
         <div v-else class="card card-pad contact-empty">
           <span>还没有联系方式</span>
@@ -162,6 +162,7 @@ import { THEMES, themeOf, themeVars } from '../utils/themes'
 import { isWeChat, saveImageUrl } from '../utils/save-image'
 import { shareOrCopy, mapLinks } from '../utils/share'
 import { setupWechatShare, absoluteMediaUrl } from '../utils/wx-share'
+import AppIcon from '../components/AppIcon.vue'
 
 const router = useRouter()
 const card = ref(null)

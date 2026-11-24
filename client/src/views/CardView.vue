@@ -45,11 +45,11 @@
         </div>
 
         <div class="cv-actions card">
-          <button @click="tel(card.mobile || card.phone)"><i>✆</i><span>打电话</span></button>
-          <button @click="sms(card.mobile || card.phone)"><i>✎</i><span>发短信</span></button>
-          <button @click="mailto(card.email)"><i>✉</i><span>写邮件</span></button>
-          <button @click="copy(card.wechat || card.whatsapp, '微信号')"><i>微</i><span>微信</span></button>
-          <button @click="copy(card.alipay, '支付宝账号')"><i>支</i><span>支付宝</span></button>
+          <button @click="tel(card.mobile || card.phone)"><i><AppIcon name="phone" :size="20" /></i><span>打电话</span></button>
+          <button @click="sms(card.mobile || card.phone)"><i><AppIcon name="sms" :size="20" /></i><span>发短信</span></button>
+          <button @click="mailto(card.email)"><i><AppIcon name="mail" :size="20" /></i><span>写邮件</span></button>
+          <button @click="copy(card.wechat || card.whatsapp, '微信号')"><i><AppIcon name="wechat" :size="20" /></i><span>微信</span></button>
+          <button @click="copy(card.alipay, '支付宝账号')"><i><AppIcon name="alipay" :size="20" /></i><span>支付宝</span></button>
         </div>
 
         <div v-if="contactFields.length" class="card card-pad cv-block">
@@ -82,7 +82,7 @@
         <div v-if="materialsList.length" class="card card-pad cv-block">
           <h3>资料夹 <span class="small muted">· 点击查看，可扫码存我名片</span></h3>
           <router-link v-for="m in materialsList" :key="m.id" :to="`/m/${card.slug}`" class="cv-material-row">
-            <span class="cv-material-ico">{{ m.type === 'file' ? '📄' : '🔗' }}</span>
+            <span class="cv-material-ico"><AppIcon :name="m.type === 'file' ? 'file' : 'link'" :size="18" /></span>
             <span class="cv-material-title">{{ m.title }}</span>
             <span class="cv-material-more">查看 ›</span>
           </router-link>
@@ -242,6 +242,8 @@ import { shareOrCopy, mapLinks } from '../utils/share'
 import { setupWechatShare, absoluteMediaUrl } from '../utils/wx-share'
 import { getCachedPosition } from '../utils/geo'
 import BottomSheet from '../components/BottomSheet.vue'
+import AppIcon from '../components/AppIcon.vue'
+import { BRAND_ICONS } from '../utils/icons'
 // QRCode 动态加载：只在进入名片页、需要本地生成 vCard 高清二维码时才下载，不拖慢首屏
 
 const route = useRoute(); const router = useRouter()
@@ -449,16 +451,24 @@ function openMapSheet() {
   if (!maps.value.length) return showToast('尚未填写地址')
   mapOpen.value = true
 }
-// 各家地图品牌色 + 简化符号的内联 SVG：指示性使用风险低，且无外部图片依赖。
-// ⚠️ 不是官方 logo 原图，勿改成直接引用受版权保护的品牌图片文件。
-const MAP_ICONS = {
-  amap: '<svg viewBox="0 0 34 34" width="100%" height="100%"><rect width="34" height="34" rx="9" fill="#00B0FF"/><path d="M10 17.5h14M17 10.5v14" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/><circle cx="17" cy="17.5" r="5.2" fill="none" stroke="#fff" stroke-width="2.4"/></svg>',
-  baidu: '<svg viewBox="0 0 34 34" width="100%" height="100%"><rect width="34" height="34" rx="9" fill="#3385FF"/><path d="M17 8c-4 0-7 3-7 7 0 5 7 11 7 11s7-6 7-11c0-4-3-7-7-7z" fill="#fff"/><circle cx="17" cy="15" r="2.8" fill="#3385FF"/></svg>',
-  qq: '<svg viewBox="0 0 34 34" width="100%" height="100%"><rect width="34" height="34" rx="9" fill="#12B7F5"/><path d="M17 8c-4 0-7 3-7 7 0 5 7 11 7 11s7-6 7-11c0-4-3-7-7-7z" fill="#fff"/><circle cx="17" cy="15" r="2.8" fill="#12B7F5"/></svg>',
-  apple: '<svg viewBox="0 0 34 34" width="100%" height="100%"><rect width="34" height="34" rx="9" fill="#1C1C1E"/><path d="M18 7c-.6 0-1.1.5-1.1 1.1v1.3c-1.6.2-2.9 1.1-3.6 2.5h-1.3c-.6 0-1.1.5-1.1 1.1v9.6c0 .6.5 1.1 1.1 1.1h1.6c.8 1.2 2.2 2 3.8 2s3-.8 3.8-2h1.6c.6 0 1.1-.5 1.1-1.1v-9.6c0-.6-.5-1.1-1.1-1.1h-1.3c-.7-1.4-2-2.3-3.6-2.5V8.1c0-.6-.5-1.1-1.1-1.1zm0 3.8c1.8 0 3.2 1.4 3.2 3.2s-1.4 3.2-3.2 3.2-3.2-1.4-3.2-3.2 1.4-3.2 3.2-3.2z" fill="#fff"/><circle cx="18" cy="14" r="1" fill="#1C1C1E"/></svg>',
-  google: '<svg viewBox="0 0 34 34" width="100%" height="100%"><rect width="34" height="34" rx="9" fill="#fff"/><path d="M17 8c-4 0-7 3-7 7 0 5 7 11 7 11s7-6 7-11c0-4-3-7-7-7z" fill="#4285F4"/><circle cx="17" cy="15" r="2.8" fill="#fff"/></svg>'
+// 地图图标：优先用品牌官方 path（simple-icons，CC0），白底渲染原色 logo；
+// 高德/腾讯官方 logo 未被 simple-icons 收录，用「品牌色底 + 该品牌官方色系符号」指示性代替。
+// 全部内联、零外部依赖。指示性使用场景（点击即用该地图导航）版权风险低。
+const MAP_ICON_CFG = {
+  amap: { brand: null, bg: '#00B0FF', mark: '<path d="M12 6.5v11M6.5 12h11" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/><circle cx="12" cy="12" r="6" fill="none" stroke="#fff" stroke-width="2"/>' },
+  baidu: { brand: 'baidu', bg: '#fff' },
+  qq: { brand: 'qq', bg: '#fff' },
+  apple: { brand: 'apple', bg: '#fff' },
+  google: { brand: 'googlemaps', bg: '#fff' }
 }
-function mapIcon(key) { return MAP_ICONS[key] || '<svg viewBox="0 0 34 34" width="100%" height="100%"><rect width="34" height="34" rx="9" fill="#94a3b8"/><circle cx="17" cy="17" r="7" fill="#fff"/></svg>' }
+function mapIcon(key) {
+  const cfg = MAP_ICON_CFG[key]
+  if (!cfg) return '<svg viewBox="0 0 24 24" width="100%" height="100%"><rect width="24" height="24" rx="6" fill="#94a3b8"/><circle cx="12" cy="12" r="6" fill="#fff"/></svg>'
+  const inner = cfg.brand
+    ? `<path d="${BRAND_ICONS[cfg.brand].path}" fill="${BRAND_ICONS[cfg.brand].color}"/>`
+    : cfg.mark
+  return `<svg viewBox="0 0 24 24" width="100%" height="100%"><rect width="24" height="24" rx="6" fill="${cfg.bg}"/>${inner}</svg>`
+}
 function openVcf() {
   guide.value = ''
   if (isIOS() && !isWeChat()) return openVcfInline(vcfApi)
@@ -589,7 +599,8 @@ async function toggleFavorite() {
 .map-sheet-list { padding: 6px 12px 18px; overflow-y: auto; }
 .map-sheet-list a { display: flex; align-items: center; gap: 12px; padding: 13px 10px; border-bottom: 1px solid #f0f3f8; text-decoration: none; color: #17233c; font-size: 14px; }
 .map-sheet-list a:last-child { border-bottom: 0; }
-.map-ico { flex: 0 0 34px; width: 34px; height: 34px; border-radius: 9px; display: block; overflow: hidden; }
+.map-ico { flex: 0 0 34px; width: 34px; height: 34px; display: grid; place-items: center; }
+.map-ico svg { display: block; width: 100%; height: 100%; }
 .map-arrow { margin-left: auto; color: #94a3b8; font-size: 16px; }
 .cv-qr-card { margin-top: 12px; display: flex; flex-direction: column; align-items: center; text-align: center; background: var(--t-surface); padding: 22px 18px 20px; }
 .cv-qr-img { display: block; width: 140px; height: 140px; margin: 0 auto 14px; padding: 8px; background: #fff; border-radius: 10px; border: 1px solid var(--line); box-shadow: 0 4px 14px rgba(15,23,42,.06); }
