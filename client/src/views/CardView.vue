@@ -180,12 +180,11 @@
     <div v-if="vcardQrModal" class="modal-mask" @click.self="vcardQrModal = false">
       <div class="modal center">
         <h3>存入通讯录</h3>
-        <p class="small muted" style="margin:6px 0 12px">在 iPhone 上可先点「一键打开通讯录」直接添加；若未弹出，再用<i style="font-style:normal;color:#07c160;font-weight:700">手机相机</i>扫下方二维码（不是微信扫一扫）。</p>
+        <p class="small muted" style="margin:6px 0 12px">用<i style="font-style:normal;color:#07c160;font-weight:700">手机相机</i>或系统扫一扫，扫下方二维码即可添加（不是微信扫一扫）。</p>
         <img :src="vcardQrDataUrl || vcardQrLargeApi" style="width:260px;height:260px;margin:4px auto;display:block" alt="通讯录二维码" />
         <p class="small muted">iPhone 相机 / 安卓相机 / 鸿蒙相机 / 系统扫一扫均可识别</p>
         <div class="btn-row" style="justify-content:center;margin-top:12px">
-          <button v-if="onIOS" class="btn btn-primary" @click="openVcf">📱 一键打开通讯录</button>
-          <button class="btn" :class="onIOS ? 'btn-ghost' : 'btn-primary'" @click="saveQrFile({ url: vcardQrDataUrl || vcardQrApi, label: '通讯录二维码' })">保存二维码图片</button>
+          <button class="btn btn-primary" @click="saveQrFile({ url: vcardQrDataUrl || vcardQrApi, label: '通讯录二维码' })">保存二维码图片</button>
           <button class="btn btn-ghost" @click="vcardQrModal = false">关闭</button>
         </div>
       </div>
@@ -225,7 +224,7 @@
       <div class="modal">
         <h3>{{ guide === 'contact' ? '存入通讯录' : '保存二维码' }}</h3>
         <template v-if="inWeChat">
-          <p>微信内置浏览器限制通讯录写入与下载。请点右上角「···」→ <b>在浏览器中打开</b>（已自动带上登录状态，无需再次登录），再点「存入通讯录」即可一键添加联系人。</p>
+          <p>微信内置浏览器限制通讯录写入与下载。请点右上角「···」→ <b>在浏览器中打开</b>（已自动带上登录状态，无需再次登录），再点「存入通讯录」即可直接打开系统添加界面。</p>
         </template>
         <template v-else>
           <p>iOS 不允许网页直接下载图片。<b>长按下方图片 → 存储到照片</b> 即可保存。</p>
@@ -344,7 +343,6 @@ const isAlipay = () => /AlipayClient/i.test(navigator.userAgent || '')
 const fullUrl = u => (u ? new URL(u, windowRef.location.origin).href : '')
 // 模板里区分微信/Safari 的保存引导（微信→去浏览器，iOS→长按图片）
 const inWeChat = isWeChat()
-const onIOS = isIOS()
 
 const contactQrs = computed(() => {
   const c = card.value || {}
@@ -512,11 +510,6 @@ function mapIcon(key) {
     : cfg.mark
   return `<svg viewBox="0 0 24 24" width="100%" height="100%"><rect width="24" height="24" rx="6" fill="${cfg.bg}"/>${inner}</svg>`
 }
-function openVcf() {
-  guide.value = ''
-  if (isIOS() && !isWeChat()) return openVcfInline(vcfApi)
-  windowRef.open(vcfApi, '_blank')
-}
 async function copy(v, label) {
   if (!v) return showToast(`尚未填写${label}`)
   try { await navigator.clipboard.writeText(v); showToast(`${label}已复制`, 'success') }
@@ -532,15 +525,9 @@ async function saveContact() {
   if (!card.value) return
   if (isWeChat()) { await showGuide('contact'); return }
   if (isIOS()) {
-    // iOS Safari：直接打开 .vcf 唤系统「添加联系人」——不要让扫码成为必经步骤。
-    // 跳转若成功页面会切走（document.hidden）；1.2s 后仍在页面说明被拦，才弹二维码兜底。
-    let hidden = false
-    const onHide = () => { hidden = true }
-    document.addEventListener('visibilitychange', onHide, { once: true })
+    // iOS Safari：直接跳 .vcf 唤起系统「添加联系人」弹层（覆盖在当前页，不会触发 visibilitychange）。
+    // 若被拦截无法弹出，用户可点页面上的二维码图标用相机扫码兜底——不再主动弹窗打断。
     openVcfInline(vcfApi)
-    await new Promise(r => setTimeout(r, 1200))
-    document.removeEventListener('visibilitychange', onHide)
-    if (!hidden && !document.hidden) vcardQrModal.value = true
     return
   }
   const r = await saveImageUrl(vcfApi, `${card.value.name || slug}.vcf`)
