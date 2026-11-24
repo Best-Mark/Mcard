@@ -194,6 +194,27 @@ router.post('/public/:slug/exchange', wrap((req, res) => {
   ok(res, { exchanged: true, with: req.body.slug })
 }))
 
+// 收藏 / 取消收藏（需登录）；返回当前收藏状态，前端据此切按钮
+router.post('/public/:slug/favorite', authRequired, wrap((req, res) => {
+  const target = db.prepare('SELECT id, user_id FROM cards WHERE slug = ?').get(req.params.slug)
+  if (!target) return fail(res, 404, '名片不存在')
+  if (target.user_id === req.user.id) return fail(res, 400, '不能收藏自己的名片')
+  const exists = db.prepare('SELECT id FROM card_favorites WHERE user_id = ? AND card_id = ?').get(req.user.id, target.id)
+  if (exists) {
+    db.prepare('DELETE FROM card_favorites WHERE id = ?').run(exists.id)
+    return ok(res, { favorite: false })
+  }
+  db.prepare('INSERT INTO card_favorites (user_id, card_id) VALUES (?,?)').run(req.user.id, target.id)
+  ok(res, { favorite: true })
+}))
+
+// 查询当前用户是否已收藏某名片（公开页加载时判定按钮态）
+router.get('/public/:slug/favorite', authRequired, wrap((req, res) => {
+  const target = db.prepare('SELECT id FROM cards WHERE slug = ?').get(req.params.slug)
+  const favorite = target ? !!db.prepare('SELECT 1 FROM card_favorites WHERE user_id = ? AND card_id = ?').get(req.user.id, target.id) : false
+  ok(res, { favorite })
+}))
+
 // ---------- 我的名片 ----------
 router.get('/mine', authRequired, wrap((req, res) => {
   const row = db.prepare('SELECT * FROM cards WHERE user_id = ?').get(req.user.id)
@@ -263,6 +284,23 @@ router.get('/mine/stats', authRequired, wrap((req, res) => {
   const daily = db.prepare(`SELECT date(created_at) AS day, COUNT(*) AS n FROM card_views
     WHERE card_id = ? GROUP BY date(created_at) ORDER BY day DESC LIMIT 14`).all(card.id)
   ok(res, { views: card.views || 0, exchanges, daily })
+}))
+
+// 我的收藏夹：我收藏的名片 + 与我交换过的名片（合并去重，标注来源）
+router.get('/mine/contacts', authRequired, wrap((req, res) => {
+  const mine = db.prepare('SELECT id FROM cards WHERE user_id = ?').get(req.user.id)
+  const myId = mine?.id || -1
+  const origin = originOf(req)
+  const favs = db.prepare(`SELECT c.*, f.created_at AS rel_at FROM card_favorites f
+    JOIN cards c ON c.id = f.card_id WHERE f.user_id = ? ORDER BY f.created_at DESC`).all(req.user.id)
+  const ex = db.prepare(`SELECT c.*, e.created_at AS rel_at FROM card_exchanges e
+    JOIN cards c ON c.id = (
+      CASE WHEN e.from_card_id = ? THEN e.to_card_id ELSE e.from_card_id END
+    ) WHERE e.from_card_id = ? OR e.to_card_id = ? ORDER BY e.created_at DESC`).all(myId, myId, myId)
+  const map = new Map()
+  for (const r of favs) map.set(r.id, { ...publicView(r, origin), source: 'favorite', relAt: r.rel_at })
+  for (const r of ex) if (!map.has(r.id)) map.set(r.id, { ...publicView(r, origin), source: 'exchange', relAt: r.rel_at })
+  ok(res, { contacts: [...map.values()] })
 }))
 
 module.exports = router

@@ -10,6 +10,7 @@ const Dashboard = () => import('../views/Dashboard.vue')
 const CardEdit = () => import('../views/CardEdit.vue')
 const Plans = () => import('../views/Plans.vue')
 const PayResult = () => import('../views/PayResult.vue')
+const Contacts = () => import('../views/Contacts.vue')
 const PrintDesign = () => import('../views/PrintDesign.vue')
 const Admin = () => import('../views/Admin.vue')
 
@@ -24,6 +25,7 @@ const routes = [
   { path: '/me/plans', name: 'plans', component: Plans, meta: { auth: true } },
   { path: '/me/pay/:id', name: 'pay', component: PayResult, meta: { auth: true } },
   { path: '/me/print', name: 'print', component: PrintDesign, meta: { auth: true } },
+  { path: '/me/contacts', name: 'contacts', component: Contacts, meta: { auth: true } },
   { path: '/admin/login', name: 'admin-login', component: Admin },
   { path: '/admin', name: 'admin', component: Admin, meta: { admin: true } },
   { path: '/:pathMatch(.*)*', redirect: '/' }

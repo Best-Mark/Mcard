@@ -154,6 +154,14 @@ CREATE TABLE IF NOT EXISTS card_exchanges (
   UNIQUE(from_card_id, to_card_id)
 );
 
+CREATE TABLE IF NOT EXISTS card_favorites (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  card_id INTEGER NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(user_id, card_id)
+);
+
 CREATE TABLE IF NOT EXISTS site_config (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL,

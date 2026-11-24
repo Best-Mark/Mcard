@@ -131,10 +131,12 @@
       </div>
 
       <div class="cv-dock">
-        <button class="btn btn-primary" @click="saveContact">存入通讯录</button>
+        <button class="btn btn-primary" @click="tel(card.mobile || card.phone)">📞 打电话</button>
+        <button class="btn btn-ghost" @click="saveContact">存入通讯录</button>
         <button class="btn btn-ghost" @click="goMap">导航</button>
-        <button class="btn btn-ghost" @click="doShare">分享</button>
+        <button class="btn btn-ghost" :class="{ 'fav-on': favorite }" @click="toggleFavorite">{{ favorite ? '★ 已收藏' : '☆ 收藏' }}</button>
       </div>
+      <button class="cv-share-fab" @click="doShare" aria-label="分享名片">↗<span>分享</span></button>
     </template>
 
     <!-- 二维码大图 -->
@@ -196,6 +198,7 @@ const currentTheme = ref('ocean'); const isOwner = ref(false)
 const template = ref('classic')
 const qrModal = ref(false); const guide = ref(''); const guideImage = ref(''); const exchangeOpen = ref(false)
 const mySlug = ref(''); const exchanging = ref(false)
+const favorite = ref(false); const favBusy = ref(false)
 
 const t = computed(() => themeOf({ theme: currentTheme.value, accent: card.value?.accent }))
 const vars = computed(() => themeVars(t.value))
@@ -247,6 +250,9 @@ async function load() {
     template.value = data.data.template || 'classic'
     if (auth.token) {
       try { const mine = await api.get('/api/cards/mine'); isOwner.value = mine.data.data?.slug === slug } catch { /* 忽略 */ }
+      if (!isOwner.value) {
+        try { favorite.value = !!(await api.get(`/api/cards/public/${slug}/favorite`)).data.data?.favorite } catch { /* 忽略 */ }
+      }
     }
   } catch (e) { error.value = e.message } finally { loading.value = false }
 }
@@ -292,6 +298,17 @@ async function doExchange() {
     showToast('交换成功，已在双方记录中留存', 'success')
     exchangeOpen.value = false
   } catch (e) { showToast(e.message, 'error') } finally { exchanging.value = false }
+}
+async function toggleFavorite() {
+  if (favBusy.value) return
+  if (!auth.token) return showToast('请先登录再收藏名片', 'error')
+  if (isOwner.value) return showToast('不能收藏自己的名片')
+  favBusy.value = true
+  try {
+    const { data } = await api.post(`${qrApi}/favorite`)
+    favorite.value = !!data.data?.favorite
+    showToast(favorite.value ? '已收藏到我的名片夹' : '已取消收藏', 'success')
+  } catch (e) { showToast(e.message, 'error') } finally { favBusy.value = false }
 }
 </script>
 
@@ -348,8 +365,11 @@ async function doExchange() {
 .cv-exchange { margin-top: 12px; display: flex; justify-content: space-between; align-items: center; background: var(--t-surface); }
 .cv-exchange h3 { font-size: 14px; }
 .cv-footer { text-align: center; color: var(--t-muted); font-size: 11px; padding: 26px 0 10px; }
-.cv-dock { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 8px; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); background: rgba(255,255,255,.94); backdrop-filter: blur(12px); border-top: 1px solid var(--line); z-index: 60; }
-.cv-dock .btn { flex: 1; }
+.cv-dock { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 6px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: rgba(255,255,255,.96); backdrop-filter: blur(12px); border-top: 1px solid var(--line); z-index: 60; }
+.cv-dock .btn { flex: 1; padding-left: 4px; padding-right: 4px; font-size: 13px; }
+.cv-dock .fav-on { color: #d97706; background: #fffbeb; border-color: #fcd34d; }
+.cv-share-fab { position: fixed; right: 16px; bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 61; width: 58px; height: 58px; border-radius: 50%; background: var(--t-accent, #2563eb); color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,.28); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; font-size: 20px; }
+.cv-share-fab span { font-size: 10px; }
 @media (max-width: 520px) { .cv-qr-card { flex-direction: column; align-items: flex-start; } }
 
 /* ============ 布局模板：template × theme 正交组合，template 只改布局/形状，配色仍走 --t-* 变量 ============ */

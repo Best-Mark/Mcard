@@ -143,12 +143,13 @@
         <p class="cv-footer">由 <b>{{ siteConfig.site_name }}</b> 提供技术支持 · 资料可改 · 二维码不变</p>
       </div>
 
-      <!-- 底部常驻操作 -->
+      <!-- 底部常驻操作：拨号优先，分享放右下悬浮主按钮（拇指最顺手） -->
       <div class="cv-dock">
-        <button class="btn btn-primary" @click="saveContact">存入通讯录</button>
-        <button class="btn btn-ghost" @click="doShare">分享名片</button>
-        <button class="btn btn-ghost" @click="menuOpen = true">更多</button>
+        <button v-if="card.mobile || card.phone" class="btn btn-primary" @click="tel(card.mobile || card.phone)">📞 打电话</button>
+        <button class="btn btn-ghost" @click="saveContact">存入通讯录</button>
+        <button class="btn btn-ghost" @click="qrModal = true">二维码</button>
       </div>
+      <button class="share-fab" @click="doShare" aria-label="分享名片">↗<span>分享</span></button>
     </template>
 
     <!-- 可收缩侧边菜单 -->
@@ -165,6 +166,7 @@
           <router-link to="/me" @click="menuOpen = false"><i>▤</i>我的名片</router-link>
           <router-link to="/me/card" @click="menuOpen = false"><i>✎</i>编辑资料</router-link>
           <router-link :to="`/c/${card?.slug || ''}`" @click="menuOpen = false"><i>↗</i>公开名片页</router-link>
+          <router-link to="/me/contacts" @click="menuOpen = false"><i>★</i>我的名片夹</router-link>
           <div class="drawer-sep">数据与运营</div>
           <button @click="scrollToStats"><i>📊</i>浏览统计</button>
           <router-link to="/me/plans" @click="menuOpen = false"><i>💎</i>套餐 / 续期</router-link>
@@ -360,8 +362,10 @@ function doLogout() { logout(); router.push('/') }
 .cv-qr-img img { width: 100%; height: 100%; }
 .cv-qr-info h3 { font-size: 15px; margin: 0 0 6px; }
 .cv-footer { text-align: center; font-size: 11px; color: var(--muted); padding: 24px 0 8px; }
-.cv-dock { position: fixed; bottom: 0; left: 0; right: 0; z-index: 15; display: flex; gap: 8px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: var(--bg-card); border-top: 1px solid var(--line); }
+.cv-dock { position: fixed; bottom: 0; left: 0; right: 0; z-index: 15; display: flex; gap: 8px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid #e2e8f0; }
 .cv-dock .btn { flex: 1; }
+.share-fab { position: fixed; right: 16px; bottom: calc(74px + env(safe-area-inset-bottom)); z-index: 18; width: 58px; height: 58px; border-radius: 50%; background: #2563eb; color: #fff; box-shadow: 0 8px 24px rgba(37,99,235,.42); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; font-size: 20px; }
+.share-fab span { font-size: 10px; }
 
 .dash-progress-block { margin-top: 12px; }
 .progress-head { display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
@@ -376,19 +380,19 @@ function doLogout() { logout(); router.push('/') }
 .check-item.done .check-label { color: var(--muted); }
 .check-arrow { color: var(--muted); }
 
-.drawer-mask { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.4); }
-.drawer { position: absolute; left: 0; top: 0; bottom: 0; width: min(82vw, 320px); background: var(--bg-card); display: flex; flex-direction: column; animation: slideIn .22s ease; }
+.drawer-mask { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.55); }
+.drawer { position: absolute; left: 0; top: 0; bottom: 0; width: min(86vw, 340px); max-width: 100%; background: #fff; color: #0f172a; display: flex; flex-direction: column; animation: slideIn .22s ease; box-shadow: 4px 0 24px rgba(0,0,0,.25); }
 @keyframes slideIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }
-.drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 16px; background: var(--primary); color: #fff; }
+.drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 16px; background: #2563eb; color: #fff; flex: 0 0 auto; }
 .drawer-head b { display: block; font-size: 14px; }
 .drawer-head span { color: rgba(255,255,255,.7); }
 .drawer-head .dash-icon { background: rgba(255,255,255,.16); }
-.drawer-nav { flex: 1; overflow-y: auto; padding: 8px 0; }
-.drawer-nav a, .drawer-nav button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 18px; font-size: 14px; color: var(--text); text-align: left; }
-.drawer-nav a:hover, .drawer-nav button:hover { background: var(--bg-page); }
+.drawer-nav { flex: 1; overflow-y: auto; padding: 8px 0; background: #fff; }
+.drawer-nav a, .drawer-nav button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 18px; font-size: 14px; color: #0f172a; text-align: left; }
+.drawer-nav a:hover, .drawer-nav button:hover { background: #f1f5f9; }
 .drawer-nav i { width: 22px; text-align: center; font-style: normal; }
-.drawer-sep { padding: 14px 18px 6px; font-size: 11px; color: var(--muted); }
-.drawer-foot { padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
+.drawer-sep { padding: 14px 18px 6px; font-size: 11px; color: #64748b; }
+.drawer-foot { padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid #e2e8f0; background: #fff; flex: 0 0 auto; }
 .dash-data { margin-top: 24px; padding-bottom: 20px; }
 /* 联络卡模板在工作台的呼应 */
 .dash-tpl-contact .cv-cover { background: linear-gradient(135deg,#0b1a3a 0%,#1e40af 58%,#3b82f6 100%); }
