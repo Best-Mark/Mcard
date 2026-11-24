@@ -58,7 +58,7 @@
           <div class="pc-quick">
             <button @click="$router.push('/me/card')"><i>✎</i>编辑资料</button>
             <button @click="$router.push('/me/card?focus=appearance')"><i>🎨</i>模板配色</button>
-            <button @click="$router.push('/me/card?focus=materials')"><i>📚</i>资料夹</button>
+            <button @click="$router.push('/me/card?focus=materials')"><i>📚</i>相册</button>
             <button @click="$router.push('/me/print')"><i>🖨</i>实体版式</button>
             <button @click="$router.push('/me/contacts')"><i>▤</i>名片夹</button>
             <button @click="$router.push('/me/batch-scan')"><i>📷</i>展会连扫</button>

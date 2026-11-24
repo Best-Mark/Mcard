@@ -14,8 +14,8 @@
     <template v-else-if="info">
       <div class="container mv-main">
         <div class="mv-head card card-pad">
-          <h1>{{ info.owner.name || '名片主人' }} 分享的资料</h1>
-          <p class="small muted">共 {{ list.length }} 份 · 点开查看，资料末尾可扫码保存这张名片</p>
+          <h1>{{ info.owner.name || '名片主人' }} 分享的相册</h1>
+          <p class="small muted">共 {{ list.length }} 项 · 点开查看</p>
         </div>
 
         <div v-for="m in list" :key="m.id" class="card card-pad mv-item">

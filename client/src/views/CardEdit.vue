@@ -159,11 +159,11 @@
             <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
           </div>
 
-          <!-- ⑧ 资料夹 -->
+          <!-- ⑧ 相册（内部字段名仍为 materials） -->
           <div v-show="active === 'materials'" class="card card-pad" id="focus-materials">
-            <div class="section-title" style="margin-top:0">资料夹 <span class="small muted">· 让名片成为获客入口</span></div>
-            <p class="small muted" style="margin-bottom:12px">挂上产品册、作品集、报价单或公众号文章，分享出去的每一份资料末尾都带你的名片落款二维码——对方扫码即可存下你的名片。微信扫一扫可直接打开。</p>
-            <div v-if="!materials.length" class="small muted" style="padding:12px 0">还没有资料，添加第一条吧。</div>
+            <div class="section-title" style="margin-top:0">相册</div>
+            <p class="small muted" style="margin-bottom:12px">图片、产品册、作品集或链接，访客在名片上点开即看，无需跳转。</p>
+            <div v-if="!materials.length" class="small muted" style="padding:12px 0">还没有内容，添加第一项吧。</div>
             <div v-for="(m, i) in materials" :key="m.id || m._k || i" class="material-row">
               <div class="mr-head">
                 <select v-model="m.type" class="input mr-type">
@@ -173,13 +173,13 @@
                 <button class="btn btn-sm btn-danger" @click="materials.splice(i, 1)">删</button>
               </div>
               <div class="mr-url">
-                <input v-model="m.url" class="input" :placeholder="m.type === 'link' ? 'https://…' : '上传文件或粘贴链接'" />
-                <label v-if="m.type === 'file'" class="btn btn-sm btn-ghost upload-btn">上传文件
+                <input v-model="m.url" class="input" :placeholder="m.type === 'link' ? 'https://…' : '上传图片/文件或粘贴链接'" />
+                <label v-if="m.type === 'file'" class="btn btn-sm btn-ghost upload-btn">上传图片/文件
                   <input type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" @change="e => uploadMaterial(e, m)" />
                 </label>
               </div>
             </div>
-            <button class="btn btn-sm btn-ghost" @click="addMaterial">+ 添加资料</button>
+            <button class="btn btn-sm btn-ghost" @click="addMaterial">+ 添加一项</button>
             <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
           </div>
 
@@ -368,7 +368,7 @@ const sections = computed(() => [
   { key: 'contact', label: '联系方式', icon: '📞', done: !!(form.value.mobile || form.value.phone || form.value.email || form.value.wechat || form.value.address) },
   { key: 'qr', label: '二维码', icon: '▦', done: !!(form.value.wechat_qr || form.value.alipay_qr || form.value.wechat_pay_qr || form.value.alipay_pay_qr) },
   { key: 'links', label: '更多链接', icon: '🔗', done: !!(form.value.website || form.value.shop_url || form.value.links?.length) },
-  { key: 'materials', label: '资料夹', icon: '📚', done: !!materials.value.length },
+  { key: 'materials', label: '相册', icon: '📚', done: !!materials.value.length },
   { key: 'market', label: '名片集市', icon: '🧭', done: !!form.value.market_opt_in },
   { key: 'appearance', label: '外观风格', icon: '🎨', done: true }
 ])

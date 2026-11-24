@@ -95,9 +95,17 @@
           <view class="hint">小程序内无法直接唤起所有地图，地址复制后打开高德/百度/Apple 地图粘贴即可导航。</view>
         </view>
 
-        <view v-if="materials.length" class="card block" @tap="goMaterials">
-          <view class="section">资料夹 · {{ materials.length }} 份 <text class="muted small">（产品册/作品，末尾可扫码存名片）</text></view>
-          <view v-for="m in materials.slice(0, 3)" :key="m.id" class="m-row"><text>{{ m.type === 'file' ? '📄' : '🔗' }}</text><text class="m-title">{{ m.title }}</text><text class="m-more">›</text></view>
+        <view v-if="materials.length" class="card block">
+          <view class="section">相册 · {{ materials.length }} 项 <text class="muted small">（点开直接看）</text></view>
+          <view class="gal">
+            <block v-for="m in materials" :key="m.id">
+              <image v-if="isImageMaterial(m)" class="gal-img" :src="materialUrl(m)" mode="aspectFill" @tap="openPhoto(m)" />
+              <view v-else class="gal-file" @tap="openMaterial(m)">
+                <text class="gal-ico">{{ m.type === 'file' ? '📄' : '🔗' }}</text>
+                <text class="gal-title">{{ m.title }}</text>
+              </view>
+            </block>
+          </view>
         </view>
 
         <view class="card qr-card">
@@ -227,7 +235,27 @@ onLoad(options => {
   if (options.scene || options.src) entrySrc.value = options.src || 'qr'
   load()
 })
-function goMaterials() { uni.navigateTo({ url: '/pages/materials/materials?slug=' + slug.value }) }
+// 相册直看：图片用系统预览（可放大保存），网页/文档复制链接去浏览器，不跳中间页
+function isImageMaterial(m) {
+  return !!(m && m.type === 'file' && m.url && /\.(png|jpe?g|gif|webp|bmp|svg)(\?|$)/i.test(m.url))
+}
+function materialUrl(m) {
+  const u = m.url || ''
+  return u.startsWith('/') ? baseUrl + u : u
+}
+function openPhoto(m) {
+  const urls = materials.value.filter(isImageMaterial).map(materialUrl)
+  const current = materialUrl(m)
+  uni.previewImage({ current, urls })
+  countView(m)
+}
+function openMaterial(m) {
+  copyText(materialUrl(m), '链接已复制，请粘贴到浏览器打开')
+  countView(m)
+}
+function countView(m) {
+  api.post(`/api/cards/public/materials/${m.id}/view`).catch(() => {})
+}
 
 function copyContact() {
   if (!card.value) return
@@ -289,10 +317,12 @@ onShareAppMessage(() => ({
 .act::after { border: 0; }
 .ico { width: 68rpx; height: 68rpx; border-radius: 50%; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 30rpx; font-weight: 700; }
 .section { font-size: 30rpx; font-weight: 700; margin-bottom: 12rpx; }
-.m-row { display: flex; align-items: center; gap: 14rpx; padding: 14rpx 0; border-bottom: 1rpx solid #eef2f7; font-size: 26rpx; }
-.m-row:last-child { border-bottom: 0; }
-.m-title { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.m-more { color: #2563eb; font-size: 32rpx; }
+/* 相册：图片点开用系统预览，链接/文档直接复制，不跳中间页 */
+.gal { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14rpx; }
+.gal-img { width: 100%; aspect-ratio: 1; border-radius: 12rpx; background: #eef2f7; }
+.gal-file { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8rpx; aspect-ratio: 1; border-radius: 12rpx; background: #eff6ff; padding: 10rpx; box-sizing: border-box; }
+.gal-ico { font-size: 40rpx; }
+.gal-title { font-size: 22rpx; color: #334155; text-align: center; line-height: 1.3; max-height: 58rpx; overflow: hidden; }
 .content { font-size: 26rpx; color: #475569; line-height: 1.7; }
 .link { display: flex; flex-direction: column; padding: 14rpx 0; border-bottom: 2rpx solid #f1f5f9; }
 .link .b { font-size: 26rpx; font-weight: 600; }

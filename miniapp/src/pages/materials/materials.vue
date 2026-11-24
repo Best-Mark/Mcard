@@ -2,7 +2,7 @@
   <view class="page">
     <view class="bar">
       <text class="back" @tap="back">‹</text>
-      <text class="title">资料夹</text>
+      <text class="title">相册</text>
     </view>
 
     <view v-if="loading" class="state">加载中…</view>
@@ -12,8 +12,8 @@
     </view>
     <template v-else>
       <view class="head card">
-        <text class="h-title">{{ owner?.name || '名片主人' }} 分享的资料</text>
-        <text class="muted small">共 {{ list.length }} 份 · 末尾可扫码存名片</text>
+        <text class="h-title">{{ owner?.name || '名片主人' }} 分享的相册</text>
+        <text class="muted small">共 {{ list.length }} 项 · 点开查看</text>
       </view>
 
       <view v-for="m in list" :key="m.id" class="item card">

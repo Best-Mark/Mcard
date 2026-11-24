@@ -28,7 +28,7 @@ export const DRAWER_GROUPS = [
       { label: '编辑资料', ico: '✎', kind: 'route', path: '/me/card' },
       { label: '模板与配色', ico: '🎨', kind: 'route', path: '/me/card?focus=appearance' },
       { label: '完善资料', ico: '📝', kind: 'route', path: '/me/card?focus=bio' },
-      { label: '资料夹（产品册/作品）', ico: '📚', kind: 'route', path: '/me/card?focus=materials' },
+      { label: '相册（图片/作品）', ico: '📚', kind: 'route', path: '/me/card?focus=materials' },
       { label: '实体名片版式', ico: '🖨', kind: 'route', path: '/me/print' }
     ]
   },

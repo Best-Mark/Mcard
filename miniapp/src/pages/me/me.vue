@@ -28,7 +28,7 @@
       <view class="grid">
         <view class="cell" @tap="go('/pages/card/card?slug=' + card.slug)"><view class="ico">◎</view><view>查看名片</view></view>
         <view class="cell" @tap="go('/pages/edit/edit')"><view class="ico">✎</view><view>编辑资料</view></view>
-        <view class="cell" @tap="go('/pages/materials/materials?slug=' + card.slug)"><view class="ico">📚</view><view>资料夹</view></view>
+        <view class="cell" @tap="go('/pages/materials/materials?slug=' + card.slug)"><view class="ico">📚</view><view>相册</view></view>
         <view class="cell" @tap="go('/pages/notifications/notifications')"><view class="ico">🔔</view><view>消息通知<text v-if="unread" class="cdot">{{ unread }}</text></view></view>
         <view class="cell" @tap="go('/pages/batch-scan/batch-scan')"><view class="ico">📷</view><view>展会连扫</view></view>
         <view class="cell" @tap="go('/pages/plans/plans')"><view class="ico">¥</view><view>开通 / 续期</view></view>

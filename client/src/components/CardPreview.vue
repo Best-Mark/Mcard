@@ -68,7 +68,7 @@
         </div>
 
         <div v-if="materials.length" class="cp-block" data-sec="materials">
-          <h3>资料夹 <span>· 点击查看</span></h3>
+          <h3>相册 <span>· 点开直接看</span></h3>
           <div v-for="(m, i) in materials" :key="m.id || i" class="cp-material-row">
             <span><AppIcon :name="m.type === 'file' ? 'file' : 'link'" :size="16" /></span>
             <span class="cp-material-title">{{ m.title || '未命名资料' }}</span>

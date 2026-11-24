@@ -79,13 +79,21 @@
           </div>
         </div>
 
-        <div v-if="materialsList.length" class="card card-pad cv-block">
-          <h3>资料夹 <span class="small muted">· 点击查看，可扫码存我名片</span></h3>
-          <router-link v-for="m in materialsList" :key="m.id" :to="`/m/${card.slug}`" class="cv-material-row">
-            <span class="cv-material-ico"><AppIcon :name="m.type === 'file' ? 'file' : 'link'" :size="18" /></span>
-            <span class="cv-material-title">{{ m.title }}</span>
-            <span class="cv-material-more">查看 ›</span>
-          </router-link>
+        <div v-if="materialsList.length" class="card card-pad cv-block" data-sec="materials">
+          <h3>相册 <span class="small muted">· 点开直接看</span></h3>
+          <div class="cv-gallery">
+            <template v-for="m in materialsList" :key="m.id">
+              <button v-if="isImageMaterial(m)" class="cv-gallery-cell" @click="openGallery(m)">
+                <img :src="fullUrl(m.url)" :alt="m.title" loading="lazy" />
+                <span>{{ m.title }}</span>
+              </button>
+              <button v-else class="cv-gallery-cell cv-gallery-file" @click="openMaterial(m)">
+                <span class="cv-gallery-file-ico"><AppIcon :name="m.type === 'file' ? 'file' : 'link'" :size="24" /></span>
+                <span>{{ m.title }}</span>
+                <small>{{ m.type === 'link' ? '网页链接' : '文件' }}</small>
+              </button>
+            </template>
+          </div>
         </div>
 
         <div v-if="siteLinks.length" class="card card-pad cv-block">
@@ -204,6 +212,23 @@
       </div>
     </div>
 
+    <!-- 相册大图：点缩略图直接看，不跳中间页；底部保留存名片入口 -->
+    <div v-if="galleryIndex >= 0" class="modal-mask gallery-mask" @click.self="galleryIndex = -1">
+      <div class="gallery-viewer">
+        <img :src="fullUrl(imageMaterials[galleryIndex]?.url)" :alt="imageMaterials[galleryIndex]?.title" />
+        <div class="gallery-cap">
+          <span class="small">{{ imageMaterials[galleryIndex]?.title }}</span>
+          <span class="small muted">{{ galleryIndex + 1 }} / {{ imageMaterials.length }}</span>
+        </div>
+        <div class="btn-row" style="justify-content:center;gap:8px">
+          <button class="btn btn-ghost" :disabled="galleryIndex <= 0" @click="galleryIndex--">上一张</button>
+          <button class="btn btn-ghost" :disabled="galleryIndex >= imageMaterials.length - 1" @click="galleryIndex++">下一张</button>
+        </div>
+        <button class="btn btn-primary" style="margin-top:8px" @click="vcardQrModal = true; galleryIndex = -1">存入通讯录</button>
+        <button class="btn btn-ghost" style="margin-top:6px" @click="galleryIndex = -1">关闭</button>
+      </div>
+    </div>
+
     <!-- 保存引导：微信内引导去浏览器；Safari/iOS 长按图片保存 -->
     <div v-if="guide" class="modal-mask" @click.self="guide = ''">
       <div class="modal">
@@ -268,6 +293,27 @@ const mapOpen = ref(false)
 const mySlug = ref(''); const exchanging = ref(false)
 const favorite = ref(false); const favBusy = ref(false)
 const materialsList = ref([])
+const galleryIndex = ref(-1)
+const imageMaterials = computed(() => materialsList.value.filter(m => isImageMaterial(m)))
+// 相册直看：图片是可预览的图片文件链接，其余（网页/文档）直接打开不跳页
+function isImageMaterial(m) {
+  if (!m || m.type !== 'file' || !m.url) return false
+  return /\.(png|jpe?g|gif|webp|bmp|svg)(\?|$)/i.test(m.url)
+}
+function openGallery(m) {
+  const idx = imageMaterials.value.findIndex(x => x.id === m.id)
+  galleryIndex.value = idx < 0 ? 0 : idx
+  countMaterialView(m)
+}
+async function openMaterial(m) {
+  const u = m.type === 'link' ? safeUrl(m.url) : fullUrl(m.url)
+  if (!u || u === '#') return showToast('链接无效')
+  countMaterialView(m)
+  windowRef.open(u, '_blank', 'noopener')
+}
+async function countMaterialView(m) {
+  try { await api.post(`/api/cards/public/materials/${m.id}/view`) } catch { /* 计数失败不影响查看 */ }
+}
 
 const t = computed(() => themeOf({ theme: currentTheme.value, accent: card.value?.accent }))
 const vars = computed(() => themeVars(t.value))
@@ -603,6 +649,18 @@ async function toggleFavorite() {
 .cv-material-title { flex: 1; min-width: 0; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cv-material-more { font-size: 12px; color: var(--t-accent); }
 .cv-geo-hint { margin-top: 6px; font-variant-numeric: tabular-nums; }
+/* 相册：图片缩略图直看，链接/文档点开直跳，不再绕中间资料页 */
+.cv-gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.cv-gallery-cell { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--t-bg); min-width: 0; }
+.cv-gallery-cell img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; background: #fff; }
+.cv-gallery-cell > span:not(.cv-gallery-file-ico) { font-size: 10px; line-height: 1.3; width: 100%; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cv-gallery-file { justify-content: center; min-height: 96px; }
+.cv-gallery-file-ico { width: 100%; aspect-ratio: 1; display: grid; place-items: center; border-radius: 6px; background: color-mix(in srgb, var(--t-accent) 12%, transparent); color: var(--t-accent); }
+.cv-gallery-file small { font-size: 9px; color: var(--t-muted); }
+.gallery-mask { z-index: 3000; }
+.gallery-viewer { width: min(92vw, 560px); max-height: 92vh; overflow-y: auto; background: var(--t-surface); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+.gallery-viewer > img { width: 100%; max-height: 68vh; object-fit: contain; background: #fff; border-radius: 8px; }
+.gallery-cap { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .cv-maps { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .cv-maps a { font-size: 12px; padding: 6px 10px; border-radius: 8px; background: rgba(0,0,0,.05); background: color-mix(in srgb, var(--t-accent) 12%, transparent); color: var(--t-accent); font-weight: 600; }
 /* 导航入口：地址区只留一个「导航到此处」，点底部「导航」或此处再选地图 */

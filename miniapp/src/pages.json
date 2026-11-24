@@ -6,7 +6,7 @@
     { "path": "pages/market/market", "style": { "navigationBarTitleText": "名片集市", "enablePullDownRefresh": true } },
     { "path": "pages/me/me", "style": { "navigationBarTitleText": "我的名片" } },
     { "path": "pages/notifications/notifications", "style": { "navigationBarTitleText": "消息通知" } },
-    { "path": "pages/materials/materials", "style": { "navigationBarTitleText": "资料夹" } },
+    { "path": "pages/materials/materials", "style": { "navigationBarTitleText": "相册" } },
     { "path": "pages/batch-scan/batch-scan", "style": { "navigationBarTitleText": "展会连扫" } },
     { "path": "pages/assets/assets", "style": { "navigationBarTitleText": "图片素材库" } },
     { "path": "pages/edit/edit", "style": { "navigationBarTitleText": "编辑资料" } },
