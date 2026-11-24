@@ -2,11 +2,11 @@
   <div class="dash-page" :class="'dash-tpl-' + (card?.template || 'classic')" :style="cardVars">
     <!-- 顶部栏：品牌 + 分享/扫码 + 菜单 -->
     <header class="dash-top">
-      <button class="dash-icon" aria-label="菜单" @click="menuOpen = true">☰</button>
       <router-link to="/" class="dash-brand">M<em>Card</em></router-link>
       <div class="spacer"></div>
       <button class="dash-icon" aria-label="分享名片" @click="doShare">↗</button>
       <button class="dash-icon" aria-label="二维码" @click="qrModal = true">▦</button>
+      <button class="dash-icon" aria-label="菜单" @click="menuOpen = true">☰</button>
     </header>
 
     <!-- 加载 / 错误 / 未创建 -->
@@ -381,8 +381,8 @@ function doLogout() { logout(); router.push('/') }
 .check-arrow { color: var(--muted); }
 
 .drawer-mask { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.55); }
-.drawer { position: absolute; left: 0; top: 0; bottom: 0; width: min(86vw, 340px); max-width: 100%; background: #fff; color: #0f172a; display: flex; flex-direction: column; animation: slideIn .22s ease; box-shadow: 4px 0 24px rgba(0,0,0,.25); }
-@keyframes slideIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+.drawer { position: absolute; right: 0; left: auto; top: 0; bottom: 0; width: min(86vw, 340px); max-width: 100%; background: #fff; color: #0f172a; display: flex; flex-direction: column; animation: slideIn .22s ease; box-shadow: -4px 0 24px rgba(0,0,0,.25); }
+@keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
 .drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 16px; background: #2563eb; color: #fff; flex: 0 0 auto; }
 .drawer-head b { display: block; font-size: 14px; }
 .drawer-head span { color: rgba(255,255,255,.7); }

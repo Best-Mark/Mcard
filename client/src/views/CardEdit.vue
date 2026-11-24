@@ -17,8 +17,18 @@
       </div>
 
       <div class="edit-layout">
-        <div>
-          <div class="card card-pad" id="focus-identity">
+        <!-- 分类导航：一次只显示一类，避免长表单吓跑用户 -->
+        <nav class="edit-nav">
+          <button v-for="s in sections" :key="s.key" :class="{ on: active === s.key }" @click="active = s.key">
+            <span class="nav-ico">{{ s.icon }}</span>
+            <span class="nav-label">{{ s.label }}</span>
+            <span v-if="s.done" class="nav-done">✓</span>
+          </button>
+        </nav>
+
+        <div class="edit-content">
+          <!-- ① 身份信息 -->
+          <div v-show="active === 'identity'" class="card card-pad" id="focus-identity">
             <div class="section-title" style="margin-top:0">基本信息</div>
             <div class="avatar-row">
               <div class="avatar-preview">
@@ -43,15 +53,20 @@
               <div class="field"><label>职位</label><input v-model="form.title" class="input" maxlength="60" /></div>
               <div class="field"><label>公司</label><input v-model="form.company" class="input" maxlength="60" /></div>
               <div class="field"><label>部门</label><input v-model="form.department" class="input" maxlength="40" /></div>
-              <div class="field"><label>公司主页 URL</label><input v-model="form.website" class="input" placeholder="https://" /></div>
-              <div class="field"><label>店铺 URL</label><input v-model="form.shop_url" class="input" placeholder="https:// 淘宝 / 抖音 / 微店等" /></div>
             </div>
+          </div>
+
+          <!-- ② 简介与标签 -->
+          <div v-show="active === 'bio'" class="card card-pad" id="focus-bio">
+            <div class="section-title" style="margin-top:0">简介与标签</div>
+            <p class="small muted" style="margin-bottom:12px">一句话介绍，让对方快速知道你是谁、做什么。</p>
             <div class="field"><label>个人简介</label><textarea v-model="form.bio" class="textarea" maxlength="600" placeholder="一句话介绍自己，展示在名片首页"></textarea></div>
             <div class="field"><label>公司简介</label><textarea v-model="form.company_intro" class="textarea" maxlength="1000" placeholder="介绍公司业务、优势与服务，展示在名片「公司简介」区块，并写入通讯录备注"></textarea></div>
             <div class="field"><label>标签（逗号分隔，最多 8 个）</label><input v-model="tagsText" class="input" placeholder="品牌顾问, 设计, 马拉松" /></div>
           </div>
 
-          <div class="card card-pad" style="margin-top:14px" id="focus-contact">
+          <!-- ③ 联系方式 -->
+          <div v-show="active === 'contact'" class="card card-pad" id="focus-contact">
             <div class="section-title" style="margin-top:0">联系方式</div>
             <div class="grid2">
               <div class="field"><label>手机号</label><input v-model="form.mobile" class="input" inputmode="tel" /></div>
@@ -65,7 +80,8 @@
             <div class="field"><label>门牌 / 楼层补充</label><input v-model="form.address_detail" class="input" /></div>
           </div>
 
-          <div class="card card-pad" style="margin-top:14px">
+          <!-- ⑥ 名片集市 -->
+          <div v-show="active === 'market'" class="card card-pad">
             <div class="section-title" style="margin-top:0">名片集市 <span class="small muted">· 按距离发现业务对口</span></div>
             <p class="small muted" style="margin-bottom:12px">开启后，你的名片会出现在名片集市，附近及同行业的人可按距离找到你。仅展示姓名、职位、公司、行业、城市与简介，联系方式不会公开；可随时关闭下架。</p>
             <div class="field"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" v-model="form.market_opt_in" /> 加入名片集市（主动上架）</label></div>
@@ -94,7 +110,8 @@
             <p v-if="form.market_opt_in && form.latitude == null" class="small" style="color:#b45309">已开启上架但尚无坐标，请选城市或精确定位，否则在集市中会排在末尾。</p>
           </div>
 
-          <div class="card card-pad" style="margin-top:14px" id="focus-qr">
+          <!-- ④ 二维码 -->
+          <div v-show="active === 'qr'" class="card card-pad" id="focus-qr">
             <div class="section-title" style="margin-top:0">加好友 / 收付款二维码</div>
             <p class="small muted" style="margin-bottom:12px">上传微信 / 支付宝的「加好友码」或「收款码」原图，访客在自己常用的 App 环境里可长按识别或保存后扫码。请只上传自己本人的二维码。</p>
             <div v-for="q in qrFields" :key="q.key" class="qr-upload-row">
@@ -108,8 +125,14 @@
             </div>
           </div>
 
-          <div class="card card-pad" style="margin-top:14px" id="focus-links">
+          <!-- ⑤ 更多链接 -->
+          <div v-show="active === 'links'" class="card card-pad" id="focus-links">
             <div class="section-title" style="margin-top:0">更多链接</div>
+            <p class="small muted" style="margin-bottom:10px">公司主页、店铺、作品集等，同时写入通讯录备注。</p>
+            <div class="grid2">
+              <div class="field"><label>公司主页 URL</label><input v-model="form.website" class="input" placeholder="https://" /></div>
+              <div class="field"><label>店铺 URL</label><input v-model="form.shop_url" class="input" placeholder="https:// 淘宝 / 抖音 / 微店等" /></div>
+            </div>
             <div v-for="(l, i) in form.links" :key="i" class="link-row">
               <input v-model="l.label" class="input" placeholder="标题，如 我的作品集" />
               <input v-model="l.url" class="input" placeholder="https://" />
@@ -118,7 +141,8 @@
             <button class="btn btn-sm btn-ghost" @click="form.links.push({ label: '', url: '' })">+ 添加链接</button>
           </div>
 
-          <div class="card card-pad" style="margin-top:14px">
+          <!-- ⑦ 外观（模板 + 主题） -->
+          <div v-show="active === 'appearance'" class="card card-pad">
             <div class="section-title" style="margin-top:0">展示模板</div>
             <p class="small muted" style="margin-bottom:10px">模板决定名片排版结构，主题风格决定配色，两者可自由搭配。</p>
             <div class="tpl-list">
@@ -134,7 +158,7 @@
             <div v-if="!templates.length" class="small muted">模板列表加载中，请稍候…</div>
           </div>
 
-          <div class="card card-pad" style="margin-top:14px">
+          <div v-show="active === 'appearance'" class="card card-pad" style="margin-top:14px">
             <div class="section-title" style="margin-top:0">主题风格与二维码</div>
             <div class="field"><label>主题风格</label>
               <div class="theme-list">
@@ -216,6 +240,16 @@ const blank = {
   qr_fg: '#0f172a', qr_bg: '#ffffff', qr_logo: true
 }
 const form = ref({ ...blank })
+const active = ref('identity')
+const sections = computed(() => [
+  { key: 'identity', label: '身份信息', icon: '👤', done: !!(form.value.name && (form.value.title || form.value.company)) },
+  { key: 'bio', label: '简介与标签', icon: '📝', done: !!(form.value.bio || form.value.company_intro || tagList.value.length) },
+  { key: 'contact', label: '联系方式', icon: '📞', done: !!(form.value.mobile || form.value.phone || form.value.email || form.value.wechat || form.value.address) },
+  { key: 'qr', label: '二维码', icon: '▦', done: !!(form.value.wechat_qr || form.value.alipay_qr || form.value.wechat_pay_qr || form.value.alipay_pay_qr) },
+  { key: 'links', label: '更多链接', icon: '🔗', done: !!(form.value.website || form.value.shop_url || form.value.links?.length) },
+  { key: 'market', label: '名片集市', icon: '🧭', done: !!form.value.market_opt_in },
+  { key: 'appearance', label: '外观风格', icon: '🎨', done: true }
+])
 const templates = ref([])
 const marketMeta = ref({ industries: [], cities: [] })
 const locating = ref(false)
@@ -253,10 +287,9 @@ onMounted(async () => {
   loadTemplates()
   loadMarketMeta()
   await loadCard()
-  // 从「我的名片」板块编辑入口进来时，按 focus 定位到对应资料区块
+  // 从「我的名片」板块编辑入口进来时，直接切到对应分类
   const focus = String(route.query.focus || '')
-  const id = { identity: 'focus-identity', bio: 'focus-identity', contact: 'focus-contact', qr: 'focus-qr', links: 'focus-links' }[focus]
-  if (id) setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+  if (['identity', 'bio', 'contact', 'qr', 'links', 'market', 'appearance'].includes(focus)) active.value = focus
 })
 
 async function loadTemplates() {
@@ -329,8 +362,22 @@ async function save() {
 </script>
 
 <style scoped>
-.edit-layout { display: grid; grid-template-columns: 1fr 280px; gap: 18px; align-items: start; }
-@media (max-width: 900px) { .edit-layout { grid-template-columns: 1fr; } .preview-panel { display: none; } }
+.edit-layout { display: grid; grid-template-columns: 168px minmax(0, 1fr) 260px; gap: 16px; align-items: start; }
+.edit-nav { display: flex; flex-direction: column; gap: 4px; position: sticky; top: 72px; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 8px; }
+.edit-nav button { display: flex; align-items: center; gap: 9px; width: 100%; padding: 10px 11px; border-radius: 9px; font-size: 13px; color: var(--text); text-align: left; }
+.edit-nav button:hover { background: var(--bg-page); }
+.edit-nav button.on { background: #eff6ff; color: var(--primary); font-weight: 700; }
+.nav-ico { width: 20px; text-align: center; font-size: 14px; }
+.nav-label { flex: 1; }
+.nav-done { color: var(--ok); font-size: 11px; }
+.edit-content { min-width: 0; }
+@media (max-width: 1080px) { .edit-layout { grid-template-columns: 168px minmax(0, 1fr); } .preview-panel { display: none; } }
+@media (max-width: 720px) {
+  .edit-layout { grid-template-columns: 1fr; }
+  .edit-nav { position: static; flex-direction: row; overflow-x: auto; white-space: nowrap; border-radius: 10px; padding: 6px; }
+  .edit-nav button { width: auto; flex: 0 0 auto; padding: 8px 12px; }
+  .nav-ico { display: none; }
+}
 .avatar-row { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
 .logo-current { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 12px; color: var(--muted); }
 .logo-current img { width: 48px; height: 48px; object-fit: contain; border: 1px solid var(--line); border-radius: 10px; background: #fff; padding: 4px; }
