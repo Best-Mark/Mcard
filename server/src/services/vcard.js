@@ -30,6 +30,9 @@ function build(card, baseUrl) {
   if (card.wechat) extra.push(`微信：${card.wechat}`)
   if (card.alipay) extra.push(`支付宝：${card.alipay}`)
   if (card.whatsapp) extra.push(`WhatsApp：${card.whatsapp}`)
+  // 网址只放名片地址：通讯录「主页」点进去必须回到名片（名片里有相册），
+  // 公司主页/店铺移到备注保留信息，避免多 URL 让主网址变成公司站而断开通路
+  if (card.website) extra.push(`主页：${card.website}`)
   if (card.shop_url) extra.push(`店铺：${card.shop_url}`)
   if (extra.length) notes.push(extra.join('\n'))
   notes.push(`电子名片：${url}`)
@@ -48,7 +51,6 @@ function build(card, baseUrl) {
     card.address || card.address_detail
       ? `ADR;TYPE=WORK:;;${esc(card.address_detail)};${esc(card.address)};;;`
       : '',
-    card.website ? `URL;TYPE=WORK:${esc(card.website)}` : '',
     card.wechat ? `X-WECHAT:${esc(card.wechat)}` : '',
     card.alipay ? `X-ALIPAY:${esc(card.alipay)}` : '',
     `URL:${esc(url)}`,

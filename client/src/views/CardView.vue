@@ -423,6 +423,7 @@ function localVcard(c) {
   if (c.wechat) extra.push(`微信：${c.wechat}`)
   if (c.alipay) extra.push(`支付宝：${c.alipay}`)
   if (c.whatsapp) extra.push(`WhatsApp：${c.whatsapp}`)
+  if (c.website) extra.push(`主页：${c.website}`)
   if (c.shop_url) extra.push(`店铺：${c.shop_url}`)
   if (extra.length) notes.push(extra.join('\n'))
   notes.push(`电子名片：${url}`)
@@ -436,7 +437,6 @@ function localVcard(c) {
     c.phone ? `TEL;TYPE=WORK,VOICE:${esc(c.phone)}` : '',
     c.email ? `EMAIL;TYPE=INTERNET,WORK:${esc(c.email)}` : '',
     c.address || c.address_detail ? `ADR;TYPE=WORK:;;${esc(c.address_detail)};${esc(c.address)};;;` : '',
-    c.website ? `URL;TYPE=WORK:${esc(c.website)}` : '',
     `URL:${esc(url)}`,
     `NOTE:${esc(notes.filter(Boolean).join('\n'))}`,
     'END:VCARD'
