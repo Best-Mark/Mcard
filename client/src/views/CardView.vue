@@ -138,9 +138,9 @@
           </button>
           <div class="cv-qr-actions">
             <button class="btn btn-primary" @click="vcardQrModal = true">放大二维码</button>
-            <button class="btn btn-ghost" @click="saveContact">iPhone 一键添加</button>
+            <button class="btn btn-ghost" @click="saveContact">{{ contactActionLabel }}</button>
           </div>
-          <p class="small muted" style="margin-top:8px">也可点击底部「存入通讯录」，在 iPhone 上直接打开系统添加界面</p>
+          <p class="small muted" style="margin-top:8px">{{ contactActionTip }}</p>
         </div>
 
         <div class="card card-pad cv-block">
@@ -227,7 +227,7 @@
           <p>微信内置浏览器限制通讯录写入与下载。请点右上角「···」→ <b>在浏览器中打开</b>（已自动带上登录状态，无需再次登录），再点「存入通讯录」即可直接打开系统添加界面。</p>
         </template>
         <template v-else>
-          <p>iOS 不允许网页直接下载图片。<b>长按下方图片 → 存储到照片</b> 即可保存。</p>
+          <p v-html="saveTip"></p>
         </template>
         <img v-if="guide !== 'contact'" :src="guideImage || (qrApi + '/qr.svg?size=520')" style="width:200px;height:200px;margin:10px auto;object-fit:contain" alt="二维码" />
         <div class="btn-row">
@@ -257,7 +257,7 @@ import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
 import { showToast, auth, siteConfig } from '../store'
 import { THEMES, themeOf, themeVars } from '../utils/themes'
-import { isWeChat, isIOS, saveImageUrl, prepareExternalOpen, openVcfInline } from '../utils/save-image'
+import { isWeChat, isIOS, saveImageUrl, prepareExternalOpen, openVcfInline, deviceEnv, SAVE_IMAGE_TIPS } from '../utils/save-image'
 import { shareOrCopy, mapLinks } from '../utils/share'
 import { setupWechatShare, absoluteMediaUrl } from '../utils/wx-share'
 import { getCachedPosition } from '../utils/geo'
@@ -343,6 +343,18 @@ const isAlipay = () => /AlipayClient/i.test(navigator.userAgent || '')
 const fullUrl = u => (u ? new URL(u, windowRef.location.origin).href : '')
 // 模板里区分微信/Safari 的保存引导（微信→去浏览器，iOS→长按图片）
 const inWeChat = isWeChat()
+const deviceEnvKey = deviceEnv()
+const saveTip = SAVE_IMAGE_TIPS[deviceEnvKey] || SAVE_IMAGE_TIPS.other
+// 通讯录操作按环境出文案：iOS 直接开系统界面、Android/鸿蒙下载 vcf、微信引导去浏览器
+const CONTACT_ACTION = {
+  ios: { label: '打开通讯录', tip: '点此直接打开系统添加联系人界面' },
+  android: { label: '下载联系人', tip: '点此下载联系人文件，打开即可导入通讯录' },
+  harmony: { label: '下载联系人', tip: '点此下载联系人文件，打开即可导入通讯录' },
+  wechat: { label: '去浏览器添加', tip: '微信内无法直接写入通讯录，请点右上角「···」在浏览器中打开' },
+  other: { label: '添加联系人', tip: '点此下载联系人文件，打开即可导入通讯录' }
+}
+const contactActionLabel = (CONTACT_ACTION[deviceEnvKey] || CONTACT_ACTION.other).label
+const contactActionTip = (CONTACT_ACTION[deviceEnvKey] || CONTACT_ACTION.other).tip
 
 const contactQrs = computed(() => {
   const c = card.value || {}

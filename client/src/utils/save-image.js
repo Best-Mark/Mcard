@@ -1,5 +1,22 @@
-export const isWeChat = () => /MicroMessenger/i.test(navigator.userAgent || '')
-export const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent || '') || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+const UA = () => navigator.userAgent || ''
+export const isWeChat = () => /MicroMessenger/i.test(UA())
+export const isIOS = () => /iPad|iPhone|iPod/.test(UA()) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+// 环境判定的唯一真相源：微信优先（它是一层壳，底层系统已被限制），再分 iOS/Android/鸿蒙/其它。
+// 所有「长按/扫码/去浏览器」类提示必须按这里的结果出文案，禁止在 Android 上写 iPhone 提示（反之亦然）。
+export function deviceEnv() {
+  if (isWeChat()) return 'wechat'
+  if (isIOS()) return 'ios'
+  if (/HarmonyOS|ArkWeb|HuaweiBrowser/i.test(UA())) return 'harmony'
+  if (/Android|Adr/i.test(UA())) return 'android'
+  return 'other'
+}
+// 各环境保存图片/二维码的操作指引（系统相关文案集中在此，UI 只取用）
+export const SAVE_IMAGE_TIPS = {
+  ios: 'iOS 不允许网页直接下载图片。长按下方图片 → 存储到照片 即可保存。',
+  android: '长按下方图片 → 保存到相册 即可保存；若长按无菜单，点「保存二维码图片」由浏览器下载。',
+  harmony: '长按下方图片 → 保存到相册 即可保存；若长按无菜单，点「保存二维码图片」由浏览器下载。',
+  other: '长按下方图片保存到本地；或点「保存二维码图片」由浏览器下载。'
+}
 
 // iOS Safari 访问「以 .vcf 结尾 + 服务端无 attachment 头」的直链才会弹系统添加联系人。
 // 绝不能带 ?query（Safari 会当普通下载），服务端已按 UA 自动去掉 attachment。
