@@ -613,8 +613,9 @@ async function saveSection(key, silent = false) {
     if (!silent) showToast('已保存', 'success')
     autoSaveText.value = '✓ 已保存 · 右侧预览始终最新'
   } catch (e) {
-    autoSaveText.value = '保存失败，请检查网络后修改任意字段重试'
-    if (!silent) showToast(e.message, 'error')
+    const msg = e.message || '保存失败，请检查网络后重试'
+    autoSaveText.value = `⚠ ${msg}`
+    if (!silent) showToast(msg, 'error')
   } finally { saving.value = false }
 }
 

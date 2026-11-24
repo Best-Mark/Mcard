@@ -398,6 +398,43 @@ const FIELD_LABELS = {
   website: '主页', shop_url: '店铺', bio: '简介', industry: '行业'
 }
 
+// 保存前的格式校验（唯一真相源在服务端，三端共用）：空值放过，只允许合法格式落库。
+// 手机号兼容国际区号 + 分隔符；座机兼容区号/分机；邮箱常规校验；网址必须 http(s)。
+const FORMAT_RULES = {
+  mobile: {
+    re: /^\+?[\d][\d\s-]{5,19}$/,
+    hint: '手机号格式不正确（支持国际区号，可含空格或横线）'
+  },
+  phone: {
+    re: /^\+?[\d][\d\s-]{5,19}$/,
+    hint: '座机格式不正确（可含区号、横线或分机号）'
+  },
+  whatsapp: {
+    re: /^\+?[\d][\d\s-]{5,19}$/,
+    hint: 'WhatsApp 需填电话号码（支持国际区号）'
+  },
+  email: {
+    re: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+    hint: '邮箱格式不正确'
+  },
+  website: {
+    re: /^https?:\/\/[^\s]+$/i,
+    hint: '公司主页需填完整的 http(s) 网址'
+  },
+  shop_url: {
+    re: /^https?:\/\/[^\s]+$/i,
+    hint: '店铺网址需填完整的 http(s) 网址'
+  }
+}
+// 校验输入：空值合法（ wiping 字段）；非空按规则校验。返回错误提示或空串。
+function validateFieldFormat(key, value) {
+  const rule = FORMAT_RULES[key]
+  if (!rule) return ''
+  const s = String(value ?? '').trim()
+  if (!s) return ''
+  return rule.re.test(s) ? '' : rule.hint
+}
+
 router.put('/mine', authRequired, wrap((req, res) => {
   const row = db.prepare('SELECT * FROM cards WHERE user_id = ?').get(req.user.id)
   if (!row) return fail(res, 404, '请先创建名片')
@@ -437,6 +474,8 @@ router.put('/mine', authRequired, wrap((req, res) => {
     } else {
       v = String(v ?? '').slice(0, 2000)
     }
+    const formatError = validateFieldFormat(key, v)
+    if (formatError) return fail(res, 400, `${FIELD_LABELS[key] || key}${formatError}`)
     if (CARD_WATCH_FIELDS.includes(key) && String(row[key] ?? '') !== String(v ?? '')) {
       changedLabels.push(FIELD_LABELS[key] || key)
     }

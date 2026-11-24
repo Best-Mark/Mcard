@@ -37,7 +37,7 @@
         <div v-if="contactFields.length" class="cp-block" data-sec="contact">
           <h3>联系方式 <span>· 点右侧复制</span></h3>
           <div v-for="f in contactFields" :key="f.key" class="cp-contact-row">
-            <div class="cp-contact-label">{{ f.label }}</div>
+            <div class="cp-contact-label">{{ f.label }}：</div>
             <div class="cp-contact-value">{{ f.value }}</div>
             <button type="button" class="cp-mini-btn">复制</button>
           </div>
@@ -90,8 +90,8 @@
         <div v-if="fullAddress" class="cp-block" data-sec="contact">
           <h3>地址</h3>
           <div v-if="regionLine" class="cp-region-line">{{ regionLine }}</div>
-          <div class="cp-address">{{ fullAddress }}</div>
-          <div v-if="card.latitude != null && card.longitude != null" class="cp-geo">⌖ {{ card.latitude.toFixed(4) }}, {{ card.longitude.toFixed(4) }}</div>
+          <div class="cp-address">地址：{{ fullAddress }}</div>
+          <div v-if="card.latitude != null && card.longitude != null" class="cp-geo">坐标：{{ card.latitude.toFixed(4) }}, {{ card.longitude.toFixed(4) }}</div>
           <button type="button" class="cp-map-btn">导航</button>
         </div>
 

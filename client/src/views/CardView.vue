@@ -55,7 +55,7 @@
         <div v-if="contactFields.length" class="card card-pad cv-block">
           <h3>联系方式 <span class="small muted">· 点右侧复制</span></h3>
           <div v-for="f in contactFields" :key="f.key" class="cv-contact-row">
-            <div class="cv-contact-label">{{ f.label }}</div>
+            <div class="cv-contact-label">{{ f.label }}：</div>
             <div class="cv-contact-value">{{ f.value }}</div>
             <button class="btn btn-sm btn-ghost" @click="copy(f.value, f.label)">复制</button>
           </div>
@@ -127,11 +127,11 @@
           <h3>地址</h3>
           <div v-if="regionLine" class="cv-region-line">{{ regionLine }}</div>
           <div class="cv-address">
-            <span>{{ fullAddress }}</span>
+            <span>地址：{{ fullAddress }}</span>
             <button class="btn btn-sm btn-ghost" @click="copy(fullAddress, '地址')">复制</button>
           </div>
           <div v-if="card.latitude != null && card.longitude != null" class="cv-geo-hint small muted">
-            ⌖ {{ card.latitude.toFixed(4) }}, {{ card.longitude.toFixed(4) }}
+            坐标：{{ card.latitude.toFixed(4) }}, {{ card.longitude.toFixed(4) }}
           </div>
           <button v-if="maps.length" class="cv-map-launch" @click="mapOpen = true">导航</button>
         </div>
@@ -364,16 +364,13 @@ const contactQrs = computed(() => {
 })
 const hasAnyQr = computed(() => contactQrs.value.length > 0)
 // 联系方式逐项一键复制（借鉴名片全能王「点字段直接复制」，比只打电话更通用）
+// 标签与值同排展示，统一带冒号（复制提示仍用纯字段名）
+const CONTACT_LABELS = { mobile: '手机', phone: '座机', email: '邮箱', wechat: '微信', alipay: '支付宝', whatsapp: 'WhatsApp' }
 const contactFields = computed(() => {
   const c = card.value || {}
-  return [
-    { key: 'mobile', label: '手机', value: c.mobile },
-    { key: 'phone', label: '座机', value: c.phone },
-    { key: 'email', label: '邮箱', value: c.email },
-    { key: 'wechat', label: '微信', value: c.wechat },
-    { key: 'alipay', label: '支付宝', value: c.alipay },
-    { key: 'whatsapp', label: 'WhatsApp', value: c.whatsapp }
-  ].filter(f => f.value)
+  return Object.keys(CONTACT_LABELS)
+    .map(key => ({ key, label: CONTACT_LABELS[key], value: c[key] }))
+    .filter(f => f.value)
 })
 const siteLinks = computed(() => {
   const c = card.value || {}
