@@ -36,43 +36,26 @@
     <!-- 成品名片（持有者视角） -->
     <template v-else>
       <div class="cv-cover">
-        <div class="cv-brand">M<em>Card</em></div>
-        <button class="cv-edit-cover" @click="goEdit('identity')">✎ 编辑封面资料</button>
+        <div class="cv-brand">{{ card.company || siteConfig.site_name }}</div>
+        <button class="cv-edit-cover" @click="goEdit('identity')">✎ 编辑名片</button>
+        <div v-if="!card.active" class="cv-cover-status">未开通 / 已到期</div>
       </div>
 
       <div class="container cv-main">
-        <!-- 身份区 -->
+        <!-- 身份区：参考商务联络卡，姓名/公司/职位突出 -->
         <div class="card cv-profile">
-          <button class="block-edit" @click="goEdit('identity')" aria-label="编辑身份">✎</button>
           <div class="cv-avatar">
             <img v-if="card.avatar" :src="card.avatar" :alt="card.name" />
             <span v-else>{{ (card.name || '名').slice(0, 1) }}</span>
           </div>
           <div class="cv-ident">
             <div class="cv-name">
-              {{ card.name || '点击填写姓名' }}
-              <span v-if="card.name_en" class="cv-en">{{ card.name_en }}</span>
+              {{ card.name || card.name_en || '你的姓名' }}
+              <span v-if="card.name_en && card.name" class="cv-en">{{ card.name_en }}</span>
             </div>
-            <div class="cv-title">{{ identityLine || '点击完善职位与公司' }}</div>
+            <div class="cv-org">{{ card.company || '公司 / 团队' }}</div>
+            <div class="cv-title">{{ [card.department, card.title].filter(Boolean).join(' · ') || '职位信息' }}</div>
             <div v-if="card.tags?.length" class="cv-tags"><span v-for="tag in card.tags" :key="tag">{{ tag }}</span></div>
-            <span v-if="!card.active" class="badge warn" style="margin-top:8px;display:inline-block">未开通 / 已到期</span>
-          </div>
-        </div>
-
-        <!-- 完成度引导 -->
-        <div class="card card-pad dash-progress-block">
-          <div class="progress-head">
-            <b>完善你的名片</b>
-            <span class="small muted">{{ completedCount }}/{{ checklist.length }} 项已完成</span>
-          </div>
-          <div class="progress-track"><i :style="{ width: progressPct + '%' }"></i></div>
-          <div class="check-list">
-            <button v-for="item in checklist" :key="item.key" class="check-item" :class="{ done: item.done }" @click="goEdit(item.focus)">
-              <span class="check-ico">{{ item.done ? '✓' : '+' }}</span>
-              <span class="check-label">{{ item.label }}</span>
-              <span class="check-hint small muted">{{ item.done ? '已完成' : item.hint }}</span>
-              <span class="check-arrow">›</span>
-            </button>
           </div>
         </div>
 
@@ -91,7 +74,6 @@
 
         <!-- 联系方式明细 -->
         <div v-if="hasContact" class="card card-pad cv-block">
-          <button class="block-edit" @click="goEdit('contact')" aria-label="编辑联系方式">✎</button>
           <h3>联系方式</h3>
           <div class="contact-list">
             <div v-if="card.mobile" class="contact-row"><span>手机</span><b>{{ card.mobile }}</b><button @click="copy(card.mobile, '手机号')">复制</button></div>
@@ -104,18 +86,15 @@
 
         <!-- 简介 -->
         <div v-if="card.bio" class="card card-pad cv-block">
-          <button class="block-edit" @click="goEdit('bio')" aria-label="编辑简介">✎</button>
           <h3>关于我</h3><p class="cv-bio">{{ card.bio }}</p>
         </div>
         <div v-if="card.company_intro" class="card card-pad cv-block">
-          <button class="block-edit" @click="goEdit('bio')" aria-label="编辑公司简介">✎</button>
           <h3>公司简介 <span class="small muted" v-if="card.company">· {{ card.company }}</span></h3>
           <p class="cv-bio">{{ card.company_intro }}</p>
         </div>
 
         <!-- 更多链接 -->
         <div v-if="card.links?.length" class="card card-pad cv-block">
-          <button class="block-edit" @click="goEdit('links')" aria-label="编辑链接">✎</button>
           <h3>更多链接</h3>
           <div class="cv-links">
             <a v-for="(l, i) in card.links" :key="i" :href="safeUrl(l.url)" target="_blank" rel="noopener">
@@ -124,23 +103,23 @@
           </div>
         </div>
 
-        <!-- 二维码卡 -->
-        <div class="card card-pad cv-qr-card">
+        <!-- 扫码联系收尾（参考商务联络卡） -->
+        <div class="card cv-qr-card">
+          <div class="cv-qr-head">SCAN · TO · CONTACT</div>
           <button class="cv-qr-img" @click="qrModal = true" title="点击查看大图">
             <img :src="qrApi + '/qr.svg?size=440'" alt="名片二维码" />
           </button>
           <div class="cv-qr-info">
-            <h3>扫一扫，存入通讯录</h3>
+            <h3>扫码即见名片 · 一键拨号 · 一键存档</h3>
             <p class="small muted">二维码永久固定，资料更新也不会失效。可印在实体名片、工牌、易拉宝上。</p>
             <div class="btn-row" style="margin-top:10px">
-              <button class="btn btn-primary btn-sm" @click="saveQr">保存二维码</button>
-              <button class="btn btn-ghost btn-sm" @click="saveContact">存入通讯录</button>
-              <button class="btn btn-ghost btn-sm" @click="doShare">分享</button>
+              <button class="btn btn-primary btn-sm" @click="saveContact">存入通讯录</button>
+              <button class="btn btn-ghost btn-sm" @click="saveQr">保存二维码</button>
             </div>
           </div>
         </div>
 
-        <p class="cv-footer">由 <b>{{ siteConfig.site_name }}</b> 提供技术支持 · 资料可改 · 二维码不变</p>
+        <p class="cv-footer">{{ card.company || card.name || siteConfig.site_name }} · 由 <b>{{ siteConfig.site_name }}</b> 提供技术支持</p>
       </div>
 
       <!-- 底部常驻操作：拨号优先，分享放右下悬浮主按钮（拇指最顺手） -->
@@ -165,6 +144,13 @@
         <nav class="drawer-nav">
           <router-link to="/me" @click="menuOpen = false"><i>▤</i>我的名片</router-link>
           <router-link to="/me/card" @click="menuOpen = false"><i>✎</i>编辑资料</router-link>
+          <button @click="improveOpen = !improveOpen"><i>📝</i>完善度 {{ completedCount }}/{{ checklist.length }} <span style="margin-left:auto">{{ improveOpen ? '▴' : '▾' }}</span></button>
+          <div v-if="improveOpen" class="drawer-improve">
+            <div class="progress-track"><i :style="{ width: progressPct + '%' }"></i></div>
+            <button v-for="item in checklist" :key="item.key" :class="{ done: item.done }" @click="goEdit(item.focus)">
+              <span>{{ item.done ? '✓' : '○' }}</span>{{ item.label }}
+            </button>
+          </div>
           <router-link :to="`/c/${card?.slug || ''}`" @click="menuOpen = false"><i>↗</i>公开名片页</router-link>
           <router-link to="/me/contacts" @click="menuOpen = false"><i>★</i>我的名片夹</router-link>
           <div class="drawer-sep">数据与运营</div>
@@ -238,7 +224,7 @@ import { shareOrCopy, mapLinks } from '../utils/share'
 const router = useRouter()
 const card = ref(null); const stats = ref({ views: 0, exchanges: 0, daily: [] }); const orders = ref([])
 const loading = ref(true); const busy = ref(false); const newSlug = ref(''); const loadError = ref('')
-const menuOpen = ref(false); const qrModal = ref(false)
+const menuOpen = ref(false); const qrModal = ref(false); const improveOpen = ref(false)
 let loadStarted = false
 const qrApi = computed(() => `/api/cards/public/${card.value?.slug || ''}`)
 const t = computed(() => themeOf({ theme: THEMES[card.value?.theme] ? card.value.theme : 'ocean', accent: card.value?.accent }))
@@ -327,21 +313,24 @@ function doLogout() { logout(); router.push('/') }
 .dash-brand em { font-style: normal; opacity: .75; }
 .dash-icon { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.16); color: #fff; font-size: 18px; display: grid; place-items: center; }
 .dash-loading { margin-top: 20px; }
-.cv-cover { height: 120px; position: relative; background: var(--t-cover, var(--primary)); border-radius: 0 0 24px 24px; }
-.cv-brand { position: absolute; right: 16px; top: 16px; color: #fff; font-weight: 800; opacity: .9; }
+.cv-cover { height: 148px; position: relative; background: var(--t-cover, var(--primary)); border-radius: 0 0 28px 28px; overflow: hidden; }
+.cv-cover::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: linear-gradient(90deg, transparent, #d4af6a, transparent); opacity: .8; }
+.cv-brand { position: absolute; right: 18px; top: 20px; color: #fff; font-weight: 800; font-size: 15px; letter-spacing: .5px; max-width: 60%; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cv-brand em { font-style: normal; opacity: .75; }
-.cv-edit-cover { position: absolute; left: 16px; top: 16px; color: #fff; background: rgba(255,255,255,.16); padding: 5px 10px; border-radius: 999px; font-size: 12px; }
-.cv-main { margin-top: -40px; position: relative; }
-.cv-profile { position: relative; display: flex; gap: 14px; align-items: center; padding: 18px; }
-.cv-avatar { width: 64px; height: 64px; flex: 0 0 64px; border-radius: 50%; overflow: hidden; background: var(--t-accent, var(--primary)); color: #fff; display: grid; place-items: center; font-size: 26px; font-weight: 700; }
+.cv-edit-cover { position: absolute; left: 16px; top: 18px; color: #fff; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.25); padding: 6px 12px; border-radius: 999px; font-size: 12px; }
+.cv-cover-status { position: absolute; left: 16px; bottom: 16px; color: #fff; background: rgba(0,0,0,.28); padding: 4px 10px; border-radius: 999px; font-size: 11px; }
+.cv-main { margin-top: -52px; position: relative; }
+.cv-profile { position: relative; display: flex; gap: 16px; align-items: center; padding: 22px 18px; border-radius: 16px; box-shadow: 0 10px 30px rgba(15,23,42,.10); }
+.cv-avatar { width: 78px; height: 78px; flex: 0 0 78px; border-radius: 14px; overflow: hidden; background: var(--t-accent, var(--primary)); color: #fff; display: grid; place-items: center; font-size: 32px; font-weight: 800; border: 2px solid rgba(255,255,255,.9); box-shadow: 0 6px 18px rgba(0,0,0,.14); }
 .cv-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .cv-ident { min-width: 0; }
-.cv-name { font-size: 22px; font-weight: 800; }
-.cv-en { font-size: 12px; font-weight: 400; opacity: .6; margin-left: 6px; }
-.cv-title { font-size: 13px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
-.cv-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.cv-tags span { font-size: 11px; padding: 3px 8px; border-radius: 999px; background: #eef2ff; background: color-mix(in srgb, var(--t-accent, var(--primary)) 12%, transparent); color: var(--t-accent, var(--primary)); }
-.block-edit { position: absolute; right: 10px; top: 10px; width: 28px; height: 28px; border-radius: 50%; background: rgba(0,0,0,.04); color: var(--muted); font-size: 13px; }
+.cv-name { font-size: 25px; font-weight: 800; letter-spacing: -.3px; line-height: 1.2; }
+.cv-en { font-size: 12px; font-weight: 500; opacity: .55; margin-left: 8px; letter-spacing: .3px; }
+.cv-org { font-size: 14px; color: var(--t-accent, var(--primary)); font-weight: 700; margin-top: 4px; }
+.cv-title { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+.cv-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.cv-tags span { font-size: 11px; padding: 4px 10px; border-radius: 4px; background: #eef2ff; background: color-mix(in srgb, var(--t-accent, var(--primary)) 10%, transparent); color: var(--t-accent, var(--primary)); border: 1px solid #c7d2fe; border-color: color-mix(in srgb, var(--t-accent, var(--primary)) 30%, transparent); font-weight: 600; }
+
 .cv-block { position: relative; margin-top: 12px; }
 .cv-block h3 { font-size: 15px; margin: 0 0 10px; }
 .cv-actions { display: flex; margin-top: 12px; padding: 12px 4px; }
@@ -367,18 +356,8 @@ function doLogout() { logout(); router.push('/') }
 .share-fab { position: fixed; right: 16px; bottom: calc(74px + env(safe-area-inset-bottom)); z-index: 18; width: 58px; height: 58px; border-radius: 50%; background: #2563eb; color: #fff; box-shadow: 0 8px 24px rgba(37,99,235,.42); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; font-size: 20px; }
 .share-fab span { font-size: 10px; }
 
-.dash-progress-block { margin-top: 12px; }
-.progress-head { display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
 .progress-track { height: 6px; border-radius: 4px; background: var(--line); overflow: hidden; margin: 10px 0 12px; }
 .progress-track i { display: block; height: 100%; background: var(--primary); transition: width .3s; }
-.check-list { display: flex; flex-direction: column; }
-.check-item { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); text-align: left; }
-.check-item:first-child { border-top: 0; }
-.check-ico { width: 22px; height: 22px; flex: 0 0 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; background: var(--line); color: var(--muted); }
-.check-item.done .check-ico { background: var(--ok); color: #fff; }
-.check-label { flex: 1; font-size: 13px; }
-.check-item.done .check-label { color: var(--muted); }
-.check-arrow { color: var(--muted); }
 
 .drawer-mask { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.55); }
 .drawer { position: absolute; right: 0; left: auto; top: 0; bottom: 0; width: min(86vw, 340px); max-width: 100%; background: #fff; color: #0f172a; display: flex; flex-direction: column; animation: slideIn .22s ease; box-shadow: -4px 0 24px rgba(0,0,0,.25); }
@@ -392,13 +371,21 @@ function doLogout() { logout(); router.push('/') }
 .drawer-nav a:hover, .drawer-nav button:hover { background: #f1f5f9; }
 .drawer-nav i { width: 22px; text-align: center; font-style: normal; }
 .drawer-sep { padding: 14px 18px 6px; font-size: 11px; color: #64748b; }
+.drawer-improve { padding: 4px 18px 10px 34px; background: #f8fafc; }
+.drawer-improve .progress-track { margin: 4px 0 8px; }
+.drawer-improve button { padding: 7px 0 !important; font-size: 12px !important; color: #475569; }
+.drawer-improve button.done { color: #64748b; }
+.drawer-improve button span { width: 16px; display: inline-block; color: #2563eb; }
 .drawer-foot { padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid #e2e8f0; background: #fff; flex: 0 0 auto; }
 .dash-data { margin-top: 24px; padding-bottom: 20px; }
-/* 联络卡模板在工作台的呼应 */
-.dash-tpl-contact .cv-cover { background: linear-gradient(135deg,#0b1a3a 0%,#1e40af 58%,#3b82f6 100%); }
-.dash-tpl-contact .cv-profile { border-radius: 12px; border: 1px solid #dbe4f5; box-shadow: 0 8px 24px rgba(30,64,175,.10); }
+/* 联络卡模板在工作台的呼应：深蓝金高档商务 */
+.dash-tpl-contact .cv-cover { background: linear-gradient(135deg,#0a1633 0%,#1e3a8a 55%,#2b4fa8 100%); }
+.dash-tpl-contact .cv-cover::after { background: linear-gradient(90deg, transparent, #d4af6a, #f0d898, #d4af6a, transparent); height: 3px; opacity: 1; }
+.dash-tpl-contact .cv-profile { border-radius: 12px; border: 1px solid #dbe4f5; box-shadow: 0 10px 30px rgba(15,23,42,.14); }
 .dash-tpl-contact .cv-avatar { border-radius: 10px; border: 2px solid #fff; }
-.dash-tpl-contact .cv-tags span { border-radius: 4px; border: 1px solid #1e40af; background: #eff4ff; }
+.dash-tpl-contact .cv-name { color: #0f2147; }
+.dash-tpl-contact .cv-org { color: #1e40af; }
+.dash-tpl-contact .cv-tags span { border-radius: 4px; border-color: #1e40af; background: #eff4ff; color: #1e40af; }
 .dash-tpl-contact .cv-actions i { border-radius: 10px; background: #eff4ff; color: #1e40af; }
 .dash-tpl-contact .cv-qr-card { border: 2px solid #1e40af; }
 .dash-tpl-contact .cv-dock { background: rgba(11,26,58,.97); border-top: 2px solid #1e40af; }
