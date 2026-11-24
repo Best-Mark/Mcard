@@ -123,22 +123,6 @@
           </div>
         </div>
 
-        <div v-if="hasAnyQr" class="card card-pad cv-block">
-          <h3>加好友 / 收付款</h3>
-          <div class="qr-grid">
-            <div v-for="q in contactQrs" :key="q.key" class="qr-tile">
-              <img :src="fullUrl(q.url)" :alt="q.label" loading="lazy" @click="previewQr(q)" />
-              <b>{{ q.label }}</b>
-              <span class="small muted">{{ qrHint(q.platform) }}</span>
-              <div class="btn-row">
-                <button v-if="q.account" class="btn btn-sm btn-ghost" @click="copy(q.account, q.accountLabel)">复制账号</button>
-                <button class="btn btn-sm btn-ghost" @click="saveQrFile(q)">保存二维码</button>
-              </div>
-            </div>
-          </div>
-          <p class="small muted" style="margin-top:10px">付款前请核对收款方与金额；二维码由名片主人自行上传。</p>
-        </div>
-
         <div v-if="fullAddress" class="card card-pad cv-block">
           <h3>地址</h3>
           <div v-if="regionLine" class="cv-region-line">{{ regionLine }}</div>
@@ -353,7 +337,6 @@ const displayTitle = computed(() => {
   return parts.filter(Boolean).join(' · ')
 })
 const windowRef = window
-const isAlipay = () => /AlipayClient/i.test(navigator.userAgent || '')
 const fullUrl = u => (u ? new URL(u, windowRef.location.origin).href : '')
 // 模板里区分微信/Safari 的保存引导（微信→去浏览器，iOS→长按图片）
 const inWeChat = isWeChat()
@@ -403,16 +386,6 @@ const CONTACT_STEPS = {
 }
 const contactSteps = computed(() => CONTACT_STEPS[deviceEnvKey] || CONTACT_STEPS.other)
 
-const contactQrs = computed(() => {
-  const c = card.value || {}
-  return [
-    { key: 'wechat_qr', url: c.wechat_qr, label: '微信 · 加好友', platform: 'wechat', account: c.wechat, accountLabel: '微信号' },
-    { key: 'alipay_qr', url: c.alipay_qr, label: '支付宝 · 加好友', platform: 'alipay', account: c.alipay, accountLabel: '支付宝账号' },
-    { key: 'wechat_pay_qr', url: c.wechat_pay_qr, label: '微信 · 收款码', platform: 'wechat', account: '', accountLabel: '' },
-    { key: 'alipay_pay_qr', url: c.alipay_pay_qr, label: '支付宝 · 收款码', platform: 'alipay', account: '', accountLabel: '' }
-  ].filter(q => q.url)
-})
-const hasAnyQr = computed(() => contactQrs.value.length > 0)
 // 联系方式逐项一键复制（借鉴名片全能王「点字段直接复制」，比只打电话更通用）
 // 标签与值同排展示，统一带冒号（复制提示仍用纯字段名）
 const CONTACT_LABELS = { mobile: '手机', phone: '座机', email: '邮箱', wechat: '微信', alipay: '支付宝', whatsapp: 'WhatsApp' }
@@ -432,23 +405,10 @@ const siteLinks = computed(() => {
 
 function shortUrl(u) { return String(u || '').replace(/^https?:\/\//, '').slice(0, 30) }
 function safeUrl(u) { try { const x = new URL(u); return ['http:', 'https:'].includes(x.protocol) ? x.href : '#' } catch { return '#' } }
-function qrHint(platform) {
-  const env = isWeChat() ? 'wechat' : isAlipay() ? 'alipay' : 'other'
-  if (env === platform) return '长按图片即可识别'
-  if (env === 'other') return '保存后用对应 App 扫一扫'
-  return `保存图片后用${platform === 'wechat' ? '微信' : '支付宝'}扫一扫`
-}
-function previewQr(q) { guideImage.value = fullUrl(q.url); guide.value = 'qr' }
 // 微信内显示「去浏览器打开」引导前，先把登录凭证写进当前 URL，外部浏览器打开即免二次登录
 async function showGuide(kind) {
   if (isWeChat()) await prepareExternalOpen(api)
   guide.value = kind
-}
-async function saveQrFile(q) {
-  guideImage.value = fullUrl(q.url)
-  const r = await saveImageUrl(guideImage.value, `${q.label.replace(' · ', '-')}.png`)
-  if (r.kind === 'longpress') { await showGuide('qr'); return }
-  showToast(r.kind === 'downloaded' ? '二维码已开始下载' : '已打开二维码，请长按保存', 'success')
 }
 
 async function load() {
@@ -620,11 +580,6 @@ async function toggleFavorite() {
 .cv-site { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .cv-site:last-child { border-bottom: 0; }
 .cv-site > div:first-child { display: flex; flex-direction: column; min-width: 0; }
-.qr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
-.qr-tile { border: 1px solid var(--line); border-radius: 12px; padding: 12px; text-align: center; background: var(--t-bg); display: flex; flex-direction: column; align-items: center; gap: 5px; }
-.qr-tile img { width: 116px; height: 116px; object-fit: contain; background: #fff; border-radius: 8px; cursor: zoom-in; }
-.qr-tile b { font-size: 13px; }
-.qr-tile .btn-row { justify-content: center; margin-top: 4px; }
 .cv-address { display: flex; align-items: center; gap: 8px; justify-content: space-between; cursor: pointer; }
 .cv-region-line { font-size: 13px; font-weight: 600; color: var(--t-accent); margin-bottom: 6px; }
 .cv-contact-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--t-line, rgba(0,0,0,.06)); cursor: pointer; }
@@ -752,7 +707,7 @@ async function toggleFavorite() {
 .cv-tpl-seal .cv-tags span { border-radius: 2px; border: 1px solid #1e3a8a; background: transparent; color: #1e3a8a; }
 .cv-tpl-seal .cv-actions i { border-radius: 4px; border: 1px solid #1e3a8a; background: transparent; color: #1e3a8a; }
 .cv-tpl-seal .cv-block h3 { color: #12213c; border-left: 4px solid #1e3a8a; padding-left: 9px; letter-spacing: 1px; }
-.cv-tpl-seal .cv-links a, .cv-tpl-seal .qr-tile { border-radius: 4px; }
+.cv-tpl-seal .cv-links a { border-radius: 4px; }
 .cv-tpl-seal .cv-maps a, .cv-tpl-seal .btn-ghost { border-radius: 3px; }
 .cv-tpl-seal .cv-qr-img { border-radius: 4px; border: 2px solid #1e3a8a; }
 .cv-tpl-seal .cv-footer { color: #64748b; letter-spacing: 1px; }
@@ -829,7 +784,7 @@ async function toggleFavorite() {
 .cv-tpl-elite .cv-tags span { border-radius: 0; border-bottom: 1px solid var(--t-accent); background: transparent; color: var(--t-accent); }
 .cv-tpl-elite .cv-block h3, .cv-tpl-elite .cv-sec-title { text-align: center; font-size: 12px; letter-spacing: 4px; color: var(--t-accent); border-left: 0; padding-left: 0; }
 .cv-tpl-elite .cv-bio, .cv-tpl-elite .small.muted, .cv-tpl-elite .cv-qr-lead { color: #a1a1aa; }
-.cv-tpl-elite .cv-links a, .cv-tpl-elite .qr-tile { background: #1c1f26; border-color: rgba(255,255,255,.09); }
+.cv-tpl-elite .cv-links a { background: #1c1f26; border-color: rgba(255,255,255,.09); }
 .cv-tpl-elite .cv-dock { background: #0b0d12; border-top: 2px solid var(--t-accent); }
 .cv-tpl-elite .cv-dock .btn-ghost { background: rgba(255,255,255,.1); color: #f5f5f4; }
 .cv-tpl-elite .cv-share-fab { background: var(--t-accent); }
@@ -864,7 +819,7 @@ async function toggleFavorite() {
 .cv-tpl-seal .cv-tags span { border-radius: 0; border: 2px solid #111827; background: #fff; color: #111827; }
 .cv-tpl-seal .cv-actions i { border-radius: 0; border: 2px solid #111827; background: #fff; color: #111827; }
 .cv-tpl-seal .cv-block h3, .cv-tpl-seal .cv-sec-title { color: #111827; border-left: 6px solid #111827; padding-left: 10px; letter-spacing: 1px; }
-.cv-tpl-seal .cv-links a, .cv-tpl-seal .qr-tile { border-radius: 0; border: 2px solid #111827; }
+.cv-tpl-seal .cv-links a { border-radius: 0; border: 2px solid #111827; }
 .cv-tpl-seal .cv-map-launch { border-radius: 0; border: 2px solid #111827; }
 .cv-tpl-seal .cv-dock { background: #111827; border-top: 5px solid var(--t-accent); }
 .cv-tpl-seal .cv-dock .btn-ghost { background: #fff; color: #111827; }
@@ -1218,8 +1173,8 @@ async function toggleFavorite() {
 .cv-clean .cv-contact-row { padding: 11px 0; border-top: 1px solid var(--cv-line); }
 .cv-clean .cv-contact-label { flex-basis: 52px; color: var(--cv-ink-2); letter-spacing: .08em; }
 .cv-clean .cv-bio, .cv-clean .small.muted, .cv-clean .cv-qr-lead { color: var(--cv-ink-2); }
-.cv-clean .cv-links a, .cv-clean .qr-tile, .cv-clean .cv-gallery-cell { border-color: var(--cv-line); background: var(--cv-panel-bg); }
-.cv-clean .cv-links b, .cv-clean .qr-tile b, .cv-clean .cv-region-line, .cv-clean .cv-contact-row b { color: var(--cv-link-color); }
+.cv-clean .cv-links a, .cv-clean .cv-gallery-cell { border-color: var(--cv-line); background: var(--cv-panel-bg); }
+.cv-clean .cv-links b, .cv-clean .cv-region-line, .cv-clean .cv-contact-row b { color: var(--cv-link-color); }
 .cv-clean .cv-map-launch, .cv-clean .cv-maps a { background: var(--cv-mini-bg); color: var(--cv-mini-color); box-shadow: var(--cv-mini-shadow); }
 .cv-clean .cv-vcard-qr { border: 3px solid var(--cv-mini-color); }
 .cv-clean .cv-create-own { border-top: 1px solid var(--cv-line); }
@@ -1280,8 +1235,8 @@ async function toggleFavorite() {
 .cv-tpl-navygold .cv-actions i { width: auto; height: auto; border-radius: 0; background: transparent; color: inherit; font-size: 17px; }
 .cv-tpl-navygold .cv-block h3, .cv-tpl-navygold .cv-sec-title { color: var(--ng-navy); border-left: 3px solid var(--ng-gold); padding-left: 9px; }
 .cv-tpl-navygold .cv-bio, .cv-tpl-navygold .small.muted, .cv-tpl-navygold .cv-qr-lead { color: var(--ng-ink-2); }
-.cv-tpl-navygold .cv-links a, .cv-tpl-navygold .qr-tile { border-color: var(--ng-line); background: #fff; }
-.cv-tpl-navygold .cv-links b, .cv-tpl-navygold .qr-tile b { color: var(--ng-navy); }
+.cv-tpl-navygold .cv-links a { border-color: var(--ng-line); background: #fff; }
+.cv-tpl-navygold .cv-links b { color: var(--ng-navy); }
 .cv-tpl-navygold .cv-maps a { background: var(--ng-paper); color: var(--ng-navy); box-shadow: inset 0 0 0 1px rgba(185,147,85,.28); }
 .cv-tpl-navygold .cv-vcard-qr { border: 4px solid rgba(185,147,85,.45); }
 .cv-tpl-navygold .cv-footer { color: #a9b1ba; letter-spacing: .1em; }

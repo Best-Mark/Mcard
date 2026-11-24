@@ -85,21 +85,6 @@
       </view>
 
       <view class="card">
-        <view class="section">加好友 / 收付款二维码</view>
-        <block v-for="q in qrFields" :key="q.key">
-          <view class="qr-upload-row">
-            <image v-if="form[q.key]" class="qr-thumb" :src="form[q.key]" mode="aspectFit" />
-            <view class="qr-upload-info">
-              <text class="b">{{ q.label }}</text>
-              <button class="btn tiny" :disabled="busy" @tap="chooseQr(q.key)">{{ form[q.key] ? '更换' : '上传' }}</button>
-              <button class="btn tiny" @tap="openAssets(q.key)">素材库</button>
-            </view>
-          </view>
-        </block>
-        <view class="muted small" style="margin-top:12rpx">上传微信/支付宝的加好友码或收款码原图，访客可在对应环境识别或保存后扫码。</view>
-      </view>
-
-      <view class="card">
         <view class="section">更多链接</view>
         <view v-for="(l, i) in form.links" :key="i" class="link-row">
           <input v-model="l.label" class="input" placeholder="标题" />
@@ -193,7 +178,6 @@ const blank = {
   slug: '', name: '', name_en: '', title: '', company: '', company_intro: '', department: '',
   website: '', shop_url: '',
   bio: '', tags: [], links: [], avatar: '', logo: '', mobile: '', phone: '', email: '', wechat: '', alipay: '', whatsapp: '',
-  wechat_qr: '', alipay_qr: '', wechat_pay_qr: '', alipay_pay_qr: '',
   address: '', address_detail: '', province: '', city: '', district: '', street: '',
   template: 'contact', theme: 'ocean', accent: '#2563eb', qr_fg: '#0f172a', qr_bg: '#ffffff', qr_logo: true,
   qr_style: { dot: 'square', eye: 'square', gradTo: '', logoShape: 'rounded', bgImage: '' },
@@ -231,12 +215,6 @@ const industryIdx = computed(() => {
 
 const logoOriginal = ref(''); const logoProcessed = ref('')
 const logoMode = ref('auto'); const logoTolerance = ref(32); const logoBusy = ref(false)
-const qrFields = [
-  { key: 'wechat_qr', label: '微信 · 加好友码' },
-  { key: 'alipay_qr', label: '支付宝 · 加好友码' },
-  { key: 'wechat_pay_qr', label: '微信 · 收款码' },
-  { key: 'alipay_pay_qr', label: '支付宝 · 收款码' }
-]
 const logoModes = ['auto', 'white', 'none']
 const logoModeLabels = ['智能识别背景', '只去白底', '保留原图']
 const logoModeIdx = ref(0)
@@ -415,13 +393,6 @@ function applyLogo() {
   toast('LOGO 已应用，保存资料后生效', 'success')
 }
 
-function chooseQr(key) {
-  uni.chooseImage({ count: 1, sizeType: ['compressed'], success: async res => {
-    try { form.value[key] = await uploadImage(res.tempFilePaths[0]); toast('上传成功，记得保存', 'success') }
-    catch (e) { toast(e.message) }
-  } })
-}
-
 async function save() {
   if (!form.value.name) return toast('请填写姓名')
   saving.value = true
@@ -466,10 +437,6 @@ async function save() {
 .label { display: block; font-size: 24rpx; color: #6b7688; margin-bottom: 8rpx; font-weight: 600; }
 .input, .textarea { width: 100%; box-sizing: border-box; border: 2rpx solid #e8edf4; border-radius: 12rpx; padding: 16rpx 18rpx; font-size: 26rpx; }
 .textarea { height: 160rpx; }
-.qr-upload-row { display: flex; align-items: center; gap: 16rpx; padding: 14rpx 0; border-bottom: 2rpx solid #f1f5f9; }
-.qr-thumb { width: 96rpx; height: 96rpx; border: 2rpx solid #e8edf4; border-radius: 12rpx; background: #fff; padding: 6rpx; box-sizing: border-box; }
-.qr-upload-info { display: flex; align-items: center; gap: 16rpx; }
-.qr-upload-info .b { font-size: 26rpx; font-weight: 600; }
 .link-row { display: flex; gap: 10rpx; align-items: center; margin-bottom: 10rpx; }
 .link-row .input { flex: 1; min-width: 0; }
 .del { color: #dc2626; font-size: 24rpx; padding: 0 8rpx; }

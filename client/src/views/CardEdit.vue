@@ -124,24 +124,7 @@
             <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
           </div>
 
-          <!-- ④ 二维码 -->
-          <div v-show="active === 'qr'" class="card card-pad" id="focus-qr">
-            <div class="section-title" style="margin-top:0">加好友 / 收付款二维码</div>
-            <p class="small muted" style="margin-bottom:12px">上传微信 / 支付宝的「加好友码」或「收款码」原图，访客在自己常用的 App 环境里可长按识别或保存后扫码。请只上传自己本人的二维码。</p>
-            <div v-for="q in qrFields" :key="q.key" class="qr-upload-row">
-              <div v-if="form[q.key]" class="qr-thumb"><img :src="form[q.key]" :alt="q.label" /></div>
-              <div class="qr-upload-info">
-                <b>{{ q.label }}</b>
-                <label class="btn btn-sm btn-ghost upload-btn">{{ form[q.key] ? '更换' : '上传' }}
-                  <input type="file" accept="image/*" @change="e => upload(e, q.key)" />
-                </label>
-                <AssetPicker v-model="form[q.key]" label="素材库" />
-              </div>
-            </div>
-            <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
-          </div>
-
-          <!-- ⑤ 更多链接 -->
+          <!-- ④ 更多链接 -->
           <div v-show="active === 'links'" class="card card-pad" id="focus-links">
             <div class="section-title" style="margin-top:0">更多链接</div>
             <p class="small muted" style="margin-bottom:10px">公司主页、店铺、作品集等，同时写入通讯录备注。</p>
@@ -337,7 +320,6 @@ const route = useRoute()
 const blank = {
   slug: '', name: '', name_en: '', title: '', company: '', company_intro: '', department: '', website: '', shop_url: '',
   mobile: '', phone: '', email: '', wechat: '', alipay: '', whatsapp: '',
-  wechat_qr: '', alipay_qr: '', wechat_pay_qr: '', alipay_pay_qr: '',
   address: '', address_detail: '', province: '', city: '', district: '', street: '',
   avatar: '', logo: '', bio: '', tags: [], links: [], template: 'contact', theme: 'ocean', accent: THEMES.ocean.accent,
   industry: '', city: '', latitude: null, longitude: null, market_opt_in: false,
@@ -365,7 +347,6 @@ const sections = computed(() => [
   { key: 'identity', label: '身份信息', icon: '👤', done: !!(form.value.name && (form.value.title || form.value.company)) },
   { key: 'bio', label: '简介与标签', icon: '📝', done: !!(form.value.bio || form.value.company_intro || tagList.value.length) },
   { key: 'contact', label: '联系方式', icon: '📞', done: !!(form.value.mobile || form.value.phone || form.value.email || form.value.wechat || form.value.address) },
-  { key: 'qr', label: '二维码', icon: '▦', done: !!(form.value.wechat_qr || form.value.alipay_qr || form.value.wechat_pay_qr || form.value.alipay_pay_qr) },
   { key: 'links', label: '更多链接', icon: '🔗', done: !!(form.value.website || form.value.shop_url || form.value.links?.length) },
   { key: 'materials', label: '相册', icon: '📚', done: !!materials.value.length },
   { key: 'market', label: '名片集市', icon: '🧭', done: !!form.value.market_opt_in },
@@ -388,12 +369,6 @@ const qualityClass = computed(() => ({ precise: 'ok', approximate: 'warn', coars
 const sourceLabel = computed(() => ({
   wechat: '微信定位', gps: 'GPS 定位', ip: 'IP 定位', default: '城市兜底', manual: '手动选点'
 }[positionSource.value] || '已定位'))
-const qrFields = [
-  { key: 'wechat_qr', label: '微信 · 加好友码' },
-  { key: 'alipay_qr', label: '支付宝 · 加好友码' },
-  { key: 'wechat_pay_qr', label: '微信 · 收款码' },
-  { key: 'alipay_pay_qr', label: '支付宝 · 收款码' }
-]
 const tagsText = ref('')
 const saving = ref(false)
 const loading = ref(false)
@@ -442,7 +417,7 @@ onMounted(async () => {
 // 必须在 query 变化时也切换，否则点了没反应。
 function applyFocus() {
   const focus = String(route.query.focus || '')
-  if (['identity', 'bio', 'contact', 'qr', 'links', 'materials', 'market', 'appearance'].includes(focus)) active.value = focus
+  if (['identity', 'bio', 'contact', 'links', 'materials', 'market', 'appearance'].includes(focus)) active.value = focus
 }
 watch(() => route.query.focus, () => applyFocus())
 
@@ -585,7 +560,6 @@ const SECTION_FIELDS = {
   identity: ['name', 'name_en', 'title', 'company', 'department', 'logo'],
   bio: ['bio', 'company_intro', 'tags'],
   contact: ['mobile', 'phone', 'email', 'wechat', 'alipay', 'whatsapp', 'province', 'city', 'district', 'street', 'address', 'address_detail'],
-  qr: ['wechat_qr', 'alipay_qr', 'wechat_pay_qr', 'alipay_pay_qr'],
   links: ['website', 'shop_url', 'links'],
   // 地区字段（province/city/district）归属「联系方式」，集市只读复用，不在此提交（参数唯一真相源）
   market: ['market_opt_in', 'industry', 'latitude', 'longitude'],
@@ -744,12 +718,6 @@ async function finish() {
 .avatar-preview img { width: 100%; height: 100%; object-fit: cover; }
 .upload-btn { position: relative; overflow: hidden; }
 .upload-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-.qr-upload-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
-.qr-upload-row:last-child { border-bottom: 0; }
-.qr-thumb { width: 56px; height: 56px; border: 1px solid var(--line); border-radius: 8px; padding: 3px; background: #fff; flex-shrink: 0; }
-.qr-thumb img { width: 100%; height: 100%; object-fit: contain; }
-.qr-upload-info { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.qr-upload-info b { font-size: 13px; }
 .locate-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .locate-row .mono { color: var(--muted); }
 .market-value { padding: 12px 14px; margin-bottom: 14px; border-radius: 12px; background: linear-gradient(135deg, #ecfeff, #eff6ff); border: 1px solid #c7d2fe; }

@@ -80,17 +80,6 @@
           </div>
         </div>
 
-        <div v-if="contactQrs.length" class="cp-block" data-sec="qr">
-          <h3>加好友 / 收付款</h3>
-          <div class="cp-qr-grid">
-            <div v-for="q in contactQrs" :key="q.key" class="cp-qr-tile">
-              <img :src="q.url" :alt="q.label" />
-              <b>{{ q.label }}</b>
-              <span v-if="q.account">{{ q.account }}</span>
-            </div>
-          </div>
-        </div>
-
         <div v-if="fullAddress" class="cp-block" data-sec="contact">
           <h3>地址</h3>
           <div v-if="regionLine" class="cp-region-line">{{ regionLine }}</div>
@@ -171,15 +160,6 @@ const actions = computed(() => {
   if (c.alipay) arr.push({ key: 'alipay', icon: 'alipay', label: '支付宝' })
   return arr
 })
-const contactQrs = computed(() => {
-  const c = props.card || {}
-  return [
-    { key: 'wechat_qr', url: c.wechat_qr, label: '微信 · 加好友', account: c.wechat },
-    { key: 'alipay_qr', url: c.alipay_qr, label: '支付宝 · 加好友', account: c.alipay },
-    { key: 'wechat_pay_qr', url: c.wechat_pay_qr, label: '微信 · 收款码', account: '' },
-    { key: 'alipay_pay_qr', url: c.alipay_pay_qr, label: '支付宝 · 收款码', account: '' }
-  ].filter(q => q.url)
-})
 const siteLinks = computed(() => {
   const c = props.card || {}
   const arr = []
@@ -249,11 +229,6 @@ watch(() => props.section, async () => {
 .cp-market-row > span { flex: 0 0 32px; color: var(--t-muted); }
 .cp-market-row b { font-weight: 500; }
 .cp-market-row b.cp-on { color: #0f766e; font-weight: 700; }
-.cp-qr-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.cp-qr-tile { display: flex; flex-direction: column; align-items: center; gap: 3px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 4px; text-align: center; }
-.cp-qr-tile img { width: 84px; height: 84px; object-fit: contain; background: #fff; border-radius: 5px; }
-.cp-qr-tile b { font-size: 10px; }
-.cp-qr-tile span { font-size: 9px; color: var(--t-muted); word-break: break-all; }
 .cp-region-line { font-size: 11px; font-weight: 600; color: var(--t-accent); margin-bottom: 4px; }
 .cp-address { font-size: 11px; line-height: 1.5; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .cp-map-btn { flex: 0 0 auto; padding: 4px 10px; border: 0; border-radius: 6px; background: var(--t-accent); color: #fff; font-size: 10px; }
