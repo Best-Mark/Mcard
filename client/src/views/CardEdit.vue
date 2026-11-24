@@ -1,9 +1,9 @@
 <template>
   <div class="page">
     <header class="topbar">
-      <router-link to="/me" class="brand">M<em>Card</em></router-link>
+      <button class="back-btn" @click="finish">‹ 返回</button>
       <div class="spacer"></div>
-      <span class="small muted">编辑资料</span>
+      <span class="small muted">编辑资料 · 可随时离开，下次继续</span>
     </header>
 
     <div class="container wide" style="margin-top:18px">
@@ -19,10 +19,11 @@
       <div class="edit-layout">
         <!-- 分类导航：一次只显示一类，避免长表单吓跑用户 -->
         <nav class="edit-nav">
-          <button v-for="s in sections" :key="s.key" :class="{ on: active === s.key }" @click="active = s.key">
+          <button v-for="s in sections" :key="s.key" :class="{ on: active === s.key, dirty: dirtySections[s.key] }" @click="active = s.key">
             <span class="nav-ico">{{ s.icon }}</span>
             <span class="nav-label">{{ s.label }}</span>
-            <span v-if="s.done" class="nav-done">✓</span>
+            <span v-if="dirtySections[s.key]" class="nav-dirty" title="有未保存修改"></span>
+            <span v-else-if="s.done" class="nav-done">✓</span>
           </button>
         </nav>
 
@@ -54,6 +55,10 @@
               <div class="field"><label>公司</label><input v-model="form.company" class="input" maxlength="60" /></div>
               <div class="field"><label>部门</label><input v-model="form.department" class="input" maxlength="40" /></div>
             </div>
+            <div class="section-foot">
+              <span class="save-state" :class="{ saved: savedSections.identity }">{{ savedSections.identity ? '✓ 已保存' : '未保存' }}</span>
+              <button class="btn btn-sm btn-primary" :disabled="saving" @click="saveSection('identity')">{{ saving ? '保存中…' : '保存本节' }}</button>
+            </div>
           </div>
 
           <!-- ② 简介与标签 -->
@@ -63,6 +68,10 @@
             <div class="field"><label>个人简介</label><textarea v-model="form.bio" class="textarea" maxlength="600" placeholder="一句话介绍自己，展示在名片首页"></textarea></div>
             <div class="field"><label>公司简介</label><textarea v-model="form.company_intro" class="textarea" maxlength="1000" placeholder="介绍公司业务、优势与服务，展示在名片「公司简介」区块，并写入通讯录备注"></textarea></div>
             <div class="field"><label>标签（逗号分隔，最多 8 个）</label><input v-model="tagsText" class="input" placeholder="品牌顾问, 设计, 马拉松" /></div>
+            <div class="section-foot">
+              <span class="save-state" :class="{ saved: savedSections.bio }">{{ savedSections.bio ? '✓ 已保存' : '未保存' }}</span>
+              <button class="btn btn-sm btn-primary" :disabled="saving" @click="saveSection('bio')">{{ saving ? '保存中…' : '保存本节' }}</button>
+            </div>
           </div>
 
           <!-- ③ 联系方式 -->
@@ -78,6 +87,10 @@
             </div>
             <div class="field"><label>地址（用于一键导航）</label><input v-model="form.address" class="input" placeholder="省市区 + 街道门牌，越详细导航越准" /></div>
             <div class="field"><label>门牌 / 楼层补充</label><input v-model="form.address_detail" class="input" /></div>
+            <div class="section-foot">
+              <span class="save-state" :class="{ saved: savedSections.contact }">{{ savedSections.contact ? '✓ 已保存' : '未保存' }}</span>
+              <button class="btn btn-sm btn-primary" :disabled="saving" @click="saveSection('contact')">{{ saving ? '保存中…' : '保存本节' }}</button>
+            </div>
           </div>
 
           <!-- ⑥ 名片集市 -->
@@ -108,6 +121,10 @@
               </div>
             </div>
             <p v-if="form.market_opt_in && form.latitude == null" class="small" style="color:#b45309">已开启上架但尚无坐标，请选城市或精确定位，否则在集市中会排在末尾。</p>
+            <div class="section-foot">
+              <span class="save-state" :class="{ saved: savedSections.market }">{{ savedSections.market ? '✓ 已保存' : '未保存' }}</span>
+              <button class="btn btn-sm btn-primary" :disabled="saving" @click="saveSection('market')">{{ saving ? '保存中…' : '保存本节' }}</button>
+            </div>
           </div>
 
           <!-- ④ 二维码 -->
@@ -122,6 +139,10 @@
                   <input type="file" accept="image/*" @change="e => upload(e, q.key)" />
                 </label>
               </div>
+            </div>
+            <div class="section-foot">
+              <span class="save-state" :class="{ saved: savedSections.qr }">{{ savedSections.qr ? '✓ 已保存' : '未保存' }}</span>
+              <button class="btn btn-sm btn-primary" :disabled="saving" @click="saveSection('qr')">{{ saving ? '保存中…' : '保存本节' }}</button>
             </div>
           </div>
 
@@ -139,6 +160,10 @@
               <button class="btn btn-sm btn-danger" @click="form.links.splice(i, 1)">删</button>
             </div>
             <button class="btn btn-sm btn-ghost" @click="form.links.push({ label: '', url: '' })">+ 添加链接</button>
+            <div class="section-foot">
+              <span class="save-state" :class="{ saved: savedSections.links }">{{ savedSections.links ? '✓ 已保存' : '未保存' }}</span>
+              <button class="btn btn-sm btn-primary" :disabled="saving" @click="saveSection('links')">{{ saving ? '保存中…' : '保存本节' }}</button>
+            </div>
           </div>
 
           <!-- ⑦ 外观（模板 + 主题） -->
@@ -174,11 +199,16 @@
               <div class="field"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" v-model="form.qr_logo" /> 二维码中心 Logo</label></div>
             </div>
             <p class="small muted">提示：二维码颜色请保持足够对比度（深色码 + 浅色底），否则可能扫不出来。</p>
+            <div class="section-foot">
+              <span class="save-state" :class="{ saved: savedSections.appearance }">{{ savedSections.appearance ? '✓ 已保存' : '未保存' }}</span>
+              <button class="btn btn-sm btn-primary" :disabled="saving" @click="saveSection('appearance')">{{ saving ? '保存中…' : '保存本节' }}</button>
+            </div>
           </div>
 
-          <button class="btn btn-primary btn-lg btn-block" style="margin-top:16px" :disabled="saving || loadError || !loaded" @click="save">
-            {{ saving ? '保存中…' : (loadError ? '加载失败，暂不可保存' : '保存资料') }}
-          </button>
+          <div class="done-bar">
+            <span class="small muted">资料可以慢慢完善，每次只保存当前分类即可。</span>
+            <button class="btn btn-primary" :disabled="saving || loadError || !loaded" @click="finish">完成，返回名片</button>
+          </div>
         </div>
 
         <aside class="preview-panel">
@@ -219,7 +249,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
+import { ref, computed, onMounted, watch, defineAsyncComponent } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '../api'
 import { showToast } from '../store'
@@ -278,6 +308,8 @@ async function loadCard() {
     form.value = { ...blank, ...data.data, qr_logo: !!data.data.qr_logo }
     tagsText.value = (data.data.tags || []).join(', ')
     loaded.value = true
+    dirtySections.value = {}
+    formReady = true
   } catch (e) {
     loadError.value = e.message || '网络异常'
   } finally { loading.value = false }
@@ -346,18 +378,49 @@ async function upload(e, field) {
   e.target.value = ''
 }
 
-async function save() {
+// 每类字段清单：保存时只提交当前分类，真正实现「填一类存一类」的渐进式完善
+const SECTION_FIELDS = {
+  identity: ['name', 'name_en', 'title', 'company', 'department', 'avatar', 'logo'],
+  bio: ['bio', 'company_intro', 'tags'],
+  contact: ['mobile', 'phone', 'email', 'wechat', 'alipay', 'whatsapp', 'address', 'address_detail'],
+  qr: ['wechat_qr', 'alipay_qr', 'wechat_pay_qr', 'alipay_pay_qr'],
+  links: ['website', 'shop_url', 'links'],
+  market: ['market_opt_in', 'industry', 'city', 'latitude', 'longitude'],
+  appearance: ['template', 'theme', 'accent', 'qr_fg', 'qr_bg', 'qr_logo']
+}
+const savedSections = ref({})
+const dirtySections = ref({})
+
+async function saveSection(key) {
   if (saving.value || loadError.value || !loaded.value) return
-  if (!form.value.name) return showToast('请填写姓名', 'error')
+  const fields = SECTION_FIELDS[key] || []
+  if (key === 'identity' && !form.value.name) return showToast('请填写姓名', 'error')
   saving.value = true
   try {
-    const payload = { ...form.value, tags: tagList.value, links: form.value.links.filter(l => l.label || l.url) }
-    delete payload.slug; delete payload.id; delete payload.url; delete payload.active
-    delete payload.expiresAt; delete payload.views; delete payload.status; delete payload.createdAt
+    const payload = {}
+    for (const f of fields) payload[f] = form.value[f]
+    if (fields.includes('tags')) payload.tags = tagList.value
+    if (fields.includes('links')) payload.links = form.value.links.filter(l => l.label || l.url)
     await api.put('/api/cards/mine', payload)
-    showToast('资料已保存，二维码保持不变', 'success')
-    router.push('/me')
+    savedSections.value = { ...savedSections.value, [key]: Date.now() }
+    dirtySections.value = { ...dirtySections.value, [key]: false }
+    showToast('已保存，可继续完善其它资料', 'success')
   } catch (e) { showToast(e.message, 'error') } finally { saving.value = false }
+}
+
+// 自动追踪「当前分类有未保存修改」：加载完成前不追踪，避免初始化误标脏
+let formReady = false
+const markActiveDirty = () => {
+  if (!formReady) return
+  dirtySections.value = { ...dirtySections.value, [active.value]: true }
+}
+watch(form, markActiveDirty, { deep: true, flush: 'sync' })
+watch(tagsText, markActiveDirty, { flush: 'sync' })
+
+async function finish() {
+  const dirty = Object.keys(dirtySections.value).filter(k => dirtySections.value[k])
+  if (dirty.length) return showToast('有未保存的修改，请先保存对应分类', 'error')
+  router.push('/me')
 }
 </script>
 
@@ -370,7 +433,14 @@ async function save() {
 .nav-ico { width: 20px; text-align: center; font-size: 14px; }
 .nav-label { flex: 1; }
 .nav-done { color: var(--ok); font-size: 11px; }
+.nav-dirty { width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; flex: 0 0 7px; }
+.edit-nav button.dirty .nav-label { color: #b45309; }
 .edit-content { min-width: 0; }
+.section-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.save-state { font-size: 12px; color: var(--muted); }
+.save-state.saved { color: var(--ok); }
+.done-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; padding: 14px; background: #eff6ff; border: 1px solid #dbeafe; border-radius: 12px; flex-wrap: wrap; }
+.back-btn { font-size: 16px; color: var(--primary); padding: 4px 8px; margin-left: -8px; }
 @media (max-width: 1080px) { .edit-layout { grid-template-columns: 168px minmax(0, 1fr); } .preview-panel { display: none; } }
 @media (max-width: 720px) {
   .edit-layout { grid-template-columns: 1fr; }
