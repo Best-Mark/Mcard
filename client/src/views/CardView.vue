@@ -272,7 +272,7 @@ function goMap() { if (card.value?.address) windowRef.location.href = maps.value
 function openVcf() {
   guide.value = ''
   if (isIOS() && !isWeChat()) return openVcfInline(vcfApi)
-  windowRef.open(`${vcfApi}?inline=1`, '_blank')
+  windowRef.open(vcfApi, '_blank')
 }
 async function copy(v, label) {
   if (!v) return showToast(`尚未填写${label}`)

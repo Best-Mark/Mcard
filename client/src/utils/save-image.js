@@ -1,10 +1,11 @@
 export const isWeChat = () => /MicroMessenger/i.test(navigator.userAgent || '')
 export const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent || '') || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 
-// iOS Safari 访问 text/vcard 直链（无 Content-Disposition: attachment）会直接弹出系统「添加联系人」。
-// 这是 iOS 上一键存入通讯录的唯一原生路径；微信内 WKWebView 会拦截，需先跳外部浏览器。
+// iOS Safari 访问「以 .vcf 结尾 + 服务端无 attachment 头」的直链才会弹系统添加联系人。
+// 绝不能带 ?query（Safari 会当普通下载），服务端已按 UA 自动去掉 attachment。
+// 微信内 WKWebView 拦不了通讯录，需先跳外部浏览器。
 export function openVcfInline(url) {
-  window.location.href = `${url}${url.includes('?') ? '&' : '?'}inline=1`
+  window.location.href = url
 }
 
 // 微信内 → 外部浏览器免二次登录：把一次性凭证写入当前 URL。

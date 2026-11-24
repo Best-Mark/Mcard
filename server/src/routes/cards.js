@@ -182,9 +182,14 @@ router.get('/public/:slug/card.vcf', wrap((req, res) => {
   const origin = originOf(req)
   const text = vcard.build(publicView(row, origin), origin)
   res.set('Content-Type', 'text/vcard; charset=utf-8')
-  // inline=1：iOS Safari 直接识别 text/vcard 并弹出系统「添加联系人」；
-  // 带 attachment 时 Safari 只会把 .vcf 下载到「文件」，用户还得手动找文件导入。
-  if (String(req.query.inline) !== '1') {
+  // iOS Safari 只有「URL 以 .vcf 结尾 + 无 Content-Disposition: attachment」时才弹系统添加联系人；
+  // 带 attachment 或带 ?query 都会退化成下载到「文件」。按 UA 自动识别，前端用纯 .vcf 直链即可。
+  // 微信内 WKWebView 无法弹通讯录，仍返回 attachment（引导去外部浏览器）。
+  const ua = String(req.headers['user-agent'] || '')
+  const isIOS = /iPad|iPhone|iPod/.test(ua)
+  const isWeChat = /MicroMessenger/i.test(ua)
+  const inline = String(req.query.inline) === '1' || (isIOS && !isWeChat)
+  if (!inline) {
     res.set('Content-Disposition', `attachment; filename="${encodeURIComponent(row.name || row.slug)}.vcf"`)
   }
   res.send(text)
