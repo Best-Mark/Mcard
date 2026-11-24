@@ -516,7 +516,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import api from '../api'
 import ParticleField from '../components/ParticleField.vue'
 import { adminAuth, setAdminAuth, adminLogout, showToast } from '../store'
