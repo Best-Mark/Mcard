@@ -64,6 +64,13 @@
         </view>
         <view class="field"><text class="label">地址</text><input v-model="form.address" class="input" placeholder="街道门牌，越详细越好导航" /></view>
         <view class="field"><text class="label">门牌补充</text><input v-model="form.address_detail" class="input" /></view>
+        <view class="field"><text class="label">定位坐标 <text class="muted small">（原生 → IP → 城市兜底；用于集市按距离排序与一键导航）</text></text>
+          <view class="locate-row">
+            <text class="small muted">{{ form.latitude != null ? form.latitude.toFixed(4) : '—' }}, {{ form.longitude != null ? form.longitude.toFixed(4) : '—' }}</text>
+            <button class="btn tiny" @tap="openMapPicker">🗺 地图选点</button>
+            <button class="btn tiny" :disabled="locating" @tap="locateMe">{{ locating ? '定位中…' : '⌖ 精确定位' }}</button>
+          </view>
+        </view>
       </view>
 
       <view class="card" id="market-card">
@@ -75,17 +82,7 @@
             <view class="picker">{{ form.industry ? industryLabels[industryIdx] : '未选择' }} ▾</view>
           </picker>
         </view>
-        <view class="field"><text class="label">所在地区 <text class="muted small">（来自上方联系方式里的地区，无需重复填写）</text></text>
-          <view class="market-region">{{ [form.province, form.city, form.district].filter(Boolean).join(' / ') || '尚未填写' }}</view>
-        </view>
-        <view class="field"><text class="label">定位坐标（四级定位：原生 → IP → 城市兜底）</text>
-          <view class="locate-row">
-            <text class="small muted">{{ form.latitude != null ? form.latitude.toFixed(4) : '—' }}, {{ form.longitude != null ? form.longitude.toFixed(4) : '—' }}</text>
-            <button class="btn tiny" @tap="openMapPicker">🗺 地图选点</button>
-            <button class="btn tiny" :disabled="locating" @tap="locateMe">{{ locating ? '定位中…' : '⌖ 重新定位' }}</button>
-          </view>
-        </view>
-        <view v-if="form.market_opt_in && form.latitude == null" class="small" style="color:#b45309">已开启上架但尚无坐标，请在上方联系方式里选好地区或点「精确定位」，否则在集市中会排在末尾。</view>
+        <view class="muted small" style="margin-top:8rpx">上架展示的「地区 / 坐标」来自上方联系方式里填写的地址与定位，这里无需重复设置。</view>
       </view>
 
       <view class="card">
@@ -461,7 +458,6 @@ async function save() {
 .region-pickers { display: flex; gap: 10rpx; }
 .region-pickers picker { flex: 1; min-width: 0; }
 .region-auto { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; margin-top: 10rpx; }
-.market-region { border: 2rpx solid #e8edf4; border-radius: 12rpx; padding: 16rpx; font-size: 26rpx; color: #162033; background: #f8fafc; }
 .locate-row { display: flex; align-items: center; gap: 16rpx; flex-wrap: wrap; }
 .slider-label { font-size: 24rpx; color: #6b7688; margin-top: 14rpx; }
 .logo-preview { width: 220rpx; height: 160rpx; background: #f1f5f9; border-radius: 14rpx; margin: 14rpx auto; display: block; }

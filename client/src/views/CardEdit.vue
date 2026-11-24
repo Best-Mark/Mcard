@@ -88,6 +88,15 @@
             </div>
             <div class="field"><label>地址（用于一键导航）</label><input v-model="form.address" class="input" placeholder="街道门牌，越详细导航越准" /></div>
             <div class="field"><label>门牌 / 楼层补充</label><input v-model="form.address_detail" class="input" /></div>
+            <div class="field">
+              <label>定位坐标 <span class="muted small">（微信/GPS → IP → 城市兜底；用于名片集市按距离排序与一键导航）</span></label>
+              <div class="locate-row">
+                <span class="small mono">{{ form.latitude != null ? form.latitude.toFixed(4) : '—' }}, {{ form.longitude != null ? form.longitude.toFixed(4) : '—' }}</span>
+                <span v-if="positionSource" class="badge small" :class="qualityClass">{{ sourceLabel }}</span>
+                <button class="btn btn-sm btn-ghost" @click="mapOpen = true">🗺 地图选点</button>
+                <button class="btn btn-sm btn-ghost" :disabled="locating" @click="locateMe">{{ locating ? '定位中…' : '⌖ 精确定位' }}</button>
+              </div>
+            </div>
             <div class="section-foot"><span class="save-state">修改后自动保存 · 所见即所得</span></div>
           </div>
 
@@ -112,24 +121,8 @@
                   <option v-for="ind in marketMeta.industries" :key="ind.key" :value="ind.key">{{ ind.label }}</option>
                 </select>
               </div>
-              <div class="field">
-                <label>所在地区 <span class="muted small">（来自「联系方式」里的地址，无需重复填写）</span></label>
-                <div class="market-region">
-                  <span class="region-path">{{ marketRegionText || '尚未填写' }}</span>
-                  <button class="btn btn-sm btn-ghost" @click="goSection(sections.findIndex(s => s.key === 'contact'))">去填写 →</button>
-                </div>
-              </div>
             </div>
-            <div class="field">
-              <label>定位坐标 <span class="muted small">（四级定位：微信/GPS → IP → 城市兜底；用于按距离排序）</span></label>
-              <div class="locate-row">
-                <span class="small mono">{{ form.latitude != null ? form.latitude.toFixed(4) : '—' }}, {{ form.longitude != null ? form.longitude.toFixed(4) : '—' }}</span>
-                <span v-if="positionSource" class="badge small" :class="qualityClass">{{ sourceLabel }}</span>
-                <button class="btn btn-sm btn-ghost" @click="mapOpen = true">🗺 地图选点</button>
-                <button class="btn btn-sm btn-ghost" :disabled="locating" @click="locateMe">{{ locating ? '定位中…' : '⌖ 重新定位' }}</button>
-              </div>
-            </div>
-            <p v-if="form.market_opt_in && form.latitude == null" class="small" style="color:#b45309">已开启上架但尚无坐标，请在「联系方式」里选好地区或点「精确定位」，否则在集市中会排在末尾。</p>
+            <p class="small muted" style="margin:2px 0 10px">上架展示的「地区 / 坐标」来自「联系方式」里填写的地址与定位，这里无需重复设置。</p>
             <div class="section-foot"><span class="save-state">修改后自动保存 · 所见即所得</span></div>
           </div>
 
@@ -756,7 +749,6 @@ async function finish() {
 .market-value { padding: 12px 14px; margin-bottom: 14px; border-radius: 12px; background: linear-gradient(135deg, #ecfeff, #eff6ff); border: 1px solid #c7d2fe; }
 .market-value b { font-size: 13px; color: #0e7490; }
 .market-value p { margin: 6px 0 8px; font-size: 12px; line-height: 1.6; color: var(--muted); }
-.market-region { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .market-checks { display: flex; gap: 8px 14px; flex-wrap: wrap; }
 .market-checks span { font-size: 11px; color: var(--muted); }
 .market-checks span.ok { color: #0f766e; font-weight: 700; }
