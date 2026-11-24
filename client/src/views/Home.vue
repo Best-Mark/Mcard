@@ -4,7 +4,6 @@
       <div class="brand">M<em>Card</em></div>
       <div class="spacer"></div>
       <router-link to="/me">我的名片</router-link>
-      <router-link to="/admin" class="btn btn-sm btn-ghost">管理后台</router-link>
     </header>
 
     <section class="hero">

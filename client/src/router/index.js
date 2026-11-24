@@ -1,10 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Home from '../views/Home.vue'
 import api from '../api'
 import { setAuth, showToast } from '../store'
 import { isWeChat } from '../utils/save-image'
 
-// 路由懒加载：首页同步首屏直达，其余按访问分块加载，减小首屏 JS 体积。
+// 路由懒加载：按访问分块加载，减小首屏 JS 体积。
+// 首页即名片集市：根路径重定向到 /market，直接进入集市并正常显示底部导航。
 const CardView = () => import('../views/CardView.vue')
 const Market = () => import('../views/Market.vue')
 const Login = () => import('../views/Login.vue')
@@ -22,7 +22,7 @@ const PrintDesign = () => import('../views/PrintDesign.vue')
 const Admin = () => import('../views/Admin.vue')
 
 const routes = [
-  { path: '/', name: 'home', component: Home },
+  { path: '/', redirect: '/market' },
   { path: '/c/:slug', name: 'card', component: CardView },
   { path: '/market', name: 'market', component: Market },
   { path: '/login', name: 'login', component: Login },
