@@ -504,6 +504,8 @@ async function toggleFavorite() {
 
 <style scoped>
 .cv-page { background: var(--t-bg); color: var(--t-text); min-height: 100vh; padding-bottom: 84px; }
+/* 高档商务名片：卡片大圆角 + 轻阴影，浅灰蓝底衬托层次 */
+.cv-page .card { border-radius: 20px; box-shadow: 0 4px 18px rgba(30,64,120,.07); border: 0; overflow: hidden; }
 .cv-cover { height: 168px; position: relative; border-radius: 0 0 28px 28px; background: var(--t-cover); }
 .cv-back { position: absolute; left: 14px; top: calc(14px + env(safe-area-inset-top)); font-size: 30px; color: #fff; line-height: 1; }
 .cv-brand { position: absolute; right: 16px; top: calc(18px + env(safe-area-inset-top)); color: #fff; font-weight: 800; opacity: .9; }
@@ -530,7 +532,7 @@ async function toggleFavorite() {
 .cv-actions button { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: var(--t-muted); }
 .cv-actions i { font-style: normal; width: 38px; height: 38px; border-radius: 50%; background: rgba(0,0,0,.05); background: color-mix(in srgb, var(--t-accent) 12%, transparent); color: var(--t-accent); display: grid; place-items: center; font-size: 17px; font-weight: 700; }
 .cv-block { margin-top: 12px; background: var(--t-surface); }
-.cv-block h3 { font-size: 14px; margin-bottom: 8px; }
+.cv-block h3, .cv-sec-title { font-size: 14px; margin-bottom: 10px; padding-left: 10px; border-left: 3px solid var(--t-accent, #2563eb); line-height: 1.3; }
 .cv-bio { color: var(--t-muted); font-size: 13px; white-space: pre-wrap; }
 .cv-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
 .cv-links a { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; background: var(--t-bg); }
@@ -566,10 +568,13 @@ async function toggleFavorite() {
 .cv-exchange { margin-top: 12px; display: flex; justify-content: space-between; align-items: center; background: var(--t-surface); }
 .cv-exchange h3 { font-size: 14px; }
 .cv-footer { text-align: center; color: var(--t-muted); font-size: 11px; padding: 26px 0 10px; }
-.cv-dock { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 6px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: rgba(255,255,255,.96); backdrop-filter: blur(12px); border-top: 1px solid var(--line); z-index: 60; }
+/* 高档深灰底栏：主操作蓝，次操作深灰半透明，参考商务数字名片质感 */
+.cv-dock { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 6px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: #252a33; border-top: 1px solid rgba(255,255,255,.08); z-index: 60; }
 .cv-dock .btn { flex: 1; padding-left: 4px; padding-right: 4px; font-size: 13px; }
-.cv-dock .fav-on { color: #d97706; background: #fffbeb; border-color: #fcd34d; }
-.cv-share-fab { position: fixed; right: 16px; bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 61; width: 58px; height: 58px; border-radius: 50%; background: var(--t-accent, #2563eb); color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,.28); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; font-size: 20px; }
+.cv-dock .btn-primary { background: var(--t-accent, #2563eb); color: #fff; border-color: transparent; }
+.cv-dock .btn-ghost { background: rgba(255,255,255,.12); color: #e2e8f0; border-color: transparent; }
+.cv-dock .fav-on { color: #fbbf24; background: rgba(251,191,36,.16); border-color: rgba(251,191,36,.4); }
+.cv-share-fab { position: fixed; right: 16px; bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 61; width: 58px; height: 58px; border-radius: 16px; background: var(--t-accent, #2563eb); color: #fff; box-shadow: 0 8px 24px rgba(37,99,235,.42); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; font-size: 20px; }
 .cv-share-fab span { font-size: 10px; }
 
 /* ============ 布局模板：template × theme 正交组合，template 只改布局/形状，配色仍走 --t-* 变量 ============ */
