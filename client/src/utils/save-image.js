@@ -4,8 +4,10 @@ export const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent || '') ||
 // iOS Safari 访问「以 .vcf 结尾 + 服务端无 attachment 头」的直链才会弹系统添加联系人。
 // 绝不能带 ?query（Safari 会当普通下载），服务端已按 UA 自动去掉 attachment。
 // 微信内 WKWebView 拦不了通讯录，需先跳外部浏览器。
+// 必须用绝对地址：iOS Safari 对相对路径的 .vcf 跳转会当页面内导航，不弹通讯录。
 export function openVcfInline(url) {
-  window.location.href = url
+  const abs = /^https?:\/\//i.test(url) ? url : new URL(url, window.location.origin).href
+  window.location.href = abs
 }
 
 // 微信内 → 外部浏览器免二次登录：把一次性凭证写入当前 URL。
@@ -42,6 +44,10 @@ export async function prepareExternalOpen(api) {
 }
 
 export function saveBlob(blob, filename) {
+  // iOS Safari 对 a[download] 的 blob/dataURL 下载支持不稳定：常见「Safari浏览器无法下载此文件」
+  // 却没有任何回调可捕获。不能无条件返回 downloaded 造成假成功——交给调用方引导长按图片。
+  // （她在微信 WKWebView 里更是完全空操作，上面 saveImageUrl 已提前返回 longpress。）
+  if (isIOS()) return { kind: 'longpress', filename }
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
