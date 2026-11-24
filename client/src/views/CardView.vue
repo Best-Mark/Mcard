@@ -44,20 +44,16 @@
           <router-link to="/me/plans" class="btn btn-primary">立即开通</router-link>
         </div>
 
-        <div class="cv-actions card">
-          <button @click="tel(card.mobile || card.phone)"><i><AppIcon name="phone" :size="20" /></i><span>打电话</span></button>
-          <button @click="sms(card.mobile || card.phone)"><i><AppIcon name="sms" :size="20" /></i><span>发短信</span></button>
-          <button @click="mailto(card.email)"><i><AppIcon name="mail" :size="20" /></i><span>写邮件</span></button>
-          <button @click="copy(card.wechat || card.whatsapp, '微信号')"><i><AppIcon name="wechat" :size="20" /></i><span>微信</span></button>
-          <button @click="copy(card.alipay, '支付宝账号')"><i><AppIcon name="alipay" :size="20" /></i><span>支付宝</span></button>
-        </div>
-
         <div v-if="contactFields.length" class="card card-pad cv-block">
-          <h3>联系方式 <span class="small muted">· 点右侧复制</span></h3>
-          <div v-for="f in contactFields" :key="f.key" class="cv-contact-row">
+          <h3>联系方式 <span class="small muted">· 点一行即复制该字段</span></h3>
+          <div v-for="f in contactFields" :key="f.key" class="cv-contact-row" @click="copy(f.value, f.label)">
             <div class="cv-contact-label">{{ f.label }}：</div>
             <div class="cv-contact-value">{{ f.value }}</div>
-            <button class="btn btn-sm btn-ghost" @click="copy(f.value, f.label)">复制</button>
+            <div class="cv-contact-acts" @click.stop>
+              <button v-if="f.key === 'mobile' || f.key === 'phone'" class="cv-row-act" title="打电话" @click="tel(f.value)"><AppIcon name="phone" :size="18" /></button>
+              <button v-if="f.key === 'mobile'" class="cv-row-act" title="发短信" @click="sms(f.value)"><AppIcon name="sms" :size="18" /></button>
+              <button v-if="f.key === 'email'" class="cv-row-act" title="写邮件" @click="mailto(f.value)"><AppIcon name="mail" :size="18" /></button>
+            </div>
           </div>
         </div>
 
@@ -126,9 +122,8 @@
         <div v-if="fullAddress" class="card card-pad cv-block">
           <h3>地址</h3>
           <div v-if="regionLine" class="cv-region-line">{{ regionLine }}</div>
-          <div class="cv-address">
+          <div class="cv-address" @click="copy(fullAddress, '地址')">
             <span>地址：{{ fullAddress }}</span>
-            <button class="btn btn-sm btn-ghost" @click="copy(fullAddress, '地址')">复制</button>
           </div>
           <div v-if="card.latitude != null && card.longitude != null" class="cv-geo-hint small muted">
             坐标：{{ card.latitude.toFixed(4) }}, {{ card.longitude.toFixed(4) }}
@@ -615,9 +610,9 @@ async function toggleFavorite() {
 .cv-tags span { font-size: 11px; padding: 3px 9px; border-radius: 999px; background: rgba(0,0,0,.05); background: color-mix(in srgb, var(--t-accent) 12%, transparent); color: var(--t-accent); font-weight: 600; }
 .cv-status { position: absolute; right: 14px; bottom: 12px; }
 .notice-card { margin-top: 12px; border-color: #fcd34d; background: #fffbeb; color: #92400e; }
-.cv-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(58px, 1fr)); margin-top: 12px; padding: 8px 0; background: var(--t-surface); }
-.cv-actions button { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: var(--t-muted); }
-.cv-actions i { font-style: normal; width: 38px; height: 38px; border-radius: 50%; background: rgba(0,0,0,.05); background: color-mix(in srgb, var(--t-accent) 12%, transparent); color: var(--t-accent); display: grid; place-items: center; font-size: 17px; font-weight: 700; }
+/* 操作栏已并入联系方式行：整行点击复制该字段，行尾按钮给出电话/短信/邮件等操作 */
+.cv-contact-acts { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.cv-row-act { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: color-mix(in srgb, var(--t-accent) 12%, transparent); color: var(--t-accent); }
 .cv-block { margin-top: 12px; background: var(--t-surface); }
 .cv-block h3, .cv-sec-title { font-size: 14px; margin-bottom: 10px; padding-left: 10px; border-left: 3px solid var(--t-accent, #2563eb); line-height: 1.3; }
 .cv-bio { color: var(--t-muted); font-size: 13px; white-space: pre-wrap; }
@@ -633,9 +628,9 @@ async function toggleFavorite() {
 .qr-tile img { width: 116px; height: 116px; object-fit: contain; background: #fff; border-radius: 8px; cursor: zoom-in; }
 .qr-tile b { font-size: 13px; }
 .qr-tile .btn-row { justify-content: center; margin-top: 4px; }
-.cv-address { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.cv-address { display: flex; align-items: center; gap: 8px; justify-content: space-between; cursor: pointer; }
 .cv-region-line { font-size: 13px; font-weight: 600; color: var(--t-accent); margin-bottom: 6px; }
-.cv-contact-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--t-line, rgba(0,0,0,.06)); }
+.cv-contact-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--t-line, rgba(0,0,0,.06)); cursor: pointer; }
 .cv-contact-row:last-child { border-bottom: 0; }
 .cv-contact-label { flex: 0 0 56px; font-size: 12px; color: var(--t-muted); }
 .cv-contact-value { flex: 1; min-width: 0; font-size: 13px; word-break: break-all; }

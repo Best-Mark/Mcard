@@ -35,11 +35,15 @@
         </div>
 
         <div v-if="contactFields.length" class="cp-block" data-sec="contact">
-          <h3>联系方式 <span>· 点右侧复制</span></h3>
+          <h3>联系方式 <span>· 点一行复制</span></h3>
           <div v-for="f in contactFields" :key="f.key" class="cp-contact-row">
             <div class="cp-contact-label">{{ f.label }}：</div>
             <div class="cp-contact-value">{{ f.value }}</div>
-            <button type="button" class="cp-mini-btn">复制</button>
+            <span class="cp-contact-acts">
+              <AppIcon v-if="f.key === 'mobile' || f.key === 'phone'" name="phone" :size="14" />
+              <AppIcon v-if="f.key === 'mobile'" name="sms" :size="14" />
+              <AppIcon v-if="f.key === 'email'" name="mail" :size="14" />
+            </span>
           </div>
         </div>
 
@@ -225,7 +229,7 @@ watch(() => props.section, async () => {
 .cp-contact-row:last-child { border-bottom: 0; }
 .cp-contact-label { flex: 0 0 44px; font-size: 10px; color: var(--t-muted); }
 .cp-contact-value { flex: 1; min-width: 0; font-size: 11px; word-break: break-all; }
-.cp-mini-btn { font-size: 10px; color: var(--t-accent); border: 1px solid var(--line); border-radius: 6px; padding: 2px 6px; background: transparent; }
+.cp-contact-acts { display: flex; align-items: center; gap: 5px; color: var(--t-accent); flex: 0 0 auto; }
 .cp-bio { color: var(--t-muted); font-size: 11px; white-space: pre-wrap; line-height: 1.55; margin: 0; }
 .cp-links { display: grid; gap: 6px; }
 .cp-links div { border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; display: flex; flex-direction: column; background: var(--t-bg); }
