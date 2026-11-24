@@ -18,7 +18,7 @@
 
       <div class="edit-layout">
         <div>
-          <div class="card card-pad">
+          <div class="card card-pad" id="focus-identity">
             <div class="section-title" style="margin-top:0">基本信息</div>
             <div class="avatar-row">
               <div class="avatar-preview">
@@ -51,7 +51,7 @@
             <div class="field"><label>标签（逗号分隔，最多 8 个）</label><input v-model="tagsText" class="input" placeholder="品牌顾问, 设计, 马拉松" /></div>
           </div>
 
-          <div class="card card-pad" style="margin-top:14px">
+          <div class="card card-pad" style="margin-top:14px" id="focus-contact">
             <div class="section-title" style="margin-top:0">联系方式</div>
             <div class="grid2">
               <div class="field"><label>手机号</label><input v-model="form.mobile" class="input" inputmode="tel" /></div>
@@ -94,7 +94,7 @@
             <p v-if="form.market_opt_in && form.latitude == null" class="small" style="color:#b45309">已开启上架但尚无坐标，请选城市或精确定位，否则在集市中会排在末尾。</p>
           </div>
 
-          <div class="card card-pad" style="margin-top:14px">
+          <div class="card card-pad" style="margin-top:14px" id="focus-qr">
             <div class="section-title" style="margin-top:0">加好友 / 收付款二维码</div>
             <p class="small muted" style="margin-bottom:12px">上传微信 / 支付宝的「加好友码」或「收款码」原图，访客在自己常用的 App 环境里可长按识别或保存后扫码。请只上传自己本人的二维码。</p>
             <div v-for="q in qrFields" :key="q.key" class="qr-upload-row">
@@ -108,7 +108,7 @@
             </div>
           </div>
 
-          <div class="card card-pad" style="margin-top:14px">
+          <div class="card card-pad" style="margin-top:14px" id="focus-links">
             <div class="section-title" style="margin-top:0">更多链接</div>
             <div v-for="(l, i) in form.links" :key="i" class="link-row">
               <input v-model="l.label" class="input" placeholder="标题，如 我的作品集" />
@@ -196,7 +196,7 @@
 
 <script setup>
 import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import api from '../api'
 import { showToast } from '../store'
 import { THEMES } from '../utils/themes'
@@ -205,6 +205,7 @@ import LogoUploader from '../components/LogoUploader.vue'
 const MapPicker = defineAsyncComponent(() => import('../components/MapPicker.vue'))
 
 const router = useRouter()
+const route = useRoute()
 const blank = {
   slug: '', name: '', name_en: '', title: '', company: '', company_intro: '', department: '', website: '', shop_url: '',
   mobile: '', phone: '', email: '', wechat: '', alipay: '', whatsapp: '',
@@ -252,6 +253,10 @@ onMounted(async () => {
   loadTemplates()
   loadMarketMeta()
   await loadCard()
+  // 从「我的名片」板块编辑入口进来时，按 focus 定位到对应资料区块
+  const focus = String(route.query.focus || '')
+  const id = { identity: 'focus-identity', bio: 'focus-identity', contact: 'focus-contact', qr: 'focus-qr', links: 'focus-links' }[focus]
+  if (id) setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
 })
 
 async function loadTemplates() {
