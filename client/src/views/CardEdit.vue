@@ -317,19 +317,19 @@
       </div>
     </div>
 
-    <!-- 省市区街道级联选择 -->
-    <div v-if="regionOpen" class="map-mask" @click.self="regionOpen = false">
-      <div class="map-modal">
-        <div class="map-modal-head">
-          <b>选择所在地区</b>
-          <button class="btn btn-sm btn-ghost" @click="regionOpen = false">关闭</button>
-        </div>
+    <!-- 省市区街道级联选择（底部弹出，不再居中弹窗） -->
+    <BottomSheet :show="regionOpen" @update:show="regionOpen = $event">
+      <div class="map-modal-head region-sheet-head">
+        <b>选择所在地区</b>
+        <button class="btn btn-sm btn-ghost" @click="regionOpen = false">关闭</button>
+      </div>
+      <div class="region-sheet-body">
         <RegionPicker
           :province="form.province" :city="form.city" :district="form.district" :street="form.street"
           @confirm="onRegionPicked"
         />
       </div>
-    </div>
+    </BottomSheet>
 
     <!-- 地图拖拽选点（懒加载，打开才下载地图组件） -->
     <div v-if="mapOpen" class="map-mask" @click.self="mapOpen = false">
@@ -357,6 +357,7 @@ import { THEMES } from '../utils/themes'
 import { refreshPosition, setManualPosition, reverseGeocode, geocode } from '../utils/geo'
 import LogoUploader from '../components/LogoUploader.vue'
 import AssetPicker from '../components/AssetPicker.vue'
+import BottomSheet from '../components/BottomSheet.vue'
 
 const MapPicker = defineAsyncComponent(() => import('../components/MapPicker.vue'))
 const RegionPicker = defineAsyncComponent(() => import('../components/RegionPicker.vue'))
@@ -736,6 +737,8 @@ async function finish() {
 .map-mask { position: fixed; inset: 0; background: rgba(15,23,42,.55); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 16px; }
 .map-modal { width: 100%; max-width: 680px; background: var(--bg-card, #fff); border-radius: 14px; padding: 14px; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
 .map-modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.region-sheet-head { padding: 16px 18px 6px; }
+.region-sheet-body { padding: 0 18px 18px; max-height: 70vh; overflow-y: auto; }
 .link-row { display: grid; grid-template-columns: 1fr 1.5fr auto; gap: 8px; margin-bottom: 8px; }
 .material-row { padding: 10px; margin-bottom: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-page, rgba(0,0,0,.02)); }
 .material-row .mr-head { display: grid; grid-template-columns: 110px 1fr auto; gap: 8px; align-items: center; margin-bottom: 8px; }
