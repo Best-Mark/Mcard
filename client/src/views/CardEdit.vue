@@ -4,6 +4,7 @@
       <button class="back-btn" @click="finish">‹ 返回</button>
       <div class="spacer"></div>
       <button class="nav-menu-btn" aria-label="菜单" @click="toggleDrawer"><i class="menu-glyph"></i></button>
+      <button class="btn btn-sm btn-ghost preview-toggle" @click="showPreview = true">预览</button>
       <span class="small muted">编辑资料 · 可随时离开，下次继续</span>
     </header>
 
@@ -14,7 +15,7 @@
         <button class="btn btn-sm btn-primary" :disabled="loading" @click="loadCard">重新加载</button>
       </div>
       <div class="hint" style="margin-bottom:14px">
-        🔒 <b>二维码永久不变 · 修改自动保存</b>：切换分类或输入后自动保存，右侧预览所见即所得；链接 <span class="mono">/c/{{ form.slug }}</span> 与二维码图案始终不变，印好的实体名片无需重做。
+        👀 <b>所见即所得</b>：每改一项，右侧预览立即更新，你当场就能看到名片变成什么样；保存只是把它持久化。链接 <span class="mono">/c/{{ form.slug }}</span> 与二维码图案始终不变，印好的实体名片无需重做。
       </div>
 
       <div class="edit-layout">
@@ -54,7 +55,7 @@
               <div class="field"><label>部门</label><input v-model="form.department" class="input" maxlength="40" /></div>
             </div>
             </div>
-            <div class="section-foot"><span class="save-state">修改后自动保存 · 所见即所得</span></div>
+            <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
           </div>
 
           <!-- ② 简介与标签 -->
@@ -64,7 +65,7 @@
             <div class="field"><label>个人简介</label><textarea v-model="form.bio" class="textarea" maxlength="600" placeholder="一句话介绍自己，展示在名片首页"></textarea></div>
             <div class="field"><label>公司简介</label><textarea v-model="form.company_intro" class="textarea" maxlength="1000" placeholder="介绍公司业务、优势与服务，展示在名片「公司简介」区块，并写入通讯录备注"></textarea></div>
             <div class="field"><label>标签（逗号分隔，最多 8 个）</label><input v-model="tagsText" class="input" placeholder="品牌顾问, 设计, 马拉松" /></div>
-            <div class="section-foot"><span class="save-state">修改后自动保存 · 所见即所得</span></div>
+            <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
           </div>
 
           <!-- ③ 联系方式 -->
@@ -97,7 +98,7 @@
                 <button class="btn btn-sm btn-ghost" :disabled="locating" @click="locateMe">{{ locating ? '定位中…' : '⌖ 精确定位' }}</button>
               </div>
             </div>
-            <div class="section-foot"><span class="save-state">修改后自动保存 · 所见即所得</span></div>
+            <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
           </div>
 
           <!-- ⑥ 名片集市 -->
@@ -123,7 +124,7 @@
               </div>
             </div>
             <p class="small muted" style="margin:2px 0 10px">上架展示的「地区 / 坐标」来自「联系方式」里填写的地址与定位，这里无需重复设置。</p>
-            <div class="section-foot"><span class="save-state">修改后自动保存 · 所见即所得</span></div>
+            <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
           </div>
 
           <!-- ④ 二维码 -->
@@ -140,7 +141,7 @@
                 <AssetPicker v-model="form[q.key]" label="素材库" />
               </div>
             </div>
-            <div class="section-foot"><span class="save-state">修改后自动保存 · 所见即所得</span></div>
+            <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
           </div>
 
           <!-- ⑤ 更多链接 -->
@@ -157,7 +158,7 @@
               <button class="btn btn-sm btn-danger" @click="form.links.splice(i, 1)">删</button>
             </div>
             <button class="btn btn-sm btn-ghost" @click="form.links.push({ label: '', url: '' })">+ 添加链接</button>
-            <div class="section-foot"><span class="save-state">修改后自动保存 · 所见即所得</span></div>
+            <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
           </div>
 
           <!-- ⑧ 资料夹 -->
@@ -181,7 +182,7 @@
               </div>
             </div>
             <button class="btn btn-sm btn-ghost" @click="addMaterial">+ 添加资料</button>
-            <div class="section-foot"><span class="save-state">修改后自动保存 · 所见即所得</span></div>
+            <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
           </div>
 
           <!-- ⑦ 外观（模板 + 主题） -->
@@ -254,7 +255,7 @@
               </div>
               <p class="small muted">实时预览见右侧；保存本节后公开名片与分享二维码同步生效。</p>
             </div>
-            <div class="section-foot"><span class="save-state">修改后自动保存 · 所见即所得</span></div>
+            <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
           </div>
 
           <div class="done-bar">
@@ -269,19 +270,9 @@
 
         <aside class="preview-panel">
           <div class="card card-pad">
-            <div class="section-title" style="margin-top:0">实时预览</div>
-            <div class="preview-card" :class="'pv-' + form.template">
-              <div class="preview-head" :style="{ background: THEMES[form.theme]?.cover }">
-                <div class="preview-avatar">{{ (form.name || 'M').slice(0, 1) }}</div>
-              </div>
-              <div class="preview-body">
-                <b>{{ form.name || '你的姓名' }}</b>
-                <span class="small muted">{{ [form.title, form.company].filter(Boolean).join(' · ') || '职位 · 公司' }}</span>
-                <div class="preview-tags"><i v-for="t in tagList.slice(0,3)" :key="t">{{ t }}</i></div>
-              </div>
-            </div>
-            <img :src="previewQr" class="preview-qr" alt="二维码预览" />
-            <p class="small muted center">扫码地址固定为 <span class="mono">/c/{{ form.slug }}</span></p>
+            <div class="section-title" style="margin-top:0">实时预览 <span class="small muted">· 改一项看一项</span></div>
+            <CardPreview :card="form" :tags="tagList" :materials="materials" :qr-url="previewQr" :section="active" :industries="marketMeta.industries" />
+            <p class="small muted center" style="margin-top:10px">扫码地址固定为 <span class="mono">/c/{{ form.slug }}</span></p>
           </div>
         </aside>
       </div>
@@ -300,6 +291,17 @@
         />
       </div>
     </BottomSheet>
+
+    <!-- 窄屏预览：手机上点顶部「预览」全屏看实时名片，与 PC 右侧预览共用组件 -->
+    <div v-if="showPreview" class="mobile-preview-mask" @click.self="showPreview = false">
+      <div class="mobile-preview-panel">
+        <div class="map-modal-head">
+          <b>实时预览 · 改一项看一项</b>
+          <button class="btn btn-sm btn-ghost" @click="showPreview = false">关闭</button>
+        </div>
+        <CardPreview :card="form" :tags="tagList" :materials="materials" :qr-url="previewQr" :section="active" />
+      </div>
+    </div>
 
     <!-- 地图拖拽选点（懒加载，打开才下载地图组件） -->
     <div v-if="mapOpen" class="map-mask" @click.self="mapOpen = false">
@@ -328,6 +330,7 @@ import { refreshPosition, setManualPosition, reverseGeocode, geocode } from '../
 import LogoUploader from '../components/LogoUploader.vue'
 import AssetPicker from '../components/AssetPicker.vue'
 import BottomSheet from '../components/BottomSheet.vue'
+import CardPreview from '../components/CardPreview.vue'
 
 const MapPicker = defineAsyncComponent(() => import('../components/MapPicker.vue'))
 const RegionPicker = defineAsyncComponent(() => import('../components/RegionPicker.vue'))
@@ -360,6 +363,7 @@ function applyQrPreset(p) {
 }
 const form = ref({ ...blank })
 const active = ref('identity')
+const showPreview = ref(false)
 const sections = computed(() => [
   { key: 'identity', label: '身份信息', icon: '👤', done: !!(form.value.name && (form.value.title || form.value.company)) },
   { key: 'bio', label: '简介与标签', icon: '📝', done: !!(form.value.bio || form.value.company_intro || tagList.value.length) },
@@ -609,7 +613,7 @@ async function saveSection(key, silent = false) {
     savedSections.value = { ...savedSections.value, [key]: Date.now() }
     dirtySections.value = { ...dirtySections.value, [key]: false }
     if (!silent) showToast('已保存', 'success')
-    autoSaveText.value = '✓ 已自动保存 · 所见即所得'
+    autoSaveText.value = '✓ 已保存 · 右侧预览始终最新'
   } catch (e) {
     autoSaveText.value = '保存失败，请检查网络后修改任意字段重试'
     if (!silent) showToast(e.message, 'error')
@@ -645,7 +649,7 @@ async function saveMaterials(silent = false) {
     savedSections.value = { ...savedSections.value, materials: Date.now() }
     dirtySections.value = { ...dirtySections.value, materials: false }
     if (!silent) showToast('资料夹已保存', 'success')
-    autoSaveText.value = '✓ 已自动保存 · 所见即所得'
+    autoSaveText.value = '✓ 已保存 · 右侧预览始终最新'
   } catch (e) {
     autoSaveText.value = '保存失败，请检查网络后修改任意字段重试'
     if (!silent) showToast(e.message, 'error')
@@ -667,11 +671,11 @@ async function uploadMaterial(e, row) {
   e.target.value = ''
 }
 
-// 所见即所得：字段变更 debounce 后自动保存当前分类，切换分类时立即保存上一分类。
+// 字段变更 debounce 后自动保存当前分类，切换分类时立即保存上一分类；预览由 form 直接驱动，无需等保存。
 let formReady = false
 let saveTimer = null
 const sectionIndex = computed(() => sections.value.findIndex(s => s.key === active.value))
-const autoSaveText = ref('修改后自动保存 · 所见即所得')
+const autoSaveText = ref('修改即时反映到右侧预览 · 自动保存仅用于持久化')
 
 function scheduleAutoSave() {
   if (!formReady) return
@@ -684,7 +688,7 @@ watch(form, scheduleAutoSave, { deep: true })
 watch(tagsText, scheduleAutoSave)
 watch(materials, scheduleAutoSave, { deep: true })
 
-// 切换分类：先保存上一分类，再切过去（所见即所得，无需手动保存）
+// 切换分类：先保存上一分类，再切过去（预览始终跟随当前 form，无需手动保存）
 function goSection(index) {
   const s = sections.value[index]
   if (!s) return
@@ -720,7 +724,11 @@ async function finish() {
 .done-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; padding: 14px; background: #eff6ff; border: 1px solid #dbeafe; border-radius: 12px; flex-wrap: wrap; }
 .done-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .back-btn { font-size: 16px; color: var(--primary); padding: 4px 8px; margin-left: -8px; }
-@media (max-width: 1080px) { .edit-layout { grid-template-columns: 168px minmax(0, 1fr); } .preview-panel { display: none; } }
+.preview-toggle { display: none; }
+.mobile-preview-mask { position: fixed; inset: 0; background: rgba(15,23,42,.55); z-index: 2100; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.mobile-preview-panel { width: 100%; max-width: 380px; max-height: 94vh; overflow-y: auto; background: var(--bg-card, #fff); border-radius: 14px; padding: 14px; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+.mobile-preview-panel :deep(.cp-screen) { height: 68vh; }
+@media (max-width: 1080px) { .edit-layout { grid-template-columns: 168px minmax(0, 1fr); } .preview-panel { display: none; } .preview-toggle { display: inline-flex; } }
 @media (max-width: 720px) {
   .edit-layout { grid-template-columns: 1fr; }
   .edit-nav { position: static; flex-direction: row; overflow-x: auto; white-space: nowrap; border-radius: 10px; padding: 6px; }
