@@ -1,5 +1,26 @@
 export const isWeChat = () => /MicroMessenger/i.test(navigator.userAgent || '')
 
+// 微信内 → 外部浏览器免二次登录：把一次性凭证写入当前 URL。
+// 用户点右上角「在浏览器中打开」时，微信会把当前 URL（含 ticket）带到外部浏览器，
+// 外部浏览器的路由守卫用 ticket 自动恢复登录态。需在显示「去浏览器打开」引导前调用。
+let preparing = null
+export async function prepareExternalOpen(api) {
+  if (!isWeChat()) return false
+  if (preparing) return preparing
+  preparing = (async () => {
+    try {
+      const { data } = await api.post('/api/auth/share-ticket')
+      const ticket = data?.data?.ticket
+      if (!ticket) return false
+      const u = new URL(window.location.href)
+      u.searchParams.set('wx_ticket', ticket)
+      window.history.replaceState(null, '', u.toString())
+      return true
+    } catch { return false } finally { preparing = null }
+  })()
+  return preparing
+}
+
 export function saveBlob(blob, filename) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')

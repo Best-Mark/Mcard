@@ -6,9 +6,10 @@ const config = require('../config')
 const settings = require('../utils/settings')
 const { requestUrl } = require('../utils/origin')
 const { ok, fail, wrap } = require('../utils/response')
-const { sign, signBind, verifyBind, authRequired } = require('../utils/auth')
+const { sign, signBind, verifyBind, signShareTicket, verifyShareTicket, cleanShareTickets, authRequired } = require('../utils/auth')
 
 const router = express.Router()
+cleanShareTickets() // 自愈：清理过期残留的一次性登录凭证
 
 // ---------- 微信网页授权（公众号 H5 快捷登录）----------
 const STATE_TTL = 5 * 60 * 1000
@@ -160,5 +161,19 @@ function publicUser(u) {
 }
 
 router.get('/me', authRequired, (req, res) => ok(res, req.user))
+
+// 微信内已登录 → 生成一次性凭证，前端把它拼到当前 URL，引导「在浏览器中打开」后免二次登录
+router.post('/share-ticket', authRequired, wrap((req, res) => {
+  ok(res, { ticket: signShareTicket(req.user.id) })
+}))
+
+// 外部浏览器用 ticket 换登录态（ticket 一次性消费，10 分钟有效）
+router.post('/share-ticket/exchange', wrap((req, res) => {
+  const uid = verifyShareTicket(req.body?.ticket)
+  if (!uid) return fail(res, 400, '登录凭证无效或已过期，请重新登录')
+  const user = db.prepare('SELECT id, phone, nickname, role, status, avatar FROM users WHERE id = ?').get(uid)
+  if (!user || user.status !== 'active') return fail(res, 400, '账号不可用')
+  ok(res, { token: sign(user), user })
+}))
 
 module.exports = router

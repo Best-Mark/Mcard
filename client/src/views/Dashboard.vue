@@ -218,7 +218,7 @@ import { useRouter } from 'vue-router'
 import api from '../api'
 import { auth, logout, showToast, siteConfig } from '../store'
 import { THEMES, themeOf, themeVars } from '../utils/themes'
-import { isWeChat, saveImageUrl } from '../utils/save-image'
+import { isWeChat, saveImageUrl, prepareExternalOpen } from '../utils/save-image'
 import { shareOrCopy, mapLinks } from '../utils/share'
 
 const router = useRouter()
@@ -294,7 +294,10 @@ async function saveQr() {
 async function saveContact() {
   if (!card.value) return
   const vcfApi = `${qrApi.value}/card.vcf`
-  if (isWeChat()) return showToast('请点右上角「···」→ 在浏览器中打开后保存，或长按二维码保存', 'error')
+  if (isWeChat()) {
+    await prepareExternalOpen(api)
+    return showToast('已带上登录状态：点右上角「···」→ 在浏览器中打开即可保存，无需再次登录', 'error')
+  }
   const r = await saveImageUrl(vcfApi, `${card.value.name || card.value.slug}.vcf`)
   showToast(r.kind === 'downloaded' ? '已下载，打开即可导入通讯录' : '已打开名片文件，请选择导入通讯录', 'success')
 }

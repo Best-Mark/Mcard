@@ -156,7 +156,7 @@
     <div v-if="guide" class="modal-mask" @click.self="guide = ''">
       <div class="modal">
         <h3>{{ guide === 'contact' ? '保存到通讯录' : '保存二维码' }}</h3>
-        <p>微信内置浏览器限制文件下载。请点右上角「···」→ 在浏览器中打开，再点击保存；或长按下方二维码图片保存。</p>
+        <p>微信内置浏览器限制文件下载。请点右上角「···」→ 在浏览器中打开，<b>已自动带上登录状态，无需再次登录</b>，再点击保存；或长按下方二维码图片保存。</p>
         <img :src="guideImage || (qrApi + '/qr.svg?size=520')" style="width:200px;height:200px;margin:10px auto;object-fit:contain" alt="二维码" />
         <div class="btn-row">
           <button class="btn btn-primary" @click="openVcf">打开名片文件</button>
@@ -186,7 +186,7 @@ import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
 import { showToast, auth, siteConfig } from '../store'
 import { THEMES, themeOf, themeVars } from '../utils/themes'
-import { isWeChat, saveImageUrl } from '../utils/save-image'
+import { isWeChat, saveImageUrl, prepareExternalOpen } from '../utils/save-image'
 import { shareOrCopy, mapLinks } from '../utils/share'
 
 const route = useRoute(); const router = useRouter()
@@ -234,10 +234,15 @@ function qrHint(platform) {
   return `保存图片后用${platform === 'wechat' ? '微信' : '支付宝'}扫一扫`
 }
 function previewQr(q) { guideImage.value = fullUrl(q.url); guide.value = 'qr' }
+// 微信内显示「去浏览器打开」引导前，先把登录凭证写进当前 URL，外部浏览器打开即免二次登录
+async function showGuide(kind) {
+  if (isWeChat()) await prepareExternalOpen(api)
+  guide.value = kind
+}
 async function saveQrFile(q) {
   guideImage.value = fullUrl(q.url)
   const r = await saveImageUrl(guideImage.value, `${q.label.replace(' · ', '-')}.png`)
-  if (r.kind === 'longpress') { guide.value = 'qr'; return }
+  if (r.kind === 'longpress') { await showGuide('qr'); return }
   showToast(r.kind === 'downloaded' ? '二维码已开始下载' : '已打开二维码，请长按保存', 'success')
 }
 
@@ -271,12 +276,12 @@ async function copy(v, label) {
 async function saveQr() {
   guideImage.value = ''
   const r = await saveImageUrl(`${qrApi}/qr.png?size=900`, `${slug}-二维码.png`)
-  if (r.kind === 'longpress') { guide.value = 'qr'; return }
+  if (r.kind === 'longpress') { await showGuide('qr'); return }
   showToast(r.kind === 'downloaded' ? '二维码已开始下载' : '已打开二维码，请长按保存', 'success')
 }
 async function saveContact() {
   if (!card.value) return
-  if (isWeChat()) { guide.value = 'contact'; return }
+  if (isWeChat()) { await showGuide('contact'); return }
   const r = await saveImageUrl(vcfApi, `${card.value.name || slug}.vcf`)
   if (r.kind === 'downloaded') showToast('已下载，打开即可导入通讯录', 'success')
   else showToast('已打开名片文件，请选择导入通讯录')
