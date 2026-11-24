@@ -13,6 +13,7 @@ const vcard = require('../services/vcard')
 const { CARD_TEMPLATES, isTemplate } = require('../utils/cardTemplates')
 const { INDUSTRIES, CITIES, HOT_CITIES, cityCoords, isIndustry, normalizeIndustry, distanceKm } = require('../utils/market')
 const { MATERIAL_TYPES, VISIT_SOURCES, isMaterialType, isVisitSource, CARD_WATCH_FIELDS, NOTIFY_TYPES } = require('../utils/constants')
+const { tokenize: tokenizeQuery, score: relevanceScore } = require('../utils/search')
 const notify = require('../services/notify')
 
 const router = express.Router()
@@ -156,19 +157,27 @@ router.get('/public/market', wrap((req, res) => {
   if (province) rows = rows.filter(r => (r.province || '').includes(province))
   if (city) rows = rows.filter(r => (r.city || '').includes(city))
   if (district) rows = rows.filter(r => (r.district || '').includes(district))
-  if (q) {
-    const needle = q.toLowerCase()
-    rows = rows.filter(r => [r.name, r.name_en, r.title, r.company, r.bio, r.city, r.tags, r.industry]
-      .join(' ').toLowerCase().includes(needle))
+  // 智能分词：整句命中权重最高，拆词命中任一即入选，命中越多越靠前（不再要求整句连续出现）
+  const tokens = q ? tokenizeQuery(q) : []
+  const relevance = new Map()
+  if (tokens.length) {
+    rows = rows.filter(r => {
+      const hay = [r.name, r.name_en, r.title, r.company, r.bio, r.city, r.tags, r.industry]
+        .filter(Boolean).join(' ')
+      const s = relevanceScore(q, tokens, hay)
+      if (s > 0) { relevance.set(r.id, s); return true }
+      return false
+    })
   }
   const origin = originOf(req)
-  let list = rows.map(r => marketView(r, originLat, originLng, origin))
+  let list = rows.map(r => ({ ...marketView(r, originLat, originLng, origin), _rel: relevance.get(r.id) || 0 }))
   // 距离范围内筛选：只在设了原点且 radiusKm>0 时生效；无坐标的名片不在范围内
   if (radiusKm > 0 && originLat != null) {
     list = list.filter(x => x.distanceKm != null && x.distanceKm <= radiusKm)
   }
-  // 排序：distance=有原点时距离近优先（无坐标排末尾）再按浏览量；views=纯浏览量优先
+  // 排序：有搜索词时先按相关度（多词命中/整句命中靠前），同分再按用户选的距离/热度
   list.sort((a, b) => {
+    if (tokens.length && a._rel !== b._rel) return b._rel - a._rel
     if (sort === 'distance' && originLat != null) {
       if (a.distanceKm == null && b.distanceKm != null) return 1
       if (a.distanceKm != null && b.distanceKm == null) return -1
@@ -176,7 +185,8 @@ router.get('/public/market', wrap((req, res) => {
     }
     return b.views - a.views
   })
-  ok(res, { list: list.slice(0, limit), total: list.length, origin: originLat != null ? { lat: originLat, lng: originLng } : null, radiusKm, sort })
+  const page = list.slice(0, limit).map(({ _rel, ...item }) => item)
+  ok(res, { list: page, total: list.length, origin: originLat != null ? { lat: originLat, lng: originLng } : null, radiusKm, sort, q, tokens })
 }))
 
 // 任意文本转二维码（小程序支付码等场景使用）——必须放在 /public/:slug 之前

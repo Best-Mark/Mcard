@@ -79,7 +79,7 @@
         <button class="btn btn-primary btn-sm" @click="load">重试</button>
       </div>
       <template v-else>
-        <div class="mk-count small muted">共找到 {{ total }} 张公开名片<span v-if="distanceMode && sort === 'distance'"> · 按距离由近到远</span><span v-else-if="sort === 'views'"> · 按热度排序</span><span v-if="radiusKm > 0"> · {{ radiusKm }} km 内</span></div>
+        <div class="mk-count small muted">共找到 {{ total }} 张公开名片<span v-if="matchedTokens.length > 1"> · 已智能分词：{{ matchedTokens.join(' / ') }}</span><span v-if="distanceMode && sort === 'distance'"> · 按距离由近到远</span><span v-else-if="sort === 'views'"> · 按热度排序</span><span v-if="radiusKm > 0"> · {{ radiusKm }} km 内</span></div>
         <div v-if="!list.length" class="mk-empty">
           <div class="mk-empty-ico">⌕</div>
           <b>附近还没有上架的名片</b>
@@ -133,6 +133,7 @@ const route = useRoute()
 const meta = ref({ industries: [], cities: [], hotCities: [], regions: [] })
 const list = ref([])
 const total = ref(0)
+const matchedTokens = ref([])
 const loading = ref(true)
 const error = ref('')
 const keyword = ref('')
@@ -261,6 +262,7 @@ async function load() {
     const { data } = await api.get('/api/cards/public/market', { params })
     list.value = data.data.list
     total.value = data.data.total
+    matchedTokens.value = data.data.tokens || []
   } catch (e) { error.value = e.message } finally { loading.value = false }
 }
 
