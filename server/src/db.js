@@ -226,6 +226,20 @@ CREATE TABLE IF NOT EXISTS regions (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_regions_parent ON regions(parent_code, level);
+
+-- 用户图片素材库：上传过的图片统一入库，编辑名片时可随时从中挑选替换（用户级，跨字段复用）
+CREATE TABLE IF NOT EXISTS user_assets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  url TEXT NOT NULL,
+  name TEXT NOT NULL DEFAULT '',
+  type TEXT NOT NULL DEFAULT 'image',
+  size INTEGER NOT NULL DEFAULT 0,
+  width INTEGER NOT NULL DEFAULT 0,
+  height INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_user_assets_user ON user_assets(user_id, created_at);
 `)
 
 // 访客画像/来源分析 + 名片夹打标：存量库补列（自愈，CREATE TABLE IF NOT EXISTS 不改老表）
@@ -234,6 +248,8 @@ addColumnIfMissing('card_views', 'source', "TEXT NOT NULL DEFAULT ''")
 addColumnIfMissing('card_views', 'city', "TEXT NOT NULL DEFAULT ''")
 addColumnIfMissing('card_favorites', 'note', "TEXT NOT NULL DEFAULT ''")
 addColumnIfMissing('card_favorites', 'tags', "TEXT NOT NULL DEFAULT '[]'")
+// 草料式二维码美化样式（JSON：dot/eye/gradTo/logoShape/bgImage），空串=经典样式
+addColumnIfMissing('cards', 'qr_style', "TEXT NOT NULL DEFAULT ''")
 // 索引依赖补列后的字段，必须放在 addColumnIfMissing 之后（存量库 source 列此时才存在）
 db.exec('CREATE INDEX IF NOT EXISTS idx_views_source ON card_views(card_id, source);')
 

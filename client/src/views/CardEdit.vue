@@ -41,13 +41,15 @@
                 <label class="btn btn-sm btn-ghost upload-btn">上传头像
                   <input type="file" accept="image/*" @change="e => upload(e, 'avatar')" />
                 </label>
-                <p class="small muted" style="margin-top:6px">建议正方形，jpg/png/webp，≤5MB</p>
+                <AssetPicker v-model="form.avatar" label="从素材库选" />
+                <p class="small muted" style="margin-top:6px">建议正方形；上传自动压缩转 WebP，≤5MB</p>
               </div>
             </div>
             <div class="field">
               <label>公司 / 个人 LOGO <span class="muted small">（自动去底成透明 PNG）</span></label>
               <div v-if="form.logo" class="logo-current"><img :src="form.logo" alt="当前 LOGO" /><span>当前 LOGO · 重新上传可替换</span></div>
               <LogoUploader v-model="form.logo" />
+              <AssetPicker v-model="form.logo" label="从素材库选" />
             </div>
             <div class="grid2">
               <div class="field"><label>姓名 *</label><input v-model="form.name" class="input" maxlength="30" /></div>
@@ -157,6 +159,7 @@
                 <label class="btn btn-sm btn-ghost upload-btn">{{ form[q.key] ? '更换' : '上传' }}
                   <input type="file" accept="image/*" @change="e => upload(e, q.key)" />
                 </label>
+                <AssetPicker v-model="form[q.key]" label="素材库" />
               </div>
             </div>
             <div class="section-foot">
@@ -245,6 +248,43 @@
               <div class="field"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" v-model="form.qr_logo" /> 二维码中心 Logo</label></div>
             </div>
             <p class="small muted">提示：二维码颜色请保持足够对比度（深色码 + 浅色底），否则可能扫不出来。</p>
+
+            <div class="qr-beautify">
+              <div class="section-title" style="margin:16px 0 8px;font-size:14px">🎨 二维码美化（草料风格）</div>
+              <div class="field"><label>一键预设</label>
+                <div class="qr-presets">
+                  <button v-for="p in QR_PRESETS" :key="p.key" class="qr-preset" :class="{ on: qrPresetActive(p) }" @click="applyQrPreset(p)">
+                    <i :style="{ background: p.swatch }"></i>{{ p.label }}
+                  </button>
+                </div>
+              </div>
+              <div class="grid2">
+                <div class="field"><label>码点形状</label>
+                  <select v-model="form.qr_style.dot" class="input"><option value="square">方形</option><option value="dots">圆点</option><option value="rounded">圆角</option></select>
+                </div>
+                <div class="field"><label>定位角样式</label>
+                  <select v-model="form.qr_style.eye" class="input"><option value="square">方形</option><option value="rounded">圆角</option><option value="circle">圆形</option></select>
+                </div>
+                <div class="field"><label>渐变终点色（留空=纯色）</label>
+                  <div style="display:flex;gap:8px;align-items:center">
+                    <input v-model="form.qr_style.gradTo" type="color" class="color-input" />
+                    <button class="btn btn-sm btn-ghost" @click="form.qr_style.gradTo = ''">清除</button>
+                  </div>
+                </div>
+                <div class="field"><label>中心 Logo 底板</label>
+                  <select v-model="form.qr_style.logoShape" class="input"><option value="rounded">圆角方</option><option value="circle">圆形</option><option value="none">无底板</option></select>
+                </div>
+              </div>
+              <div class="field"><label>背景图（可选，从素材库选）</label>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                  <span class="small muted">{{ form.qr_style.bgImage ? '已设置背景图' : '无背景图（纯色）' }}</span>
+                  <AssetPicker v-model="form.qr_style.bgImage" label="选背景图" />
+                  <button v-if="form.qr_style.bgImage" class="btn btn-sm btn-ghost" @click="form.qr_style.bgImage = ''">移除背景</button>
+                </div>
+                <p class="small muted" style="margin-top:4px">背景图会自动淡化，不影响扫码。二维码颜色与背景请保持对比度。</p>
+              </div>
+              <p class="small muted">实时预览见右侧；保存本节后公开名片与分享二维码同步生效。</p>
+            </div>
             <div class="section-foot">
               <span class="save-state" :class="{ saved: savedSections.appearance }">{{ savedSections.appearance ? '✓ 已保存' : '未保存' }}</span>
               <button class="btn btn-sm btn-primary" :disabled="saving" @click="saveSection('appearance')">{{ saving ? '保存中…' : '保存本节' }}</button>
@@ -316,6 +356,7 @@ import { showToast, toggleDrawer } from '../store'
 import { THEMES } from '../utils/themes'
 import { refreshPosition, setManualPosition, reverseGeocode, geocode } from '../utils/geo'
 import LogoUploader from '../components/LogoUploader.vue'
+import AssetPicker from '../components/AssetPicker.vue'
 
 const MapPicker = defineAsyncComponent(() => import('../components/MapPicker.vue'))
 const RegionPicker = defineAsyncComponent(() => import('../components/RegionPicker.vue'))
@@ -329,7 +370,22 @@ const blank = {
   address: '', address_detail: '', province: '', city: '', district: '', street: '',
   avatar: '', logo: '', bio: '', tags: [], links: [], template: 'classic', theme: 'ocean', accent: THEMES.ocean.accent,
   industry: '', city: '', latitude: null, longitude: null, market_opt_in: false,
-  qr_fg: '#0f172a', qr_bg: '#ffffff', qr_logo: true
+  qr_fg: '#0f172a', qr_bg: '#ffffff', qr_logo: true,
+  qr_style: { dot: 'square', eye: 'square', gradTo: '', logoShape: 'rounded', bgImage: '' }
+}
+// 预设（草料风格）：一键切换码点/码眼/渐变组合
+const QR_PRESETS = [
+  { key: 'classic', label: '经典', swatch: '#0f172a', dot: 'square', eye: 'square', gradTo: '', logoShape: 'rounded' },
+  { key: 'dots', label: '圆点', swatch: '#2563eb', dot: 'dots', eye: 'rounded', gradTo: '', logoShape: 'circle' },
+  { key: 'tech', label: '科技渐变', swatch: 'linear-gradient(135deg,#2563eb,#06b6d4)', dot: 'rounded', eye: 'rounded', gradTo: '#06b6d4', logoShape: 'circle' },
+  { key: 'elegant', label: '典雅', swatch: '#b45309', dot: 'rounded', eye: 'circle', gradTo: '', logoShape: 'rounded' }
+]
+function qrPresetActive(p) {
+  const s = form.value.qr_style || {}
+  return s.dot === p.dot && s.eye === p.eye && (s.gradTo || '') === p.gradTo && s.logoShape === p.logoShape
+}
+function applyQrPreset(p) {
+  form.value.qr_style = { ...(form.value.qr_style || {}), dot: p.dot, eye: p.eye, gradTo: p.gradTo, logoShape: p.logoShape }
 }
 const form = ref({ ...blank })
 const active = ref('identity')
@@ -370,7 +426,13 @@ const loading = ref(false)
 const loaded = ref(false)
 const loadError = ref('')
 const tagList = computed(() => tagsText.value.split(/[,，]/).map(s => s.trim()).filter(Boolean).slice(0, 8))
-const previewQr = computed(() => `/api/cards/public/${form.value.slug}/qr.svg?size=320&brand=M`)
+const previewQr = computed(() => {
+  if (!form.value.slug) return ''
+  const s = form.value.qr_style || {}
+  const st = encodeURIComponent(JSON.stringify({ dot: s.dot, eye: s.eye, gradTo: s.gradTo || '', logoShape: s.logoShape, bgImage: s.bgImage || '' }))
+  const f = form.value
+  return `/api/cards/public/${f.slug}/qr.svg?size=320&brand=M&fg=${encodeURIComponent(f.qr_fg)}&bg=${encodeURIComponent(f.qr_bg)}&logo=${f.qr_logo ? 1 : 0}&style=${st}`
+})
 
 async function loadCard() {
   if (loading.value) return
@@ -379,7 +441,10 @@ async function loadCard() {
   try {
     const { data } = await api.get('/api/cards/mine')
     if (!data.data) { showToast('请先创建名片', 'error'); return router.push('/me') }
-    form.value = { ...blank, ...data.data, qr_logo: !!data.data.qr_logo }
+    form.value = {
+      ...blank, ...data.data, qr_logo: !!data.data.qr_logo,
+      qr_style: { ...blank.qr_style, ...(data.data.qr_style || {}) }
+    }
     tagsText.value = (data.data.tags || []).join(', ')
     loaded.value = true
     dirtySections.value = {}
@@ -540,7 +605,9 @@ async function upload(e, field) {
   try {
     const { data } = await api.post('/api/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
     form.value[field] = data.data.url
-    showToast('上传成功，记得点保存', 'success')
+    const d = data.data
+    const saved = d.converted && d.originalSize > d.size ? ` · 已压缩 ${Math.round((1 - d.size / d.originalSize) * 100)}%` : ''
+    showToast(`上传成功${saved}，记得点保存`, 'success')
   } catch (err) { showToast(err.message, 'error') }
   e.target.value = ''
 }
@@ -553,7 +620,7 @@ const SECTION_FIELDS = {
   qr: ['wechat_qr', 'alipay_qr', 'wechat_pay_qr', 'alipay_pay_qr'],
   links: ['website', 'shop_url', 'links'],
   market: ['market_opt_in', 'industry', 'province', 'city', 'district', 'latitude', 'longitude'],
-  appearance: ['template', 'theme', 'accent', 'qr_fg', 'qr_bg', 'qr_logo']
+  appearance: ['template', 'theme', 'accent', 'qr_fg', 'qr_bg', 'qr_logo', 'qr_style']
 }
 const savedSections = ref({})
 const dirtySections = ref({})
@@ -680,6 +747,11 @@ async function finish() {
 .theme-item.on { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37,99,235,.12); }
 .theme-item i { width: 44px; height: 26px; border-radius: 6px; display: block; }
 .color-input { width: 100%; height: 40px; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+.qr-beautify { margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--line, #e8edf4); }
+.qr-presets { display: flex; gap: 8px; flex-wrap: wrap; }
+.qr-preset { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 6px 12px; border: 1px solid var(--line, #e8edf4); border-radius: 999px; background: var(--bg-page, #f4f6fb); color: var(--muted, #6b7688); }
+.qr-preset i { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
+.qr-preset.on { border-color: var(--primary, #2563eb); color: var(--primary, #2563eb); font-weight: 700; }
 .preview-panel { position: sticky; top: 72px; }
 .preview-card { border-radius: 14px; overflow: hidden; border: 1px solid var(--line); }
 .preview-head { height: 76px; position: relative; }

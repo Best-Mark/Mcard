@@ -8,6 +8,7 @@ const { ok, fail, wrap } = require('../utils/response')
 const { authRequired, parseToken } = require('../utils/auth')
 const { makeSlug, normalizeSlug } = require('../utils/slug')
 const qr = require('../services/qrcode')
+const { normalizeStyle } = qr
 const vcard = require('../services/vcard')
 const { CARD_TEMPLATES, isTemplate } = require('../utils/cardTemplates')
 const { INDUSTRIES, CITIES, HOT_CITIES, cityCoords, isIndustry, normalizeIndustry, distanceKm } = require('../utils/market')
@@ -28,7 +29,7 @@ const EDITABLE = ['name', 'name_en', 'title', 'company', 'company_intro', 'depar
   'address', 'address_detail', 'province', 'city', 'district', 'street',
   'website', 'shop_url', 'avatar', 'cover', 'logo', 'bio',
   'tags', 'links', 'template', 'industry', 'latitude', 'longitude', 'market_opt_in',
-  'theme', 'accent', 'qr_fg', 'qr_bg', 'qr_logo']
+  'theme', 'accent', 'qr_fg', 'qr_bg', 'qr_logo', 'qr_style']
 
 const parseJson = (v, fallback) => { try { const x = JSON.parse(v); return x ?? fallback } catch { return fallback } }
 const isColor = v => /^#[0-9a-fA-F]{6}$/.test(String(v || ''))
@@ -75,6 +76,7 @@ function publicView(row, origin) {
     industry: normalizeIndustry(row.industry),
     latitude: row.latitude ?? null, longitude: row.longitude ?? null, market_opt_in: !!row.market_opt_in,
     theme: row.theme, accent: row.accent, qr_fg: row.qr_fg, qr_bg: row.qr_bg, qr_logo: !!row.qr_logo,
+    qr_style: normalizeStyle(parseJson(row.qr_style, {})),
     active: row.status === 'active' && !expired,
     expiresAt: row.expires_at, views: row.views
   }
@@ -203,21 +205,28 @@ router.get('/public/:slug', wrap((req, res) => {
 }))
 
 router.get('/public/:slug/qr.svg', wrap((req, res) => {
-  const row = db.prepare('SELECT slug, qr_fg, qr_bg, qr_logo, logo FROM cards WHERE slug = ?').get(req.params.slug)
+  const row = db.prepare('SELECT slug, qr_fg, qr_bg, qr_logo, qr_style, logo FROM cards WHERE slug = ?').get(req.params.slug)
   if (!row) return fail(res, 404, '名片不存在')
   const size = Math.min(2000, Math.max(64, Number(req.query.size) || 360))
   const brand = String(req.query.brand || 'M').slice(0, 2)
-  const logoImage = row.qr_logo ? cardLogo(row, true) : ''
+  // query 覆盖 DB：编辑页保存前实时预览用；公开访问不带 query 则用 DB 值
+  const fg = /^#[0-9a-fA-F]{6}$/.test(req.query.fg || '') ? req.query.fg : row.qr_fg
+  const bg = /^#[0-9a-fA-F]{6}$/.test(req.query.bg || '') ? req.query.bg : row.qr_bg
+  const logoOn = 'logo' in req.query ? req.query.logo !== '0' : !!row.qr_logo
+  const logoImage = logoOn ? cardLogo(row, true) : ''
+  let style = normalizeStyle(parseJson(row.qr_style, {}))
+  if (req.query.style) { try { style = normalizeStyle(JSON.parse(String(req.query.style).slice(0, 4000))) } catch {} }
   res.type('image/svg+xml').set('Cache-Control', 'public, max-age=3600')
-    .send(qr.svg(requestUrl(req, `/c/${row.slug}`), { size, fg: row.qr_fg, bg: row.qr_bg, logo: !!row.qr_logo, brand, logoImage }))
+    .send(qr.svg(requestUrl(req, `/c/${row.slug}`), { size, fg, bg, logo: logoOn, brand, logoImage, style }))
 }))
 
 router.get('/public/:slug/qr.png', wrap(async (req, res) => {
-  const row = db.prepare('SELECT slug, qr_fg, qr_bg, qr_logo, logo FROM cards WHERE slug = ?').get(req.params.slug)
+  const row = db.prepare('SELECT slug, qr_fg, qr_bg, qr_logo, qr_style, logo FROM cards WHERE slug = ?').get(req.params.slug)
   if (!row) return fail(res, 404, '名片不存在')
   const size = Math.min(2000, Math.max(128, Number(req.query.size) || 720))
   const logoImage = row.qr_logo ? cardLogo(row) : ''
-  const buf = await qr.png(requestUrl(req, `/c/${row.slug}`), { size, fg: row.qr_fg, bg: row.qr_bg, logoImage })
+  const style = normalizeStyle(parseJson(row.qr_style, {}))
+  const buf = await qr.png(requestUrl(req, `/c/${row.slug}`), { size, fg: row.qr_fg, bg: row.qr_bg, logoImage, logo: !!row.qr_logo, brand: 'M', style })
   res.type('png').set('Cache-Control', 'public, max-age=3600').send(buf)
 }))
 
@@ -238,8 +247,21 @@ router.get('/public/:slug/vcard.svg', wrap((req, res) => {
   const origin = originOf(req)
   const text = vcard.build(publicView(row, origin), origin)
   const size = Math.min(2000, Math.max(256, Number(req.query.size) || 520))
+  const style = normalizeStyle(parseJson(row.qr_style, {}))
   res.type('image/svg+xml').set('Cache-Control', 'public, max-age=3600')
-    .send(qr.svg(text, { size, fg: '#0f172a', bg: '#ffffff', logo: false }))
+    .send(qr.svg(text, { size, fg: row.qr_fg || '#0f172a', bg: row.qr_bg || '#ffffff', logo: false, style }))
+}))
+
+// vCard 高清 PNG（保存用）：与 vcard.svg 同款样式，服务端 qr.png 统一渲染
+router.get('/public/:slug/vcard.png', wrap(async (req, res) => {
+  const row = db.prepare('SELECT * FROM cards WHERE slug = ?').get(req.params.slug)
+  if (!row) return fail(res, 404, '名片不存在')
+  const origin = originOf(req)
+  const text = vcard.build(publicView(row, origin), origin)
+  const size = Math.min(1600, Math.max(256, Number(req.query.size) || 720))
+  const style = normalizeStyle(parseJson(row.qr_style, {}))
+  const buf = await qr.png(text, { size, fg: row.qr_fg || '#0f172a', bg: row.qr_bg || '#ffffff', logo: false, style })
+  res.type('png').set('Cache-Control', 'public, max-age=3600').send(buf)
 }))
 
 router.get('/public/:slug/card.vcf', wrap((req, res) => {
@@ -399,6 +421,9 @@ router.put('/mine', authRequired, wrap((req, res) => {
       v = v ? 1 : 0
     } else if (key === 'qr_logo') {
       v = v ? 1 : 0
+    } else if (key === 'qr_style') {
+      const obj = typeof v === 'string' ? parseJson(v, {}) : v
+      v = JSON.stringify(normalizeStyle(obj))
     } else {
       v = String(v ?? '').slice(0, 2000)
     }

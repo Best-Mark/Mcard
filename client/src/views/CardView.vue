@@ -243,7 +243,9 @@ const qrApi = `/api/cards/public/${slug}`
 const vcfApi = `${qrApi}/card.vcf`
 const vcardQrApi = `${qrApi}/vcard.svg?size=520`
 const vcardQrLargeApi = `${qrApi}/vcard.svg?size=720`
-const vcardQrDataUrl = ref('') // 前端本地生成的 vCard 二维码，不依赖服务端图片接口
+const vcardQrPngApi = `${qrApi}/vcard.png?size=720`
+// vCard 高清图用服务端 vcard.png（与公开二维码同款美化样式：码点/码眼/渐变/配色），秒开且保存即高清
+const vcardQrDataUrl = ref('')
 const card = ref(null); const loading = ref(true); const error = ref('')
 const currentTheme = ref('ocean'); const isOwner = ref(false)
 const template = ref('classic')
@@ -379,22 +381,10 @@ function localVcard(c) {
   return lines.join('\r\n') + '\r\n'
 }
 
-async function buildVcardQr(c) {
+function buildVcardQr(c) {
   if (!c) return
-  let text = ''
-  try {
-    // 权威源：服务端 vcard.txt；axios 会按 text 返回字符串
-    const r = await api.get(`${qrApi}/vcard.txt`, { responseType: 'text' })
-    text = typeof r.data === 'string' ? r.data : ''
-  } catch { /* 服务端未部署新接口时用本地兜底 */ }
-  if (!text || !text.includes('BEGIN:VCARD')) text = localVcard(c)
-  try {
-    const { default: QRCode } = await import('qrcode')
-    vcardQrDataUrl.value = await QRCode.toDataURL(text, {
-      width: 720, margin: 2, errorCorrectionLevel: 'M',
-      color: { dark: '#0f172aff', light: '#ffffffff' }
-    })
-  } catch (e) { console.error('[vcard qr]', e) }
+  // 直接用服务端 vcard.png：与公开二维码同款美化样式，免前端生成（省 ~45ms 且样式一致）
+  vcardQrDataUrl.value = vcardQrPngApi
 }
 
 async function load() {

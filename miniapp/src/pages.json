@@ -8,6 +8,7 @@
     { "path": "pages/notifications/notifications", "style": { "navigationBarTitleText": "消息通知" } },
     { "path": "pages/materials/materials", "style": { "navigationBarTitleText": "资料夹" } },
     { "path": "pages/batch-scan/batch-scan", "style": { "navigationBarTitleText": "展会连扫" } },
+    { "path": "pages/assets/assets", "style": { "navigationBarTitleText": "图片素材库" } },
     { "path": "pages/edit/edit", "style": { "navigationBarTitleText": "编辑资料" } },
     { "path": "pages/map-picker/map-picker", "style": { "navigationBarTitleText": "地图选点" } },
     { "path": "pages/plans/plans", "style": { "navigationBarTitleText": "开通套餐" } },

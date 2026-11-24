@@ -8,8 +8,9 @@
         <view class="avatar-row" @tap="chooseAvatar">
           <image v-if="form.avatar" class="avatar" :src="form.avatar" mode="aspectFill" />
           <view v-else class="avatar ph">{{ (form.name || 'M').slice(0, 1) }}</view>
-          <view class="muted small">点击上传头像（jpg/png/webp，≤5MB）</view>
+          <view class="muted small">点击上传头像（自动压缩转 WebP，≤5MB）</view>
         </view>
+        <button class="btn tiny" style="margin-top:12rpx" @tap="openAssets('avatar')">从素材库选头像</button>
         <view class="field">
           <text class="label">公司 LOGO（自动去透明底）</text>
           <view v-if="form.logo" class="logo-current">
@@ -102,6 +103,7 @@
             <view class="qr-upload-info">
               <text class="b">{{ q.label }}</text>
               <button class="btn tiny" :disabled="busy" @tap="chooseQr(q.key)">{{ form[q.key] ? '更换' : '上传' }}</button>
+              <button class="btn tiny" @tap="openAssets(q.key)">素材库</button>
             </view>
           </view>
         </block>
@@ -142,7 +144,24 @@
         </view>
         <view class="field"><text class="label">强调色</text><input v-model="form.accent" class="input" placeholder="#2563eb" /></view>
         <view class="field"><text class="label">二维码前景色</text><input v-model="form.qr_fg" class="input" placeholder="#0f172a" /></view>
+        <view class="field"><text class="label">二维码背景色</text><input v-model="form.qr_bg" class="input" placeholder="#ffffff" /></view>
         <view class="field"><text class="label">中心 Logo</text><switch :checked="form.qr_logo" @change="e => form.qr_logo = e.detail.value" /></view>
+
+        <view class="qr-beauty">
+          <view class="section" style="font-size:26rpx;margin-top:8rpx">🎨 二维码美化</view>
+          <view class="preset-row">
+            <text v-for="p in QR_PRESETS" :key="p.key" class="preset" :class="{ on: qrPresetActive(p) }" @tap="applyQrPreset(p)">{{ p.label }}</text>
+          </view>
+          <view class="field"><text class="label">码点形状</text>
+            <picker :range="dotLabels" :value="dotIdx" @change="e => form.qr_style.dot = dotValues[e.detail.value]"><view class="picker">{{ dotLabels[dotIdx] }} ▾</view></picker>
+          </view>
+          <view class="field"><text class="label">定位角样式</text>
+            <picker :range="eyeLabels" :value="eyeIdx" @change="e => form.qr_style.eye = eyeValues[e.detail.value]"><view class="picker">{{ eyeLabels[eyeIdx] }} ▾</view></picker>
+          </view>
+          <view class="field"><text class="label">渐变终点色（留空=纯色）</text><input v-model="form.qr_style.gradTo" class="input" placeholder="#06b6d4，留空纯色" /></view>
+          <button class="btn tiny" @tap="openAssets('qr_style.bgImage')">从素材库选背景图</button>
+          <view v-if="form.qr_style.bgImage" class="muted small" style="margin-top:8rpx">已设置背景图 · <text @tap="form.qr_style.bgImage = ''">移除</text></view>
+        </view>
       </view>
 
       <button class="btn primary block big" :disabled="saving" @tap="save">{{ saving ? '保存中…' : '保存资料' }}</button>
@@ -162,6 +181,24 @@ const themes = {
   mint: { label: '青竹绿', accent: '#0d9488' },
   royal: { label: '典雅紫', accent: '#7c3aed' }
 }
+const QR_PRESETS = [
+  { key: 'classic', label: '经典', dot: 'square', eye: 'square', gradTo: '' },
+  { key: 'dots', label: '圆点', dot: 'dots', eye: 'rounded', gradTo: '' },
+  { key: 'tech', label: '科技渐变', dot: 'rounded', eye: 'rounded', gradTo: '#06b6d4' },
+  { key: 'elegant', label: '典雅', dot: 'rounded', eye: 'circle', gradTo: '' }
+]
+const dotValues = ['square', 'dots', 'rounded']; const dotLabels = ['方形', '圆点', '圆角']
+const eyeValues = ['square', 'rounded', 'circle']; const eyeLabels = ['方形', '圆角', '圆形']
+function qrPresetActive(p) {
+  const s = form.value.qr_style || {}
+  return s.dot === p.dot && s.eye === p.eye && (s.gradTo || '') === p.gradTo
+}
+function applyQrPreset(p) {
+  form.value.qr_style = { ...(form.value.qr_style || {}), dot: p.dot, eye: p.eye, gradTo: p.gradTo }
+}
+const dotIdx = computed(() => Math.max(0, dotValues.indexOf(form.value.qr_style?.dot)))
+const eyeIdx = computed(() => Math.max(0, eyeValues.indexOf(form.value.qr_style?.eye)))
+
 const blank = {
   slug: '', name: '', name_en: '', title: '', company: '', company_intro: '', department: '',
   website: '', shop_url: '',
@@ -169,6 +206,7 @@ const blank = {
   wechat_qr: '', alipay_qr: '', wechat_pay_qr: '', alipay_pay_qr: '',
   address: '', address_detail: '', province: '', city: '', district: '', street: '',
   template: 'classic', theme: 'ocean', accent: '#2563eb', qr_fg: '#0f172a', qr_bg: '#ffffff', qr_logo: true,
+  qr_style: { dot: 'square', eye: 'square', gradTo: '', logoShape: 'rounded', bgImage: '' },
   industry: '', latitude: null, longitude: null, market_opt_in: false
 }
 const form = ref({ ...blank })
@@ -219,7 +257,7 @@ onLoad(async options => {
   try {
     const c = await api.get('/api/cards/mine')
     if (!c) return uni.redirectTo({ url: '/pages/me/me' })
-    form.value = { ...blank, ...c, qr_logo: !!c.qr_logo }
+    form.value = { ...blank, ...c, qr_logo: !!c.qr_logo, qr_style: { ...blank.qr_style, ...(c.qr_style || {}) } }
     tagsText.value = (c.tags || []).join(', ')
   } catch (e) { toast(e.message) }
   // 从「上架集市」入口进来：渲染后滚到集市卡片，直接看到上架开关
@@ -230,7 +268,22 @@ onLoad(async options => {
   }
   uni.$on('map-picked', onMapPicked)
 })
-onUnmounted(() => uni.$off('map-picked', onMapPicked))
+const assetTarget = ref('')
+function openAssets(field) {
+  assetTarget.value = field
+  uni.$off('asset-picked')
+  uni.$once('asset-picked', url => {
+    const path = assetTarget.value
+    if (!path) return
+    if (path.includes('.')) {
+      const [a, b] = path.split('.')
+      if (!form.value[a]) form.value[a] = {}
+      form.value[a][b] = url
+    } else form.value[path] = url
+  })
+  uni.navigateTo({ url: '/pages/assets/assets' })
+}
+onUnmounted(() => { uni.$off('map-picked', onMapPicked); uni.$off('asset-picked') })
 
 async function loadTemplates() {
   if (templatesCache.length) templates.value = templatesCache
@@ -404,6 +457,11 @@ async function save() {
 
 <style scoped>
 .notice { background: #eff6ff; color: #1e40af; font-size: 22rpx; padding: 20rpx 24rpx; line-height: 1.6; }
+.qr-beauty { margin-top: 16rpx; padding-top: 16rpx; border-top: 2rpx dashed #e8edf4; }
+.preset-row { display: flex; gap: 12rpx; flex-wrap: wrap; margin-bottom: 12rpx; }
+.preset { font-size: 22rpx; padding: 10rpx 22rpx; border-radius: 999rpx; border: 2rpx solid #e8edf4; background: #f5f7fb; color: #6b7688; }
+.preset.on { border-color: #2563eb; color: #2563eb; background: #eff6ff; font-weight: 700; }
+.picker { border: 2rpx solid #e8edf4; border-radius: 12rpx; padding: 16rpx 18rpx; font-size: 26rpx; color: #162033; }
 .body { padding: 24rpx; }
 .card { background: #fff; border-radius: 24rpx; padding: 26rpx; margin-bottom: 18rpx; box-shadow: 0 8rpx 28rpx rgba(15,23,42,.05); }
 .section { font-size: 30rpx; font-weight: 700; margin-bottom: 16rpx; }

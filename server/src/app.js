@@ -43,6 +43,7 @@ app.use('/api/notifications', require('./routes/notifications'))
 app.use('/api/packages', require('./routes/packages'))
 app.use('/api/orders', require('./routes/orders'))
 app.use('/api/upload', require('./routes/upload'))
+app.use('/api/assets', require('./routes/assets'))
 app.use('/api/admin', require('./routes/admin'))
 
 app.use('/api', (_req, res) => res.status(404).json({ code: 404, msg: '接口不存在' }))

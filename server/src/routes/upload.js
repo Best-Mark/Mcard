@@ -7,6 +7,7 @@ const { ok, fail, wrap } = require('../utils/response')
 const { authRequired } = require('../utils/auth')
 const { randomHex } = require('../utils/id')
 const logoService = require('../services/logo')
+const imageService = require('../services/image')
 const oss = require('../services/oss')
 
 const ALLOW = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg'])
@@ -40,7 +41,16 @@ async function publicUrlOf(file) {
 
 router.post('/', authRequired, upload.single('file'), wrap(async (req, res) => {
   if (!req.file) return fail(res, 400, '请选择文件')
-  ok(res, await publicUrlOf(req.file))
+  // 归一化压缩：栅格图缩边转 WebP，动画 GIF/SVG 原样保留；失败降级原图
+  const n = await imageService.normalizeImage(req.file.path, req.file.originalname, {
+    maxEdge: req.body.maxEdge, quality: req.body.quality
+  })
+  const out = await publicUrlOf({ path: n.file, filename: n.filename, size: n.size, originalname: req.file.originalname })
+  ok(res, {
+    ...out,
+    width: n.width, height: n.height, format: n.format,
+    originalSize: n.originalSize, converted: n.converted
+  })
 }))
 
 // 资料夹文档上传：保留原始扩展名，放行 pdf/office/图片，拒 svg/html 等可执行内容
@@ -99,3 +109,5 @@ router.post('/logo/process', authRequired, wrap(async (req, res) => {
 router.use((err, _req, res, _next) => res.status(400).json({ code: 400, msg: err.message || '上传失败' }))
 
 module.exports = router
+module.exports.upload = upload
+module.exports.publicUrlOf = publicUrlOf
