@@ -50,9 +50,9 @@
             <div class="cv-contact-label">{{ f.label }}：</div>
             <div class="cv-contact-value">{{ f.value }}</div>
             <div class="cv-contact-acts" @click.stop>
-              <button v-if="f.key === 'mobile' || f.key === 'phone'" class="cv-row-act" title="打电话" @click="tel(f.value)"><AppIcon name="phone" :size="18" /></button>
-              <button v-if="f.key === 'mobile'" class="cv-row-act" title="发短信" @click="sms(f.value)"><AppIcon name="sms" :size="18" /></button>
-              <button v-if="f.key === 'email'" class="cv-row-act" title="写邮件" @click="mailto(f.value)"><AppIcon name="mail" :size="18" /></button>
+              <button v-if="f.key === 'mobile' || f.key === 'phone'" class="cv-row-act" @click="tel(f.value)">打电话</button>
+              <button v-if="f.key === 'mobile'" class="cv-row-act" @click="sms(f.value)">短信</button>
+              <button v-if="f.key === 'email'" class="cv-row-act" @click="mailto(f.value)">邮件</button>
             </div>
           </div>
         </div>
@@ -123,9 +123,9 @@
           <h3>地址</h3>
           <div v-if="regionLine" class="cv-region-line">{{ regionLine }}</div>
           <div class="cv-address" @click="copy(fullAddress, '地址')">
-            <span>地址：{{ fullAddress }}</span>
+            <span v-if="detailAddress">地址：{{ detailAddress }}</span>
+            <button v-if="maps.length" class="cv-map-launch" @click.stop="mapOpen = true">导航</button>
           </div>
-          <button v-if="maps.length" class="cv-map-launch" @click="mapOpen = true">导航</button>
         </div>
 
         <!-- 通讯录二维码：内容就是 vCard，相机扫一扫直接弹「添加到通讯录」 -->
@@ -312,11 +312,12 @@ const regionLine = computed(() => {
   const c = card.value || {}
   return [c.province, c.city, c.district, c.street].filter(Boolean).join(' · ')
 })
-const fullAddress = computed(() => {
+// 详细地址行只放街道门牌：省市区已由 regionLine 单独一行，避免同一地址出现两遍
+const detailAddress = computed(() => {
   const c = card.value || {}
-  const region = [c.province, c.city, c.district, c.street].filter(Boolean).join('')
-  return [region, c.address, c.address_detail].filter(Boolean).join(' ')
+  return [c.address, c.address_detail].filter(Boolean).join(' ')
 })
+const fullAddress = computed(() => [regionLine.value.replace(/ · /g, ''), detailAddress.value].filter(Boolean).join(' '))
 // 有坐标时优先用经纬度生成各地图导航，否则回落地址字符串
 const maps = computed(() => {
   const c = card.value || {}
@@ -609,7 +610,7 @@ async function toggleFavorite() {
 .notice-card { margin-top: 12px; border-color: #fcd34d; background: #fffbeb; color: #92400e; }
 /* 操作栏已并入联系方式行：整行点击复制该字段，行尾按钮给出电话/短信/邮件等操作 */
 .cv-contact-acts { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
-.cv-row-act { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: color-mix(in srgb, var(--t-accent) 12%, transparent); color: var(--t-accent); }
+.cv-row-act { padding: 5px 9px; border-radius: 7px; background: color-mix(in srgb, var(--t-accent) 12%, transparent); color: var(--t-accent); font-size: 11px; font-weight: 600; white-space: nowrap; }
 .cv-block { margin-top: 12px; background: var(--t-surface); }
 .cv-block h3, .cv-sec-title { font-size: 14px; margin-bottom: 10px; padding-left: 10px; border-left: 3px solid var(--t-accent, #2563eb); line-height: 1.3; }
 .cv-bio { color: var(--t-muted); font-size: 13px; white-space: pre-wrap; }
@@ -651,7 +652,7 @@ async function toggleFavorite() {
 .cv-maps { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .cv-maps a { font-size: 12px; padding: 6px 10px; border-radius: 8px; background: rgba(0,0,0,.05); background: color-mix(in srgb, var(--t-accent) 12%, transparent); color: var(--t-accent); font-weight: 600; }
 /* 导航入口：地址区只留一个「导航到此处」，点底部「导航」或此处再选地图 */
-.cv-map-launch { width: 100%; margin-top: 10px; padding: 11px 12px; border: 0; border-radius: 10px; background: var(--t-accent, #2454e8); color: #fff; font-size: 13px; font-weight: 600; text-align: left; }
+.cv-map-launch { flex: 0 0 auto; padding: 6px 14px; border: 0; border-radius: 8px; background: var(--t-accent, #2454e8); color: #fff; font-size: 12px; font-weight: 600; }
 .map-sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px 10px; border-bottom: 1px solid #e8edf5; }
 .map-sheet-head b { font-size: 16px; color: #17233c; }
 .map-sheet-head button { width: 30px; height: 30px; border: 0; background: #f1f4f9; border-radius: 50%; font-size: 18px; line-height: 1; color: #64748b; }

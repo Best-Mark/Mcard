@@ -40,9 +40,9 @@
             <div class="cp-contact-label">{{ f.label }}：</div>
             <div class="cp-contact-value">{{ f.value }}</div>
             <span class="cp-contact-acts">
-              <AppIcon v-if="f.key === 'mobile' || f.key === 'phone'" name="phone" :size="14" />
-              <AppIcon v-if="f.key === 'mobile'" name="sms" :size="14" />
-              <AppIcon v-if="f.key === 'email'" name="mail" :size="14" />
+              <i v-if="f.key === 'mobile' || f.key === 'phone'">打电话</i>
+              <i v-if="f.key === 'mobile'">短信</i>
+              <i v-if="f.key === 'email'">邮件</i>
             </span>
           </div>
         </div>
@@ -94,8 +94,10 @@
         <div v-if="fullAddress" class="cp-block" data-sec="contact">
           <h3>地址</h3>
           <div v-if="regionLine" class="cp-region-line">{{ regionLine }}</div>
-          <div class="cp-address">地址：{{ fullAddress }}</div>
-          <button type="button" class="cp-map-btn">导航</button>
+          <div class="cp-address">
+            <span v-if="detailAddress">地址：{{ detailAddress }}</span>
+            <button type="button" class="cp-map-btn">导航</button>
+          </div>
         </div>
 
         <div class="cp-block cp-center">
@@ -143,11 +145,11 @@ const regionLine = computed(() => {
   const c = props.card || {}
   return [c.province, c.city, c.district, c.street].filter(Boolean).join(' · ')
 })
-const fullAddress = computed(() => {
+const detailAddress = computed(() => {
   const c = props.card || {}
-  const region = [c.province, c.city, c.district, c.street].filter(Boolean).join('')
-  return [region, c.address, c.address_detail].filter(Boolean).join(' ')
+  return [c.address, c.address_detail].filter(Boolean).join(' ')
 })
+const fullAddress = computed(() => [regionLine.value.replace(/ · /g, ''), detailAddress.value].filter(Boolean).join(' '))
 const contactFields = computed(() => {
   const c = props.card || {}
   return [
@@ -228,7 +230,8 @@ watch(() => props.section, async () => {
 .cp-contact-row:last-child { border-bottom: 0; }
 .cp-contact-label { flex: 0 0 44px; font-size: 10px; color: var(--t-muted); }
 .cp-contact-value { flex: 1; min-width: 0; font-size: 11px; word-break: break-all; }
-.cp-contact-acts { display: flex; align-items: center; gap: 5px; color: var(--t-accent); flex: 0 0 auto; }
+.cp-contact-acts { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+.cp-contact-acts i { font-style: normal; font-size: 9px; padding: 3px 5px; border-radius: 5px; background: rgba(0,0,0,.05); background: color-mix(in srgb, var(--t-accent) 12%, transparent); color: var(--t-accent); white-space: nowrap; }
 .cp-bio { color: var(--t-muted); font-size: 11px; white-space: pre-wrap; line-height: 1.55; margin: 0; }
 .cp-links { display: grid; gap: 6px; }
 .cp-links div { border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; display: flex; flex-direction: column; background: var(--t-bg); }
@@ -252,8 +255,8 @@ watch(() => props.section, async () => {
 .cp-qr-tile b { font-size: 10px; }
 .cp-qr-tile span { font-size: 9px; color: var(--t-muted); word-break: break-all; }
 .cp-region-line { font-size: 11px; font-weight: 600; color: var(--t-accent); margin-bottom: 4px; }
-.cp-address { font-size: 11px; line-height: 1.5; }
-.cp-map-btn { width: 100%; margin-top: 8px; padding: 8px; border: 0; border-radius: 8px; background: var(--t-accent); color: #fff; font-size: 11px; }
+.cp-address { font-size: 11px; line-height: 1.5; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cp-map-btn { flex: 0 0 auto; padding: 4px 10px; border: 0; border-radius: 6px; background: var(--t-accent); color: #fff; font-size: 10px; }
 .cp-center { text-align: center; }
 .cp-center h3 { text-align: left; }
 .cp-share-qr { width: 110px; height: 110px; object-fit: contain; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 4px; }

@@ -88,7 +88,7 @@
           <view class="section">地址</view>
           <view v-if="regionLine" class="region-line">{{ regionLine }}</view>
           <view class="addr" @tap="copyText(fullAddress, '地址已复制，可粘贴到地图')">
-            <text class="content">地址：{{ fullAddress }}</text>
+            <text class="content">地址：{{ detailAddress }}</text>
           </view>
           <view class="hint">小程序内无法直接唤起所有地图，地址复制后打开高德/百度/Apple 地图粘贴即可导航。</view>
         </view>
@@ -184,11 +184,11 @@ const regionLine = computed(() => {
   const c = card.value || {}
   return [c.province, c.city, c.district, c.street].filter(Boolean).join(' · ')
 })
-const fullAddress = computed(() => {
+const detailAddress = computed(() => {
   const c = card.value || {}
-  const region = [c.province, c.city, c.district, c.street].filter(Boolean).join('')
-  return [region, c.address, c.address_detail].filter(Boolean).join(' ')
+  return [c.address, c.address_detail].filter(Boolean).join(' ')
 })
+const fullAddress = computed(() => [regionLine.value.replace(/ · /g, ''), detailAddress.value].filter(Boolean).join(' '))
 const contactQrs = computed(() => {
   const c = card.value || {}
   return [
