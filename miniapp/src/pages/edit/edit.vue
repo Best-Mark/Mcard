@@ -99,8 +99,8 @@
         <view class="muted small" style="margin-bottom:16rpx">选模板即应用整套配色（含二维码色），无需逐项调；想微调可在下方「高级配色」里改。</view>
         <view class="tpl-list">
           <view v-for="tpl in templates" :key="tpl.key" class="tpl-item" :class="{ on: form.template === tpl.key }" @tap="chooseTemplate(tpl.key)">
-            <view class="tpl-thumb" :style="{ background: tpl.cover }">
-              <view class="tpl-ava" :class="'ava-' + tpl.key"></view>
+            <view class="tpl-thumb" :class="'thumb-' + tpl.key">
+              <view class="tpl-ava"></view>
             </view>
             <text class="tpl-name">{{ tpl.label }}</text>
             <text class="tpl-desc">{{ tpl.desc }}</text>
@@ -477,26 +477,70 @@ async function save() {
 .tpl-list { display: flex; flex-direction: column; gap: 14rpx; }
 .tpl-item { position: relative; border: 2rpx solid #e8edf4; border-radius: 16rpx; padding: 14rpx; display: flex; flex-direction: column; gap: 6rpx; }
 .tpl-item.on { border-color: #2563eb; box-shadow: 0 0 0 4rpx rgba(37,99,235,.12); }
+/* 微缩版式缩略图：每套不同骨架，一眼区分（与 H5 同口径） */
 .tpl-thumb { height: 90rpx; border-radius: 12rpx; position: relative; overflow: hidden; }
-.tpl-ava { position: absolute; width: 44rpx; height: 44rpx; left: 20rpx; bottom: -12rpx; background: #fff; box-shadow: 0 2rpx 10rpx rgba(0,0,0,.2); }
-.ava-classic { border-radius: 10rpx; }
-.ava-minimal { border-radius: 50%; left: 50%; transform: translateX(-50%); background: #e2e8f0; width: 36rpx; height: 36rpx; bottom: -6rpx; }
-.ava-elite { border-radius: 50%; left: 50%; transform: translateX(-50%); width: 46rpx; height: 46rpx; border: 3rpx solid #b99355; bottom: -10rpx; }
-.ava-vivid { border-radius: 16rpx; width: 50rpx; height: 50rpx; bottom: -16rpx; }
-.ava-seal { border-radius: 0; width: 46rpx; height: 46rpx; border: 4rpx solid #111827; background: #fff; }
-.ava-contact { border-radius: 10rpx; width: 46rpx; height: 46rpx; border: 3rpx solid #fff; background: #eff4ff; }
-.ava-navygold { border-radius: 12rpx; width: 50rpx; height: 50rpx; border: 4rpx solid #d8bb85; background: #f4f1ea; }
-.ava-paper { border-radius: 6rpx; width: 40rpx; height: 40rpx; background: #111; }
-.ava-glass { border-radius: 24rpx; width: 44rpx; height: 44rpx; background: rgba(127,211,193,.22); border: 2rpx solid rgba(127,211,193,.6); }
-.ava-wood { border-radius: 50%; width: 40rpx; height: 40rpx; background: #8b5e3c; box-shadow: inset 0 0 0 4rpx rgba(255,255,255,.35); }
-.ava-neon { border-radius: 50%; width: 42rpx; height: 42rpx; background: linear-gradient(135deg,#ff4fa3,#4fd8ff); }
-.ava-acid { border-radius: 0; width: 42rpx; height: 42rpx; background: #ccff00; box-shadow: 4rpx 4rpx 0 rgba(204,255,0,.6); }
-.ava-pop { border-radius: 50%; width: 42rpx; height: 42rpx; background: #ff6b6b; border: 4rpx solid #241b3a; }
-.ava-magazine { border-radius: 0; width: 42rpx; height: 42rpx; background: #1a1a1a; }
-.ava-poster { border-radius: 0; width: 34rpx; height: 46rpx; background: transparent; border: 2rpx solid #d8bb85; }
-.ava-ticket { border-radius: 0; width: 44rpx; height: 36rpx; background: #fffefb; border: 2rpx dashed #b9b5ad; }
-.ava-horizontal { border-radius: 4rpx; width: 48rpx; height: 34rpx; background: linear-gradient(90deg,#fff 0%,#fff 68%,#17222e 68%); }
-.ava-sidebar { border-radius: 0; width: 42rpx; height: 42rpx; background: linear-gradient(90deg,#2a2118 0%,#2a2118 32%,#fffdf9 32%); }
+.tpl-thumb::before, .tpl-thumb::after { content: ''; position: absolute; }
+.tpl-ava { position: absolute; width: 40rpx; height: 40rpx; left: 20rpx; bottom: 14rpx; z-index: 2; }
+.tpl-thumb::after { left: 76rpx; bottom: 20rpx; width: 40%; height: 5rpx; border-radius: 3rpx; background: rgba(120,130,145,.35); box-shadow: 0 12rpx 0 rgba(120,130,145,.2); }
+.thumb-classic { background: linear-gradient(150deg,#1e3a8a,#3b82f6); }
+.thumb-classic::before { inset: 0; background: linear-gradient(180deg,transparent 55%,rgba(255,255,255,.95) 55%); }
+.thumb-classic .tpl-ava { border-radius: 10rpx; background: #fff; box-shadow: 0 2rpx 8rpx rgba(0,0,0,.25); }
+.thumb-minimal { background: #f7f8fa; }
+.thumb-minimal::before { inset: 0; border-bottom: 2rpx solid #d8dde5; }
+.thumb-minimal .tpl-ava { left: 50%; transform: translateX(-50%); border-radius: 50%; background: #111827; }
+.thumb-elite { background: linear-gradient(150deg,#18181b,#3f3f46); }
+.thumb-elite::before { inset: 10rpx; border: 2rpx solid rgba(185,147,85,.6); }
+.thumb-elite .tpl-ava { left: 50%; transform: translateX(-50%); border-radius: 50%; border: 3rpx solid #b99355; background: #27272a; }
+.thumb-vivid { background: linear-gradient(135deg,#7c3aed,#db2777,#f59e0b); }
+.thumb-vivid::before { inset: 14rpx 16rpx 10rpx; background: rgba(255,255,255,.92); border-radius: 12rpx; }
+.thumb-vivid .tpl-ava { border-radius: 16rpx; background: #fff; box-shadow: 0 2rpx 10rpx rgba(0,0,0,.2); }
+.thumb-seal { background: #fff; }
+.thumb-seal::before { inset: 0; border: 5rpx solid #111827; }
+.thumb-seal .tpl-ava { border-radius: 0; width: 46rpx; height: 46rpx; border: 5rpx solid #111827; }
+.thumb-contact { background: radial-gradient(180rpx 90rpx at 50% 0,#1d3a55,#0b1723); }
+.thumb-contact::before { left: 0; right: 0; top: 0; height: 8rpx; background: linear-gradient(90deg,#1d3a55,#d8bb85,#1d3a55); }
+.thumb-contact .tpl-ava { border-radius: 8rpx; width: 42rpx; height: 42rpx; background: #fff; border: 3rpx solid #b99355; }
+.thumb-navygold { background: radial-gradient(180rpx 100rpx at 50% 20%,#244563,#0b1723); }
+.thumb-navygold::before { inset: 8rpx; border: 2rpx solid rgba(216,187,133,.7); border-radius: 6rpx; }
+.thumb-navygold .tpl-ava { left: 50%; transform: translateX(-50%); border-radius: 12rpx; width: 52rpx; height: 52rpx; background: #fff; border: 3rpx solid #b99355; }
+.thumb-paper { background: #faf9f6; }
+.thumb-paper::before { left: 20rpx; right: 20rpx; top: 16rpx; height: 2rpx; background: #d8d3c8; }
+.thumb-paper .tpl-ava { border-radius: 5rpx; background: #111; }
+.thumb-glass { background: linear-gradient(150deg,#0c1c2e,#123a4a); }
+.thumb-glass::before { inset: 12rpx 16rpx; background: rgba(127,211,193,.12); border: 2rpx solid rgba(127,211,193,.45); border-radius: 16rpx; }
+.thumb-glass .tpl-ava { left: 50%; transform: translateX(-50%); border-radius: 16rpx; background: rgba(127,211,193,.28); border: 2rpx solid rgba(127,211,193,.7); }
+.thumb-glass::after { background: rgba(200,235,228,.5); }
+.thumb-wood { background: linear-gradient(160deg,#f0e4d0,#d8bfa0); }
+.thumb-wood::before { inset: 10rpx; border: 2rpx solid rgba(92,61,36,.35); }
+.thumb-wood .tpl-ava { left: 50%; transform: translateX(-50%); border-radius: 50%; background: #8b5e3c; border: 4rpx solid rgba(255,255,255,.5); }
+.thumb-neon { background: linear-gradient(150deg,#160b2e,#2d1a4d); }
+.thumb-neon::before { inset: 10rpx; border: 2rpx solid #ff4fa3; border-radius: 16rpx; box-shadow: 0 0 12rpx rgba(255,79,163,.6); }
+.thumb-neon .tpl-ava { border-radius: 50%; background: linear-gradient(135deg,#ff4fa3,#4fd8ff); box-shadow: 0 0 12rpx rgba(255,79,163,.9); }
+.thumb-acid { background-color: #0a0a0a; background-image: linear-gradient(rgba(204,255,0,.14) 2rpx,transparent 2rpx),linear-gradient(90deg,rgba(204,255,0,.14) 2rpx,transparent 2rpx); background-size: 16rpx 16rpx; }
+.thumb-acid::before { inset: 0; border: 3rpx solid #ccff00; }
+.thumb-acid .tpl-ava { border-radius: 0; background: #ccff00; box-shadow: 6rpx 6rpx 0 rgba(204,255,0,.45); }
+.thumb-acid::after { background: #ccff00; }
+.thumb-pop { background: linear-gradient(135deg,#ffd93d,#ff6b9d,#6bcbff); }
+.thumb-pop::before { left: 0; right: 0; bottom: 0; height: 8rpx; background: #241b3a; }
+.thumb-pop .tpl-ava { border-radius: 50%; background: #ff6b6b; border: 5rpx solid #241b3a; }
+.thumb-magazine { background: #f7f3ec; }
+.thumb-magazine::before { left: 0; right: 0; top: 0; height: 14rpx; background: #c0392b; }
+.thumb-magazine .tpl-ava { border-radius: 0; background: #1a1a1a; }
+.thumb-poster { background: radial-gradient(180rpx 100rpx at 50% 30%,#244563,#0b1723); }
+.thumb-poster::before { inset: 8rpx 30rpx; border: 2rpx solid rgba(216,187,133,.7); }
+.thumb-poster .tpl-ava { left: 50%; transform: translateX(-50%); border-radius: 0; width: 30rpx; height: 48rpx; background: transparent; border: 2rpx solid #d8bb85; }
+.thumb-poster::after { left: 50%; transform: translateX(-50%); width: 60rpx; }
+.thumb-ticket { background-color: #f7f5ee; background-image: repeating-linear-gradient(90deg,#efece4 0 6rpx,transparent 6rpx 10rpx); }
+.thumb-ticket::before { inset: 10rpx 16rpx; border: 2rpx dashed #b9b4a8; background: #fffefb; }
+.thumb-ticket .tpl-ava { border-radius: 0; background: #fffefb; border: 2rpx solid #e9e6df; }
+.thumb-horizontal { background: linear-gradient(90deg,#f4f6f8 0%,#f4f6f8 64%,#17222e 64%); }
+.thumb-horizontal::before { inset: 0; }
+.thumb-horizontal .tpl-ava { border-radius: 4rpx; width: 50rpx; height: 34rpx; background: #fff; }
+.thumb-horizontal::after { left: 82rpx; }
+.thumb-sidebar { background: linear-gradient(90deg,#2a2118 0%,#2a2118 30%,#f7f3ec 30%); }
+.thumb-sidebar::before { inset: 0; }
+.thumb-sidebar .tpl-ava { border-radius: 0; width: 30rpx; height: 44rpx; left: 6rpx; background: rgba(216,187,133,.55); }
+.thumb-sidebar::after { left: auto; right: 14rpx; background: rgba(92,61,36,.4); }
 .tpl-name { font-size: 28rpx; font-weight: 700; }
 .tpl-desc { font-size: 22rpx; color: #6b7688; }
 .tpl-check { font-size: 22rpx; color: #2563eb; font-weight: 700; }

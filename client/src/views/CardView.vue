@@ -1080,6 +1080,31 @@ async function toggleFavorite() {
 .cv-tpl-pop .cv-tags span:nth-child(4n+2) { background: #a0e7e5; }
 .cv-tpl-pop .cv-tags span:nth-child(4n+3) { background: #ffb3c1; }
 .cv-tpl-pop .cv-tags span:nth-child(4n+4) { background: #c9b8ff; }
+/* ===== 结构签名：雷同的 7 套简洁模板各给一个专属骨架特征（不只是换色） ===== */
+/* B 极简纸白：头像方形左置 + 姓名下的细分隔线（报纸式） */
+.cv-tpl-paper .cv-profile { flex-wrap: wrap; }
+.cv-tpl-paper .cv-ident { flex: 1; min-width: 0; padding-bottom: 12px; border-bottom: 1px solid #d8d3c8; }
+.cv-tpl-paper .cv-tags { width: 100%; padding-top: 10px; }
+/* C 墨夜玻璃：头像居中 + 姓名居中，卡片如玻璃徽章 */
+.cv-tpl-glass .cv-profile { flex-direction: column; align-items: center; text-align: center; }
+.cv-tpl-glass .cv-avatar { margin-bottom: 10px; }
+.cv-tpl-glass .cv-tags { justify-content: center; }
+/* D 暖木衬线：头像居中圆 + 上下细金线包围姓名（证书式） */
+.cv-tpl-wood .cv-profile { flex-direction: column; align-items: center; text-align: center; }
+.cv-tpl-wood .cv-ident { width: 100%; padding: 14px 0; border-top: 1px solid rgba(139,94,60,.4); border-bottom: 1px solid rgba(139,94,60,.4); margin-top: 12px; }
+.cv-tpl-wood .cv-tags { justify-content: center; }
+/* E 霓虹夜景：头像外发光圆环 + 顶条加粗霓虹 */
+.cv-tpl-neon .cv-avatar { border-radius: 50%; box-shadow: 0 0 0 2px #ff4fa3, 0 0 18px rgba(255,79,163,.7); }
+.cv-tpl-neon .cv-main > .cv-profile::before { height: 8px; box-shadow: 0 0 14px rgba(79,216,255,.8); }
+/* F 酸性荧光：头像直角荧光块 + 卡片直角硬投影 */
+.cv-tpl-acid .cv-avatar { border-radius: 0; box-shadow: 5px 5px 0 #ccff00; }
+.cv-tpl-acid .cv-main > .cv-profile { box-shadow: 8px 8px 0 #ccff00; }
+/* G 多巴胺：头像圆形 + 彩色描边 + 顶条多彩分段 */
+.cv-tpl-pop .cv-avatar { border-radius: 50%; box-shadow: 0 0 0 3px #ff6b6b; }
+.cv-tpl-pop .cv-main > .cv-profile::before { background: linear-gradient(90deg,#ffd93d,#ff6b9d,#6bcbff,#a0e7e5); }
+/* H 杂志编辑：头像方形大图左置 + 顶部红条的杂志封面感 */
+.cv-tpl-magazine .cv-avatar { border-radius: 0; width: 82px; height: 82px; flex-basis: 82px; }
+.cv-tpl-magazine .cv-ident { border-left: 3px solid #c0392b; padding-left: 12px; }
 /* 指引块补充：虚线边（G）/ 左侧色条（H / L1 / L2） */
 .cv-tpl-pop .cv-cta-steps, .cv-tpl-magazine .cv-cta-steps, .cv-tpl-poster .cv-cta-steps, .cv-tpl-ticket .cv-cta-steps { border: var(--cv-steps-border, 0); border-left: var(--cv-steps-border-left, 0); }
 /* ===== L1 竖版海报：无卡片通栏、公司名居中、信息两列 ===== */
