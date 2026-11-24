@@ -118,7 +118,7 @@
           <p class="small muted cv-qr-lead">用手机相机扫一扫下方二维码，即可把名片直接存入通讯录（iPhone / 安卓 / 鸿蒙通用）</p>
           <button class="cv-vcard-qr" @click="vcardQrModal = true" title="点击放大">
             <img v-if="vcardQrDataUrl" :src="vcardQrDataUrl" alt="存入通讯录二维码" />
-            <img v-else :src="vcardQrApi" alt="存入通讯录二维码" />
+            <img v-else :src="vcardQrApi" alt="存入通讯录二维码" fetchpriority="high" decoding="async" />
           </button>
           <div class="cv-qr-actions">
             <button class="btn btn-primary" @click="vcardQrModal = true">放大二维码</button>
@@ -157,7 +157,7 @@
       <div class="modal center">
         <h3>存入通讯录</h3>
         <p class="small muted" style="margin:6px 0 12px">用<i style="font-style:normal;color:#07c160;font-weight:700">手机相机</i>扫一扫（不是微信扫一扫），直接弹出联系人卡片，点「添加到通讯录」即可</p>
-        <img :src="vcardQrDataUrl || (vcardQrApi + '&size=720')" style="width:260px;height:260px;margin:4px auto;display:block" alt="通讯录二维码" />
+        <img :src="vcardQrDataUrl || vcardQrLargeApi" style="width:260px;height:260px;margin:4px auto;display:block" alt="通讯录二维码" />
         <p class="small muted">iPhone 相机 / 安卓相机 / 鸿蒙相机 / 系统扫一扫均可识别</p>
         <div class="btn-row" style="justify-content:center;margin-top:12px">
           <button class="btn btn-primary" @click="saveQrFile({ url: vcardQrDataUrl || vcardQrApi, label: '通讯录二维码' })">保存二维码图片</button>
@@ -216,13 +216,14 @@ import { THEMES, themeOf, themeVars } from '../utils/themes'
 import { isWeChat, isIOS, saveImageUrl, prepareExternalOpen, openVcfInline } from '../utils/save-image'
 import { shareOrCopy, mapLinks } from '../utils/share'
 import { setupWechatShare, absoluteMediaUrl } from '../utils/wx-share'
-import QRCode from 'qrcode'
+// QRCode 动态加载：只在进入名片页、需要本地生成 vCard 高清二维码时才下载，不拖慢首屏
 
 const route = useRoute(); const router = useRouter()
 const slug = route.params.slug
 const qrApi = `/api/cards/public/${slug}`
 const vcfApi = `${qrApi}/card.vcf`
 const vcardQrApi = `${qrApi}/vcard.svg?size=520`
+const vcardQrLargeApi = `${qrApi}/vcard.svg?size=720`
 const vcardQrDataUrl = ref('') // 前端本地生成的 vCard 二维码，不依赖服务端图片接口
 const card = ref(null); const loading = ref(true); const error = ref('')
 const currentTheme = ref('ocean'); const isOwner = ref(false)
@@ -356,6 +357,7 @@ async function buildVcardQr(c) {
   } catch { /* 服务端未部署新接口时用本地兜底 */ }
   if (!text || !text.includes('BEGIN:VCARD')) text = localVcard(c)
   try {
+    const { default: QRCode } = await import('qrcode')
     vcardQrDataUrl.value = await QRCode.toDataURL(text, {
       width: 720, margin: 2, errorCorrectionLevel: 'M',
       color: { dark: '#0f172aff', light: '#ffffffff' }
@@ -383,9 +385,10 @@ async function load() {
         try { favorite.value = !!(await api.get(`/api/cards/public/${slug}/favorite`)).data.data?.favorite } catch { /* 忽略 */ }
       }
     }
-    // 工作台「存入通讯录」跳过来：vCard 二维码生成后自动弹层，直接可扫
+    // 工作台「存入通讯录」跳过来：立即弹层（弹层图默认用服务端 vcard.svg，秒开；
+    // 本地高清 dataURL 后台生成好后无缝替换，供保存 PNG 用），不再干等 JS 生成
     if (String(route.query.save) === '1') {
-      setTimeout(() => { if (vcardQrDataUrl.value) vcardQrModal.value = true }, 400)
+      vcardQrModal.value = true
       // save 是一次性展示参数，清掉它和可能残留的登录凭证，避免被原生转发带出去
       const u = new URL(windowRef.location.href)
       let changed = false
