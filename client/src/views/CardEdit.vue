@@ -354,10 +354,17 @@ onMounted(async () => {
   loadTemplates()
   loadMarketMeta()
   await loadCard()
-  // 从「我的名片」板块编辑入口进来时，直接切到对应分类
+  applyFocus()
+})
+
+// 从抽屉/板块入口带 focus 进来时切到对应分类。
+// 用 watch 监听 query：用户已在编辑页时，点「模板与配色」等只改 query、组件不重新挂载，
+// 必须在 query 变化时也切换，否则点了没反应。
+function applyFocus() {
   const focus = String(route.query.focus || '')
   if (['identity', 'bio', 'contact', 'qr', 'links', 'market', 'appearance'].includes(focus)) active.value = focus
-})
+}
+watch(() => route.query.focus, () => applyFocus())
 
 async function loadTemplates() {
   try {

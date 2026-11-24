@@ -255,6 +255,44 @@
           </div>
         </section>
 
+        <!-- 对象存储 OSS -->
+        <section v-if="tab === 'oss'" class="oss-section">
+          <div class="panel-head stand-alone"><h2>对象存储</h2><span class="small muted">多项目共用一个 Bucket 时，靠「项目路径前缀」隔离目录</span></div>
+          <div class="panel card">
+            <div class="oss-status">
+              <div class="oss-status-item"><span class="small muted">当前状态</span><b><span class="badge" :class="ossStatus.enabled ? 'ok' : 'off'">{{ ossStatus.enabled ? '云存储已启用' : '本地存储' }}</span></b></div>
+              <div class="oss-status-item"><span class="small muted">存储方式</span><b>{{ ossStatus.provider }}</b></div>
+              <div class="oss-status-item"><span class="small muted">项目路径</span><b class="mono">{{ ossStatus.pathPrefix || '—' }}/uploads/</b></div>
+              <div class="oss-status-item"><span class="small muted">Bucket</span><b class="mono">{{ ossStatus.bucket || '—' }}</b></div>
+              <div class="oss-status-item"><span class="small muted">地域</span><b>{{ ossStatus.region || '—' }}</b></div>
+              <div class="oss-actions">
+                <button class="btn btn-sm" :disabled="ossBusy" @click="loadOss">刷新</button>
+                <button class="btn btn-sm btn-primary" :disabled="ossBusy" @click="testOss">{{ ossBusy ? '检测中…' : '连通性自检' }}</button>
+                <button class="btn btn-sm btn-ghost" :disabled="ossBusy" @click="goOssConfig">去配置</button>
+              </div>
+            </div>
+            <p class="small muted" style="margin:12px 0;padding:10px 12px;background:var(--bg-page,#f8fafc);border-radius:8px">
+              上传的图片会自动同步到云存储（失败自动回落本地，不影响使用）。配置在「配置中心 → 对象存储 OSS」；<b>项目路径前缀</b>决定本项目文件落在 Bucket 的哪个目录，改前缀后旧对象不会迁移。密钥只写不读，留空即沿用已保存值。
+            </p>
+
+            <div class="oss-files-head">
+              <b>云端文件 <span class="small muted">({{ ossFilteredFiles.length }})</span></b>
+              <input v-model="ossFilter" class="input" placeholder="筛选文件名" />
+            </div>
+            <div v-if="!ossStatus.enabled" class="empty small">云存储未启用：新上传的文件保存在本地。要启用请先在配置中心填写 OSS 参数。</div>
+            <div v-else-if="!ossFiles.length && !ossBusy" class="empty small">项目路径下暂无对象（上传图片后会自动出现在这里）</div>
+            <div v-else class="table-wrap"><table><thead><tr><th>文件名</th><th>对象 key</th><th>大小</th><th>更新时间</th><th>操作</th></tr></thead>
+              <tbody><tr v-for="f in ossFilteredFiles" :key="f.key">
+                <td><a :href="f.url" target="_blank" rel="noopener">{{ f.name }}</a></td>
+                <td class="mono small">{{ f.key }}</td>
+                <td>{{ fmtSize(f.size) }}</td>
+                <td class="small muted">{{ f.lastModified }}</td>
+                <td><a class="btn btn-sm btn-ghost" :href="f.url" target="_blank" rel="noopener">查看</a>
+                    <button class="btn btn-sm btn-ghost" :disabled="ossBusy" @click="deleteOssFile(f)">删除</button></td>
+              </tr></tbody></table></div>
+          </div>
+        </section>
+
         <!-- 配置中心 -->
         <section v-if="tab === 'config'" class="config-section">
           <div class="panel-head stand-alone"><h2>配置中心</h2><span class="small muted">分组管理 · 保存后立即生效</span></div>
@@ -464,7 +502,8 @@ const ICONS = {
   check: ['M20 6 9 17l-5-5'],
   wechat: ['M9 4C5.1 4 2 6.5 2 9.6c0 1.8 1 3.5 2.6 4.6L4 17l2.6-1.3c.8.2 1.6.4 2.4.4h.4a5 5 0 0 1-.2-1.3c0-3 3-5.5 6.7-5.5h.5C15.6 6.3 12.6 4 9 4ZM6.5 8.4a.8.8 0 1 1 0-1.6.8.8 0 0 1 0 1.6Zm4.6 0a.8.8 0 1 1 0-1.6.8.8 0 0 1 0 1.6Z', 'M22 13.7c0-2.5-2.5-4.6-5.6-4.6s-5.6 2-5.6 4.6 2.5 4.6 5.6 4.6c.7 0 1.3-.1 1.9-.3l1.8.9-.5-1.6c1.5-.9 2.4-2.1 2.4-3.6Zm-7.5-1.2a.7.7 0 1 1 0-1.4.7.7 0 0 1 0 1.4Zm3.7 0a.7.7 0 1 1 0-1.4.7.7 0 0 1 0 1.4Z'],
   yuan: ['M12 2v20', 'M17 6H9a3 3 0 0 0 0 6h6a3 3 0 0 1 0 6H6'],
-  location: ['M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z', 'M12 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6z']
+  location: ['M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z', 'M12 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'],
+  cloud: ['M18 10h-1.3A7 7 0 1 0 6 16.7V18a2 2 0 0 0 2 2h10a4 4 0 0 0 0-10z']
 }
 const ic = n => ICONS[n] || ICONS.overview
 
@@ -473,6 +512,7 @@ const menus = [
   { k: 'cards', t: '名片管理', i: 'card', group: 'main' }, { k: 'orders', t: '订单管理', i: 'order', group: 'main' },
   { k: 'users', t: '用户管理', i: 'users', group: 'main' }, { k: 'config', t: '配置中心', i: 'config', group: 'sys' },
   { k: 'regions', t: '定位管理', i: 'location', group: 'sys' },
+  { k: 'oss', t: '对象存储', i: 'cloud', group: 'sys' },
   { k: 'update', t: '版本更新', i: 'update', group: 'sys' }
 ]
 const mainMenus = menus.filter(m => m.group === 'main')
@@ -487,6 +527,8 @@ const activeGroup = ref('site'); const revealed = ref({})
 const smsPhone = ref(''); const smsBusy = ref(false)
 const regions = ref([]); const regionLevel = ref(0); const regionBusy = ref(false)
 const regionForm = ref({ code: '', parent_code: '', name: '', level: 1, sort: 0, enabled: true }); const regionEditing = ref(false)
+const ossStatus = ref({ enabled: false, provider: 'local', pathPrefix: '', bucket: '', region: '', customDomain: '' })
+const ossFiles = ref([]); const ossBusy = ref(false); const ossFilter = ref('')
 const cardQ = ref(''); const cardStatus = ref(''); const orderStatus = ref('')
 const pkgModal = ref(false); const pkgForm = ref({}); const pkgFeatures = ref('')
 const updateInfo = ref({}); const checkResult = ref(null); const updCfg = ref({})
@@ -557,7 +599,8 @@ const GROUP_META = {
   sms: { i: 'mail', desc: '阿里云短信平台参数，用于验证码发送，保存后可测试。' },
   miniapp: { i: 'phone', desc: '微信 / 支付宝 / 抖音小程序的应用标识与密钥。' },
   wechat_oauth: { i: 'wechat', desc: '公众号网页授权：H5 在微信里免密登录并获取昵称头像。' },
-  map: { i: 'location', desc: '高德地图 Key（IP 定位/逆地理/地理编码），未配置时自动降级到免费 API 与城市中心坐标。' }
+  map: { i: 'location', desc: '高德地图 Key（IP 定位/逆地理/地理编码），未配置时自动降级到免费 API 与城市中心坐标。' },
+  oss: { i: 'cloud', desc: '对象存储：local 本地 / aliyun 阿里云 OSS / tencent 腾讯云 COS。密钥只写不读，留空沿用已保存值；项目路径前缀用于多项目共用一个 Bucket 时隔离目录。' }
 }
 const OPTIONS = {
   pay_mode: [['mock', 'mock · 模拟支付'], ['wechat', 'wechat · 微信支付']],
@@ -566,7 +609,8 @@ const OPTIONS = {
   wechat_oauth_enabled: [['false', '停用'], ['true', '启用']],
   wechat_oauth_bind_phone: [['true', '必须绑定手机号'], ['false', '直接建号（无手机号）']],
   wechat_oauth_scope: [['snsapi_userinfo', 'snsapi_userinfo · 取昵称头像']],
-  map_provider: [['amap', '高德地图'], ['osm', 'OpenStreetMap（免费兜底）']]
+  map_provider: [['amap', '高德地图'], ['osm', 'OpenStreetMap（免费兜底）']],
+  oss_provider: [['local', 'local · 本地存储'], ['aliyun', 'aliyun · 阿里云 OSS'], ['tencent', 'tencent · 腾讯云 COS']]
 }
 const groupMeta = k => GROUP_META[k] || { i: 'config', desc: '保存后立即生效。' }
 const optionsFor = k => OPTIONS[k] || null
@@ -618,6 +662,51 @@ async function deleteRegion(r) {
   } catch (e) { showToast(e.message, 'error') } finally { regionBusy.value = false }
 }
 
+// ---------- 对象存储 OSS 管理 ----------
+const ossFilteredFiles = computed(() => {
+  const q = ossFilter.value.trim().toLowerCase()
+  if (!q) return ossFiles.value
+  return ossFiles.value.filter(f => (f.name || '').toLowerCase().includes(q) || (f.key || '').toLowerCase().includes(q))
+})
+function fmtSize(n) { const b = Number(n) || 0; return b < 1024 ? b + ' B' : b < 1048576 ? (b / 1024).toFixed(1) + ' KB' : (b / 1048576).toFixed(1) + ' MB' }
+async function goOssConfig() {
+  // 先切到配置中心并等 groups 加载完，再定位到 oss 分组
+  // （loadTab('config') 会在未命中时把 activeGroup 重置为第一个分组，必须在它之后再设）
+  sideOpen.value = false
+  tab.value = 'config'
+  await loadTab('config')
+  activeGroup.value = 'oss'
+}
+async function loadOss() {
+  if (ossBusy.value) return
+  ossBusy.value = true
+  try {
+    const s = (await api.get('/api/admin/oss/status')).data.data
+    ossStatus.value = s
+    if (s.enabled) ossFiles.value = (await api.get('/api/admin/oss/files')).data.data.files || []
+    else ossFiles.value = []
+  } catch (e) { showToast(e.message, 'error') } finally { ossBusy.value = false }
+}
+async function testOss() {
+  if (ossBusy.value) return
+  ossBusy.value = true
+  try {
+    const d = (await api.post('/api/admin/oss/test', {})).data.data
+    showToast(`连接成功 · 项目路径 ${d.pathPrefix} · ${d.count} 个对象`, 'success')
+    await loadOss()
+  } catch (e) { showToast(e.message, 'error') } finally { ossBusy.value = false }
+}
+async function deleteOssFile(f) {
+  if (ossBusy.value) return
+  if (!window.confirm(`删除云端文件「${f.name}」？此操作不可恢复。`)) return
+  ossBusy.value = true
+  try {
+    await api.delete('/api/admin/oss/files', { data: { key: f.key } })
+    showToast('已删除', 'success')
+    await loadOss()
+  } catch (e) { showToast(e.message, 'error') } finally { ossBusy.value = false }
+}
+
 function switchTab(k) { if (tab.value === k && sideOpen.value) { sideOpen.value = false; return } tab.value = k; sideOpen.value = false; loadTab(k) }
 
 async function loadTab(k) {
@@ -640,6 +729,7 @@ async function loadTab(k) {
       if (cfgGroups.value.length && !cfgGroups.value.some(g => g.key === activeGroup.value)) activeGroup.value = cfgGroups.value[0].key
     }
     if (k === 'regions') await loadRegions()
+    if (k === 'oss') await loadOss()
     if (k === 'update') await loadUpdate()
   } catch (e) { showToast(e.message, 'error') } finally { loading.value = false }
 }
@@ -996,6 +1086,16 @@ async function saveUpdateConfig() {
 .filter-row { display: flex; gap: 10px; margin-bottom: 14px; max-width: 720px; }
 .filter-row .input { flex: 1; }
 .filter-row .select { width: 170px; }
+
+/* 对象存储 */
+.oss-section { max-width: 1100px; }
+.oss-status { display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: flex-start; }
+.oss-status-item { display: flex; flex-direction: column; gap: 4px; min-width: 120px; }
+.oss-status-item b { font-size: 14px; }
+.oss-status-item .mono { font-size: 12px; }
+.oss-actions { display: flex; gap: 8px; margin-left: auto; align-items: center; }
+.oss-files-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 16px 0 10px; }
+.oss-files-head .input { width: 240px; }
 
 /* 定位管理 */
 .region-section { max-width: 1100px; }

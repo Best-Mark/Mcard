@@ -6,6 +6,7 @@ const { sign, adminRequired, superRequired } = require('../utils/auth')
 const updater = require('../services/updater')
 const settings = require('../utils/settings')
 const sms = require('../services/sms')
+const oss = require('../services/oss')
 
 const router = express.Router()
 const parseJson = (v, f) => { try { return JSON.parse(v) ?? f } catch { return f } }
@@ -183,6 +184,7 @@ router.put('/config', superRequired, wrap((req, res) => {
     // 健壮：枚举类配置只接受合法值，避免写入 "0"/"yes" 被判真导致功能意外开启
     if (k === 'pay_mode' && !['mock', 'wechat'].includes(String(v))) return fail(res, 400, '支付模式只能是 mock 或 wechat')
     if (k === 'map_provider' && !['amap', 'osm'].includes(String(v))) return fail(res, 400, '地图服务商只能是 amap 或 osm')
+    if (k === 'oss_provider' && !['local', 'aliyun', 'tencent'].includes(String(v))) return fail(res, 400, '存储方式只能是 local / aliyun / tencent')
     if (['sms_enabled', 'wechat_oauth_enabled', 'wechat_oauth_bind_phone'].includes(k) && !['true', 'false'].includes(String(v))) {
       return fail(res, 400, `${k} 只能是 true 或 false`)
     }
@@ -195,7 +197,43 @@ router.put('/config', superRequired, wrap((req, res) => {
   }
   const stmt = db.prepare("INSERT INTO site_config (key, value, updated_at) VALUES (?,?,datetime('now')) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')")
   db.transaction(() => { for (const [k, v] of entries) stmt.run(k, v) })()
+  // OSS 配置变更后立即失效客户端缓存，避免改了配置仍用旧密钥/旧路径
+  if (entries.some(([k]) => k.startsWith('oss_'))) oss.clearCache()
   ok(res, settings.adminView())
+}))
+
+// ---------- 对象存储 OSS 管理 ----------
+router.get('/oss/status', adminRequired, wrap((_req, res) => {
+  const cfg = settings.ossConfig()
+  ok(res, {
+    enabled: oss.configured(),
+    provider: oss.currentProvider(),
+    pathPrefix: oss.currentPrefix(),
+    bucket: cfg.bucket,
+    region: cfg.region,
+    customDomain: cfg.customDomain
+  })
+}))
+
+// 文件列表（仅当前项目路径，防越权看别的项目）
+router.get('/oss/files', adminRequired, wrap(async (_req, res) => {
+  ok(res, { files: await oss.listFiles(), pathPrefix: oss.currentPrefix(), enabled: oss.configured() })
+}))
+
+// 删除文件（仅当前项目路径）
+router.delete('/oss/files', adminRequired, wrap(async (req, res) => {
+  const key = String(req.body?.key || '')
+  if (!key) return fail(res, 400, '缺少文件 key')
+  const removed = await oss.remove(key)
+  if (!removed) return fail(res, 400, '删除失败：文件不存在或不属于当前项目路径')
+  ok(res, { removed: true })
+}))
+
+// 连通性自检：尝试列举一次，明确返回能否访问
+router.post('/oss/test', adminRequired, wrap(async (_req, res) => {
+  if (!oss.configured()) return fail(res, 400, 'OSS 未启用或配置不完整，请先在配置中心填写并保存')
+  const files = await oss.listFiles()
+  ok(res, { ok: true, count: files.length, pathPrefix: oss.currentPrefix(), message: '连接成功，可访问项目路径下的对象' })
 }))
 
 module.exports = router

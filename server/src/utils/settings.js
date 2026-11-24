@@ -73,6 +73,18 @@ const GROUPS = {
       { key: 'map_provider', label: '地图服务商（amap / osm）', type: 'text' },
       { key: 'map_default_city', label: '定位兜底城市（如 上海）', type: 'text' }
     ]
+  },
+  oss: {
+    label: '对象存储 OSS',
+    fields: [
+      { key: 'oss_provider', label: '存储方式（local / aliyun / tencent）', type: 'text' },
+      { key: 'oss_path_prefix', label: '项目路径前缀（多项目共用 Bucket 隔离，如 mcard → 全部落在 mcard/uploads/ 下）', type: 'text' },
+      { key: 'oss_region', label: '地域（阿里云 oss-cn-* / 腾讯云 ap-*）', type: 'text' },
+      { key: 'oss_bucket', label: 'Bucket 名称', type: 'text' },
+      { key: 'oss_access_key', label: 'AccessKey ID（阿里云）/ SecretId（腾讯云）', type: 'secret' },
+      { key: 'oss_secret_key', label: 'AccessKey Secret（阿里云）/ SecretKey（腾讯云）', type: 'secret' },
+      { key: 'oss_custom_domain', label: '自定义域名（可选，不含协议头与结尾斜杠）', type: 'text' }
+    ]
   }
 }
 
@@ -137,6 +149,28 @@ function mapConfig() {
     amapKey: fromDb('amap_key'),
     provider: fromDb('map_provider') || 'amap',
     defaultCity: fromDb('map_default_city') || '上海'
+  }
+}
+
+// 读取 OSS 配置（服务端直读原始密钥，不走 adminView 掩码；pathPrefix 做容错清洗）
+// 多项目共用一个 Bucket 时，pathPrefix 是唯一隔离维度，所有对象 key = `${prefix}/uploads/<file>`
+function ossConfig() {
+  const fromDb = k => String(get(k, ''))
+  const cleanDomain = s => String(s || '').trim().replace(/^https?:\/\//i, '').replace(/^\/+|\/+$/g, '')
+  const cleanPrefix = s => String(s || '').trim()
+    .replace(/^https?:\/\/[^/]+\/?/i, '')
+    .replace(/^(uploads\/)+/i, '')
+    .replace(/\/?uploads\/?$/i, '')
+    .replace(/^\/+|\/+$/g, '')
+    .replace(/[^A-Za-z0-9_./-]/g, '') // 防路径穿越：只留安全字符
+  return {
+    provider: (fromDb('oss_provider') || 'local').toLowerCase(),
+    pathPrefix: cleanPrefix(fromDb('oss_path_prefix') || 'mcard') || 'mcard',
+    region: fromDb('oss_region'),
+    bucket: fromDb('oss_bucket'),
+    accessKey: fromDb('oss_access_key'),
+    secretKey: fromDb('oss_secret_key'),
+    customDomain: cleanDomain(fromDb('oss_custom_domain'))
   }
 }
 
@@ -205,7 +239,14 @@ function seedDefaults() {
     wechat_oauth_verify_content: '',
     amap_key: '',
     map_provider: 'amap',
-    map_default_city: '上海'
+    map_default_city: '上海',
+    oss_provider: 'local',
+    oss_path_prefix: 'mcard',
+    oss_region: '',
+    oss_bucket: '',
+    oss_access_key: '',
+    oss_secret_key: '',
+    oss_custom_domain: ''
   }
   const tx = db.transaction(() => {
     for (const [k, v] of Object.entries(seeds)) stmt.run(k, JSON.stringify(String(v || '')))
@@ -213,4 +254,4 @@ function seedDefaults() {
   tx()
 }
 
-module.exports = { PUBLIC_KEYS, PUBLIC_DERIVED_KEYS, GROUPS, SENSITIVE_KEYS, ALL_KEYS, MASK, fingerprint, get, payConfig, smsConfig, wechatOauthConfig, wechatLoginEnabled, mapConfig, publicView, adminView, seedDefaults }
+module.exports = { PUBLIC_KEYS, PUBLIC_DERIVED_KEYS, GROUPS, SENSITIVE_KEYS, ALL_KEYS, MASK, fingerprint, get, payConfig, smsConfig, wechatOauthConfig, wechatLoginEnabled, mapConfig, ossConfig, publicView, adminView, seedDefaults }

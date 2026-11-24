@@ -7,6 +7,7 @@ const { ok, fail, wrap } = require('../utils/response')
 const { authRequired } = require('../utils/auth')
 const { randomHex } = require('../utils/id')
 const logoService = require('../services/logo')
+const oss = require('../services/oss')
 
 const ALLOW = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg'])
 const storage = multer.diskStorage({
@@ -27,10 +28,18 @@ const upload = multer({
 })
 
 const router = express.Router()
-router.post('/', authRequired, upload.single('file'), (req, res) => {
+
+// 本地落盘后尝试双写 OSS：成功返回云 URL，失败降级本地 URL（不拖垮上传）
+async function publicUrlOf(file) {
+  const local = `/uploads/${file.filename}`
+  const cloud = await oss.putLocalFile(file.path, `uploads/${file.filename}`)
+  return { url: cloud || local, name: file.originalname, size: file.size, storage: cloud ? 'oss' : 'local' }
+}
+
+router.post('/', authRequired, upload.single('file'), wrap(async (req, res) => {
   if (!req.file) return fail(res, 400, '请选择文件')
-  ok(res, { url: `/uploads/${req.file.filename}`, name: req.file.originalname, size: req.file.size })
-})
+  ok(res, await publicUrlOf(req.file))
+}))
 
 // LOGO 上传：自动去底并输出透明 PNG，原图保留供再次调参
 router.post('/logo', authRequired, upload.single('file'), wrap(async (req, res) => {
