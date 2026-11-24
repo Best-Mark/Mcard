@@ -167,8 +167,11 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const [c, s, o] = await Promise.all([api.get('/api/cards/mine/stats'), api.get('/api/orders/mine'), api.get('/api/cards/mine')])
-    stats.value = s.data.data; orders.value = o.data.data; card.value = c.data.data
+    const [s, o, c] = await Promise.all([api.get('/api/cards/mine/stats'), api.get('/api/orders/mine'), api.get('/api/cards/mine')])
+    // 兜底：接口异常/无名片时字段一律给默认值，绝不把 null 丢给模板的 .length / .map
+    stats.value = { views: 0, exchanges: 0, daily: [], sources: [], cities: [], hourly: [], ...(s.data?.data || {}) }
+    orders.value = Array.isArray(o.data?.data) ? o.data.data : []
+    card.value = c.data?.data || null
   } catch (e) { error.value = e.message || '网络异常' } finally { loading.value = false }
 }
 onMounted(load)
