@@ -648,12 +648,24 @@ async function testSms() {
   try { await api.post('/api/admin/sms/test', { phone: smsPhone.value }); showToast('测试码已发送', 'success') }
   catch (e) { showToast(e.message, 'error') } finally { smsBusy.value = false }
 }
+// 更新完成后 lastResult 变成 kind='apply'，原来的 check 缓存会停留在「发现新版本」。
+// 用「运行中的 commit == 检查到的远端 commit」自愈纠正，避免用户误以为还有新版。
+function reconcileCheckResult(d) {
+  const r = d?.config?.lastResult
+  if (r?.kind === 'check') checkResult.value = r
+  else if (checkResult.value && r?.kind === 'apply' && r.updated === false && r.hasUpdate === false) {
+    checkResult.value = { ...checkResult.value, hasUpdate: false }
+  } else if (checkResult.value && d?.runningCommit && checkResult.value.remoteCommit && d.runningCommit === checkResult.value.remoteCommit) {
+    checkResult.value = { ...checkResult.value, hasUpdate: false }
+  }
+}
+
 async function loadUpdate() {
   const d = (await api.get('/api/admin/update/status')).data.data
   updateInfo.value = d
   updCfg.value = { ...(d.config || {}) }
   if (d.progress) progress.value = d.progress
-  if (d.config?.lastResult?.kind === 'check') checkResult.value = d.config.lastResult
+  reconcileCheckResult(d)
 }
 
 // 轮询：异步任务在后端跑，前端每 1s 拉一次进度；重启导致短暂断连时继续重试，不误判失败
@@ -667,7 +679,7 @@ function startPolling(kind, onDone) {
       const d = (await api.get('/api/admin/update/status')).data.data
       updateInfo.value = d
       if (d.progress) progress.value = d.progress
-      if (d.config?.lastResult?.kind === 'check') checkResult.value = d.config.lastResult
+      reconcileCheckResult(d)
       if (d.progress && d.progress.done) {
         if (doneCalled) return
         doneCalled = true
@@ -713,7 +725,11 @@ async function applyUpdate() {
     await api.post('/api/admin/update/apply')
     startPolling('apply', p => {
       if (p.error) showToast(`更新失败：${p.error}`, 'error')
-      else showToast('更新完成', 'success')
+      else {
+        // apply 成功即已追上远端：立刻清掉「发现新版本」缓存，不等重启后的 3.5s 轮询
+        if (checkResult.value) checkResult.value = { ...checkResult.value, hasUpdate: false }
+        showToast('更新完成', 'success')
+      }
     })
   } catch (e) { updBusy.value = false; showToast(e.message, 'error') }
 }

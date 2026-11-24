@@ -219,7 +219,11 @@ async function performUpdate(cfg = getConfig()) {
     await git(['fetch', 'origin', cfg.branch])
     const after = (await git(['rev-parse', `origin/${cfg.branch}`])).stdout.trim()
     if (before === after) {
-      const result = { kind: 'apply', updated: false, message: '已是最新版本', log: [] }
+      const result = {
+        kind: 'apply', updated: false, message: '已是最新版本', log: [],
+        // 供前端同步刷新检查状态：当前已追上远端，绝不能继续显示「发现新版本」
+        hasUpdate: false, currentCommit: before.slice(0, 7), remoteCommit: after.slice(0, 7)
+      }
       result.checkedAt = remember(result)
       return finishProgress(result)
     }
