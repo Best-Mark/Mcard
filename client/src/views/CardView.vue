@@ -108,17 +108,12 @@
         </div>
 
         <div class="card card-pad cv-qr-card">
-          <button class="cv-qr-img" @click="qrModal = true" title="点击查看大图">
+          <button class="cv-qr-img" @click="qrModal = true" title="点击放大">
             <img :src="qrApi + '/qr.svg?size=440'" alt="名片二维码" />
           </button>
           <div class="cv-qr-info">
             <h3>扫一扫，存入通讯录</h3>
-            <p class="small muted">二维码永久固定，资料更新也不会失效。可印在实体名片、工牌、易拉宝上。</p>
-            <div class="btn-row" style="margin-top:10px">
-              <button class="btn btn-primary btn-sm" @click="saveQr">保存二维码</button>
-              <button class="btn btn-ghost btn-sm" @click="saveContact">存入通讯录</button>
-              <button class="btn btn-ghost btn-sm" @click="doShare">分享</button>
-            </div>
+            <p class="small muted">点击上方二维码可放大保存</p>
           </div>
         </div>
 
@@ -156,10 +151,10 @@
     <div v-if="guide" class="modal-mask" @click.self="guide = ''">
       <div class="modal">
         <h3>{{ guide === 'contact' ? '保存到通讯录' : '保存二维码' }}</h3>
-        <p>微信内置浏览器限制文件下载。请点右上角「···」→ 在浏览器中打开，<b>已自动带上登录状态，无需再次登录</b>，再点击保存；或长按下方二维码图片保存。</p>
-        <img :src="guideImage || (qrApi + '/qr.svg?size=520')" style="width:200px;height:200px;margin:10px auto;object-fit:contain" alt="二维码" />
+        <p>微信内置浏览器限制通讯录写入。请点右上角「···」→ <b>在浏览器中打开</b>（已自动带上登录状态，无需再次登录），再点「存入通讯录」即可一键添加联系人。</p>
+        <img v-if="guide !== 'contact'" :src="guideImage || (qrApi + '/qr.svg?size=520')" style="width:200px;height:200px;margin:10px auto;object-fit:contain" alt="二维码" />
         <div class="btn-row">
-          <button class="btn btn-primary" @click="openVcf">打开名片文件</button>
+          <button v-if="guide === 'contact'" class="btn btn-primary" @click="openVcf">直接打开名片文件</button>
           <button class="btn btn-ghost" @click="guide = ''">知道了</button>
         </div>
       </div>
@@ -186,7 +181,7 @@ import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
 import { showToast, auth, siteConfig } from '../store'
 import { THEMES, themeOf, themeVars } from '../utils/themes'
-import { isWeChat, saveImageUrl, prepareExternalOpen } from '../utils/save-image'
+import { isWeChat, isIOS, saveImageUrl, prepareExternalOpen, openVcfInline } from '../utils/save-image'
 import { shareOrCopy, mapLinks } from '../utils/share'
 
 const route = useRoute(); const router = useRouter()
@@ -267,7 +262,11 @@ function tel(v) { if (v) windowRef.location.href = `tel:${v}`; else showToast('�
 function sms(v) { if (v) windowRef.location.href = `sms:${v}`; else showToast('尚未填写手机号') }
 function mailto(v) { if (v) windowRef.location.href = `mailto:${v}`; else showToast('尚未填写邮箱') }
 function goMap() { if (card.value?.address) windowRef.location.href = maps.value[0].href; else showToast('尚未填写地址') }
-function openVcf() { windowRef.open(vcfApi, '_blank'); guide.value = '' }
+function openVcf() {
+  guide.value = ''
+  if (isIOS() && !isWeChat()) return openVcfInline(vcfApi)
+  windowRef.open(`${vcfApi}?inline=1`, '_blank')
+}
 async function copy(v, label) {
   if (!v) return showToast(`尚未填写${label}`)
   try { await navigator.clipboard.writeText(v); showToast(`${label}已复制`, 'success') }
@@ -282,6 +281,10 @@ async function saveQr() {
 async function saveContact() {
   if (!card.value) return
   if (isWeChat()) { await showGuide('contact'); return }
+  if (isIOS()) {
+    openVcfInline(vcfApi)
+    return showToast('正在打开通讯录添加界面…', 'success')
+  }
   const r = await saveImageUrl(vcfApi, `${card.value.name || slug}.vcf`)
   if (r.kind === 'downloaded') showToast('已下载，打开即可导入通讯录', 'success')
   else showToast('已打开名片文件，请选择导入通讯录')
@@ -362,11 +365,11 @@ async function toggleFavorite() {
 .cv-address { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
 .cv-maps { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .cv-maps a { font-size: 12px; padding: 6px 10px; border-radius: 8px; background: rgba(0,0,0,.05); background: color-mix(in srgb, var(--t-accent) 12%, transparent); color: var(--t-accent); font-weight: 600; }
-.cv-qr-card { margin-top: 12px; display: flex; gap: 16px; align-items: center; background: var(--t-surface); }
-.cv-qr-img { flex: 0 0 116px; width: 116px; height: 116px; padding: 6px; background: #fff; border-radius: 12px; border: 1px solid var(--line); }
-.cv-qr-img img { width: 100%; height: 100%; }
-.cv-qr-info h3 { font-size: 15px; }
-.cv-qr-info p { margin-top: 4px; }
+.cv-qr-card { margin-top: 12px; display: flex; flex-direction: column; align-items: center; text-align: center; background: var(--t-surface); padding: 22px 18px 20px; }
+.cv-qr-img { display: block; width: 140px; height: 140px; margin: 0 auto 14px; padding: 8px; background: #fff; border-radius: 10px; border: 1px solid var(--line); box-shadow: 0 4px 14px rgba(15,23,42,.06); }
+.cv-qr-img img { display: block; width: 100%; height: 100%; }
+.cv-qr-info h3 { font-size: 14px; font-weight: 600; }
+.cv-qr-info p { margin-top: 4px; font-size: 12px; }
 .cv-exchange { margin-top: 12px; display: flex; justify-content: space-between; align-items: center; background: var(--t-surface); }
 .cv-exchange h3 { font-size: 14px; }
 .cv-footer { text-align: center; color: var(--t-muted); font-size: 11px; padding: 26px 0 10px; }
@@ -375,7 +378,6 @@ async function toggleFavorite() {
 .cv-dock .fav-on { color: #d97706; background: #fffbeb; border-color: #fcd34d; }
 .cv-share-fab { position: fixed; right: 16px; bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 61; width: 58px; height: 58px; border-radius: 50%; background: var(--t-accent, #2563eb); color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,.28); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; font-size: 20px; }
 .cv-share-fab span { font-size: 10px; }
-@media (max-width: 520px) { .cv-qr-card { flex-direction: column; align-items: flex-start; } }
 
 /* ============ 布局模板：template × theme 正交组合，template 只改布局/形状，配色仍走 --t-* 变量 ============ */
 
@@ -477,7 +479,7 @@ async function toggleFavorite() {
 .cv-tpl-contact .contact-row { border-bottom: 1px dashed #e2e8f0; padding: 8px 0; }
 .cv-tpl-contact .contact-row:last-child { border-bottom: 0; }
 .cv-tpl-contact .contact-row b { color: #0f2147; }
-.cv-tpl-contact .cv-qr-card { border: 2px solid #1e40af; background: #fff; }
+.cv-tpl-contact .cv-qr-card { border-color: #dbe4f5; background: #fff; }
 .cv-tpl-contact .cv-qr-info h3 { color: #0f2147; }
 .cv-tpl-contact .cv-qr-img { border-radius: 8px; border: 1px solid #cbd5e1; }
 .cv-tpl-contact .cv-exchange { background: #eff4ff; }

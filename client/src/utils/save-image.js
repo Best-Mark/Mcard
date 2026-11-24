@@ -1,4 +1,11 @@
 export const isWeChat = () => /MicroMessenger/i.test(navigator.userAgent || '')
+export const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent || '') || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+
+// iOS Safari 访问 text/vcard 直链（无 Content-Disposition: attachment）会直接弹出系统「添加联系人」。
+// 这是 iOS 上一键存入通讯录的唯一原生路径；微信内 WKWebView 会拦截，需先跳外部浏览器。
+export function openVcfInline(url) {
+  window.location.href = `${url}${url.includes('?') ? '&' : '?'}inline=1`
+}
 
 // 微信内 → 外部浏览器免二次登录：把一次性凭证写入当前 URL。
 // 用户点右上角「在浏览器中打开」时，微信会把当前 URL（含 ticket）带到外部浏览器，

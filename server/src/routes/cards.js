@@ -181,9 +181,13 @@ router.get('/public/:slug/card.vcf', wrap((req, res) => {
   if (!row) return fail(res, 404, '名片不存在')
   const origin = originOf(req)
   const text = vcard.build(publicView(row, origin), origin)
-  res.type('text/vcard; charset=utf-8')
-    .set('Content-Disposition', `attachment; filename="${encodeURIComponent(row.name || row.slug)}.vcf"`)
-    .send(text)
+  res.set('Content-Type', 'text/vcard; charset=utf-8')
+  // inline=1：iOS Safari 直接识别 text/vcard 并弹出系统「添加联系人」；
+  // 带 attachment 时 Safari 只会把 .vcf 下载到「文件」，用户还得手动找文件导入。
+  if (String(req.query.inline) !== '1') {
+    res.set('Content-Disposition', `attachment; filename="${encodeURIComponent(row.name || row.slug)}.vcf"`)
+  }
+  res.send(text)
 }))
 
 router.post('/public/:slug/exchange', wrap((req, res) => {
