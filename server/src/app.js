@@ -78,7 +78,9 @@ function sendSpa(req, res) {
       html = html.replace(/<title>[\s\S]*?<\/title>/, meta)
     }
   }
-  res.type('html').send(html)
+  // 入口 HTML 永不缓存：hash 资源文件名每次构建都变，浏览器若用缓存里的旧 index.html
+  // 会引用已被删除的旧 chunk → SPA 白屏。静态资源本身靠文件名 hash 做长缓存即可。
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate').type('html').send(html)
 }
 
 app.get('*', (req, res, next) => req.path.startsWith('/api') ? next() : sendSpa(req, res))
