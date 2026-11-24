@@ -15,24 +15,22 @@
         <div class="ds-actions">
           <button class="ds-search" title="搜索名片" @click="go('/market')">⌕ <span>搜索名片 / 伙伴</span></button>
           <button class="ds-icon" title="消息通知" @click="go('/me/notifications')">🔔<em v-if="unread" class="ds-dot"></em></button>
-          <button class="ds-icon" title="查看我的公开名片" @click="goPublic('')">↗</button>
-          <button v-if="logged" class="ds-user" @click="go('/me/profile')">{{ (auth.user?.phone || '我').slice(0, 1) }}</button>
+          <template v-if="logged">
+            <div class="ds-user-wrap" @click.stop>
+              <button class="ds-user" @click="userMenuOpen = !userMenuOpen">{{ (auth.user?.phone || '我').slice(0, 1) }} <span class="ds-caret">▾</span></button>
+              <div v-if="userMenuOpen" class="ds-user-menu">
+                <button @click="menuGo('/me/profile')">◉ 账户信息</button>
+                <button @click="menuGo('/me/plans')">💎 套餐 / 续期</button>
+                <button @click="menuDo('public')">↗ 我的公开名片</button>
+                <button @click="menuDo('share')">⤴ 分享名片</button>
+                <button class="danger" @click="menuDo('logout')">⏻ 退出登录</button>
+              </div>
+            </div>
+          </template>
           <button v-else class="ds-login" @click="go('/login')">登录 / 注册</button>
         </div>
       </div>
     </header>
-
-    <div class="ds-subbar">
-      <div class="ds-subbar-in">
-        <div class="ds-crumb"><span>工作台</span><b>/</b><strong>{{ pageTitle }}</strong></div>
-        <nav class="ds-sub-links">
-          <button v-for="it in subItems" :key="it.label" :class="{ on: isNavActive(it), danger: it.danger }" @click="onNav(it)">
-            <i>{{ it.ico }}</i><span>{{ it.label }}</span>
-            <em v-if="it.badge === 'unread' && unread">{{ unread }}</em>
-          </button>
-        </nav>
-      </div>
-    </div>
 
     <main class="ds-content"><slot /></main>
   </div>
@@ -43,7 +41,6 @@ import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
 import { auth, logout, showToast } from '../store'
-import { DRAWER_GROUPS, runNavItem } from '../config/nav'
 import { shareOrCopy } from '../utils/share'
 import { isWeChat } from '../utils/save-image'
 
@@ -51,24 +48,12 @@ const route = useRoute()
 const router = useRouter()
 const logged = computed(() => !!auth.token)
 const unread = ref(0)
+const userMenuOpen = ref(false)
 let unreadTimer = null
 
-const TITLES = {
-  '/me': '我的名片', '/me/stats': '浏览统计', '/market': '名片集市', '/me/card': '编辑资料',
-  '/me/plans': '套餐与续期', '/me/contacts': '我的名片夹', '/me/profile': '账户信息',
-  '/me/print': '实体名片版式', '/me/notifications': '消息通知', '/me/batch-scan': '展会连扫'
-}
-const pageTitle = computed(() => TITLES[route.path] || (route.path.startsWith('/me/card') ? '编辑资料' : '工作台'))
-// 二级导航仍取自 nav.js 唯一真相源，去掉「我的名片/名片集市/统计」（已在顶栏），避免重复
-const subItems = computed(() => DRAWER_GROUPS.flatMap(g => g.items).filter(it => !['/me', '/market', '/me/contacts', '/me/stats'].includes(it.path)))
-
-function isNavActive(it) {
-  if (it.kind !== 'route' || !it.path) return false
-  const base = it.path.split('?')[0]
-  if (base === '/me') return route.path === '/me'
-  return route.path.startsWith(base)
-}
-function go(path) { if (route.fullPath !== path) router.push(path) }
+function closeMenu() { userMenuOpen.value = false }
+function go(path) { closeMenu(); if (route.fullPath !== path) router.push(path) }
+function menuGo(path) { go(path) }
 
 async function loadUnread() {
   if (!auth.token) { unread.value = 0; return }
@@ -95,11 +80,23 @@ async function doShare() {
   else if (r === 'failed') showToast('复制失败，请手动复制地址栏链接', 'error')
 }
 function logoutNow() { logout(); router.push('/') }
-const handlers = { go, goPublic, doShare, logoutNow }
-function onNav(it) { runNavItem(it, handlers) }
+function menuDo(kind) {
+  closeMenu()
+  if (kind === 'public') goPublic('')
+  else if (kind === 'share') doShare()
+  else if (kind === 'logout') logoutNow()
+}
 
-onMounted(() => { loadUnread(); loadSlug(); unreadTimer = setInterval(loadUnread, 60000) })
-onBeforeUnmount(() => clearInterval(unreadTimer))
+function onDocClick() { closeMenu() }
+onMounted(() => {
+  loadUnread(); loadSlug()
+  unreadTimer = setInterval(loadUnread, 60000)
+  document.addEventListener('click', onDocClick)
+})
+onBeforeUnmount(() => {
+  clearInterval(unreadTimer)
+  document.removeEventListener('click', onDocClick)
+})
 </script>
 
 <style scoped>
@@ -118,19 +115,14 @@ onBeforeUnmount(() => clearInterval(unreadTimer))
 .ds-search:hover { border-color: #93c5fd; color: #2563eb; }
 .ds-icon { position: relative; width: 38px; height: 38px; border-radius: 10px; border: 1px solid #e8edf4; background: #fff; font-size: 15px; cursor: pointer; }
 .ds-dot { position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: #ef4444; }
-.ds-user { width: 38px; height: 38px; border-radius: 50%; border: 0; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: #fff; font-weight: 700; cursor: pointer; }
+.ds-user-wrap { position: relative; }
+.ds-user { display: flex; align-items: center; gap: 6px; height: 38px; padding: 0 12px; border-radius: 19px; border: 0; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: #fff; font-weight: 700; font-size: 13px; cursor: pointer; }
+.ds-caret { font-size: 11px; opacity: .8; }
+.ds-user-menu { position: absolute; top: 46px; right: 0; z-index: 50; width: 174px; padding: 6px; border: 1px solid #e8edf4; border-radius: 12px; background: #fff; box-shadow: 0 14px 36px rgba(15,23,42,.14); }
+.ds-user-menu button { display: block; width: 100%; text-align: left; padding: 10px 12px; border: 0; border-radius: 8px; background: transparent; color: #334155; font-size: 13px; cursor: pointer; }
+.ds-user-menu button:hover { background: #f1f5f9; color: #1d4ed8; }
+.ds-user-menu button.danger { color: #dc2626; }
+.ds-user-menu button.danger:hover { background: #fef2f2; }
 .ds-login { padding: 9px 16px; border-radius: 10px; border: 0; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
-.ds-subbar { background: #fff; border-bottom: 1px solid #eef1f6; }
-.ds-subbar-in { max-width: 1440px; margin: 0 auto; padding: 0 40px; min-height: 48px; display: flex; align-items: center; gap: 24px; }
-.ds-crumb { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #94a3b8; white-space: nowrap; }
-.ds-crumb b { color: #cbd5e1; }
-.ds-crumb strong { color: #334155; }
-.ds-sub-links { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
-.ds-sub-links button { display: flex; align-items: center; gap: 6px; padding: 7px 12px; border: 0; border-radius: 8px; background: transparent; color: #64748b; font-size: 12px; cursor: pointer; }
-.ds-sub-links button:hover { background: #f1f5f9; color: #1d4ed8; }
-.ds-sub-links button.on { background: #eff6ff; color: #1d4ed8; font-weight: 700; }
-.ds-sub-links button.danger { color: #dc2626; }
-.ds-sub-links i { font-style: normal; }
-.ds-sub-links em { font-style: normal; font-size: 10px; min-width: 16px; height: 16px; line-height: 16px; text-align: center; border-radius: 8px; background: #ef4444; color: #fff; }
 .ds-content { max-width: 1440px; margin: 0 auto; padding: 28px 40px 64px; }
 </style>
