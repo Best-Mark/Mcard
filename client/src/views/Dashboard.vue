@@ -72,6 +72,25 @@
           <button class="btn btn-sm btn-ghost" @click="goEdit('contact')">去添加 ›</button>
         </div>
 
+        <!-- 上架到名片集市：把名片变成持续获客入口（重点引导） -->
+        <div class="cv-market-card" :class="{ listed: card.market_opt_in }">
+          <div class="cv-market-icon">⌖</div>
+          <div class="cv-market-body">
+            <div class="cv-market-title">
+              {{ card.market_opt_in ? '✅ 已在名片集市上架' : '🚀 上架名片集市 · 获取更多业务流量' }}
+            </div>
+            <p>{{ card.market_opt_in
+              ? '附近及同行业的人可按距离/行业找到你，点击名片即可存入通讯录。想调整行业、城市或下架，可随时编辑。'
+              : '让附近、业务对口的客户主动找到你——按距离与行业曝光，点击名片即可存入通讯录，持续为你带来咨询与订单。' }}</p>
+            <div class="cv-market-actions">
+              <button class="btn btn-sm" :class="card.market_opt_in ? 'btn-ghost' : 'btn-primary'" @click="goEdit('market')">
+                {{ card.market_opt_in ? '管理上架信息 ›' : '立即上架 ›' }}
+              </button>
+              <router-link to="/market" class="cv-market-link">看看集市里都有谁 →</router-link>
+            </div>
+          </div>
+        </div>
+
         <!-- 联系方式明细 -->
         <div v-if="hasContact" class="card card-pad cv-block">
           <h3>联系方式</h3>
@@ -260,6 +279,25 @@ async function doShare() {
 
 .cv-block { position: relative; margin-top: 12px; }
 .cv-block h3 { font-size: 15px; margin: 0 0 10px; }
+
+/* 上架集市引导卡：未上架用醒目渐变，已上架收敛为静态提示 */
+.cv-market-card { position: relative; margin-top: 12px; display: flex; gap: 14px; padding: 18px 16px; border-radius: 16px; color: #fff; background: linear-gradient(135deg, #0e7490, #2563eb 62%, #4f46e5); box-shadow: 0 10px 26px rgba(37,99,235,.22); overflow: hidden; }
+.cv-market-card::after { content: ''; position: absolute; right: -30px; top: -40px; width: 130px; height: 130px; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,.2), transparent 70%); pointer-events: none; }
+.cv-market-card.listed { background: linear-gradient(135deg, #0f766e, #115e59); box-shadow: 0 6px 18px rgba(15,118,110,.18); }
+.cv-market-icon { flex: 0 0 42px; width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; font-size: 22px; background: rgba(255,255,255,.18); }
+.cv-market-body { flex: 1; min-width: 0; }
+.cv-market-title { font-size: 15px; font-weight: 800; line-height: 1.3; }
+.cv-market-body p { margin: 6px 0 0; font-size: 12px; line-height: 1.6; opacity: .92; }
+.cv-market-actions { display: flex; align-items: center; gap: 14px; margin-top: 12px; flex-wrap: wrap; }
+.cv-market-card .btn { background: #fff; color: #1d4ed8; border-color: #fff; font-weight: 700; }
+.cv-market-card.listed .btn { background: rgba(255,255,255,.18); color: #fff; border-color: rgba(255,255,255,.5); }
+.cv-market-link { font-size: 12px; color: #fff; opacity: .9; text-decoration: underline; }
+/* navygold 主题下收敛为纸色+金线，避免亮蓝破坏深蓝鎏金视觉 */
+.dash-tpl-navygold .cv-market-card { background: linear-gradient(135deg, var(--ng-navy), var(--ng-deep)); border: 1px solid rgba(185,147,85,.35); color: #f5f0e6; }
+.dash-tpl-navygold .cv-market-card.listed { background: linear-gradient(135deg, #1a3a34, #14352f); }
+.dash-tpl-navygold .cv-market-card .btn { background: var(--ng-gold); color: var(--ng-navy); border-color: var(--ng-gold); }
+.dash-tpl-navygold .cv-market-card.listed .btn { background: rgba(216,187,133,.16); color: var(--ng-gold-2); border-color: rgba(216,187,133,.5); }
+.dash-tpl-navygold .cv-market-link { color: var(--ng-gold-2); }
 .cv-actions { display: flex; margin-top: 12px; padding: 12px 4px; }
 .cv-actions button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: var(--text); }
 .cv-actions i { width: 34px; height: 34px; border-radius: 50%; background: #eef2ff; background: color-mix(in srgb, var(--t-accent, var(--primary)) 12%, transparent); color: var(--t-accent, var(--primary)); display: grid; place-items: center; font-style: normal; font-size: 14px; font-weight: 700; }

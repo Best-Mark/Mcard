@@ -32,6 +32,16 @@
         <view class="cell" @tap="go('/pages/print/print')"><view class="ico">▤</view><view>实体版式</view></view>
       </view>
 
+      <!-- 上架集市：把名片变成 7×24 小时获客入口 -->
+      <view class="market-banner" :class="{ listed: card.market_opt_in }" @tap="go('/pages/edit/edit?focus=market')">
+        <view class="mb-ico">⌖</view>
+        <view class="mb-body">
+          <view class="mb-title">{{ card.market_opt_in ? '✅ 已在名片集市上架' : '🚀 上架名片集市 · 获取更多业务流量' }}</view>
+          <view class="mb-desc">{{ card.market_opt_in ? '附近及同行业的人可按距离/行业找到你。点此管理上架信息。' : '让附近、业务对口的客户主动找到你，点击名片即可存入通讯录，持续带来咨询与订单。点此立即上架。' }}</view>
+        </view>
+        <view class="mb-arrow">›</view>
+      </view>
+
       <view class="card stats">
         <view class="section">数据概览</view>
         <view class="stat-row">
@@ -107,6 +117,13 @@ function logoutNow() { logout(); logged.value = false; card.value = null; uni.na
 .badge.ok { background: #d1fae5; color: #047857; }
 .badge.warn { background: #fef3c7; color: #b45309; }
 .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12rpx; margin-bottom: 18rpx; }
+.market-banner { display: flex; align-items: center; gap: 16rpx; padding: 24rpx 22rpx; margin-bottom: 18rpx; border-radius: 22rpx; color: #fff; background: linear-gradient(135deg, #0e7490, #2563eb 62%, #4f46e5); box-shadow: 0 10rpx 28rpx rgba(37,99,235,.22); }
+.market-banner.listed { background: linear-gradient(135deg, #0f766e, #115e59); }
+.mb-ico { flex: 0 0 56rpx; width: 56rpx; height: 56rpx; border-radius: 16rpx; display: grid; place-items: center; font-size: 30rpx; background: rgba(255,255,255,.18); }
+.mb-body { flex: 1; min-width: 0; }
+.mb-title { font-size: 28rpx; font-weight: 800; line-height: 1.3; }
+.mb-desc { margin-top: 8rpx; font-size: 22rpx; line-height: 1.5; opacity: .92; }
+.mb-arrow { font-size: 40rpx; opacity: .85; }
 .cell { background: #fff; border-radius: 20rpx; padding: 22rpx 4rpx; text-align: center; font-size: 22rpx; box-shadow: 0 6rpx 20rpx rgba(15,23,42,.04); }
 .ico { width: 56rpx; height: 56rpx; border-radius: 16rpx; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 28rpx; margin: 0 auto 10rpx; }
 .section { font-size: 30rpx; font-weight: 700; margin-bottom: 14rpx; }

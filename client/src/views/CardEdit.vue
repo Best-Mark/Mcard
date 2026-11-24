@@ -104,9 +104,18 @@
 
           <!-- ⑥ 名片集市 -->
           <div v-show="active === 'market'" class="card card-pad">
-            <div class="section-title" style="margin-top:0">名片集市 <span class="small muted">· 按距离发现业务对口</span></div>
-            <p class="small muted" style="margin-bottom:12px">开启后，你的名片会出现在名片集市，附近及同行业的人可按距离找到你。仅展示姓名、职位、公司、行业、城市与简介，联系方式不会公开；可随时关闭下架。</p>
+            <div class="section-title" style="margin-top:0">名片集市 <span class="small muted">· 让客户主动找到你，获取更多业务流量</span></div>
+            <div class="market-value">
+              <b>🚀 上架 = 多一个 7×24 小时的获客入口</b>
+              <p>开启后，附近及同行业的人可按「距离 / 行业 / 关键词」搜到你，点开名片即可存入通讯录。只展示姓名、职位、公司、行业、城市与简介，联系方式不会公开；随时可关闭下架。</p>
+              <div class="market-checks">
+                <span :class="{ ok: !!form.industry }">{{ form.industry ? '✓' : '○' }} 填行业（被同行精确搜到）</span>
+                <span :class="{ ok: !!form.city }">{{ form.city ? '✓' : '○' }} 填城市（进入地区筛选）</span>
+                <span :class="{ ok: form.latitude != null }">{{ form.latitude != null ? '✓' : '○' }} 有坐标（按距离优先曝光）</span>
+              </div>
+            </div>
             <div class="field"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" v-model="form.market_opt_in" /> 加入名片集市（主动上架）</label></div>
+            <p v-if="form.market_opt_in" class="small" style="color:var(--primary);margin:-4px 0 12px">保存后即可在集市被搜索到，<router-link to="/market">去看看集市 →</router-link></p>
             <div class="grid2">
               <div class="field"><label>所属行业</label>
                 <select v-model="form.industry" class="input">
@@ -574,6 +583,12 @@ async function finish() {
 .qr-upload-info b { font-size: 13px; }
 .locate-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .locate-row .mono { color: var(--muted); }
+.market-value { padding: 12px 14px; margin-bottom: 14px; border-radius: 12px; background: linear-gradient(135deg, #ecfeff, #eff6ff); border: 1px solid #c7d2fe; }
+.market-value b { font-size: 13px; color: #0e7490; }
+.market-value p { margin: 6px 0 8px; font-size: 12px; line-height: 1.6; color: var(--muted); }
+.market-checks { display: flex; gap: 8px 14px; flex-wrap: wrap; }
+.market-checks span { font-size: 11px; color: var(--muted); }
+.market-checks span.ok { color: #0f766e; font-weight: 700; }
 .region-path { color: var(--text); font-weight: 600; min-width: 120px; }
 .map-mask { position: fixed; inset: 0; background: rgba(15,23,42,.55); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 16px; }
 .map-modal { width: 100%; max-width: 680px; background: var(--bg-card, #fff); border-radius: 14px; padding: 14px; box-shadow: 0 20px 60px rgba(0,0,0,.25); }

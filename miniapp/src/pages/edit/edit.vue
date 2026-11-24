@@ -70,9 +70,9 @@
         <view class="field"><text class="label">门牌补充</text><input v-model="form.address_detail" class="input" /></view>
       </view>
 
-      <view class="card">
-        <view class="section">名片集市 <text class="muted small"> · 按距离发现业务对口</text></view>
-        <view class="muted small" style="margin-bottom:16rpx">开启后名片会出现在集市，附近及同行业的人可按距离找到你。仅展示姓名、职位、公司、行业、城市与简介，联系方式不公开；可随时关闭下架。</view>
+      <view class="card" id="market-card">
+        <view class="section">名片集市 <text class="muted small"> · 让客户主动找到你，获取更多业务流量</text></view>
+        <view class="muted small" style="margin-bottom:16rpx">开启后名片会出现在集市，附近及同行业的人可按距离/行业/关键词找到你，点开即可存入通讯录——相当于一个 7×24 小时的获客入口。仅展示姓名、职位、公司、行业、城市与简介，联系方式不公开；可随时关闭下架。</view>
         <view class="field"><text class="label">加入名片集市（主动上架）</text><switch :checked="form.market_opt_in" @change="e => form.market_opt_in = e.detail.value" /></view>
         <view class="field"><text class="label">所属行业</text>
           <picker :range="industryLabels" :value="industryIdx" @change="onIndustry">
@@ -213,7 +213,7 @@ const logoModes = ['auto', 'white', 'none']
 const logoModeLabels = ['智能识别背景', '只去白底', '保留原图']
 const logoModeIdx = ref(0)
 
-onLoad(async () => {
+onLoad(async options => {
   loadTemplates()
   loadMarketMeta()
   try {
@@ -222,6 +222,12 @@ onLoad(async () => {
     form.value = { ...blank, ...c, qr_logo: !!c.qr_logo }
     tagsText.value = (c.tags || []).join(', ')
   } catch (e) { toast(e.message) }
+  // 从「上架集市」入口进来：渲染后滚到集市卡片，直接看到上架开关
+  if (options?.focus === 'market') {
+    setTimeout(() => uni.createSelectorQuery().select('#market-card').boundingClientRect(rect => {
+      if (rect) uni.pageScrollTo({ scrollTop: (rect.top || 0) - 20, duration: 300 })
+    }).exec(), 120)
+  }
   uni.$on('map-picked', onMapPicked)
 })
 onUnmounted(() => uni.$off('map-picked', onMapPicked))
