@@ -214,13 +214,21 @@ async function load() {
   loadError.value = ''
   try {
     const { data } = await api.get('/api/cards/mine')
-    card.value = data.data
-    setupWechatShare(api, {
-      title: `${card.value.name || '我的'} · ${card.value.title || card.value.company || '电子名片'}`,
-      desc: `${[card.value.company, card.value.department, card.value.title].filter(Boolean).join(' · ') || '电子名片'}，扫码即可存入通讯录`,
-      link: card.value.url || window.location.href,
-      imgUrl: absoluteMediaUrl(card.value.avatar || card.value.logo || card.value.cover)
-    })
+    const c = data?.data
+    if (!c || typeof c !== 'object') {
+      // 接口返回空数据：不当成加载失败，落到「还没有名片」态，避免 .name 空引用崩溃
+      card.value = null
+      return
+    }
+    card.value = c
+    try {
+      await setupWechatShare(api, {
+        title: `${c.name || '我的'} · ${c.title || c.company || '电子名片'}`,
+        desc: `${[c.company, c.department, c.title].filter(Boolean).join(' · ') || '电子名片'}，扫码即可存入通讯录`,
+        link: c.url || window.location.href,
+        imgUrl: absoluteMediaUrl(c.avatar || c.logo || c.cover)
+      })
+    } catch { /* 微信分享配置失败不影响名片展示 */ }
   } catch (e) { loadError.value = e.message || '网络异常' } finally { loading.value = false }
 }
 onMounted(load)
