@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS cards (
   bio TEXT NOT NULL DEFAULT '',
   tags TEXT NOT NULL DEFAULT '[]',
   links TEXT NOT NULL DEFAULT '[]',
-  template TEXT NOT NULL DEFAULT 'classic',
+  template TEXT NOT NULL DEFAULT 'contact',
   industry TEXT NOT NULL DEFAULT '',
   city TEXT NOT NULL DEFAULT '',
   latitude REAL,
@@ -83,8 +83,8 @@ addColumnIfMissing('cards', 'company_intro', "TEXT NOT NULL DEFAULT ''")
 for (const col of ['alipay', 'wechat_qr', 'alipay_qr', 'wechat_pay_qr', 'alipay_pay_qr', 'shop_url']) {
   addColumnIfMissing('cards', col, "TEXT NOT NULL DEFAULT ''")
 }
-// 布局模板（与配色 theme 分离）：存量名片回落 classic
-addColumnIfMissing('cards', 'template', "TEXT NOT NULL DEFAULT 'classic'")
+// 布局模板（与配色 theme 分离）：存量库补列默认简洁联络卡 contact
+addColumnIfMissing('cards', 'template', "TEXT NOT NULL DEFAULT 'contact'")
 // 名片集市：存量名片默认不上架、无坐标（保护隐私，需用户主动 opt-in）
 for (const [col, def] of [
   ['industry', "TEXT NOT NULL DEFAULT ''"],

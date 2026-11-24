@@ -339,7 +339,7 @@ const blank = {
   mobile: '', phone: '', email: '', wechat: '', alipay: '', whatsapp: '',
   wechat_qr: '', alipay_qr: '', wechat_pay_qr: '', alipay_pay_qr: '',
   address: '', address_detail: '', province: '', city: '', district: '', street: '',
-  avatar: '', logo: '', bio: '', tags: [], links: [], template: 'classic', theme: 'ocean', accent: THEMES.ocean.accent,
+  avatar: '', logo: '', bio: '', tags: [], links: [], template: 'contact', theme: 'ocean', accent: THEMES.ocean.accent,
   industry: '', city: '', latitude: null, longitude: null, market_opt_in: false,
   qr_fg: '#0f172a', qr_bg: '#ffffff', qr_logo: true,
   qr_style: { dot: 'square', eye: 'square', gradTo: '', logoShape: 'rounded', bgImage: '' }
@@ -802,7 +802,7 @@ async function finish() {
 .ava-elite { border-radius: 50%; left: 50%; transform: translateX(-50%); width: 30px; height: 30px; border: 2px solid #b99355; bottom: -6px; }
 .ava-vivid { border-radius: 12px; width: 34px; height: 34px; background: #fff; bottom: -12px; }
 .ava-seal { border-radius: 0; width: 30px; height: 30px; border: 3px solid #111827; background: #fff; }
-.ava-contact { border-radius: 8px; width: 30px; height: 30px; border: 2px solid #fff; background: #eff4ff; }
+.ava-contact { border-radius: 8px; width: 26px; height: 26px; border: 2px solid var(--ng-gold); background: var(--ng-paper); }
 .ava-navygold { border-radius: 8px; width: 34px; height: 34px; border: 2px solid var(--ng-gold); background: var(--ng-paper); }
 .tpl-item b { font-size: 13px; }
 .tpl-desc { font-size: 11px; color: var(--muted); line-height: 1.45; min-height: 30px; }
@@ -828,10 +828,12 @@ async function finish() {
 .pv-seal .preview-body { color: #111827; }
 .pv-seal .preview-body b { font-size: 22px; font-weight: 900; }
 .pv-seal .preview-tags i { border-radius: 0; border: 1px solid #111827; background: #fff; color: #111827; }
-.preview-card.pv-contact { border-radius: 12px; }
-.pv-contact .preview-avatar { border-radius: 8px; border: 2px solid #fff; background: #eff4ff; color: #2563eb; }
-.pv-contact .preview-body { color: var(--t-text, #0f2147); }
-.pv-contact .preview-tags i { border-radius: 4px; border: 1px solid var(--primary); background: #eff6ff; }
+/* 简洁联络 contact：深蓝径向底 + 单白卡金顶条（与公开名片页同口径） */
+.preview-card.pv-contact { border-radius: 22px; border: 0; box-shadow: 0 12px 28px -14px rgba(0,0,0,.6); overflow: hidden; }
+.pv-contact .preview-head { background: var(--ng-page-bg) !important; border-radius: 0; border-bottom: 4px solid var(--ng-gold); }
+.pv-contact .preview-avatar { border-radius: 12px; background: linear-gradient(145deg,var(--ng-navy),#0e2233); color: #fff; box-shadow: inset 0 0 0 2px rgba(216,187,133,.5); }
+.pv-contact .preview-body { color: var(--ng-ink); }
+.pv-contact .preview-tags i { border-radius: 99px; background: var(--ng-paper); color: #6b5a3c; box-shadow: inset 0 0 0 1px rgba(185,147,85,.35); }
 /* 深蓝鎏金 navygold：金线封顶 + 深蓝封面 + 纸色标签 */
 .preview-card.pv-navygold { border-radius: 22px; border: 2px solid var(--ng-gold); overflow: hidden; }
 .pv-navygold .preview-head { background: linear-gradient(135deg, var(--ng-navy) 0%, var(--ng-navy-2) 40%, var(--ng-gold-2) 78%, var(--ng-gold) 100%) !important; }

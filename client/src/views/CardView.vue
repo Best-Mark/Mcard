@@ -17,7 +17,7 @@
 
     <template v-else-if="card">
       <div class="container cv-main">
-        <div class="cv-profile card" :data-wm="template === 'navygold' ? (card.company || '').slice(0, 4) : ''">
+        <div class="cv-profile card" :data-wm="(template === 'navygold' || template === 'contact') ? (card.company || '').slice(0, 4) : ''">
           <div class="cv-avatar">
             <img v-if="card.avatar" :src="card.avatar" :alt="card.name" />
             <span v-else>{{ (card.name || '名').slice(0, 1) }}</span>
@@ -42,6 +42,26 @@
         </div>
         <div v-if="isOwner && !card.active" class="btn-row" style="margin:12px 0">
           <router-link to="/me/plans" class="btn btn-primary">立即开通</router-link>
+        </div>
+
+        <!-- 简洁联络模板：卡内操作区（拨号 / 复制号码 / 金色存档）+ 按环境的操作指引 -->
+        <div v-if="template === 'contact'" class="cv-cta">
+          <div class="cv-cta-grid">
+            <a v-if="contactPhone" class="cv-cta-btn cv-cta-main" :href="'tel:' + contactPhone">拨打电话</a>
+            <button v-else class="cv-cta-btn cv-cta-main" @click="showToast('尚未填写电话')">拨打电话</button>
+            <button class="cv-cta-btn cv-cta-ghost" @click="copy(contactPhone || '', '号码')">复制号码</button>
+          </div>
+          <a v-if="contactNative" class="cv-cta-save" :href="vcfApi">{{ contactActionLabel }}</a>
+          <button v-else class="cv-cta-save" @click="saveContact">{{ contactActionLabel }}</button>
+          <div class="cv-cta-steps">
+            <div class="cv-cta-steps-t">{{ contactSteps.title }}</div>
+            <ol><li v-for="(s, i) in contactSteps.lines" :key="i" v-html="s"></li></ol>
+          </div>
+          <div class="cv-cta-mini">
+            <button @click="openMapSheet">↗ 导航到此处</button>
+            <button :class="{ 'on': favorite }" @click="toggleFavorite">{{ favorite ? '★ 已收藏' : '☆ 收藏名片' }}</button>
+            <button @click="doShare">⤴ 分享名片</button>
+          </div>
         </div>
 
         <div v-if="contactFields.length" class="card card-pad cv-block">
@@ -160,15 +180,16 @@
 
         <p class="cv-footer">由 <b>{{ siteConfig.site_name }}</b> 提供技术支持 · 资料可改 · 二维码不变</p>
       </div>
+      <p v-if="template === 'contact'" class="cv-cta-hint">扫码即见名片 · 一键拨号 · 一键存档</p>
 
-      <div class="cv-dock">
+      <div class="cv-dock" :class="{ 'cv-dock-hidden': template === 'contact' }">
         <button class="btn btn-primary" @click="tel(card.mobile || card.phone)">📞 打电话</button>
         <a v-if="contactNative" class="btn btn-ghost" :href="vcfApi">存入通讯录</a>
         <button v-else class="btn btn-ghost" @click="saveContact">存入通讯录</button>
         <button class="btn btn-ghost" @click="openMapSheet">导航</button>
         <button class="btn btn-ghost" :class="{ 'fav-on': favorite }" @click="toggleFavorite">{{ favorite ? '★ 已收藏' : '☆ 收藏' }}</button>
       </div>
-      <button class="cv-share-fab" @click="doShare" aria-label="分享名片">↗<span>分享</span></button>
+      <button v-if="template !== 'contact'" class="cv-share-fab" @click="doShare" aria-label="分享名片">↗<span>分享</span></button>
       <BottomSheet :show="mapOpen" @update:show="mapOpen = $event">
         <div class="map-sheet-head"><b>选择导航地图</b><button @click="mapOpen = false">×</button></div>
         <div class="map-sheet-list">
@@ -263,7 +284,7 @@ const vcfApi = `${qrApi}/card.vcf`
 // 存通讯录在打开的名片页里点按钮完成，不再把整段 vCard 塞进二维码（太密、微信不认、难扫）。
 const card = ref(null); const loading = ref(true); const error = ref('')
 const currentTheme = ref('ocean'); const isOwner = ref(false)
-const template = ref('classic')
+const template = ref('contact')
 const qrModal = ref(false); const guide = ref(''); const guideImage = ref(''); const exchangeOpen = ref(false)
 const mapOpen = ref(false)
 const mySlug = ref(''); const exchanging = ref(false)
@@ -346,6 +367,36 @@ const CONTACT_ACTION = {
 }
 const contactActionLabel = (CONTACT_ACTION[deviceEnvKey] || CONTACT_ACTION.other).label
 const contactActionTip = (CONTACT_ACTION[deviceEnvKey] || CONTACT_ACTION.other).tip
+const contactPhone = computed(() => String(card.value?.mobile || card.value?.phone || '').trim())
+// 卡内「按环境」操作指引：参考简洁联络卡的 steps 区块，文案按当前环境给可操作步骤
+const CONTACT_STEPS = {
+  wechat: { title: '微信内 · 推荐这样存', lines: [
+    '点上方金色按钮，名片信息即复制到剪贴板',
+    '打开通讯录 → 右上角「+」→「新建联系人」→ 粘贴',
+    '或点右上角「···」→ <b>在浏览器中打开</b>，再点金色按钮存为通讯录文件'
+  ] },
+  ios: { title: 'iPhone 浏览器 · 三步存好', lines: [
+    '点上方金色按钮，文件存入「文件」App 的下载项',
+    '打开「文件」→ 浏览 → 下载 → 点开联系人文件',
+    '系统弹出联系人预览，点「添加所有信息」'
+  ] },
+  android: { title: '安卓 · 通常一步到位', lines: [
+    '点上方金色按钮，直接下载联系人文件',
+    '通知栏点该文件，或到「文件管理」→ 下载 里点开',
+    '选「导入到通讯录」，确认即完成'
+  ] },
+  harmony: { title: '鸿蒙 · 通常一步到位', lines: [
+    '点上方金色按钮，直接下载联系人文件',
+    '到「文件管理」→ 下载 里点开',
+    '选「导入到通讯录」，确认即完成'
+  ] },
+  other: { title: '电脑端 / 其他浏览器', lines: [
+    '点上方金色按钮下载联系人文件（.vcf）',
+    '双击文件即可导入 Outlook / 系统通讯录',
+    '手机扫码打开此页，可直接拨号、一键存档'
+  ] }
+}
+const contactSteps = computed(() => CONTACT_STEPS[deviceEnvKey] || CONTACT_STEPS.other)
 
 const contactQrs = computed(() => {
   const c = card.value || {}
@@ -401,7 +452,7 @@ async function load() {
     const { data } = await api.get(qrApi)
     card.value = data.data
     currentTheme.value = THEMES[data.data.theme] ? data.data.theme : 'ocean'
-    template.value = data.data.template || 'classic'
+    template.value = data.data.template || 'contact'
     setupWechatShare(api, {
       title: `${card.value.name || '名片'} · ${card.value.title || card.value.company || '电子名片'}`,
       desc: `${[card.value.company, card.value.department, card.value.title].filter(Boolean).join(' · ') || '电子名片'}，扫码打开名片`,
@@ -703,33 +754,7 @@ async function toggleFavorite() {
 .cv-tpl-seal .cv-dock { background: rgba(18,33,60,.96); border-top: 3px solid #1e3a8a; }
 .cv-tpl-seal .cv-dock .btn-ghost { background: rgba(255,255,255,.14); color: #fff; border-color: transparent; }
 
-/* 联络卡 contact：简洁商务联络卡（参考「扫码即联系 / 一键拨号 / 一键存档」形态）
-   深蓝封面 + 白底信息卡 + 业务范围标签 + 表格化联系方式 + 深色底栏 */
-.cv-tpl-contact { background: #f4f6fb; }
-.cv-tpl-contact .cv-cover { height: 150px; border-radius: 0 0 20px 20px; background: linear-gradient(135deg,#0b1a3a 0%,#1e40af 58%,#3b82f6 100%); }
-.cv-tpl-contact .cv-brand { letter-spacing: 1px; }
-.cv-tpl-contact .cv-main { margin-top: -34px; }
-.cv-tpl-contact .cv-profile { border-radius: 14px; border: 1px solid #dbe4f5; box-shadow: 0 8px 24px rgba(30,64,175,.10); padding: 20px 18px; align-items: center; }
-.cv-tpl-contact .cv-avatar { border-radius: 10px; width: 78px; height: 78px; flex-basis: 78px; border: 2px solid #fff; box-shadow: 0 4px 14px rgba(30,64,175,.22); }
-.cv-tpl-contact .cv-name { color: #0f2147; font-size: 24px; letter-spacing: .5px; }
-.cv-tpl-contact .cv-title { color: #1e40af; font-weight: 600; }
-.cv-tpl-contact .cv-tags span { border-radius: 4px; border: 1px solid #1e40af; background: #eff4ff; color: #1e40af; padding: 4px 10px; }
-.cv-tpl-contact .cv-actions { border-radius: 12px; border: 1px solid #dbe4f5; background: #fff; }
-.cv-tpl-contact .cv-actions i { border-radius: 10px; background: #eff4ff; color: #1e40af; }
-.cv-tpl-contact .card { border-radius: 12px; }
-.cv-tpl-contact .cv-block h3 { color: #0f2147; font-size: 13px; letter-spacing: 1px; border-left: 3px solid #1e40af; padding-left: 9px; }
-.cv-tpl-contact .cv-bio { color: #475569; }
-.cv-tpl-contact .contact-row { border-bottom: 1px dashed #e2e8f0; padding: 8px 0; }
-.cv-tpl-contact .contact-row:last-child { border-bottom: 0; }
-.cv-tpl-contact .contact-row b { color: #0f2147; }
-.cv-tpl-contact .cv-qr-card { border-color: #dbe4f5; background: #fff; }
-.cv-tpl-contact .cv-qr-info h3 { color: #0f2147; }
-.cv-tpl-contact .cv-qr-img { border-radius: 8px; border: 1px solid #cbd5e1; }
-.cv-tpl-contact .cv-exchange { background: #eff4ff; }
-.cv-tpl-contact .cv-footer { color: #64748b; letter-spacing: 1px; padding-top: 18px; }
-.cv-tpl-contact .cv-footer b { color: #1e40af; }
-.cv-tpl-contact .cv-dock { background: rgba(11,26,58,.97); border-top: 2px solid #1e40af; }
-.cv-tpl-contact .cv-dock .btn-ghost { background: rgba(255,255,255,.14); color: #fff; border-color: transparent; }
+/* 联络卡 contact 的样式统一在下方「② 生效版」定义（此处旧版已废弃，避免双重定义冲突） */
 
 /* ============ 通讯录二维码卡（各模板通用，不属于骨架）============ */
 .cv-contact-qr { background: var(--t-surface, #fff); text-align: center; padding: 20px 16px; }
@@ -839,22 +864,78 @@ async function toggleFavorite() {
 .cv-tpl-seal .cv-dock { background: #111827; border-top: 5px solid var(--t-accent); }
 .cv-tpl-seal .cv-dock .btn-ghost { background: #fff; color: #111827; }
 
-/* ⑥ 联络卡 contact：深蓝封面 + 居中身份 + 业务标签 + 拨号卡（扫码即联系） */
-.cv-tpl-contact { background: var(--t-bg); }
-.cv-tpl-contact .cv-cover { height: 150px; border-radius: 0 0 20px 20px; background: var(--t-cover); }
-.cv-tpl-contact .cv-main { margin-top: -34px; }
-.cv-tpl-contact .cv-profile { border-radius: 12px; border: 1px solid var(--line, #dbe4f5); box-shadow: 0 8px 24px rgba(30,64,175,.12); padding: 20px 18px; align-items: center; background: var(--t-surface); }
-.cv-tpl-contact .cv-avatar { border-radius: 10px; width: 78px; height: 78px; flex-basis: 78px; border: 2px solid #fff; box-shadow: 0 4px 14px rgba(0,0,0,.2); }
-.cv-tpl-contact .cv-name { color: var(--t-text); font-size: 24px; letter-spacing: .5px; }
-.cv-tpl-contact .cv-title { color: var(--t-accent); font-weight: 600; }
-.cv-tpl-contact .cv-tags span { border-radius: 4px; border: 1px solid var(--t-accent); background: color-mix(in srgb, var(--t-accent) 8%, #fff); color: var(--t-accent); padding: 4px 10px; }
-.cv-tpl-contact .cv-actions { border-radius: 12px; border: 1px solid var(--line, #dbe4f5); background: var(--t-surface); }
-.cv-tpl-contact .cv-actions i { border-radius: 10px; background: color-mix(in srgb, var(--t-accent) 10%, #fff); color: var(--t-accent); }
-.cv-tpl-contact .card { border-radius: 12px; }
-.cv-tpl-contact .cv-block h3, .cv-tpl-contact .cv-sec-title { color: var(--t-text); border-left: 3px solid var(--t-accent); }
-.cv-tpl-contact .cv-exchange { background: color-mix(in srgb, var(--t-accent) 8%, #fff); }
-.cv-tpl-contact .cv-dock { background: #0b1a3a; border-top: 2px solid var(--t-accent); }
-.cv-tpl-contact .cv-dock .btn-ghost { background: rgba(255,255,255,.14); color: #fff; }
+/* ⑥ 联络卡 contact：深蓝径向渐变底 + 单张圆角白卡内聚全部信息（简洁大气，参考商业名片范式）
+   金蓝渐变封顶 +  company 水印 + 卡内拨号/复制/金色存档 + 按环境操作指引；无固定底栏。 */
+.cv-tpl-contact { background: var(--ng-page-bg); color: var(--ng-ink); }
+/* 封面退化为细窄悬浮返回条，不再占据大块视觉 */
+.cv-tpl-contact .cv-cover { height: 0; border-radius: 0; background: transparent; }
+.cv-tpl-contact .cv-back { top: calc(10px + env(safe-area-inset-top)); left: 12px; color: #d8bb85; background: rgba(12,26,38,.5); border-radius: 50%; width: 34px; height: 34px; display: grid; place-items: center; font-size: 24px; backdrop-filter: blur(6px); }
+.cv-tpl-contact .cv-brand { top: calc(18px + env(safe-area-inset-top)); color: rgba(255,255,255,.85); }
+.cv-tpl-contact .cv-themes { bottom: auto; top: calc(20px + env(safe-area-inset-top)); }
+.cv-tpl-contact .cv-main { max-width: 430px; margin: 44px auto 0; }
+/* 单张白卡：信息块不再各自成卡，改为卡内的行式分区 */
+.cv-tpl-contact .cv-main > .card, .cv-tpl-contact .cv-main > .cv-profile {
+  border-radius: 0; border: 0; box-shadow: none; background: transparent; margin-top: 0;
+}
+.cv-tpl-contact .cv-main > .cv-profile {
+  border-radius: 22px 22px 0 0; padding: 30px 24px 22px; background: #fff; position: relative; overflow: hidden;
+  box-shadow: 0 26px 60px -22px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.06);
+}
+.cv-tpl-contact .cv-main > .cv-profile::before {
+  content: ''; position: absolute; inset: 0 0 auto 0; height: 6px;
+  background: linear-gradient(90deg, var(--ng-navy), var(--ng-navy-2) 40%, var(--ng-gold-2) 78%, var(--ng-gold));
+}
+.cv-tpl-contact .cv-main > .cv-profile::after {
+  content: attr(data-wm); position: absolute; right: -26px; top: 54px;
+  font-size: 88px; font-weight: 900; color: var(--ng-ink); opacity: .04;
+  letter-spacing: -4px; line-height: 1; pointer-events: none;
+}
+.cv-tpl-contact .cv-profile > * { position: relative; z-index: 2; }
+.cv-tpl-contact .cv-avatar {
+  width: 64px; height: 64px; flex: 0 0 64px; border-radius: 14px; font-size: 26px; color: #fff;
+  background: linear-gradient(145deg, var(--ng-navy), #0e2233);
+  box-shadow: inset 0 0 0 2px rgba(216,187,133,.5), 0 8px 18px -8px rgba(18,32,46,.6);
+}
+.cv-tpl-contact .cv-name { color: var(--ng-ink); font-size: 27px; font-weight: 900; letter-spacing: .04em; }
+.cv-tpl-contact .cv-en { color: var(--ng-ink-2); }
+.cv-tpl-contact .cv-title { color: var(--ng-ink-2); font-size: 12.5px; letter-spacing: .06em; font-weight: 400; }
+.cv-tpl-contact .cv-tags span { border-radius: 99px; background: var(--ng-paper); color: #6b5a3c; box-shadow: inset 0 0 0 1px rgba(185,147,85,.28); }
+.cv-tpl-contact .cv-status { right: 14px; bottom: 6px; }
+/* 卡内操作区：两列拨号/复制 + 金色全宽存档 + 环境指引 */
+.cv-cta { background: #fff; padding: 0 24px 8px; }
+.cv-cta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cv-cta-btn { display: flex; align-items: center; justify-content: center; height: 50px; border-radius: 13px; font-size: 14.5px; font-weight: 700; letter-spacing: .02em; text-decoration: none; }
+.cv-cta-main { background: linear-gradient(135deg, var(--ng-navy), #0f2739); color: #fff; box-shadow: 0 10px 22px -12px rgba(18,32,46,.85); }
+.cv-cta-ghost { background: #f7f5f0; color: var(--ng-navy); box-shadow: inset 0 0 0 1px #e6e0d4; }
+.cv-cta-save { display: flex; align-items: center; justify-content: center; width: 100%; margin-top: 10px; height: 52px; border-radius: 13px; background: linear-gradient(135deg, #c9a163, #a8834a); color: #fff; box-shadow: 0 12px 24px -14px rgba(169,131,74,.9); font-size: 15px; font-weight: 700; text-decoration: none; }
+.cv-cta-steps { margin-top: 10px; background: #faf8f3; border-radius: 12px; padding: 11px 13px; font-size: 11.5px; line-height: 1.9; color: #5c6a79; box-shadow: inset 0 0 0 1px #eee8dc; }
+.cv-cta-steps-t { font-size: 11px; color: #a8834a; font-weight: 700; letter-spacing: .08em; margin-bottom: 2px; }
+.cv-cta-steps ol { margin: 0; padding-left: 16px; }
+.cv-cta-steps b { color: var(--ng-navy); }
+.cv-cta-mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.cv-cta-mini button { padding: 9px 2px; border-radius: 10px; background: var(--ng-paper); color: var(--ng-navy); box-shadow: inset 0 0 0 1px rgba(185,147,85,.28); font-size: 11.5px; font-weight: 600; }
+.cv-cta-mini button.on { background: linear-gradient(135deg, #c9a163, #a8834a); color: #fff; }
+/* 卡内信息块：白底内的行式分区，细分隔线 */
+.cv-tpl-contact .cv-block { padding: 14px 24px; background: #fff; margin-top: 0; }
+.cv-tpl-contact .cv-block h3, .cv-tpl-contact .cv-sec-title { font-size: 12px; letter-spacing: .1em; color: var(--ng-gold); border-left: 0; padding-left: 0; }
+.cv-tpl-contact .cv-block h3 .small.muted { letter-spacing: 0; }
+.cv-tpl-contact .cv-contact-row { padding: 11px 0; border-top: 1px solid #efece5; }
+.cv-tpl-contact .cv-contact-label { flex-basis: 52px; color: #9aa3ad; letter-spacing: .08em; }
+.cv-tpl-contact .cv-bio, .cv-tpl-contact .small.muted, .cv-tpl-contact .cv-qr-lead { color: var(--ng-ink-2); }
+.cv-tpl-contact .cv-links a, .cv-tpl-contact .qr-tile, .cv-tpl-contact .cv-gallery-cell { border-color: var(--ng-line); background: var(--ng-paper); }
+.cv-tpl-contact .cv-links b, .cv-tpl-contact .qr-tile b { color: var(--ng-navy); }
+.cv-tpl-contact .cv-qr-lead { color: var(--ng-ink-2); }
+.cv-tpl-contact .cv-region-line, .cv-tpl-contact .cv-contact-row b { color: var(--ng-navy); }
+.cv-tpl-contact .cv-map-launch, .cv-tpl-contact .cv-maps a { background: var(--ng-paper); color: var(--ng-navy); box-shadow: inset 0 0 0 1px rgba(185,147,85,.28); }
+.cv-tpl-contact .cv-vcard-qr { border: 3px solid rgba(185,147,85,.45); }
+.cv-tpl-contact .cv-create-own { border-top: 1px solid #efece5; }
+/* 卡片底部落款 + 卡片下方小字提示 */
+.cv-tpl-contact .cv-footer { background: #fff; border-radius: 0 0 22px 22px; padding: 16px 24px 20px; color: #a9b1ba; letter-spacing: .1em; }
+.cv-tpl-contact .cv-footer b { color: var(--ng-gold); }
+.cv-tpl-contact .cv-page { padding-bottom: 34px; }
+.cv-tpl-contact.cv-page { padding-bottom: 34px; }
+.cv-cta-hint { text-align: center; color: #9fb0c0; font-size: 11px; letter-spacing: .08em; margin: 14px 0 0; }
+.cv-dock-hidden { display: none !important; }
 
 /* ============ 深蓝鎏金 navygold：参考名片配色与结构（放在最后覆盖通用商务风）============ */
 .cv-tpl-navygold { color: var(--ng-ink); background: var(--ng-page-bg); }

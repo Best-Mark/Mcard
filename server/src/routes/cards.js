@@ -10,7 +10,7 @@ const { makeSlug, normalizeSlug } = require('../utils/slug')
 const qr = require('../services/qrcode')
 const { normalizeStyle } = qr
 const vcard = require('../services/vcard')
-const { CARD_TEMPLATES, isTemplate } = require('../utils/cardTemplates')
+const { CARD_TEMPLATES, isTemplate, DEFAULT_TEMPLATE } = require('../utils/cardTemplates')
 const { INDUSTRIES, CITIES, HOT_CITIES, cityCoords, isIndustry, normalizeIndustry, distanceKm } = require('../utils/market')
 const { MATERIAL_TYPES, VISIT_SOURCES, isMaterialType, isVisitSource, CARD_WATCH_FIELDS, NOTIFY_TYPES } = require('../utils/constants')
 const { tokenize: tokenizeQuery, score: relevanceScore } = require('../utils/search')
@@ -73,7 +73,7 @@ function publicView(row, origin) {
     website: row.website, shop_url: row.shop_url,
     avatar: row.avatar, cover: row.cover, logo: row.logo, bio: row.bio,
     tags: parseJson(row.tags, []), links: parseJson(row.links, []),
-    template: isTemplate(row.template) ? row.template : 'classic',
+    template: isTemplate(row.template) ? row.template : DEFAULT_TEMPLATE,
     industry: normalizeIndustry(row.industry),
     latitude: row.latitude ?? null, longitude: row.longitude ?? null, market_opt_in: !!row.market_opt_in,
     theme: row.theme, accent: row.accent, qr_fg: row.qr_fg, qr_bg: row.qr_bg, qr_logo: !!row.qr_logo,
@@ -102,7 +102,7 @@ function marketView(row, originLat, originLng, origin) {
     province: row.province || '', city: row.city || '', district: row.district || '', distanceKm: distance,
     avatar: row.avatar, logo: row.logo, cover: row.cover,
     tags: parseJson(row.tags, []), bio: row.bio, views: row.views || 0,
-    template: isTemplate(row.template) ? row.template : 'classic', theme: row.theme, accent: row.accent
+    template: isTemplate(row.template) ? row.template : DEFAULT_TEMPLATE, theme: row.theme, accent: row.accent
   }
 }
 

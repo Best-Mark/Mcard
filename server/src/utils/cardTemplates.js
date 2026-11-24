@@ -38,9 +38,9 @@ const CARD_TEMPLATES = [
   },
   {
     key: 'contact',
-    label: '联络卡',
-    desc: '深蓝封面 + 业务标签 + 拨号/复制/存档，扫码即联系',
-    cover: 'linear-gradient(135deg,#0b1a3a 0%,#1e40af 55%,#3b82f6 100%)'
+    label: '简洁联络',
+    desc: '深蓝渐变底 + 单张圆角白卡内聚，卡内拨号/复制/金色存档，简洁大气（默认）',
+    cover: 'radial-gradient(1200px 500px at 50% -10%,#1d3a55 0%,#132a3d 45%,#0c1a26 100%)'
   },
   {
     key: 'navygold',
@@ -51,7 +51,8 @@ const CARD_TEMPLATES = [
 ]
 
 const TEMPLATE_KEYS = CARD_TEMPLATES.map(t => t.key)
-const DEFAULT_TEMPLATE = 'classic'
+// 默认模板：简洁大气联络卡（单张白卡内聚信息 + 卡内核号/存档，扫码即联系）
+const DEFAULT_TEMPLATE = 'contact'
 const isTemplate = key => TEMPLATE_KEYS.includes(key)
 const normalizeTemplate = key => (isTemplate(key) ? key : DEFAULT_TEMPLATE)
 
