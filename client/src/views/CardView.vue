@@ -125,9 +125,7 @@
           <div v-if="card.latitude != null && card.longitude != null" class="cv-geo-hint small muted">
             ⌖ {{ card.latitude.toFixed(4) }}, {{ card.longitude.toFixed(4) }}
           </div>
-          <div class="cv-maps">
-            <a v-for="m in maps" :key="m.key" :href="m.href" target="_blank" rel="noopener">{{ m.label }}导航 ↗</a>
-          </div>
+          <button v-if="maps.length" class="cv-map-launch" @click="mapOpen = true">⌖ 导航到此处（点选地图） ›</button>
         </div>
 
         <!-- 通讯录二维码：内容就是 vCard，相机扫一扫直接弹「添加到通讯录」 -->
@@ -164,10 +162,18 @@
       <div class="cv-dock">
         <button class="btn btn-primary" @click="tel(card.mobile || card.phone)">📞 打电话</button>
         <button class="btn btn-ghost" @click="saveContact">存入通讯录</button>
-        <button class="btn btn-ghost" @click="goMap">导航</button>
+        <button class="btn btn-ghost" @click="openMapSheet">导航</button>
         <button class="btn btn-ghost" :class="{ 'fav-on': favorite }" @click="toggleFavorite">{{ favorite ? '★ 已收藏' : '☆ 收藏' }}</button>
       </div>
       <button class="cv-share-fab" @click="doShare" aria-label="分享名片">↗<span>分享</span></button>
+      <BottomSheet :show="mapOpen" @update:show="mapOpen = $event">
+        <div class="map-sheet-head"><b>选择导航地图</b><button @click="mapOpen = false">×</button></div>
+        <div class="map-sheet-list">
+          <a v-for="m in maps" :key="m.key" :href="m.href" target="_blank" rel="noopener" @click="mapOpen = false">
+            <span class="map-ico">{{ mapIcon(m.key) }}</span><span>{{ m.label }}地图</span><span class="map-arrow">↗</span>
+          </a>
+        </div>
+      </BottomSheet>
     </template>
 
     <!-- 通讯录二维码大图：相机扫一扫直接加联系人 -->
@@ -235,6 +241,7 @@ import { isWeChat, isIOS, saveImageUrl, prepareExternalOpen, openVcfInline } fro
 import { shareOrCopy, mapLinks } from '../utils/share'
 import { setupWechatShare, absoluteMediaUrl } from '../utils/wx-share'
 import { getCachedPosition } from '../utils/geo'
+import BottomSheet from '../components/BottomSheet.vue'
 // QRCode 动态加载：只在进入名片页、需要本地生成 vCard 高清二维码时才下载，不拖慢首屏
 
 const route = useRoute(); const router = useRouter()
@@ -250,6 +257,7 @@ const card = ref(null); const loading = ref(true); const error = ref('')
 const currentTheme = ref('ocean'); const isOwner = ref(false)
 const template = ref('classic')
 const qrModal = ref(false); const vcardQrModal = ref(false); const guide = ref(''); const guideImage = ref(''); const exchangeOpen = ref(false)
+const mapOpen = ref(false)
 const mySlug = ref(''); const exchanging = ref(false)
 const favorite = ref(false); const favBusy = ref(false)
 const materialsList = ref([])
@@ -437,7 +445,13 @@ onMounted(load)
 function tel(v) { if (v) windowRef.location.href = `tel:${v}`; else showToast('尚未填写电话') }
 function sms(v) { if (v) windowRef.location.href = `sms:${v}`; else showToast('尚未填写手机号') }
 function mailto(v) { if (v) windowRef.location.href = `mailto:${v}`; else showToast('尚未填写邮箱') }
-function goMap() { if (card.value?.address) windowRef.location.href = maps.value[0].href; else showToast('尚未填写地址') }
+function openMapSheet() {
+  if (!maps.value.length) return showToast('尚未填写地址')
+  mapOpen.value = true
+}
+function mapIcon(key) {
+  return ({ amap: '高', baidu: '百', qq: '腾', apple: '🍎', google: 'G' })[key] || '⌖'
+}
 function openVcf() {
   guide.value = ''
   if (isIOS() && !isWeChat()) return openVcfInline(vcfApi)
@@ -560,6 +574,16 @@ async function toggleFavorite() {
 .cv-geo-hint { margin-top: 6px; font-variant-numeric: tabular-nums; }
 .cv-maps { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .cv-maps a { font-size: 12px; padding: 6px 10px; border-radius: 8px; background: rgba(0,0,0,.05); background: color-mix(in srgb, var(--t-accent) 12%, transparent); color: var(--t-accent); font-weight: 600; }
+/* 导航入口：地址区只留一个「导航到此处」，点底部「导航」或此处再选地图 */
+.cv-map-launch { width: 100%; margin-top: 10px; padding: 11px 12px; border: 0; border-radius: 10px; background: var(--t-accent, #2454e8); color: #fff; font-size: 13px; font-weight: 600; text-align: left; }
+.map-sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px 10px; border-bottom: 1px solid #e8edf5; }
+.map-sheet-head b { font-size: 16px; color: #17233c; }
+.map-sheet-head button { width: 30px; height: 30px; border: 0; background: #f1f4f9; border-radius: 50%; font-size: 18px; line-height: 1; color: #64748b; }
+.map-sheet-list { padding: 6px 12px 18px; overflow-y: auto; }
+.map-sheet-list a { display: flex; align-items: center; gap: 12px; padding: 13px 10px; border-bottom: 1px solid #f0f3f8; text-decoration: none; color: #17233c; font-size: 14px; }
+.map-sheet-list a:last-child { border-bottom: 0; }
+.map-ico { flex: 0 0 34px; width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; background: #eaf1ff; color: var(--t-accent, #2454e8); font-size: 15px; font-weight: 700; }
+.map-arrow { margin-left: auto; color: #94a3b8; font-size: 16px; }
 .cv-qr-card { margin-top: 12px; display: flex; flex-direction: column; align-items: center; text-align: center; background: var(--t-surface); padding: 22px 18px 20px; }
 .cv-qr-img { display: block; width: 140px; height: 140px; margin: 0 auto 14px; padding: 8px; background: #fff; border-radius: 10px; border: 1px solid var(--line); box-shadow: 0 4px 14px rgba(15,23,42,.06); }
 .cv-qr-img img { display: block; width: 100%; height: 100%; }
