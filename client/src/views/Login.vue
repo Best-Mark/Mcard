@@ -12,7 +12,7 @@
       <!-- 微信内：授权登录作为唯一主入口，手机号折叠为次要方式 -->
       <div v-if="wxEnabled && isWechat && !showPassword" class="wx-primary-wrap">
         <button class="wx-primary-btn" :disabled="wxBusy" @click="startWxLogin">
-          <svg class="wx-ico" viewBox="0 0 24 24" fill="currentColor"><path d="M9.1 4C5.2 4 2 6.7 2 10c0 2 .9 3.8 2.4 5L4 17l2.3-1.1c.9.3 1.8.5 2.8.5h.6a5.5 5.5 0 0 1-.2-1.4c0-3.4 3.3-6.1 7.3-6.1h.6C16.2 6.3 13 4 9.1 4ZM6.6 8.6a.9.9 0 1 1 0-1.8.9.9 0 0 1 0 1.8Zm5 0a.9.9 0 1 1 0-1.8.9.9 0 0 1 0 1.8Z"/><path d="M22 14.3c0-2.7-2.7-4.9-6-4.9s-6 2.2-6 4.9 2.7 4.9 6 4.9c.7 0 1.4-.1 2-.3l1.9 1-.5-1.7c1.6-.9 2.6-2.3 2.6-3.9Zm-8-1.3a.8.8 0 1 1 0-1.6.8.8 0 0 1 0 1.6Zm4 0a.8.8 0 1 1 0-1.6.8.8 0 0 1 0 1.6Z"/></svg>
+          <AppIcon name="wechat" class="wx-ico" :size="22" />
           {{ wxBusy ? '正在唤起微信…' : '微信一键登录' }}
         </button>
         <button class="switch-link" @click="showPassword = true">使用手机号登录</button>
@@ -51,7 +51,7 @@
           <div class="oauth-divider"><span>其他方式登录</span></div>
           <div class="oauth-list">
             <button class="oauth-item" :disabled="qrBusy" @click="startQrLogin">
-              <span class="oauth-badge wechat"><svg class="oauth-glyph" viewBox="0 0 24 24" fill="currentColor"><path d="M9.1 4C5.2 4 2 6.7 2 10c0 2 .9 3.8 2.4 5L4 17l2.3-1.1c.9.3 1.8.5 2.8.5h.6a5.5 5.5 0 0 1-.2-1.4c0-3.4 3.3-6.1 7.3-6.1h.6C16.2 6.3 13 4 9.1 4ZM6.6 8.6a.9.9 0 1 1 0-1.8.9.9 0 0 1 0 1.8Zm5 0a.9.9 0 1 1 0-1.8.9.9 0 0 1 0 1.8Z"/><path d="M22 14.3c0-2.7-2.7-4.9-6-4.9s-6 2.2-6 4.9 2.7 4.9 6 4.9c.7 0 1.4-.1 2-.3l1.9 1-.5-1.7c1.6-.9 2.6-2.3 2.6-3.9Zm-8-1.3a.8.8 0 1 1 0-1.6.8.8 0 0 1 0 1.6Zm4 0a.8.8 0 1 1 0-1.6.8.8 0 0 1 0 1.6Z"/></svg></span>
+              <span class="oauth-badge wechat"><AppIcon name="wechat" class="oauth-glyph" :size="20" /></span>
               <span class="oauth-name">微信扫码</span>
             </button>
           </div>
@@ -97,6 +97,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
 import { setAuth, showToast, siteConfig } from '../store'
+import AppIcon from '../components/AppIcon.vue'
 
 const route = useRoute(); const router = useRouter()
 const mode = ref('login'); const phone = ref(''); const password = ref(''); const nickname = ref(''); const busy = ref(false)

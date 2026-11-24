@@ -263,7 +263,7 @@ import { setupWechatShare, absoluteMediaUrl } from '../utils/wx-share'
 import { getCachedPosition } from '../utils/geo'
 import BottomSheet from '../components/BottomSheet.vue'
 import AppIcon from '../components/AppIcon.vue'
-import { BRAND_ICONS } from '../utils/icons'
+import { BRAND_ICONS, FUNC_ICONS } from '../utils/icons'
 // QRCode 动态加载：只在进入名片页、需要本地生成 vCard 高清二维码时才下载，不拖慢首屏
 
 const route = useRoute(); const router = useRouter()
@@ -504,11 +504,10 @@ function openMapSheet() {
   if (!maps.value.length) return showToast('尚未填写地址')
   mapOpen.value = true
 }
-// 地图图标：优先用品牌官方 path（simple-icons，CC0），白底渲染原色 logo；
-// 高德/腾讯官方 logo 未被 simple-icons 收录，用「品牌色底 + 该品牌官方色系符号」指示性代替。
-// 全部内联、零外部依赖。指示性使用场景（点击即用该地图导航）版权风险低。
+// 地图图标：全部用各产品官方 logo path（simple-icons / arcticons），白底渲染原色，去除自绘准星。
+// 全部内联、零外部依赖。指示性使用场景（点击即用该地图导航）。
 const MAP_ICON_CFG = {
-  amap: { brand: null, bg: '#00B0FF', mark: '<path d="M12 6.5v11M6.5 12h11" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/><circle cx="12" cy="12" r="6" fill="none" stroke="#fff" stroke-width="2"/>' },
+  amap: { brand: 'amap', bg: '#fff' },
   baidu: { brand: 'baidu', bg: '#fff' },
   qq: { brand: 'qq', bg: '#fff' },
   apple: { brand: 'apple', bg: '#fff' },
@@ -516,11 +515,13 @@ const MAP_ICON_CFG = {
 }
 function mapIcon(key) {
   const cfg = MAP_ICON_CFG[key]
-  if (!cfg) return '<svg viewBox="0 0 24 24" width="100%" height="100%"><rect width="24" height="24" rx="6" fill="#94a3b8"/><circle cx="12" cy="12" r="6" fill="#fff"/></svg>'
-  const inner = cfg.brand
-    ? `<path d="${BRAND_ICONS[cfg.brand].path}" fill="${BRAND_ICONS[cfg.brand].color}"/>`
-    : cfg.mark
-  return `<svg viewBox="0 0 24 24" width="100%" height="100%"><rect width="24" height="24" rx="6" fill="${cfg.bg}"/>${inner}</svg>`
+  if (!cfg) return `<svg viewBox="0 0 24 24" width="100%" height="100%"><path d="${FUNC_ICONS.nav.path}" fill="none" stroke="#64748b" stroke-width="1.8"/></svg>`
+  const b = BRAND_ICONS[cfg.brand]
+  const vb = b.viewBox || '0 0 24 24'
+  const inner = b.stroke
+    ? `<path d="${b.path}" fill="none" stroke="${b.color}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>`
+    : `<path d="${b.path}" fill="${b.color}"/>`
+  return `<svg viewBox="${vb}" width="100%" height="100%"><rect x="0" y="0" width="${vb.includes('48') ? 48 : 24}" height="${vb.includes('48') ? 48 : 24}" rx="6" fill="${cfg.bg}"/>${inner}</svg>`
 }
 async function copy(v, label) {
   if (!v) return showToast(`尚未填写${label}`)
