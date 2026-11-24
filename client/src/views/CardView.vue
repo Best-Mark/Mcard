@@ -285,9 +285,10 @@ const vcfApi = `${qrApi}/card.vcf`
 const card = ref(null); const loading = ref(true); const error = ref('')
 const currentTheme = ref('ocean'); const isOwner = ref(false)
 const template = ref('contact')
-// 八套「简洁舒适」模板共用单卡骨架与卡内操作区：
+// 十二套「简洁舒适」模板共用单卡骨架与卡内操作区：
 // contact 金黑 / paper 纸白 / glass 墨夜 / wood 暖木 / neon 霓虹 / acid 荧光 / pop 多巴胺 / magazine 杂志
-const CLEAN_TEMPLATES = ['contact', 'paper', 'glass', 'wood', 'neon', 'acid', 'pop', 'magazine']
+// poster 竖版海报 / ticket 票据存根 / horizontal 横版名片 / sidebar 侧栏竖排
+const CLEAN_TEMPLATES = ['contact', 'paper', 'glass', 'wood', 'neon', 'acid', 'pop', 'magazine', 'poster', 'ticket', 'horizontal', 'sidebar']
 const isCleanTpl = computed(() => CLEAN_TEMPLATES.includes(template.value))
 const qrModal = ref(false); const guide = ref(''); const guideImage = ref(''); const exchangeOpen = ref(false)
 const mapOpen = ref(false)
@@ -1039,6 +1040,83 @@ async function toggleFavorite() {
   --cv-block-title: #d1462f; --cv-link-color: #b83a25; --cv-foot-color: #a8a299; --cv-foot-b: #d1462f; --cv-hint-color: #8b867c;
   --cv-back-color: #d1462f; --cv-back-bg: #fff; --cv-brand-color: #1a1a1a;
 }
+/* L1 竖版海报：无卡片通栏 + 46px 巨字 + 信息两列 */
+.cv-tpl-poster {
+  --cv-page-bg: radial-gradient(900px 600px at 50% -8%,#22384d 0%,#101d29 50%,#070d14 100%);
+  --cv-ink: #eef3f7; --cv-ink-2: #8fa3b7; --cv-line: rgba(255,255,255,.1);
+  --cv-card-bg: transparent; --cv-card-border: 0; --cv-card-radius: 0; --cv-card-shadow: none; --cv-card-pad: 0;
+  --cv-topbar-h: 0; --cv-topbar-bg: transparent;
+  --cv-logo-bg: transparent; --cv-logo-radius: 0; --cv-logo-shadow: none;
+  --cv-name-size: 46px; --cv-name-weight: 900; --cv-name-spacing: .16em; --cv-name-color: #fff;
+  --cv-role-color: #9db0c2; --cv-role-size: 12px; --cv-role-spacing: .24em;
+  --cv-org-color: #8fa3b7; --cv-org-border: 0;
+  --cv-tag-bg: rgba(255,255,255,.07); --cv-tag-color: #cfe0ee; --cv-tag-shadow: inset 0 0 0 1px rgba(255,255,255,.12); --cv-tag-radius: 0;
+  --cv-btn-radius: 0; --cv-btn-main-bg: #d8bb85; --cv-btn-main-color: #0b1620; --cv-btn-main-shadow: none;
+  --cv-btn-ghost-bg: transparent; --cv-btn-ghost-color: #e6eef5; --cv-btn-ghost-shadow: inset 0 0 0 1px rgba(255,255,255,.25);
+  --cv-btn-save-bg: transparent; --cv-btn-save-color: #d8bb85; --cv-btn-save-shadow: inset 0 0 0 1px rgba(216,187,133,.5);
+  --cv-steps-bg: rgba(255,255,255,.04); --cv-steps-color: #8fa3b7; --cv-steps-shadow: none; --cv-steps-radius: 0; --cv-steps-title: #d8bb85; --cv-steps-b: #e6eef5; --cv-steps-border-left: 2px solid #d8bb85;
+  --cv-mini-bg: transparent; --cv-mini-color: #cfe0ee; --cv-mini-shadow: inset 0 0 0 1px rgba(255,255,255,.16); --cv-mini-on-bg: #d8bb85; --cv-mini-on-color: #0b1620;
+  --cv-block-title: #d8bb85; --cv-link-color: #d8bb85; --cv-foot-color: #6d8298; --cv-foot-b: transparent; --cv-hint-color: #6d8298;
+  --cv-wm-opacity: 0; --cv-back-color: #d8bb85; --cv-back-bg: rgba(12,26,38,.5); --cv-brand-color: #d8bb85;
+}
+/* L2 票据存根：白纸锯齿边 + 等宽数字 + 虚线分隔 */
+.cv-tpl-ticket {
+  --cv-page-bg: #e9e6df; --cv-ink: #232323; --cv-ink-2: #777; --cv-line: #dedbd3;
+  --cv-panel-bg: #fffefb; --cv-card-bg: #fffefb; --cv-card-border: 0; --cv-card-radius: 0; --cv-card-pad: 24px 24px 20px;
+  --cv-card-shadow: 0 20px 44px -26px rgba(0,0,0,.4);
+  --cv-topbar-h: 0; --cv-topbar-bg: transparent;
+  --cv-logo-bg: transparent; --cv-logo-radius: 0; --cv-logo-shadow: none;
+  --cv-name-size: 30px; --cv-name-weight: 900; --cv-name-spacing: .18em; --cv-name-color: #232323;
+  --cv-name-font: ui-monospace,Menlo,"Noto Sans SC",monospace;
+  --cv-role-color: #666; --cv-role-size: 11px; --cv-role-spacing: .3em;
+  --cv-org-color: #232323; --cv-org-border: 1px dashed #c9c9c9;
+  --cv-tag-bg: #f2f0ea; --cv-tag-color: #555; --cv-tag-shadow: none; --cv-tag-radius: 0;
+  --cv-btn-radius: 0; --cv-btn-main-bg: #232323; --cv-btn-main-color: #fff; --cv-btn-main-shadow: none;
+  --cv-btn-ghost-bg: #fff; --cv-btn-ghost-color: #232323; --cv-btn-ghost-shadow: inset 0 0 0 1px #232323;
+  --cv-btn-save-bg: #f7f5ee; --cv-btn-save-color: #232323; --cv-btn-save-shadow: inset 0 0 0 1px #c9c9c9; --cv-btn-font: ui-monospace,Menlo,monospace; --cv-btn-spacing: .08em;
+  --cv-steps-bg: #faf9f4; --cv-steps-color: #777; --cv-steps-shadow: none; --cv-steps-radius: 0; --cv-steps-title: #232323; --cv-steps-b: #000; --cv-steps-border-left: 2px dashed #d5d5d5;
+  --cv-mini-bg: #f7f5ee; --cv-mini-color: #232323; --cv-mini-shadow: inset 0 0 0 1px #c9c9c9; --cv-mini-on-bg: #232323; --cv-mini-on-color: #fff;
+  --cv-block-title: #232323; --cv-link-color: #232323; --cv-foot-color: #9a9a9a; --cv-foot-b: #232323; --cv-hint-color: #8a8a8a;
+  --cv-back-color: #232323; --cv-back-bg: #fff; --cv-brand-color: #232323;
+}
+/* L3 横版名片：右侧深色色块（手机竖屏保留色块特征、维持单列可读） */
+.cv-tpl-horizontal {
+  --cv-page-bg: linear-gradient(170deg,#eef1f4,#dfe4ea); --cv-ink: #17222e; --cv-ink-2: #7d8b99; --cv-line: #eceff2;
+  --cv-card-bg: #fff; --cv-card-border: 0; --cv-card-radius: 10px; --cv-card-pad: 22px 20px 18px;
+  --cv-card-shadow: 0 22px 46px -24px rgba(23,34,46,.45);
+  --cv-topbar-h: 0; --cv-topbar-bg: transparent;
+  --cv-logo-bg: rgba(23,34,46,.1); --cv-logo-radius: 8px; --cv-logo-shadow: none;
+  --cv-name-size: 25px; --cv-name-weight: 900; --cv-name-spacing: .1em; --cv-name-color: #17222e;
+  --cv-role-color: #7d8b99; --cv-role-size: 10.5px; --cv-role-spacing: .14em;
+  --cv-org-color: #17222e; --cv-org-border: 1px solid #e6e9ed;
+  --cv-tag-bg: #f2f4f6; --cv-tag-color: #5d6a78; --cv-tag-shadow: none; --cv-tag-radius: 2px;
+  --cv-btn-radius: 6px; --cv-btn-main-bg: #17222e; --cv-btn-main-color: #fff; --cv-btn-main-shadow: none;
+  --cv-btn-ghost-bg: #f2f4f6; --cv-btn-ghost-color: #17222e; --cv-btn-ghost-shadow: inset 0 0 0 1px #dfe3e8;
+  --cv-btn-save-bg: #f2f4f6; --cv-btn-save-color: #17222e; --cv-btn-save-shadow: inset 0 0 0 1px #dfe3e8;
+  --cv-steps-bg: #f7f9fb; --cv-steps-color: #7d8b99; --cv-steps-shadow: none; --cv-steps-radius: 6px; --cv-steps-title: #17222e; --cv-steps-b: #17222e;
+  --cv-mini-bg: #f2f4f6; --cv-mini-color: #17222e; --cv-mini-shadow: inset 0 0 0 1px #dfe3e8; --cv-mini-on-bg: #17222e; --cv-mini-on-color: #fff;
+  --cv-block-title: #17222e; --cv-link-color: #17222e; --cv-foot-color: #9aa6b2; --cv-foot-b: #17222e; --cv-hint-color: #7d8b99;
+  --cv-back-color: #17222e; --cv-back-bg: #fff; --cv-brand-color: #17222e;
+}
+/* L4 侧栏竖排：左侧竖色带 + 右对齐内容 */
+.cv-tpl-sidebar {
+  --cv-page-bg: #f7f3ec; --cv-ink: #2a2118; --cv-ink-2: #9c8871; --cv-line: #eee4d6;
+  --cv-card-bg: #fffdf9; --cv-card-border: 0; --cv-card-radius: 2px; --cv-card-pad: 26px 22px 20px;
+  --cv-card-shadow: 0 22px 44px -32px rgba(80,55,30,.5);
+  --cv-topbar-h: 0; --cv-topbar-bg: transparent;
+  --cv-logo-bg: #6b4a2e; --cv-logo-radius: 50%; --cv-logo-shadow: none;
+  --cv-name-size: 28px; --cv-name-weight: 600; --cv-name-spacing: .18em; --cv-name-color: #2a2118; --cv-name-font: "Noto Serif SC","Songti SC",serif;
+  --cv-role-color: #9c8871; --cv-role-size: 11px; --cv-role-spacing: .2em;
+  --cv-org-color: #2a2118; --cv-org-border: 0;
+  --cv-tag-bg: transparent; --cv-tag-color: #7d6a52; --cv-tag-shadow: inset 0 0 0 1px #e0d4c2; --cv-tag-radius: 0;
+  --cv-btn-radius: 2px; --cv-btn-main-bg: #6b4a2e; --cv-btn-main-color: #f9f2e5; --cv-btn-main-shadow: none; --cv-btn-font: "Noto Serif SC","Songti SC",serif;
+  --cv-btn-ghost-bg: transparent; --cv-btn-ghost-color: #6b4a2e; --cv-btn-ghost-shadow: inset 0 0 0 1px #d9c9b2;
+  --cv-btn-save-bg: #f7f1e6; --cv-btn-save-color: #5a462f; --cv-btn-save-shadow: inset 0 0 0 1px #e3d5bf;
+  --cv-steps-bg: #fbf7ee; --cv-steps-color: #8a7358; --cv-steps-shadow: inset 0 0 0 1px #eee2cf; --cv-steps-radius: 2px; --cv-steps-title: #6b4a2e; --cv-steps-b: #3b2f24;
+  --cv-mini-bg: transparent; --cv-mini-color: #6b4a2e; --cv-mini-shadow: inset 0 0 0 1px #e0d4c2; --cv-mini-on-bg: #6b4a2e; --cv-mini-on-color: #f9f2e5;
+  --cv-block-title: #6b4a2e; --cv-link-color: #5a462f; --cv-foot-color: #b3a08a; --cv-foot-b: #6b4a2e; --cv-hint-color: #9c8871;
+  --cv-back-color: #6b4a2e; --cv-back-bg: #fff; --cv-brand-color: #2a2118;
+}
 .cv-clean.cv-page { font-family: var(--cv-name-font, inherit); padding-bottom: 34px; }
 .cv-tpl-acid.cv-page { background-image: var(--cv-page-grid); }
 /* 渐变文字（E 霓虹） */
@@ -1047,8 +1125,53 @@ async function toggleFavorite() {
 .cv-tpl-pop .cv-tags span:nth-child(4n+2) { background: #a0e7e5; }
 .cv-tpl-pop .cv-tags span:nth-child(4n+3) { background: #ffb3c1; }
 .cv-tpl-pop .cv-tags span:nth-child(4n+4) { background: #c9b8ff; }
-/* 指引块补充：虚线边（G）/ 左侧色条（H） */
-.cv-tpl-pop .cv-cta-steps, .cv-tpl-magazine .cv-cta-steps { border: var(--cv-steps-border, 0); border-left: var(--cv-steps-border-left, 0); }
+/* 指引块补充：虚线边（G）/ 左侧色条（H / L1 / L2） */
+.cv-tpl-pop .cv-cta-steps, .cv-tpl-magazine .cv-cta-steps, .cv-tpl-poster .cv-cta-steps, .cv-tpl-ticket .cv-cta-steps { border: var(--cv-steps-border, 0); border-left: var(--cv-steps-border-left, 0); }
+/* ===== L1 竖版海报：无卡片通栏、公司名居中、信息两列 ===== */
+.cv-tpl-poster .cv-main > .cv-profile { background: transparent; }
+.cv-tpl-poster .cv-profile { flex-direction: column; align-items: flex-start; gap: 0; }
+.cv-tpl-poster .cv-avatar { display: none; }
+.cv-tpl-poster .cv-org { text-align: center; letter-spacing: .28em; font-size: 11px; font-weight: 400; padding-bottom: 16px; }
+.cv-tpl-poster .cv-title { margin-top: 10px; }
+.cv-tpl-poster .cv-block, .cv-tpl-poster .cv-cta { padding-left: 0; padding-right: 0; }
+.cv-tpl-poster .cv-contact-row { flex-direction: column; align-items: flex-start; gap: 4px; }
+.cv-tpl-poster .cv-contact-label { flex-basis: auto; letter-spacing: .2em; }
+.cv-tpl-poster .cv-block:has(.cv-contact-row) { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
+.cv-tpl-poster .cv-footer b { display: none; }
+/* ===== L2 票据存根：锯齿纸边（mask）+ 虚线分隔 ===== */
+.cv-tpl-ticket .cv-main > .cv-profile {
+  --notch: 10px;
+  -webkit-mask: radial-gradient(circle at 0 0,transparent var(--notch),#000 calc(var(--notch) + .5px)) 0 0/26px 26px repeat-x, linear-gradient(#000,#000);
+  mask: radial-gradient(circle at 0 0,transparent var(--notch),#000 calc(var(--notch) + .5px)) 0 0/26px 26px repeat-x, linear-gradient(#000,#000);
+}
+.cv-tpl-ticket .cv-org { border-top: 1px dashed #c9c9c9; border-bottom: 1px dashed #c9c9c9; padding: 10px 0; }
+.cv-tpl-ticket .cv-contact-row { border-top: 1px dashed #dedbd3; border-bottom: 0; }
+.cv-tpl-ticket .cv-contact-value, .cv-tpl-ticket .cv-name { font-family: ui-monospace,Menlo,"Noto Sans SC",monospace; }
+.cv-tpl-ticket .cv-footer { border-top: 2px solid #232323; }
+/* ===== L3 横版名片：右侧深色色块（省去按钮文字换行，按钮单列紧凑） ===== */
+.cv-tpl-horizontal .cv-main > .cv-profile::after {
+  content: ''; right: 0; top: 0; bottom: 0; width: 52px; height: auto;
+  background: linear-gradient(180deg,#17222e,#0f1822); opacity: 1; border-radius: 0 10px 0 0;
+}
+.cv-tpl-horizontal .cv-profile { padding-right: 72px; }
+.cv-tpl-horizontal .cv-cta-grid { grid-template-columns: 1fr; gap: 7px; }
+.cv-tpl-horizontal .cv-cta-btn, .cv-tpl-horizontal .cv-cta-save { height: 38px; font-size: 12.5px; }
+/* ===== L4 侧栏竖排：左侧竖色带 + 内容右对齐 ===== */
+.cv-tpl-sidebar .cv-main > .cv-profile { padding-left: 72px; }
+.cv-tpl-sidebar .cv-main > .cv-profile::after {
+  content: 'M C A R D'; left: 0; right: auto; top: 0; bottom: 0; width: 52px; height: auto;
+  writing-mode: vertical-rl; letter-spacing: .32em; font-size: 11px; font-weight: 400;
+  color: #f7f3ec; background: #2a2118; opacity: 1; border-radius: 2px 0 0 0;
+  display: flex; align-items: center; justify-content: center; padding: 20px 0; box-sizing: border-box;
+}
+.cv-tpl-sidebar .cv-profile { flex-direction: row-reverse; text-align: right; }
+.cv-tpl-sidebar .cv-ident { text-align: right; }
+.cv-tpl-sidebar .cv-tags { justify-content: flex-end; }
+.cv-tpl-sidebar .cv-org { display: none; }
+.cv-tpl-sidebar .cv-contact-row { flex-direction: row-reverse; }
+.cv-tpl-sidebar .cv-contact-label { text-align: right; }
+.cv-tpl-sidebar .cv-contact-value, .cv-tpl-sidebar .cv-cta, .cv-tpl-sidebar .cv-block { text-align: right; }
+.cv-tpl-sidebar .cv-cta-mini, .cv-tpl-sidebar .cv-qr-actions { justify-content: flex-end; }
 .cv-clean .cv-cover { height: 0; border-radius: 0; background: transparent; }
 .cv-clean .cv-back { top: calc(10px + env(safe-area-inset-top)); left: 12px; color: var(--cv-back-color); background: var(--cv-back-bg); border-radius: 50%; width: 34px; height: 34px; display: grid; place-items: center; font-size: 24px; backdrop-filter: blur(6px); }
 .cv-clean .cv-brand { top: calc(18px + env(safe-area-inset-top)); color: var(--cv-brand-color); }

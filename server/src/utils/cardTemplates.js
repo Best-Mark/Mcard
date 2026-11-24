@@ -89,6 +89,30 @@ const CARD_TEMPLATES = [
     label: '杂志编辑',
     desc: '米色 + 番茄红 + 2px 直角 + 衬线大标题，编辑排版感（参考风格 H）',
     cover: 'linear-gradient(135deg,#f2efe9 0%,#e8e2d5 100%)'
+  },
+  {
+    key: 'poster',
+    label: '竖版海报',
+    desc: '无卡片通栏 + 46px 巨字 + 信息两列，深蓝金海报感（参考 L1）',
+    cover: 'radial-gradient(900px 600px at 50% -8%,#22384d 0%,#101d29 50%,#070d14 100%)'
+  },
+  {
+    key: 'ticket',
+    label: '票据存根',
+    desc: '白纸锯齿边 + 等宽数字 + 虚线分隔，复存根质感（参考 L2）',
+    cover: 'linear-gradient(135deg,#e9e6df 0%,#f7f5ee 100%)'
+  },
+  {
+    key: 'horizontal',
+    label: '横版名片',
+    desc: '左信息 + 右侧深色色块，模拟实体横版卡（参考 L3，竖屏适配）',
+    cover: 'linear-gradient(170deg,#eef1f4 0%,#dfe4ea 100%)'
+  },
+  {
+    key: 'sidebar',
+    label: '侧栏竖排',
+    desc: '左侧竖色带 + 右对齐内容 + 衬线字，书卷气（参考 L4）',
+    cover: 'linear-gradient(135deg,#f7f3ec 0%,#ece4d6 100%)'
   }
 ]
 

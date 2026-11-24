@@ -812,6 +812,10 @@ async function finish() {
 .ava-acid { border-radius: 0; width: 26px; height: 26px; background: #ccff00; box-shadow: 3px 3px 0 rgba(204,255,0,.5); }
 .ava-pop { border-radius: 50%; width: 26px; height: 26px; background: #ff6b6b; border: 2px solid #241b3a; box-shadow: 2px 2px 0 #241b3a; }
 .ava-magazine { border-radius: 0; width: 26px; height: 26px; background: #1a1a1a; }
+.ava-poster { border-radius: 0; width: 22px; height: 30px; background: transparent; box-shadow: inset 0 0 0 1px #d8bb85; }
+.ava-ticket { border-radius: 0; width: 28px; height: 24px; background: #fffefb; box-shadow: inset 0 -2px 0 0 #e9e6df, 0 1px 0 1px #d9d5cc; }
+.ava-horizontal { border-radius: 2px; width: 32px; height: 22px; background: linear-gradient(90deg,#fff 0%,#fff 68%,#17222e 68%); }
+.ava-sidebar { border-radius: 0; width: 28px; height: 28px; background: linear-gradient(90deg,#2a2118 0%,#2a2118 32%,#fffdf9 32%); }
 .tpl-item b { font-size: 13px; }
 .tpl-desc { font-size: 11px; color: var(--muted); line-height: 1.45; min-height: 30px; }
 .tpl-check { font-size: 11px; color: var(--primary); font-weight: 700; }
@@ -895,5 +899,33 @@ async function finish() {
 .pv-magazine .preview-body { color: #1a1a1a; font-family: "Songti SC","Noto Serif SC",serif; }
 .pv-magazine .preview-body b { font-size: 26px; font-weight: 700; }
 .pv-magazine .preview-tags i { border-radius: 0; background: transparent; color: #5c5850; box-shadow: inset 0 0 0 1px #cdc7b8; }
+/* L1 竖版海报：无卡通栏巨字 */
+.preview-card.pv-poster { background: transparent; border: 0; box-shadow: none; }
+.pv-poster .preview-head { background: radial-gradient(900px 600px at 50% -8%,#22384d,#101d29 50%,#070d14) !important; border-radius: 0; }
+.pv-poster .preview-avatar { display: none; }
+.pv-poster .preview-body { background: transparent; color: #eef3f7; }
+.pv-poster .preview-body b { font-size: 30px; font-weight: 900; letter-spacing: .16em; color: #fff; }
+.pv-poster .preview-tags i { border-radius: 0; background: rgba(255,255,255,.07); color: #cfe0ee; box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
+/* L2 票据存根：锯齿边 + 等宽字 */
+.preview-card.pv-ticket { border-radius: 0; border: 0; background: #fffefb; box-shadow: 0 20px 44px -26px rgba(0,0,0,.4); }
+.pv-ticket .preview-head { background: #fffefb !important; border-radius: 0; border-bottom: 2px solid #232323; }
+.pv-ticket .preview-avatar { display: none; }
+.pv-ticket .preview-body { color: #232323; }
+.pv-ticket .preview-body b { font-size: 22px; font-weight: 900; letter-spacing: .18em; font-family: ui-monospace,Menlo,monospace; }
+.pv-ticket .preview-tags i { border-radius: 0; background: #f2f0ea; color: #555; }
+/* L3 横版名片：左侧信息右侧色块 */
+.preview-card.pv-horizontal { border-radius: 10px; border: 0; background: #fff; }
+.pv-horizontal .preview-head { background: linear-gradient(90deg,#fff 0%,#fff 70%,#17222e 70%) !important; border-radius: 10px 10px 0 0; }
+.pv-horizontal .preview-avatar { border-radius: 8px; background: rgba(23,34,46,.1); }
+.pv-horizontal .preview-body { color: #17222e; }
+.pv-horizontal .preview-tags i { border-radius: 2px; background: #f2f4f6; color: #5d6a78; }
+/* L4 侧栏竖排：左侧色带 + 右对齐 */
+.preview-card.pv-sidebar { border-radius: 2px; border: 0; background: linear-gradient(90deg,#2a2118 0%,#2a2118 26%,#fffdf9 26%); }
+.pv-sidebar .preview-head { background: transparent !important; border-radius: 0; }
+.pv-sidebar .preview-avatar { border-radius: 50%; background: #6b4a2e; color: #f7f3ec; }
+.pv-sidebar .preview-body { color: #2a2118; text-align: right; font-family: "Songti SC",serif; }
+.pv-sidebar .preview-body b { font-size: 22px; font-weight: 600; letter-spacing: .18em; }
+.pv-sidebar .preview-tags { justify-content: flex-end; }
+.pv-sidebar .preview-tags i { border-radius: 0; background: transparent; color: #7d6a52; box-shadow: inset 0 0 0 1px #e0d4c2; }
 @media (max-width: 520px) { .tpl-list { grid-template-columns: 1fr; } }
 </style>

@@ -492,6 +492,10 @@ async function save() {
 .ava-acid { border-radius: 0; width: 42rpx; height: 42rpx; background: #ccff00; box-shadow: 4rpx 4rpx 0 rgba(204,255,0,.6); }
 .ava-pop { border-radius: 50%; width: 42rpx; height: 42rpx; background: #ff6b6b; border: 4rpx solid #241b3a; }
 .ava-magazine { border-radius: 0; width: 42rpx; height: 42rpx; background: #1a1a1a; }
+.ava-poster { border-radius: 0; width: 34rpx; height: 46rpx; background: transparent; border: 2rpx solid #d8bb85; }
+.ava-ticket { border-radius: 0; width: 44rpx; height: 36rpx; background: #fffefb; border: 2rpx dashed #b9b5ad; }
+.ava-horizontal { border-radius: 4rpx; width: 48rpx; height: 34rpx; background: linear-gradient(90deg,#fff 0%,#fff 68%,#17222e 68%); }
+.ava-sidebar { border-radius: 0; width: 42rpx; height: 42rpx; background: linear-gradient(90deg,#2a2118 0%,#2a2118 32%,#fffdf9 32%); }
 .tpl-name { font-size: 28rpx; font-weight: 700; }
 .tpl-desc { font-size: 22rpx; color: #6b7688; }
 .tpl-check { font-size: 22rpx; color: #2563eb; font-weight: 700; }
