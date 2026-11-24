@@ -288,8 +288,8 @@ router.get('/public/:slug/card.vcf', wrap((req, res) => {
   const isWeChat = /MicroMessenger/i.test(ua)
   const inline = String(req.query.inline) === '1' || (isIOS && !isWeChat)
   if (inline) {
-    // 显式 inline + .vcf 文件名：Safari 识别为联系人卡片、点「添加」进通讯录（非下载到文件）
-    res.set('Content-Disposition', `inline; filename="contact.vcf"`)
+    // 不设 Content-Disposition：iOS Safari 按 MIME(text/vcard)+.vcf 后缀识别为联系人卡片，
+    // 带 filename 的 inline 头会被 Safari 当下载请求 → 弹「无法下载此文件」。
   } else {
     res.set('Content-Disposition', `attachment; filename="${encodeURIComponent(row.name || row.slug)}.vcf"`)
   }

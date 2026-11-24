@@ -294,6 +294,12 @@ try {
   }
 } catch (e) { console.error('[DB] 套餐去重失败（不影响启动）', e.message) }
 
+// 自愈：历史存量里误填的非法邮箱（如 QQ 号 100088）会让 vCard 被 iOS 通讯录判为损坏文件、
+// Safari 弹「无法下载此文件」。清空非法值（正规邮箱才写进 vCard），用户可在编辑页重新填写。
+try {
+  db.exec(`UPDATE cards SET email = '' WHERE email <> '' AND email NOT LIKE '%@%.%'`)
+} catch (e) { console.error('[DB] 非法邮箱清理失败（不影响启动）', e.message) }
+
 if (!seeded('seed_admin_v1')) {
   db.transaction(() => {
     // 存量库若已有管理员，只打标记不重建，避免弱口令回灌

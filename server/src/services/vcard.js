@@ -35,7 +35,8 @@ function build(card, baseUrl) {
   if (card.website) extra.push(`主页：${card.website}`)
   if (card.shop_url) extra.push(`店铺：${card.shop_url}`)
   if (extra.length) notes.push(extra.join('\n'))
-  notes.push(`电子名片：${url}`)
+  // 不再把名片网址塞进 NOTE：上方已有标准 URL: 字段，重复内容会拉长二维码、降低扫码成功率，
+  // 且 iOS Safari 对 NOTE 里的长 URL 文本解析更脆弱。通讯录「主页」始终取 URL: 字段。
   // 下面 join 用真实换行符，esc 会统一转成 vCard 的 \n 转义，避免出现双反斜杠
 
   const lines = [
@@ -47,7 +48,8 @@ function build(card, baseUrl) {
     card.title ? `TITLE:${esc(card.title)}` : '',
     card.mobile ? `TEL;TYPE=CELL,VOICE:${esc(card.mobile)}` : '',
     card.phone ? `TEL;TYPE=WORK,VOICE:${esc(card.phone)}` : '',
-    card.email ? `EMAIL;TYPE=INTERNET,WORK:${esc(card.email)}` : '',
+    // 非法邮箱（如用户误填的 QQ 号）会让 iOS 通讯录解析失败→「无法下载此文件」，只写合法值
+    card.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(card.email).trim()) ? `EMAIL;TYPE=INTERNET,WORK:${esc(card.email)}` : '',
     card.address || card.address_detail
       ? `ADR;TYPE=WORK:;;${esc(card.address_detail)};${esc(card.address)};;;`
       : '',
@@ -59,8 +61,9 @@ function build(card, baseUrl) {
     'END:VCARD'
   ].filter(Boolean)
 
-  // 兼容旧版手机：CRLF + UTF-8 BOM
-  return '\uFEFF' + lines.join('\r\n') + '\r\n'
+  // CRLF 换行（vCard 3.0 标准）。不加 UTF-8 BOM：iOS Safari 会把 BOM 当非法字节，
+  // 导致 inline 打开 .vcf 时报「Safari浏览器无法下载此文件」；去掉后各系统通讯录均正常识别。
+  return lines.join('\r\n') + '\r\n'
 }
 
 module.exports = { build }

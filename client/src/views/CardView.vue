@@ -431,7 +431,7 @@ function localVcard(c) {
   if (c.website) extra.push(`主页：${c.website}`)
   if (c.shop_url) extra.push(`店铺：${c.shop_url}`)
   if (extra.length) notes.push(extra.join('\n'))
-  notes.push(`电子名片：${url}`)
+  // 与服务端同口径：网址已有 URL: 字段，不再重复塞 NOTE（拉长二维码、降低扫码成功率）
   const lines = [
     'BEGIN:VCARD', 'VERSION:3.0',
     `N:${esc(family)};${esc(given)};;;`,
@@ -440,7 +440,7 @@ function localVcard(c) {
     c.title ? `TITLE:${esc(c.title)}` : '',
     c.mobile ? `TEL;TYPE=CELL,VOICE:${esc(c.mobile)}` : '',
     c.phone ? `TEL;TYPE=WORK,VOICE:${esc(c.phone)}` : '',
-    c.email ? `EMAIL;TYPE=INTERNET,WORK:${esc(c.email)}` : '',
+    c.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(c.email).trim()) ? `EMAIL;TYPE=INTERNET,WORK:${esc(c.email)}` : '',
     c.address || c.address_detail ? `ADR;TYPE=WORK:;;${esc(c.address_detail)};${esc(c.address)};;;` : '',
     `URL:${esc(url)}`,
     `NOTE:${esc(notes.filter(Boolean).join('\n'))}`,
