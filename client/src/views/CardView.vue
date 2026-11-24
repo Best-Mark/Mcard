@@ -138,7 +138,8 @@
           </button>
           <div class="cv-qr-actions">
             <button class="btn btn-primary" @click="vcardQrModal = true">放大二维码</button>
-            <button class="btn btn-ghost" @click="saveContact">{{ contactActionLabel }}</button>
+            <a v-if="contactNative" class="btn btn-ghost" :href="vcfApi">{{ contactActionLabel }}</a>
+            <button v-else class="btn btn-ghost" @click="saveContact">{{ contactActionLabel }}</button>
           </div>
           <p class="small muted" style="margin-top:8px">{{ contactActionTip }}</p>
         </div>
@@ -161,7 +162,8 @@
 
       <div class="cv-dock">
         <button class="btn btn-primary" @click="tel(card.mobile || card.phone)">📞 打电话</button>
-        <button class="btn btn-ghost" @click="saveContact">存入通讯录</button>
+        <a v-if="contactNative" class="btn btn-ghost" :href="vcfApi">存入通讯录</a>
+        <button v-else class="btn btn-ghost" @click="saveContact">存入通讯录</button>
         <button class="btn btn-ghost" @click="openMapSheet">导航</button>
         <button class="btn btn-ghost" :class="{ 'fav-on': favorite }" @click="toggleFavorite">{{ favorite ? '★ 已收藏' : '☆ 收藏' }}</button>
       </div>
@@ -344,6 +346,9 @@ const fullUrl = u => (u ? new URL(u, windowRef.location.origin).href : '')
 // 模板里区分微信/Safari 的保存引导（微信→去浏览器，iOS→长按图片）
 const inWeChat = isWeChat()
 const deviceEnvKey = deviceEnv()
+// iOS Safari：必须用真实 <a href=".vcf"> 链接（Safari 只信任用户点击的顶层导航），
+// 而不是 JS location.href——后者在 iOS 上常被当下载/拦截，导致「存不进通讯录」。
+const contactNative = deviceEnvKey === 'ios'
 const saveTip = SAVE_IMAGE_TIPS[deviceEnvKey] || SAVE_IMAGE_TIPS.other
 // 通讯录操作按环境出文案：iOS 直接开系统界面、Android/鸿蒙下载 vcf、微信引导去浏览器
 const CONTACT_ACTION = {

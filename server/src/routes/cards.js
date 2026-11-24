@@ -287,7 +287,10 @@ router.get('/public/:slug/card.vcf', wrap((req, res) => {
   const isIOS = /iPad|iPhone|iPod/.test(ua)
   const isWeChat = /MicroMessenger/i.test(ua)
   const inline = String(req.query.inline) === '1' || (isIOS && !isWeChat)
-  if (!inline) {
+  if (inline) {
+    // 显式 inline + .vcf 文件名：Safari 识别为联系人卡片、点「添加」进通讯录（非下载到文件）
+    res.set('Content-Disposition', `inline; filename="contact.vcf"`)
+  } else {
     res.set('Content-Disposition', `attachment; filename="${encodeURIComponent(row.name || row.slug)}.vcf"`)
   }
   res.send(text)
