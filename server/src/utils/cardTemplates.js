@@ -38,8 +38,8 @@ const CARD_TEMPLATES = [
   },
   {
     key: 'contact',
-    label: '简洁联络',
-    desc: '深蓝渐变底 + 单张圆角白卡内聚，卡内拨号/复制/金色存档，简洁大气（默认）',
+    label: '金黑 · 简洁联络',
+    desc: '深蓝渐变底 + 22px 圆角白卡 + 金蓝封顶，卡内拨号/复制/金色存档（默认，参考风格 A）',
     cover: 'radial-gradient(1200px 500px at 50% -10%,#1d3a55 0%,#132a3d 45%,#0c1a26 100%)'
   },
   {
@@ -47,6 +47,24 @@ const CARD_TEMPLATES = [
     label: '深蓝鎏金',
     desc: '深蓝底 + 沙金描边，金线水印与表格化信息的高端名片',
     cover: 'linear-gradient(135deg,#1d3a55 0%,#2f5a7d 40%,#d8bb85 78%,#b99355 100%)'
+  },
+  {
+    key: 'paper',
+    label: '极简纸白',
+    desc: '浅灰底 + 6px 小圆角白卡 + 1px 发丝线 + 细体大字，克制留白（参考风格 B）',
+    cover: 'linear-gradient(135deg,#eeede9 0%,#f7f6f3 100%)'
+  },
+  {
+    key: 'glass',
+    label: '墨夜玻璃',
+    desc: '深蓝渐变底 + 半透玻璃卡 + 薄荷绿点缀，内发光高对比（参考风格 C）',
+    cover: 'radial-gradient(900px 600px at 15% 0%,#173049 0%,#0b1622 55%,#060c13 100%)'
+  },
+  {
+    key: 'wood',
+    label: '暖木衬线',
+    desc: '暖棕渐变底 + 直角双层细框 + 衬线字体，温润书卷气（参考风格 D）',
+    cover: 'radial-gradient(circle at 20% 0%,#f6eee1 0%,#e8dbc8 60%,#ddcdb6 100%)'
   }
 ]
 

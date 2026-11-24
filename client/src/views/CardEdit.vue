@@ -804,6 +804,10 @@ async function finish() {
 .ava-seal { border-radius: 0; width: 30px; height: 30px; border: 3px solid #111827; background: #fff; }
 .ava-contact { border-radius: 8px; width: 26px; height: 26px; border: 2px solid var(--ng-gold); background: var(--ng-paper); }
 .ava-navygold { border-radius: 8px; width: 34px; height: 34px; border: 2px solid var(--ng-gold); background: var(--ng-paper); }
+/* 参考四套简洁风：金黑 A / 纸白 B / 玻璃 C / 暖木 D */
+.ava-paper { border-radius: 3px; width: 26px; height: 26px; background: #111; }
+.ava-glass { border-radius: 12px; width: 28px; height: 28px; background: rgba(127,211,193,.22); box-shadow: inset 0 0 0 1px rgba(127,211,193,.6); }
+.ava-wood { border-radius: 50%; width: 26px; height: 26px; background: #8b5e3c; box-shadow: inset 0 0 0 2px rgba(255,255,255,.35); }
 .tpl-item b { font-size: 13px; }
 .tpl-desc { font-size: 11px; color: var(--muted); line-height: 1.45; min-height: 30px; }
 .tpl-check { font-size: 11px; color: var(--primary); font-weight: 700; }
@@ -840,5 +844,25 @@ async function finish() {
 .pv-navygold .preview-avatar { border-radius: 8px; background: var(--ng-paper); color: var(--ng-navy); box-shadow: inset 0 0 0 2px var(--ng-gold); }
 .pv-navygold .preview-body { color: var(--ng-ink); }
 .pv-navygold .preview-tags i { border-radius: 99px; background: var(--ng-paper); color: #6b5a3c; box-shadow: inset 0 0 0 1px rgba(185,147,85,.35); }
+/* B 极简纸白：6px 小圆角 + 发丝线 + 细体大字 */
+.preview-card.pv-paper { border-radius: 6px; border: 1px solid #e7e5df; box-shadow: 0 1px 0 #dcdad4, 0 20px 40px -30px rgba(0,0,0,.3); }
+.pv-paper .preview-head { background: #fff !important; height: 46px; border-bottom: 1px solid #111; }
+.pv-paper .preview-avatar { border-radius: 50%; background: #111; color: #fff; }
+.pv-paper .preview-body { color: #111; }
+.pv-paper .preview-body b { font-size: 26px; font-weight: 300; letter-spacing: .14em; }
+.pv-paper .preview-tags i { border-radius: 3px; background: #fff; color: #555; box-shadow: inset 0 0 0 1px #ddd; }
+/* C 墨夜玻璃：半透玻璃 + 薄荷绿点缀 */
+.preview-card.pv-glass { border-radius: 20px; border: 1px solid rgba(255,255,255,.12); background: linear-gradient(160deg,rgba(255,255,255,.09),rgba(255,255,255,.03)); backdrop-filter: blur(14px); box-shadow: 0 20px 50px -30px #000, inset 0 1px 0 rgba(255,255,255,.15); }
+.pv-glass .preview-head { background: radial-gradient(900px 600px at 15% 0%,#173049 0%,#0b1622 55%,#060c13 100%) !important; border-radius: 0; }
+.pv-glass .preview-avatar { border-radius: 16px; background: rgba(127,211,193,.12); color: #9ee8d5; box-shadow: inset 0 0 0 1px rgba(127,211,193,.4); }
+.pv-glass .preview-body { color: #e8eef4; }
+.pv-glass .preview-tags i { background: rgba(255,255,255,.07); color: #a8c3d6; box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); }
+/* D 暖木衬线：直角双层细框 + 衬线字体 */
+.preview-card.pv-wood { border-radius: 4px; border: 1px solid #e4d8c6; background: #fffdf8; box-shadow: inset 0 0 0 5px #fffdf8, inset 0 0 0 6px #efe4d4, 0 20px 40px -30px rgba(90,64,40,.5); }
+.pv-wood .preview-head { background: radial-gradient(circle at 20% 0%,#f6eee1 0%,#e8dbc8 60%,#ddcdb6 100%) !important; border-radius: 0; }
+.pv-wood .preview-avatar { border-radius: 50%; background: #8b5e3c; color: #fff9ee; box-shadow: inset 0 0 0 3px rgba(255,255,255,.18); }
+.pv-wood .preview-body { color: #3b2f24; font-family: "Songti SC","Noto Serif SC",serif; }
+.pv-wood .preview-body b { font-size: 25px; font-weight: 600; letter-spacing: .16em; }
+.pv-wood .preview-tags i { border-radius: 2px; background: #faf4e9; color: #7b6344; box-shadow: inset 0 0 0 1px #e3d5bf; }
 @media (max-width: 520px) { .tpl-list { grid-template-columns: 1fr; } }
 </style>

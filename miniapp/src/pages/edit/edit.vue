@@ -485,6 +485,9 @@ async function save() {
 .ava-seal { border-radius: 0; width: 46rpx; height: 46rpx; border: 4rpx solid #111827; background: #fff; }
 .ava-contact { border-radius: 10rpx; width: 46rpx; height: 46rpx; border: 3rpx solid #fff; background: #eff4ff; }
 .ava-navygold { border-radius: 12rpx; width: 50rpx; height: 50rpx; border: 4rpx solid #d8bb85; background: #f4f1ea; }
+.ava-paper { border-radius: 6rpx; width: 40rpx; height: 40rpx; background: #111; }
+.ava-glass { border-radius: 24rpx; width: 44rpx; height: 44rpx; background: rgba(127,211,193,.22); border: 2rpx solid rgba(127,211,193,.6); }
+.ava-wood { border-radius: 50%; width: 40rpx; height: 40rpx; background: #8b5e3c; box-shadow: inset 0 0 0 4rpx rgba(255,255,255,.35); }
 .tpl-name { font-size: 28rpx; font-weight: 700; }
 .tpl-desc { font-size: 22rpx; color: #6b7688; }
 .tpl-check { font-size: 22rpx; color: #2563eb; font-weight: 700; }

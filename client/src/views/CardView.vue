@@ -1,5 +1,5 @@
 <template>
-  <div class="cv-page" :class="'cv-tpl-' + template" :style="vars">
+  <div class="cv-page" :class="['cv-tpl-' + template, { 'cv-clean': isCleanTpl }]" :style="vars">
     <div class="cv-cover">
       <button class="cv-back" @click="router.back ? router.back() : router.push('/')" aria-label="返回">‹</button>
       <div class="cv-brand">M<em>Card</em></div>
@@ -17,7 +17,7 @@
 
     <template v-else-if="card">
       <div class="container cv-main">
-        <div class="cv-profile card" :data-wm="(template === 'navygold' || template === 'contact') ? (card.company || '').slice(0, 4) : ''">
+        <div class="cv-profile card" :data-wm="(template === 'navygold' || isCleanTpl) ? (card.company || '').slice(0, 4) : ''">
           <div class="cv-avatar">
             <img v-if="card.avatar" :src="card.avatar" :alt="card.name" />
             <span v-else>{{ (card.name || '名').slice(0, 1) }}</span>
@@ -45,7 +45,7 @@
         </div>
 
         <!-- 简洁联络模板：卡内操作区（拨号 / 复制号码 / 金色存档）+ 按环境的操作指引 -->
-        <div v-if="template === 'contact'" class="cv-cta">
+        <div v-if="isCleanTpl" class="cv-cta">
           <div class="cv-cta-grid">
             <a v-if="contactPhone" class="cv-cta-btn cv-cta-main" :href="'tel:' + contactPhone">拨打电话</a>
             <button v-else class="cv-cta-btn cv-cta-main" @click="showToast('尚未填写电话')">拨打电话</button>
@@ -180,16 +180,16 @@
 
         <p class="cv-footer">由 <b>{{ siteConfig.site_name }}</b> 提供技术支持 · 资料可改 · 二维码不变</p>
       </div>
-      <p v-if="template === 'contact'" class="cv-cta-hint">扫码即见名片 · 一键拨号 · 一键存档</p>
+      <p v-if="isCleanTpl" class="cv-cta-hint">扫码即见名片 · 一键拨号 · 一键存档</p>
 
-      <div class="cv-dock" :class="{ 'cv-dock-hidden': template === 'contact' }">
+      <div class="cv-dock" :class="{ 'cv-dock-hidden': isCleanTpl }">
         <button class="btn btn-primary" @click="tel(card.mobile || card.phone)">📞 打电话</button>
         <a v-if="contactNative" class="btn btn-ghost" :href="vcfApi">存入通讯录</a>
         <button v-else class="btn btn-ghost" @click="saveContact">存入通讯录</button>
         <button class="btn btn-ghost" @click="openMapSheet">导航</button>
         <button class="btn btn-ghost" :class="{ 'fav-on': favorite }" @click="toggleFavorite">{{ favorite ? '★ 已收藏' : '☆ 收藏' }}</button>
       </div>
-      <button v-if="template !== 'contact'" class="cv-share-fab" @click="doShare" aria-label="分享名片">↗<span>分享</span></button>
+      <button v-if="!isCleanTpl" class="cv-share-fab" @click="doShare" aria-label="分享名片">↗<span>分享</span></button>
       <BottomSheet :show="mapOpen" @update:show="mapOpen = $event">
         <div class="map-sheet-head"><b>选择导航地图</b><button @click="mapOpen = false">×</button></div>
         <div class="map-sheet-list">
@@ -285,6 +285,9 @@ const vcfApi = `${qrApi}/card.vcf`
 const card = ref(null); const loading = ref(true); const error = ref('')
 const currentTheme = ref('ocean'); const isOwner = ref(false)
 const template = ref('contact')
+// 四套「简洁舒适」模板共用单卡骨架与卡内操作区：contact 金黑 / paper 纸白 / glass 墨夜 / wood 暖木
+const CLEAN_TEMPLATES = ['contact', 'paper', 'glass', 'wood']
+const isCleanTpl = computed(() => CLEAN_TEMPLATES.includes(template.value))
 const qrModal = ref(false); const guide = ref(''); const guideImage = ref(''); const exchangeOpen = ref(false)
 const mapOpen = ref(false)
 const mySlug = ref(''); const exchanging = ref(false)
@@ -864,77 +867,152 @@ async function toggleFavorite() {
 .cv-tpl-seal .cv-dock { background: #111827; border-top: 5px solid var(--t-accent); }
 .cv-tpl-seal .cv-dock .btn-ghost { background: #fff; color: #111827; }
 
-/* ⑥ 联络卡 contact：深蓝径向渐变底 + 单张圆角白卡内聚全部信息（简洁大气，参考商业名片范式）
-   金蓝渐变封顶 +  company 水印 + 卡内拨号/复制/金色存档 + 按环境操作指引；无固定底栏。 */
-.cv-tpl-contact { background: var(--ng-page-bg); color: var(--ng-ink); }
-/* 封面退化为细窄悬浮返回条，不再占据大块视觉 */
-.cv-tpl-contact .cv-cover { height: 0; border-radius: 0; background: transparent; }
-.cv-tpl-contact .cv-back { top: calc(10px + env(safe-area-inset-top)); left: 12px; color: #d8bb85; background: rgba(12,26,38,.5); border-radius: 50%; width: 34px; height: 34px; display: grid; place-items: center; font-size: 24px; backdrop-filter: blur(6px); }
-.cv-tpl-contact .cv-brand { top: calc(18px + env(safe-area-inset-top)); color: rgba(255,255,255,.85); }
-.cv-tpl-contact .cv-themes { bottom: auto; top: calc(20px + env(safe-area-inset-top)); }
-.cv-tpl-contact .cv-main { max-width: 430px; margin: 44px auto 0; }
-/* 单张白卡：信息块不再各自成卡，改为卡内的行式分区 */
-.cv-tpl-contact .cv-main > .card, .cv-tpl-contact .cv-main > .cv-profile {
-  border-radius: 0; border: 0; box-shadow: none; background: transparent; margin-top: 0;
+/* ===== 简洁四套模板（contact 金黑 / paper 极简纸白 / glass 墨夜玻璃 / wood 暖木衬线）=====
+   同一套骨架：深蓝/纸白/玻璃/暖木背景 + 单张圆角卡内聚全部信息 + 卡内拨号/复制/存档 + 环境指引。
+   四套差异全部走 --cv-* 变量（线条粗细、圆角、字体、阴影、配色），避免多份样式复制。 */
+.cv-clean {
+  --cv-page-bg: var(--ng-page-bg); --cv-ink: #12202e; --cv-ink-2: #4a5b6e;
+  --cv-line: #efece5; --cv-panel-bg: #fff; --cv-card-bg: #fff; --cv-card-border: 0;
+  --cv-card-radius: 22px; --cv-card-x: 24px; --cv-card-pad: 30px 24px 22px;
+  --cv-card-shadow: 0 26px 60px -22px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.06);
+  --cv-card-blur: none; --cv-topbar-h: 6px; --cv-topbar-x: 0;
+  --cv-topbar-bg: linear-gradient(90deg,var(--ng-navy),var(--ng-navy-2) 40%,var(--ng-gold-2) 78%,var(--ng-gold));
+  --cv-logo-bg: linear-gradient(145deg,var(--ng-navy),#0e2233); --cv-logo-radius: 14px;
+  --cv-logo-shadow: inset 0 0 0 2px rgba(216,187,133,.5),0 8px 18px -8px rgba(18,32,46,.6);
+  --cv-name-size: 27px; --cv-name-weight: 900; --cv-name-spacing: .04em; --cv-name-color: #12202e; --cv-name-font: inherit;
+  --cv-role-color: #4a5b6e; --cv-role-size: 12.5px; --cv-role-spacing: .06em;
+  --cv-org-color: #1d3a55; --cv-org-border: 1px dashed #e2ddd2;
+  --cv-tag-bg: #f4f1ea; --cv-tag-color: #6b5a3c; --cv-tag-shadow: inset 0 0 0 1px rgba(185,147,85,.28); --cv-tag-radius: 99px;
+  --cv-btn-radius: 13px; --cv-btn-font: inherit; --cv-btn-spacing: .02em;
+  --cv-btn-main-bg: linear-gradient(135deg,var(--ng-navy),#0f2739); --cv-btn-main-color: #fff; --cv-btn-main-shadow: 0 10px 22px -12px rgba(18,32,46,.85);
+  --cv-btn-ghost-bg: #f7f5f0; --cv-btn-ghost-color: #1d3a55; --cv-btn-ghost-shadow: inset 0 0 0 1px #e6e0d4;
+  --cv-btn-save-bg: linear-gradient(135deg,#c9a163,#a8834a); --cv-btn-save-color: #fff; --cv-btn-save-shadow: 0 12px 24px -14px rgba(169,131,74,.9);
+  --cv-steps-bg: #faf8f3; --cv-steps-color: #5c6a79; --cv-steps-shadow: inset 0 0 0 1px #eee8dc; --cv-steps-radius: 12px; --cv-steps-title: #a8834a; --cv-steps-b: #1d3a55;
+  --cv-mini-bg: #f4f1ea; --cv-mini-color: #1d3a55; --cv-mini-shadow: inset 0 0 0 1px rgba(185,147,85,.28); --cv-mini-on-bg: linear-gradient(135deg,#c9a163,#a8834a); --cv-mini-on-color: #fff;
+  --cv-block-title: #b99355; --cv-link-color: #1d3a55;
+  --cv-foot-color: #a9b1ba; --cv-foot-b: #b99355; --cv-hint-color: #9fb0c0;
+  --cv-wm-color: #12202e; --cv-wm-opacity: .04;
+  --cv-back-color: #d8bb85; --cv-back-bg: rgba(12,26,38,.5); --cv-brand-color: rgba(255,255,255,.85);
+  background: var(--cv-page-bg); color: var(--cv-ink);
 }
-.cv-tpl-contact .cv-main > .cv-profile {
-  border-radius: 22px 22px 0 0; padding: 30px 24px 22px; background: #fff; position: relative; overflow: hidden;
-  box-shadow: 0 26px 60px -22px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.06);
+/* B 极简纸白：6px 小圆角 + 1px 发丝线 + 细体大字 + 描边按钮 */
+.cv-tpl-paper {
+  --cv-page-bg: #eeede9; --cv-ink: #111; --cv-ink-2: #8a8a8a; --cv-line: #f0eee9;
+  --cv-card-bg: #fff; --cv-card-border: 1px solid #e7e5df; --cv-card-radius: 6px; --cv-card-x: 26px; --cv-card-pad: 36px 26px 24px;
+  --cv-card-shadow: 0 1px 0 #dcdad4, 0 30px 60px -40px rgba(0,0,0,.28);
+  --cv-topbar-h: 1px; --cv-topbar-x: 26px; --cv-topbar-bg: #111;
+  --cv-logo-bg: #111; --cv-logo-radius: 50%; --cv-logo-shadow: none;
+  --cv-name-size: 30px; --cv-name-weight: 300; --cv-name-spacing: .14em; --cv-name-color: #111;
+  --cv-role-color: #8a8a8a; --cv-role-size: 11px; --cv-role-spacing: .18em;
+  --cv-org-color: #111; --cv-org-border: 1px solid #eceae5;
+  --cv-tag-bg: #fff; --cv-tag-color: #555; --cv-tag-shadow: inset 0 0 0 1px #ddd; --cv-tag-radius: 3px;
+  --cv-btn-radius: 3px; --cv-btn-main-bg: #111; --cv-btn-main-color: #fff; --cv-btn-main-shadow: none;
+  --cv-btn-ghost-bg: #fff; --cv-btn-ghost-color: #111; --cv-btn-ghost-shadow: inset 0 0 0 1px #ccc;
+  --cv-btn-save-bg: #fff; --cv-btn-save-color: #111; --cv-btn-save-shadow: inset 0 0 0 1.5px #111;
+  --cv-steps-bg: #fafaf8; --cv-steps-color: #777; --cv-steps-shadow: inset 0 0 0 1px #eceae5; --cv-steps-radius: 3px; --cv-steps-title: #111; --cv-steps-b: #000;
+  --cv-mini-bg: #fff; --cv-mini-color: #111; --cv-mini-shadow: inset 0 0 0 1px #ddd; --cv-mini-on-bg: #111; --cv-mini-on-color: #fff;
+  --cv-block-title: #111; --cv-link-color: #111; --cv-foot-color: #b5b2ab; --cv-foot-b: #111; --cv-hint-color: #8a8a8a;
+  --cv-back-color: #111; --cv-back-bg: rgba(255,255,255,.7); --cv-brand-color: #111;
 }
-.cv-tpl-contact .cv-main > .cv-profile::before {
-  content: ''; position: absolute; inset: 0 0 auto 0; height: 6px;
-  background: linear-gradient(90deg, var(--ng-navy), var(--ng-navy-2) 40%, var(--ng-gold-2) 78%, var(--ng-gold));
+/* C 墨夜玻璃：20px 圆角 + 半透玻璃 + 薄荷绿点缀 + 内发光 */
+.cv-tpl-glass {
+  --cv-page-bg: radial-gradient(900px 600px at 15% 0%,#173049 0%,#0b1622 55%,#060c13 100%);
+  --cv-ink: #e8eef4; --cv-ink-2: #8fa6ba; --cv-line: rgba(255,255,255,.09);
+  --cv-panel-bg: transparent; --cv-card-bg: linear-gradient(160deg,rgba(255,255,255,.09),rgba(255,255,255,.03));
+  --cv-card-border: 1px solid rgba(255,255,255,.12); --cv-card-radius: 20px; --cv-card-pad: 30px 24px 22px;
+  --cv-card-shadow: 0 30px 70px -30px #000, inset 0 1px 0 rgba(255,255,255,.15); --cv-card-blur: blur(14px);
+  --cv-topbar-h: 0; --cv-topbar-bg: transparent;
+  --cv-logo-bg: rgba(127,211,193,.12); --cv-logo-radius: 16px; --cv-logo-shadow: inset 0 0 0 1px rgba(127,211,193,.4);
+  --cv-name-size: 27px; --cv-name-weight: 900; --cv-name-spacing: .06em; --cv-name-color: #f2f7fb;
+  --cv-role-color: #8fa6ba; --cv-role-size: 12.5px; --cv-role-spacing: .1em;
+  --cv-org-color: #cfe6e0; --cv-org-border: 1px solid rgba(255,255,255,.12);
+  --cv-tag-bg: rgba(255,255,255,.07); --cv-tag-color: #a8c3d6; --cv-tag-shadow: inset 0 0 0 1px rgba(255,255,255,.1); --cv-tag-radius: 99px;
+  --cv-btn-main-bg: linear-gradient(135deg,#2ea88f,#1b7d6a); --cv-btn-main-color: #fff; --cv-btn-main-shadow: 0 14px 28px -16px rgba(46,168,143,.9);
+  --cv-btn-ghost-bg: rgba(255,255,255,.08); --cv-btn-ghost-color: #dfeaf2; --cv-btn-ghost-shadow: inset 0 0 0 1px rgba(255,255,255,.14);
+  --cv-btn-save-bg: rgba(255,255,255,.1); --cv-btn-save-color: #eaf4f1; --cv-btn-save-shadow: inset 0 0 0 1px rgba(255,255,255,.2);
+  --cv-steps-bg: rgba(255,255,255,.05); --cv-steps-color: #9db1c2; --cv-steps-shadow: inset 0 0 0 1px rgba(255,255,255,.1); --cv-steps-title: #7fd3c1; --cv-steps-b: #dff0ec;
+  --cv-mini-bg: rgba(255,255,255,.07); --cv-mini-color: #dfeaf2; --cv-mini-shadow: inset 0 0 0 1px rgba(255,255,255,.12); --cv-mini-on-bg: linear-gradient(135deg,#2ea88f,#1b7d6a); --cv-mini-on-color: #fff;
+  --cv-block-title: #7fd3c1; --cv-link-color: #9ee8d5; --cv-foot-color: #6d8093; --cv-foot-b: #7fd3c1; --cv-hint-color: #718499;
+  --cv-wm-color: #9ee8d5; --cv-wm-opacity: .03;
+  --cv-back-color: #9ee8d5; --cv-back-bg: rgba(6,12,19,.5); --cv-brand-color: #9fb3c6;
 }
-.cv-tpl-contact .cv-main > .cv-profile::after {
+/* D 暖木衬线：4px 直角 + 双层细框 + 衬线字体 + 棕色系 */
+.cv-tpl-wood {
+  --cv-page-bg: radial-gradient(circle at 20% 0%,#f6eee1 0%,#e8dbc8 60%,#ddcdb6 100%);
+  --cv-ink: #3b2f24; --cv-ink-2: #8a7358; --cv-line: #f0e7d8;
+  --cv-card-bg: #fffdf8; --cv-card-border: 1px solid #e4d8c6; --cv-card-radius: 4px; --cv-card-x: 26px; --cv-card-pad: 32px 26px 24px;
+  --cv-card-shadow: 0 1px 0 #efe7db, 0 26px 50px -34px rgba(90,64,40,.55), inset 0 0 0 6px #fffdf8, inset 0 0 0 7px #efe4d4;
+  --cv-topbar-h: 0; --cv-topbar-bg: transparent;
+  --cv-logo-bg: #8b5e3c; --cv-logo-radius: 50%; --cv-logo-shadow: inset 0 0 0 3px rgba(255,255,255,.18);
+  --cv-name-size: 29px; --cv-name-weight: 600; --cv-name-spacing: .16em; --cv-name-color: #3b2f24; --cv-name-font: "Songti SC","Noto Serif SC",serif;
+  --cv-role-color: #8a7358; --cv-role-size: 11.5px; --cv-role-spacing: .14em;
+  --cv-org-color: #5a462f; --cv-org-border: 1px solid #eadfce;
+  --cv-tag-bg: #faf4e9; --cv-tag-color: #7b6344; --cv-tag-shadow: inset 0 0 0 1px #e3d5bf; --cv-tag-radius: 2px;
+  --cv-btn-radius: 3px; --cv-btn-font: "Songti SC","Noto Serif SC",serif; --cv-btn-spacing: .06em;
+  --cv-btn-main-bg: #5a462f; --cv-btn-main-color: #f9f2e5; --cv-btn-main-shadow: none;
+  --cv-btn-ghost-bg: #faf4e9; --cv-btn-ghost-color: #5a462f; --cv-btn-ghost-shadow: inset 0 0 0 1px #dbcdb6;
+  --cv-btn-save-bg: linear-gradient(135deg,#a87550,#8b5e3c); --cv-btn-save-color: #fff9ee; --cv-btn-save-shadow: none;
+  --cv-steps-bg: #faf6ec; --cv-steps-color: #7d6a52; --cv-steps-shadow: inset 0 0 0 1px #ebe0cd; --cv-steps-radius: 2px; --cv-steps-title: #8b5e3c; --cv-steps-b: #4a3927;
+  --cv-mini-bg: #faf4e9; --cv-mini-color: #5a462f; --cv-mini-shadow: inset 0 0 0 1px #dbcdb6; --cv-mini-on-bg: #8b5e3c; --cv-mini-on-color: #fff9ee;
+  --cv-block-title: #8b5e3c; --cv-link-color: #6b4a2e; --cv-foot-color: #b3a08a; --cv-foot-b: #8b5e3c; --cv-hint-color: #9c8871;
+  --cv-back-color: #8b5e3c; --cv-back-bg: rgba(255,253,248,.75); --cv-brand-color: #8b5e3c;
+}
+.cv-clean.cv-page { font-family: var(--cv-name-font, inherit); padding-bottom: 34px; }
+.cv-clean .cv-cover { height: 0; border-radius: 0; background: transparent; }
+.cv-clean .cv-back { top: calc(10px + env(safe-area-inset-top)); left: 12px; color: var(--cv-back-color); background: var(--cv-back-bg); border-radius: 50%; width: 34px; height: 34px; display: grid; place-items: center; font-size: 24px; backdrop-filter: blur(6px); }
+.cv-clean .cv-brand { top: calc(18px + env(safe-area-inset-top)); color: var(--cv-brand-color); }
+.cv-clean .cv-themes { bottom: auto; top: calc(20px + env(safe-area-inset-top)); }
+.cv-clean .cv-main { max-width: 430px; margin: 44px auto 0; }
+.cv-clean .cv-main > .card, .cv-clean .cv-main > .cv-profile { border-radius: 0; border: 0; box-shadow: none; background: transparent; margin-top: 0; }
+.cv-clean .cv-main > .cv-profile {
+  border-radius: var(--cv-card-radius) var(--cv-card-radius) 0 0; padding: var(--cv-card-pad);
+  background: var(--cv-card-bg); border: var(--cv-card-border); backdrop-filter: var(--cv-card-blur);
+  box-shadow: var(--cv-card-shadow); position: relative; overflow: hidden;
+}
+.cv-clean .cv-main > .cv-profile::before {
+  content: ''; position: absolute; left: var(--cv-topbar-x); right: var(--cv-topbar-x); top: 0; height: var(--cv-topbar-h);
+  background: var(--cv-topbar-bg);
+}
+.cv-clean .cv-main > .cv-profile::after {
   content: attr(data-wm); position: absolute; right: -26px; top: 54px;
-  font-size: 88px; font-weight: 900; color: var(--ng-ink); opacity: .04;
+  font-size: 88px; font-weight: 900; color: var(--cv-wm-color); opacity: var(--cv-wm-opacity);
   letter-spacing: -4px; line-height: 1; pointer-events: none;
 }
-.cv-tpl-contact .cv-profile > * { position: relative; z-index: 2; }
-.cv-tpl-contact .cv-avatar {
-  width: 64px; height: 64px; flex: 0 0 64px; border-radius: 14px; font-size: 26px; color: #fff;
-  background: linear-gradient(145deg, var(--ng-navy), #0e2233);
-  box-shadow: inset 0 0 0 2px rgba(216,187,133,.5), 0 8px 18px -8px rgba(18,32,46,.6);
-}
-.cv-tpl-contact .cv-name { color: var(--ng-ink); font-size: 27px; font-weight: 900; letter-spacing: .04em; }
-.cv-tpl-contact .cv-en { color: var(--ng-ink-2); }
-.cv-tpl-contact .cv-title { color: var(--ng-ink-2); font-size: 12.5px; letter-spacing: .06em; font-weight: 400; }
-.cv-tpl-contact .cv-tags span { border-radius: 99px; background: var(--ng-paper); color: #6b5a3c; box-shadow: inset 0 0 0 1px rgba(185,147,85,.28); }
-.cv-tpl-contact .cv-status { right: 14px; bottom: 6px; }
-/* 卡内操作区：两列拨号/复制 + 金色全宽存档 + 环境指引 */
-.cv-cta { background: #fff; padding: 0 24px 8px; }
+.cv-clean .cv-profile > * { position: relative; z-index: 2; }
+.cv-clean .cv-avatar { width: 64px; height: 64px; flex: 0 0 64px; border-radius: var(--cv-logo-radius); font-size: 26px; color: var(--cv-btn-main-color); background: var(--cv-logo-bg); box-shadow: var(--cv-logo-shadow); }
+.cv-clean .cv-name { color: var(--cv-name-color); font-size: var(--cv-name-size); font-weight: var(--cv-name-weight); letter-spacing: var(--cv-name-spacing); font-family: var(--cv-name-font); }
+.cv-clean .cv-en { color: var(--cv-ink-2); }
+.cv-clean .cv-title { color: var(--cv-role-color); font-size: var(--cv-role-size); letter-spacing: var(--cv-role-spacing); font-weight: 400; }
+.cv-clean .cv-tags span { border-radius: var(--cv-tag-radius); background: var(--cv-tag-bg); color: var(--cv-tag-color); box-shadow: var(--cv-tag-shadow); }
+.cv-clean .cv-status { right: 14px; bottom: 6px; }
+.cv-cta { background: var(--cv-panel-bg); padding: 0 var(--cv-card-x) 8px; }
 .cv-cta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.cv-cta-btn { display: flex; align-items: center; justify-content: center; height: 50px; border-radius: 13px; font-size: 14.5px; font-weight: 700; letter-spacing: .02em; text-decoration: none; }
-.cv-cta-main { background: linear-gradient(135deg, var(--ng-navy), #0f2739); color: #fff; box-shadow: 0 10px 22px -12px rgba(18,32,46,.85); }
-.cv-cta-ghost { background: #f7f5f0; color: var(--ng-navy); box-shadow: inset 0 0 0 1px #e6e0d4; }
-.cv-cta-save { display: flex; align-items: center; justify-content: center; width: 100%; margin-top: 10px; height: 52px; border-radius: 13px; background: linear-gradient(135deg, #c9a163, #a8834a); color: #fff; box-shadow: 0 12px 24px -14px rgba(169,131,74,.9); font-size: 15px; font-weight: 700; text-decoration: none; }
-.cv-cta-steps { margin-top: 10px; background: #faf8f3; border-radius: 12px; padding: 11px 13px; font-size: 11.5px; line-height: 1.9; color: #5c6a79; box-shadow: inset 0 0 0 1px #eee8dc; }
-.cv-cta-steps-t { font-size: 11px; color: #a8834a; font-weight: 700; letter-spacing: .08em; margin-bottom: 2px; }
+.cv-cta-btn { display: flex; align-items: center; justify-content: center; height: 50px; border-radius: var(--cv-btn-radius); font-size: 14.5px; font-weight: 700; letter-spacing: var(--cv-btn-spacing); font-family: var(--cv-btn-font); text-decoration: none; }
+.cv-cta-main { background: var(--cv-btn-main-bg); color: var(--cv-btn-main-color); box-shadow: var(--cv-btn-main-shadow); }
+.cv-cta-ghost { background: var(--cv-btn-ghost-bg); color: var(--cv-btn-ghost-color); box-shadow: var(--cv-btn-ghost-shadow); }
+.cv-cta-save { display: flex; align-items: center; justify-content: center; width: 100%; margin-top: 10px; height: 52px; border-radius: var(--cv-btn-radius); background: var(--cv-btn-save-bg); color: var(--cv-btn-save-color); box-shadow: var(--cv-btn-save-shadow); font-size: 15px; font-weight: 700; font-family: var(--cv-btn-font); text-decoration: none; }
+.cv-cta-steps { margin-top: 10px; background: var(--cv-steps-bg); border-radius: var(--cv-steps-radius); padding: 11px 13px; font-size: 11.5px; line-height: 1.9; color: var(--cv-steps-color); box-shadow: var(--cv-steps-shadow); }
+.cv-cta-steps-t { font-size: 11px; color: var(--cv-steps-title); font-weight: 700; letter-spacing: .08em; margin-bottom: 2px; }
 .cv-cta-steps ol { margin: 0; padding-left: 16px; }
-.cv-cta-steps b { color: var(--ng-navy); }
+.cv-cta-steps b { color: var(--cv-steps-b); }
 .cv-cta-mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
-.cv-cta-mini button { padding: 9px 2px; border-radius: 10px; background: var(--ng-paper); color: var(--ng-navy); box-shadow: inset 0 0 0 1px rgba(185,147,85,.28); font-size: 11.5px; font-weight: 600; }
-.cv-cta-mini button.on { background: linear-gradient(135deg, #c9a163, #a8834a); color: #fff; }
-/* 卡内信息块：白底内的行式分区，细分隔线 */
-.cv-tpl-contact .cv-block { padding: 14px 24px; background: #fff; margin-top: 0; }
-.cv-tpl-contact .cv-block h3, .cv-tpl-contact .cv-sec-title { font-size: 12px; letter-spacing: .1em; color: var(--ng-gold); border-left: 0; padding-left: 0; }
-.cv-tpl-contact .cv-block h3 .small.muted { letter-spacing: 0; }
-.cv-tpl-contact .cv-contact-row { padding: 11px 0; border-top: 1px solid #efece5; }
-.cv-tpl-contact .cv-contact-label { flex-basis: 52px; color: #9aa3ad; letter-spacing: .08em; }
-.cv-tpl-contact .cv-bio, .cv-tpl-contact .small.muted, .cv-tpl-contact .cv-qr-lead { color: var(--ng-ink-2); }
-.cv-tpl-contact .cv-links a, .cv-tpl-contact .qr-tile, .cv-tpl-contact .cv-gallery-cell { border-color: var(--ng-line); background: var(--ng-paper); }
-.cv-tpl-contact .cv-links b, .cv-tpl-contact .qr-tile b { color: var(--ng-navy); }
-.cv-tpl-contact .cv-qr-lead { color: var(--ng-ink-2); }
-.cv-tpl-contact .cv-region-line, .cv-tpl-contact .cv-contact-row b { color: var(--ng-navy); }
-.cv-tpl-contact .cv-map-launch, .cv-tpl-contact .cv-maps a { background: var(--ng-paper); color: var(--ng-navy); box-shadow: inset 0 0 0 1px rgba(185,147,85,.28); }
-.cv-tpl-contact .cv-vcard-qr { border: 3px solid rgba(185,147,85,.45); }
-.cv-tpl-contact .cv-create-own { border-top: 1px solid #efece5; }
-/* 卡片底部落款 + 卡片下方小字提示 */
-.cv-tpl-contact .cv-footer { background: #fff; border-radius: 0 0 22px 22px; padding: 16px 24px 20px; color: #a9b1ba; letter-spacing: .1em; }
-.cv-tpl-contact .cv-footer b { color: var(--ng-gold); }
-.cv-tpl-contact .cv-page { padding-bottom: 34px; }
-.cv-tpl-contact.cv-page { padding-bottom: 34px; }
-.cv-cta-hint { text-align: center; color: #9fb0c0; font-size: 11px; letter-spacing: .08em; margin: 14px 0 0; }
+.cv-cta-mini button { padding: 9px 2px; border-radius: var(--cv-btn-radius); background: var(--cv-mini-bg); color: var(--cv-mini-color); box-shadow: var(--cv-mini-shadow); font-size: 11.5px; font-weight: 600; }
+.cv-cta-mini button.on { background: var(--cv-mini-on-bg); color: var(--cv-mini-on-color); }
+.cv-clean .cv-block { padding: 14px var(--cv-card-x); background: var(--cv-panel-bg); margin-top: 0; }
+.cv-clean .cv-block h3, .cv-clean .cv-sec-title { font-size: 12px; letter-spacing: .1em; color: var(--cv-block-title); border-left: 0; padding-left: 0; }
+.cv-clean .cv-block h3 .small.muted { letter-spacing: 0; }
+.cv-clean .cv-contact-row { padding: 11px 0; border-top: 1px solid var(--cv-line); }
+.cv-clean .cv-contact-label { flex-basis: 52px; color: var(--cv-ink-2); letter-spacing: .08em; }
+.cv-clean .cv-bio, .cv-clean .small.muted, .cv-clean .cv-qr-lead { color: var(--cv-ink-2); }
+.cv-clean .cv-links a, .cv-clean .qr-tile, .cv-clean .cv-gallery-cell { border-color: var(--cv-line); background: var(--cv-panel-bg); }
+.cv-clean .cv-links b, .cv-clean .qr-tile b, .cv-clean .cv-region-line, .cv-clean .cv-contact-row b { color: var(--cv-link-color); }
+.cv-clean .cv-map-launch, .cv-clean .cv-maps a { background: var(--cv-mini-bg); color: var(--cv-mini-color); box-shadow: var(--cv-mini-shadow); }
+.cv-clean .cv-vcard-qr { border: 3px solid var(--cv-mini-color); }
+.cv-clean .cv-create-own { border-top: 1px solid var(--cv-line); }
+.cv-clean .cv-create-copy b { color: var(--cv-link-color); }
+.cv-clean .cv-footer { background: var(--cv-panel-bg); border-radius: 0 0 var(--cv-card-radius) var(--cv-card-radius); padding: 16px var(--cv-card-x) 20px; color: var(--cv-foot-color); letter-spacing: .1em; }
+.cv-clean .cv-footer b { color: var(--cv-foot-b); }
+.cv-cta-hint { text-align: center; color: var(--cv-hint-color); font-size: 11px; letter-spacing: .08em; margin: 14px 0 0; }
 .cv-dock-hidden { display: none !important; }
 
 /* ============ 深蓝鎏金 navygold：参考名片配色与结构（放在最后覆盖通用商务风）============ */
