@@ -99,7 +99,7 @@
               <p>开启后，附近及同行业的人可按「距离 / 行业 / 关键词」搜到你，点开名片即可存入通讯录。只展示姓名、职位、公司、行业、城市与简介，联系方式不会公开；随时可关闭下架。</p>
               <div class="market-checks">
                 <span :class="{ ok: !!form.industry }">{{ form.industry ? '✓' : '○' }} 填行业（被同行精确搜到）</span>
-                <span :class="{ ok: !!form.city }">{{ form.city ? '✓' : '○' }} 填城市（进入地区筛选）</span>
+                <span :class="{ ok: !!marketRegionText }">{{ marketRegionText ? '✓' : '○' }} 填地区（在「联系方式」里，进入地区筛选）</span>
                 <span :class="{ ok: form.latitude != null }">{{ form.latitude != null ? '✓' : '○' }} 有坐标（按距离优先曝光）</span>
               </div>
             </div>
@@ -112,11 +112,12 @@
                   <option v-for="ind in marketMeta.industries" :key="ind.key" :value="ind.key">{{ ind.label }}</option>
                 </select>
               </div>
-              <div class="field"><label>所在城市</label>
-                <select :value="form.city" class="input" @change="e => pickCity(e.target.value)">
-                  <option value="">未选择</option>
-                  <option v-for="c in marketMeta.cities" :key="c.name" :value="c.name">{{ c.name }}</option>
-                </select>
+              <div class="field">
+                <label>所在地区 <span class="muted small">（来自「联系方式」里的地址，无需重复填写）</span></label>
+                <div class="market-region">
+                  <span class="region-path">{{ marketRegionText || '尚未填写' }}</span>
+                  <button class="btn btn-sm btn-ghost" @click="goSection(sections.findIndex(s => s.key === 'contact'))">去填写 →</button>
+                </div>
               </div>
             </div>
             <div class="field">
@@ -128,7 +129,7 @@
                 <button class="btn btn-sm btn-ghost" :disabled="locating" @click="locateMe">{{ locating ? '定位中…' : '⌖ 重新定位' }}</button>
               </div>
             </div>
-            <p v-if="form.market_opt_in && form.latitude == null" class="small" style="color:#b45309">已开启上架但尚无坐标，请选地区或精确定位，否则在集市中会排在末尾。</p>
+            <p v-if="form.market_opt_in && form.latitude == null" class="small" style="color:#b45309">已开启上架但尚无坐标，请在「联系方式」里选好地区或点「精确定位」，否则在集市中会排在末尾。</p>
             <div class="section-foot"><span class="save-state">修改后自动保存 · 所见即所得</span></div>
           </div>
 
@@ -171,7 +172,7 @@
             <div class="section-title" style="margin-top:0">资料夹 <span class="small muted">· 让名片成为获客入口</span></div>
             <p class="small muted" style="margin-bottom:12px">挂上产品册、作品集、报价单或公众号文章，分享出去的每一份资料末尾都带你的名片落款二维码——对方扫码即可存下你的名片。微信扫一扫可直接打开。</p>
             <div v-if="!materials.length" class="small muted" style="padding:12px 0">还没有资料，添加第一条吧。</div>
-            <div v-for="(m, i) in materials" :key="i" class="material-row">
+            <div v-for="(m, i) in materials" :key="m.id || m._k || i" class="material-row">
               <div class="mr-head">
                 <select v-model="m.type" class="input mr-type">
                   <option v-for="t in materialTypes" :key="t.key" :value="t.key">{{ t.label }}</option>
@@ -182,7 +183,7 @@
               <div class="mr-url">
                 <input v-model="m.url" class="input" :placeholder="m.type === 'link' ? 'https://…' : '上传文件或粘贴链接'" />
                 <label v-if="m.type === 'file'" class="btn btn-sm btn-ghost upload-btn">上传文件
-                  <input type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" @change="e => uploadMaterial(e, i)" />
+                  <input type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" @change="e => uploadMaterial(e, m)" />
                 </label>
               </div>
             </div>
@@ -387,6 +388,8 @@ const regionOpen = ref(false)
 const positionSource = ref('')   // wechat/gps/ip/default/manual，来自四级定位
 const positionQuality = ref('')  // precise/approximate/coarse
 const regionPath = computed(() => [form.value.province, form.value.city, form.value.district, form.value.street].filter(Boolean).join(' / '))
+// 集市地区只读复用「联系方式」的省市区（同一份 cards 列，不重复填）
+const marketRegionText = computed(() => [form.value.province, form.value.city, form.value.district].filter(Boolean).join(' / '))
 const qualityClass = computed(() => ({ precise: 'ok', approximate: 'warn', coarse: 'off' }[positionQuality.value] || 'off'))
 const sourceLabel = computed(() => ({
   wechat: '微信定位', gps: 'GPS 定位', ip: 'IP 定位', default: '城市兜底', manual: '手动选点'
@@ -476,12 +479,6 @@ async function loadMaterials() {
     materials.value = (data.data?.list || []).map(m => ({ type: m.type, title: m.title, url: m.url }))
     savedSections.value = { ...savedSections.value, materials: Date.now() }
   } catch { /* 资料夹加载失败不阻断其它资料编辑 */ }
-}
-
-function pickCity(name) {
-  form.value.city = name
-  const hit = (marketMeta.value.cities || []).find(c => c.name === name)
-  if (hit) { form.value.latitude = hit.lat; form.value.longitude = hit.lng }
 }
 
 // 四级定位主入口（微信/GPS → IP → 城市兜底），成功后逆地理回填省市区
@@ -596,7 +593,8 @@ const SECTION_FIELDS = {
   contact: ['mobile', 'phone', 'email', 'wechat', 'alipay', 'whatsapp', 'province', 'city', 'district', 'street', 'address', 'address_detail'],
   qr: ['wechat_qr', 'alipay_qr', 'wechat_pay_qr', 'alipay_pay_qr'],
   links: ['website', 'shop_url', 'links'],
-  market: ['market_opt_in', 'industry', 'province', 'city', 'district', 'latitude', 'longitude'],
+  // 地区字段（province/city/district）归属「联系方式」，集市只读复用，不在此提交（参数唯一真相源）
+  market: ['market_opt_in', 'industry', 'latitude', 'longitude'],
   appearance: ['template', 'theme', 'accent', 'qr_fg', 'qr_bg', 'qr_logo', 'qr_style']
 }
 const savedSections = ref({})
@@ -626,13 +624,31 @@ async function saveSection(key, silent = false) {
 }
 
 // 资料夹独立保存（整份替换接口，与名片资料解耦）
+// ⚠️ 不要用返回值整体覆盖 materials：用户可能正在编辑「刚加的空行」或上传中，
+// 后端会过滤掉无 url 的行，覆盖会让刚添加的行凭空消失（看起来像页面刷关）。
+// 只把后端分配的 id 回填到已保存的行，本地未保存完的行原样保留。
 async function saveMaterials(silent = false) {
+  if (loadError.value || !loaded.value) return
+  if (saving.value) return
   saving.value = true
   autoSaveText.value = '正在保存…'
   try {
     const items = materials.value.filter(m => m.url).map((m, i) => ({ ...m, sort: i }))
     const { data } = await api.put('/api/cards/mine/materials', { items })
-    materials.value = data.data?.list || []
+    const saved = data.data?.list || []
+    // 按 url 匹配回填服务端 id（url 是资料唯一业务标识）。
+    // 仅在确实变化时替换数组：否则每次保存都新建数组会再次触发 deep watch → 无限自动保存。
+    const byUrl = new Map(saved.map(s => [s.url, s]))
+    let backfilled = false
+    const merged = materials.value.map(m => {
+      const hit = m.url && byUrl.get(m.url)
+      if (hit && (m.id !== hit.id || m.views !== hit.views)) {
+        backfilled = true
+        return { ...m, id: hit.id, views: hit.views }
+      }
+      return m
+    })
+    if (backfilled) materials.value = merged
     savedSections.value = { ...savedSections.value, materials: Date.now() }
     dirtySections.value = { ...dirtySections.value, materials: false }
     if (!silent) showToast('资料夹已保存', 'success')
@@ -642,18 +658,19 @@ async function saveMaterials(silent = false) {
     if (!silent) showToast(e.message, 'error')
   } finally { saving.value = false }
 }
-function addMaterial() { materials.value.push({ type: 'link', title: '', url: '' }) }
-async function uploadMaterial(e, i) {
+let materialSeq = 0
+function addMaterial() { materials.value.push({ _k: `new-${++materialSeq}`, type: 'link', title: '', url: '' }) }
+async function uploadMaterial(e, row) {
   const file = e.target?.files?.[0]
   if (!file) return
-  const prev = materials.value[i].url
+  const prev = row.url
   const fd = new FormData()
   fd.append('file', file)
   try {
     const { data } = await api.post('/api/upload/doc', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
-    materials.value[i].url = data?.data?.url || ''
+    row.url = data?.data?.url || ''
     showToast('文件已上传，将自动保存', 'success')
-  } catch (err) { materials.value[i].url = prev; showToast(err.message, 'error') }
+  } catch (err) { row.url = prev; showToast(err.message, 'error') }
   e.target.value = ''
 }
 
@@ -739,6 +756,7 @@ async function finish() {
 .market-value { padding: 12px 14px; margin-bottom: 14px; border-radius: 12px; background: linear-gradient(135deg, #ecfeff, #eff6ff); border: 1px solid #c7d2fe; }
 .market-value b { font-size: 13px; color: #0e7490; }
 .market-value p { margin: 6px 0 8px; font-size: 12px; line-height: 1.6; color: var(--muted); }
+.market-region { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .market-checks { display: flex; gap: 8px 14px; flex-wrap: wrap; }
 .market-checks span { font-size: 11px; color: var(--muted); }
 .market-checks span.ok { color: #0f766e; font-weight: 700; }
