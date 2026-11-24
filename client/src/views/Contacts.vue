@@ -3,7 +3,7 @@
     <header class="topbar">
       <router-link to="/me" class="brand">M<em>Card</em></router-link>
       <div class="spacer"></div>
-      <button class="nav-menu-btn" aria-label="打开菜单" @click="openDrawer">☰</button>
+      <button class="nav-menu-btn" aria-label="菜单" @click="toggleDrawer"><i class="menu-glyph"></i></button>
       <span class="small muted">我的名片夹</span>
     </header>
     <div class="container" style="margin-top:18px">
@@ -59,7 +59,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import api from '../api'
-import { openDrawer } from '../store'
+import { toggleDrawer } from '../store'
 
 const contacts = ref([])
 const loading = ref(true)

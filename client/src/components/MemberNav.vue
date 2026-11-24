@@ -111,8 +111,14 @@ watch(show, v => {
   if (!v) closeDrawer()
 }, { immediate: true })
 watch(() => route.path, () => closeDrawer())
-watch(() => ui.drawerOpen, v => { if (v) loadSlug() })
-onBeforeUnmount(() => document.body.classList.remove('member-shell'))
+watch(() => ui.drawerOpen, v => {
+  document.body.classList.toggle('drawer-open', v) // 菜单图标三横↔三竖状态
+  if (v) loadSlug()
+})
+onBeforeUnmount(() => {
+  document.body.classList.remove('member-shell')
+  document.body.classList.remove('drawer-open')
+})
 </script>
 
 <style scoped>

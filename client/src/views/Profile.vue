@@ -3,7 +3,7 @@
     <header class="topbar">
       <router-link to="/me" class="brand">M<em>Card</em></router-link>
       <div class="spacer"></div>
-      <button class="nav-menu-btn" aria-label="打开菜单" @click="openDrawer">☰</button>
+      <button class="nav-menu-btn" aria-label="菜单" @click="toggleDrawer"><i class="menu-glyph"></i></button>
     </header>
 
     <div class="container" style="margin-top:18px">
@@ -48,7 +48,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
-import { auth, logout, openDrawer, showToast } from '../store'
+import { auth, logout, toggleDrawer, showToast } from '../store'
 
 const router = useRouter()
 const card = ref(null)

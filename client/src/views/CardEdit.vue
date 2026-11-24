@@ -3,7 +3,7 @@
     <header class="topbar">
       <button class="back-btn" @click="finish">‹ 返回</button>
       <div class="spacer"></div>
-      <button class="nav-menu-btn" aria-label="打开菜单" @click="openDrawer">☰</button>
+      <button class="nav-menu-btn" aria-label="菜单" @click="toggleDrawer"><i class="menu-glyph"></i></button>
       <span class="small muted">编辑资料 · 可随时离开，下次继续</span>
     </header>
 
@@ -285,7 +285,7 @@
 import { ref, computed, onMounted, watch, defineAsyncComponent } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '../api'
-import { showToast, openDrawer } from '../store'
+import { showToast, toggleDrawer } from '../store'
 import { THEMES } from '../utils/themes'
 import { refreshPosition, setManualPosition, reverseGeocode, geocode } from '../utils/geo'
 import LogoUploader from '../components/LogoUploader.vue'

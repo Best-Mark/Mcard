@@ -6,7 +6,7 @@
       <div class="spacer"></div>
       <button class="dash-icon" aria-label="分享名片" @click="doShare">↗</button>
       <button class="dash-icon" aria-label="二维码" @click="qrModal = true">▦</button>
-      <button class="dash-menu-btn" aria-label="打开菜单" @click="openDrawer">☰ <span>菜单</span></button>
+      <button class="dash-menu-btn" aria-label="菜单" @click="toggleDrawer"><i class="menu-glyph"></i><span>菜单</span></button>
     </header>
 
     <!-- 加载 / 错误 / 未创建 -->
@@ -157,7 +157,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
-import { showToast, siteConfig, openDrawer } from '../store'
+import { showToast, siteConfig, toggleDrawer } from '../store'
 import { THEMES, themeOf, themeVars } from '../utils/themes'
 import { isWeChat, saveImageUrl } from '../utils/save-image'
 import { shareOrCopy, mapLinks } from '../utils/share'
@@ -253,11 +253,13 @@ async function doShare() {
 /* 工作台参考商务名片风格：深蓝→亮蓝→青蓝渐变 + 浅蓝底 + 白卡大圆角 */
 .dash-page { min-height: 100vh; background: #f4f7fe; color: #172033; padding-bottom: 84px; --dash-cover: linear-gradient(90deg,#143b8f 0%,#2f6feb 52%,#06b6d4 100%); }
 .dash-top { height: 52px; display: flex; align-items: center; gap: 6px; padding: 0 12px; position: sticky; top: 0; z-index: 20; background: var(--dash-cover); color: #fff; }
+.dash-top .spacer { flex: 1; }
 .dash-brand { font-weight: 800; font-size: 18px; color: #fff; }
 .dash-brand em { font-style: normal; opacity: .75; }
 .dash-icon { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.16); color: #fff; font-size: 18px; display: grid; place-items: center; }
-.dash-menu-btn { display: flex; align-items: center; gap: 5px; height: 36px; padding: 0 12px; border-radius: 18px; background: rgba(255,255,255,.18); color: #fff; font-size: 12px; font-weight: 600; }
+.dash-menu-btn { display: flex; align-items: center; gap: 7px; height: 36px; padding: 0 12px; border-radius: 18px; background: rgba(255,255,255,.18); color: #fff; font-size: 12px; font-weight: 600; }
 .dash-menu-btn span { font-size: 12px; }
+.dash-menu-btn .menu-glyph { width: 15px; height: 13px; }
 .dash-loading { margin-top: 20px; }
 .cv-cover { height: 148px; position: relative; background: var(--dash-cover); border-radius: 0 0 28px 28px; overflow: hidden; }
 .cv-cover::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: linear-gradient(90deg, transparent, rgba(255,255,255,.7), transparent); opacity: .8; }

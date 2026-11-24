@@ -126,5 +126,13 @@ tr:last-child td { border-bottom: 0; }
 
 /* 会员区底部三栏 + 右抽屉：页面底部留白由 body.member-shell 统一抬高，避免被导航遮住 */
 .member-shell .page, .member-shell .dash-page, .member-shell .market-page { padding-bottom: 140px; }
-.nav-menu-btn { width: 34px; height: 34px; border-radius: 10px; background: rgba(37,99,235,.1); color: var(--primary); font-size: 15px; display: grid; place-items: center; }
+.nav-menu-btn { width: 34px; height: 34px; border-radius: 10px; background: rgba(37,99,235,.1); color: var(--primary); display: grid; place-items: center; position: relative; }
 .nav-menu-btn:active { background: rgba(37,99,235,.2); }
+/* 菜单图标：三横 ↔ 三竖（右抽屉打开时），带状态体现。用 background 画三条，跨主题用 currentColor。 */
+.menu-glyph { display: block; width: 16px; height: 14px; border-radius: 2px; background: linear-gradient(currentColor, currentColor) 0 0/100% 2px no-repeat,
+  linear-gradient(currentColor, currentColor) 0 6px/100% 2px no-repeat,
+  linear-gradient(currentColor, currentColor) 0 12px/100% 2px no-repeat;
+  transition: transform .22s ease, width .22s ease, height .22s ease;
+  transform-origin: center;
+}
+body.drawer-open .menu-glyph { transform: rotate(90deg); }

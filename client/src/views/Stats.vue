@@ -5,7 +5,7 @@
       <span class="title">浏览统计</span>
       <div class="spacer"></div>
       <button class="dash-icon" aria-label="回到名片" @click="router.push('/me')">▤</button>
-      <button class="nav-menu-btn" aria-label="打开菜单" @click="openDrawer">☰</button>
+      <button class="nav-menu-btn" aria-label="菜单" @click="toggleDrawer"><i class="menu-glyph"></i></button>
     </header>
 
     <div v-if="loading" class="container dash-loading"><div class="card card-pad">加载中…</div></div>
@@ -98,7 +98,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
-import { openDrawer } from '../store'
+import { toggleDrawer } from '../store'
 import CountUp from '../components/CountUp.vue'
 
 const router = useRouter()

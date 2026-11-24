@@ -3,7 +3,7 @@
     <header class="topbar market-nav">
       <button class="nav-back" @click="router.back ? router.back() : router.push('/')" aria-label="返回">‹</button>
       <span class="nav-title">名片集市 · 发现对口伙伴</span>
-      <button class="nav-menu-btn" aria-label="打开菜单" @click="openDrawer">☰</button>
+      <button class="nav-menu-btn" aria-label="菜单" @click="toggleDrawer"><i class="menu-glyph"></i></button>
       <router-link to="/me" class="nav-me">我的</router-link>
     </header>
 
@@ -96,7 +96,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
-import { showToast, openDrawer } from '../store'
+import { showToast, toggleDrawer } from '../store'
 import { getCurrentPosition, getPositionQualityLabel } from '../utils/geo'
 
 const router = useRouter()
