@@ -1,15 +1,34 @@
 <template>
   <router-view v-slot="{ Component }">
-    <component :is="Component" />
+    <DesktopShell v-if="useShell">
+      <DesktopOverview v-if="isDesktopHome" />
+      <component v-else :is="Component" />
+    </DesktopShell>
+    <component v-else :is="Component" />
   </router-view>
-  <MemberNav />
+  <MemberNav v-if="!isPC" />
   <div v-if="toast.text" class="toast" :class="toast.type">{{ toast.text }}</div>
 </template>
 
 <script setup>
-import { reactive } from 'vue'
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { toast } from './store'
 import MemberNav from './components/MemberNav.vue'
+import DesktopShell from './layouts/DesktopShell.vue'
+import DesktopOverview from './views/desktop/DesktopOverview.vue'
+import { isPC } from './utils/device'
+
+const route = useRoute()
+// PC 首页用专属多栏概览（H5 的 /me 仍走原 Dashboard，路由表不变）
+const isDesktopHome = computed(() => route.path === '/me')
+// 桌面壳只套「工作台类」页面：/me 系列与 /market。
+// 公开名片页 /c/:slug、登录/微信回调、后台 /admin 保持原样（后台本身已是桌面布局）。
+const useShell = computed(() => {
+  if (!isPC.value) return false
+  const p = route.path
+  return p === '/market' || (p.startsWith('/me') && !p.startsWith('/me/pay'))
+})
 </script>
 
 <style scoped>

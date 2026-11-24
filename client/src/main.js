@@ -4,6 +4,7 @@ import router from './router'
 import api from './api'
 import { loadSiteConfig } from './store'
 import './styles/global.css'
+import './styles/desktop.css'
 
 createApp(App).use(router).mount('#app')
 loadSiteConfig(api)

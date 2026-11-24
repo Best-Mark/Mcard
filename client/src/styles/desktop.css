@@ -1,0 +1,40 @@
+/* 真正的 PC 版覆盖层：仅在桌面壳（.desktop-shell）内生效，H5 移动端自适应完全不受影响。
+   原则：复用同一套页面组件与 API，只放大容器/改多栏栅格/隐藏页面内重复的顶栏。 */
+.desktop-shell .container { width: 100%; max-width: 1240px; }
+.desktop-shell .container.wide { max-width: 1400px; }
+
+/* 桌面壳已有顶栏，隐藏各页面自带 topbar（Admin 后台自身是独立桌面布局，不走本壳，不受影响） */
+.desktop-shell .ds-content .topbar { display: none; }
+.desktop-shell .ds-content .market-nav { display: none; }
+
+/* 工作台首屏：名片卡与主内容并排更舒展 */
+.desktop-shell .cv-main { max-width: 900px; margin-top: 0; }
+.desktop-shell .page { padding-top: 0; }
+
+/* 集市：列表卡 3 列网格（手机端是单列，这里只覆盖桌面壳内） */
+.desktop-shell .mk-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.desktop-shell .mk-list > .mk-state,
+.desktop-shell .mk-list > .mk-empty,
+.desktop-shell .mk-list > .mk-count,
+.desktop-shell .mk-list > .mk-more { grid-column: 1 / -1; }
+.desktop-shell .mk-card { margin-bottom: 0; }
+.desktop-shell .mk-filters { border-radius: 14px; border: 1px solid var(--line, #e8edf4); margin-bottom: 16px; }
+.desktop-shell .mk-slogan { font-size: 19px; }
+
+/* 统计：指标卡 4 列、画像双栏更宽 */
+.desktop-shell .stat-grid { grid-template-columns: repeat(4, 1fr); }
+.desktop-shell .profile-grid { grid-template-columns: repeat(2, 1fr); }
+
+/* 名片夹：双列 */
+.desktop-shell .contact-card { display: inline-block; width: calc(50% - 8px); margin-right: 12px; vertical-align: top; }
+
+/* 编辑页：桌面壳内已是三栏布局，去掉多余顶部间距 */
+.desktop-shell .edit-layout { grid-template-columns: 190px minmax(0, 1fr) 320px; }
+
+/* 关掉 H5 底部 tab 的让位补丁（PC 用侧栏，无底 tab） */
+body:not(.member-shell) .page,
+body:not(.member-shell) .dash-page,
+body:not(.member-shell) .market-page { padding-bottom: 0; }
+
+/* 桌面下叙述性文字略放大，留白更从容 */
+.desktop-shell .small { font-size: 13px; }

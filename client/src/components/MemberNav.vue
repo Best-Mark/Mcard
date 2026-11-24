@@ -12,33 +12,12 @@
       </div>
 
       <div class="m-drawer-body">
-        <section class="m-group">
-          <div class="m-group-title">名片</div>
-          <button @click="go('/me')"><i>▤</i>我的名片</button>
-          <button @click="goPublic('')"><i>↗</i>公开名片页</button>
-          <button @click="goPublic('?save=1')"><i>▦</i>存入通讯录二维码</button>
-          <button @click="go('/market')"><i>⌕</i>名片集市</button>
-          <button @click="doShare"><i>↗</i>分享名片</button>
-        </section>
-
-        <section class="m-group">
-          <div class="m-group-title">资料</div>
-          <button @click="go('/me/card')"><i>✎</i>编辑资料</button>
-          <button @click="go('/me/card?focus=appearance')"><i>🎨</i>模板与配色</button>
-          <button @click="go('/me/card?focus=bio')"><i>📝</i>完善资料</button>
-          <button @click="go('/me/card?focus=materials')"><i>📚</i>资料夹（产品册/作品）</button>
-          <button @click="go('/me/print')"><i>🖨</i>实体名片版式</button>
-        </section>
-
-        <section class="m-group">
-          <div class="m-group-title">我的</div>
-          <button @click="go('/me/notifications')"><i>🔔</i>消息通知 <span v-if="unread" class="m-badge">{{ unread }}</span></button>
-          <button @click="go('/me/profile')"><i>◉</i>账户信息</button>
-          <button @click="go('/me/contacts')"><i>▤</i>我的名片夹</button>
-          <button @click="go('/me/batch-scan')"><i>📷</i>展会连扫收名片</button>
-          <button @click="go('/me/stats')"><i>📊</i>浏览统计 / 订单</button>
-          <button @click="go('/me/plans')"><i>💎</i>套餐 / 续期</button>
-          <button class="danger" @click="logoutNow"><i>⏻</i>退出登录</button>
+        <section v-for="g in DRAWER_GROUPS" :key="g.title" class="m-group">
+          <div class="m-group-title">{{ g.title }}</div>
+          <button v-for="it in g.items" :key="it.label" :class="{ danger: it.danger }" @click="onNav(it)">
+            <i>{{ it.ico }}</i>{{ it.label }}
+            <span v-if="it.badge === 'unread' && unread" class="m-badge">{{ unread }}</span>
+          </button>
         </section>
         <p class="m-drawer-note">名片的模板与配色跟随当前账号，分享出去的名片页即用户调整后的效果。</p>
       </div>
@@ -59,18 +38,15 @@ import api from '../api'
 import { auth, ui, closeDrawer, logout, showToast } from '../store'
 import { shareOrCopy } from '../utils/share'
 import { isWeChat } from '../utils/save-image'
+import { BOTTOM_TABS, DRAWER_GROUPS, runNavItem } from '../config/nav'
+import { isPC } from '../utils/device'
 
 const route = useRoute()
 const router = useRouter()
-const show = computed(() => (route.path.startsWith('/me') && !route.path.startsWith('/me/pay')) || route.path === '/market')
-// 集市放在正中并做凸起强调：当前阶段以发现对口伙伴为重点
-const tabs = [
-  { path: '/me', label: '名片', ico: '▤', exact: true },
-  { path: '/me/stats', label: '统计', ico: '📊', exact: false },
-  { path: '/market', label: '集市', ico: '⌕', exact: true, feature: true },
-  { path: '/me/contacts', label: '名片夹', ico: '▤', exact: false },
-  { path: '/me/profile', label: '我的', ico: '◉', exact: false }
-]
+// PC 桌面走左侧固定导航壳，H5 底部 tab + 抽屉自动让位
+const show = computed(() => !isPC.value && ((route.path.startsWith('/me') && !route.path.startsWith('/me/pay')) || route.path === '/market'))
+// 集市放在正中并做凸起强调：当前阶段以发现对口伙伴为重点（数据源唯一真相在 config/nav.js）
+const tabs = BOTTOM_TABS
 const slug = ref('')
 const unread = ref(0)
 let slugBusy = false
@@ -85,7 +61,12 @@ async function loadUnread() {
 }
 onMounted(() => { loadUnread(); unreadTimer = setInterval(loadUnread, 60000) })
 
-function isActive(t) { return t.exact ? route.path === t.path : route.path.startsWith(t.path) }
+function isActive(t) {
+  const base = String(t.path || '').split('?')[0]
+  return t.exact ? route.path === base : route.path.startsWith(base)
+}
+const navHandlers = { go, goPublic, doShare, logoutNow }
+function onNav(item) { closeDrawer(); runNavItem(item, navHandlers) }
 function go(path) {
   closeDrawer()
   if (route.fullPath !== path) router.push(path)
