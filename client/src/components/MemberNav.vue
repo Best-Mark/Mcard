@@ -63,7 +63,7 @@ const show = computed(() => (route.path.startsWith('/me') && !route.path.startsW
 // 集市放在正中并做凸起强调：当前阶段以发现对口伙伴为重点
 const tabs = [
   { path: '/me', label: '名片', ico: '▤', exact: true },
-  { path: '/me/card', label: '资料', ico: '✎', exact: false },
+  { path: '/me/stats', label: '统计', ico: '📊', exact: false },
   { path: '/market', label: '集市', ico: '⌕', exact: true, feature: true },
   { path: '/me/contacts', label: '名片夹', ico: '▤', exact: false },
   { path: '/me/profile', label: '我的', ico: '◉', exact: false }

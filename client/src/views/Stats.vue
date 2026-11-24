@@ -18,20 +18,62 @@
       </div>
     </div>
     <div v-else class="container stats-page">
+      <!-- 主视觉：累计浏览大数字 -->
+      <div class="hero-panel">
+        <div class="hero-glow"></div>
+        <div class="hero-top">
+          <span class="hero-tag">📊 数据总览</span>
+          <span class="hero-status">{{ card?.active ? '● 已开通' : '○ 待开通' }}</span>
+        </div>
+        <div class="hero-main">
+          <div class="hero-number"><CountUp :value="stats.views" :duration="1600" /></div>
+          <div class="hero-unit">累计浏览次数</div>
+        </div>
+        <div class="hero-foot">
+          <span>近14天 <b>{{ recentTotal }}</b> 次</span>
+          <span class="sep">·</span>
+          <span>日均 <b>{{ dailyAvg }}</b> 次</span>
+          <span class="sep">·</span>
+          <span>二维码永久有效</span>
+        </div>
+      </div>
+
+      <!-- 三张核心指标卡 -->
       <div class="stat-grid">
-        <div class="stat"><b>{{ stats.views }}</b><span>累计浏览</span></div>
-        <div class="stat"><b>{{ stats.exchanges }}</b><span>交换名片</span></div>
-        <div class="stat"><b>{{ card?.active ? (card?.expires_at ? expireDays : '永久') : 0 }}</b><span>剩余有效天数</span></div>
-        <div class="stat"><b>{{ card?.active ? '已开通' : '待开通' }}</b><span>当前状态</span></div>
+        <div class="stat-card c2">
+          <div class="stat-ico">🔄</div>
+          <div class="stat-num"><CountUp :value="stats.exchanges" :duration="1300" :delay="120" /></div>
+          <div class="stat-label">交换名片</div>
+          <div class="stat-bar"></div>
+        </div>
+        <div class="stat-card c3">
+          <div class="stat-ico">📈</div>
+          <div class="stat-num"><CountUp :value="recentTotal" :duration="1300" :delay="240" /></div>
+          <div class="stat-label">近14天浏览</div>
+          <div class="stat-bar"></div>
+        </div>
+        <div class="stat-card c4">
+          <div class="stat-ico">⏳</div>
+          <div class="stat-num">
+            <template v-if="card?.active && !card?.expires_at">永久</template>
+            <CountUp v-else :value="card?.active ? expireDays : 0" :duration="1300" :delay="360" suffix=" 天" />
+          </div>
+          <div class="stat-label">剩余有效期</div>
+          <div class="stat-bar"></div>
+        </div>
       </div>
 
       <div class="section-title">近 14 天浏览趋势</div>
-      <div class="card card-pad">
+      <div class="card card-pad trend-card">
         <div v-if="!stats.daily?.length" class="empty small">暂无浏览记录，把二维码分享出去就能看到数据</div>
         <div v-else class="chart">
-          <div v-for="d in stats.daily" :key="d.day" class="bar-col" :title="`${d.day}：${d.n} 次`">
-            <div class="bar" :style="{ height: Math.max(4, d.n / maxView * 100) + '%' }"></div>
-            <span>{{ d.day.slice(5) }}</span>
+          <div v-for="(d, i) in stats.daily" :key="d.day" class="bar-col" :title="`${d.day}：${d.n} 次`">
+            <span v-if="d.n > 0" class="bar-val">{{ d.n }}</span>
+            <span v-else class="bar-val bar-val-empty">&nbsp;</span>
+            <div class="bar-track">
+              <div class="bar" :class="{ peak: d.n === maxView }" :style="{ height: Math.max(4, d.n / maxView * 100) + '%', animationDelay: (i * 45) + 'ms' }"></div>
+            </div>
+            <span class="bar-day">{{ d.day.slice(5) }}</span>
           </div>
         </div>
       </div>
@@ -57,6 +99,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
 import { openDrawer } from '../store'
+import CountUp from '../components/CountUp.vue'
 
 const router = useRouter()
 const card = ref(null)
@@ -67,6 +110,11 @@ const error = ref('')
 let loadStarted = false
 
 const maxView = computed(() => Math.max(1, ...(stats.value.daily || []).map(d => d.n)))
+const recentTotal = computed(() => (stats.value.daily || []).reduce((s, d) => s + (Number(d.n) || 0), 0))
+const dailyAvg = computed(() => {
+  const days = (stats.value.daily || []).length || 14
+  return Math.round(recentTotal.value / days)
+})
 const expireDays = computed(() => card.value?.expires_at ? Math.max(0, Math.ceil((new Date(String(card.value.expires_at).replace(' ', 'T') + 'Z') - Date.now()) / 86400000)) : 0)
 
 async function load() {
@@ -91,9 +139,61 @@ function statusText(s) { return ({ paid: '已支付', pending: '待支付', canc
 .dash-icon { width: 34px; height: 34px; border-radius: 50%; background: #eef2ff; color: var(--primary); font-size: 16px; }
 .dash-loading { margin-top: 20px; }
 .stats-page { padding-top: 16px; padding-bottom: 30px; }
-.chart { display: flex; align-items: flex-end; gap: 6px; height: 160px; padding-top: 10px; }
-.bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 0; }
-.bar-col .bar { width: 100%; max-width: 22px; background: linear-gradient(180deg, #2f6feb, #06b6d4); border-radius: 6px 6px 0 0; }
-.bar-col span { font-size: 10px; color: var(--muted); margin-top: 6px; }
+
+/* 主视觉 */
+.hero-panel { position: relative; overflow: hidden; border-radius: 20px; padding: 22px 24px; color: #fff; background: linear-gradient(135deg, #1e3a8a 0%, #4f46e5 55%, #7c3aed 100%); box-shadow: 0 18px 44px rgba(30,58,138,.26); animation: rise .55s ease both; }
+.hero-glow { position: absolute; width: 300px; height: 300px; right: -60px; top: -140px; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,.28), transparent 65%); pointer-events: none; animation: breathe 6s ease-in-out infinite; }
+.hero-top { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; }
+.hero-tag { font-size: 13px; font-weight: 600; letter-spacing: .06em; opacity: .92; }
+.hero-status { font-size: 12px; padding: 4px 12px; border-radius: 999px; background: rgba(255,255,255,.18); }
+.hero-main { position: relative; z-index: 1; margin: 22px 0 18px; }
+.hero-number { font-size: clamp(48px, 13vw, 78px); font-weight: 800; line-height: 1; letter-spacing: -2px; text-shadow: 0 0 28px rgba(255,255,255,.42); }
+.hero-unit { margin-top: 8px; font-size: 14px; letter-spacing: .1em; opacity: .86; }
+.hero-foot { position: relative; z-index: 1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.2); font-size: 12px; opacity: .92; }
+.hero-foot b { font-size: 14px; }
+.hero-foot .sep { opacity: .5; }
+
+/* 指标卡 */
+.stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 14px; }
+.stat-card { position: relative; overflow: hidden; padding: 16px 14px 14px; background: var(--bg-card, #fff); border: 1px solid var(--line, #e8edf4); border-radius: 16px; box-shadow: 0 6px 20px rgba(15,23,42,.05); animation: rise .55s ease both; }
+.stat-card::before { content: ''; position: absolute; left: 0; top: 0; right: 0; height: 3px; background: var(--c); }
+.stat-card:nth-child(1) { animation-delay: .08s; }
+.stat-card:nth-child(2) { animation-delay: .16s; }
+.stat-card:nth-child(3) { animation-delay: .24s; }
+.stat-ico { font-size: 20px; line-height: 1; }
+.stat-num { margin: 10px 0 4px; font-size: clamp(24px, 6vw, 34px); font-weight: 800; letter-spacing: -1px; color: var(--c); }
+.stat-label { font-size: 12px; color: var(--muted, #6b7688); }
+.stat-bar { position: relative; height: 4px; margin-top: 12px; border-radius: 999px; background: var(--line, #eef2f7); overflow: hidden; }
+.stat-bar::after { content: ''; position: absolute; inset: 0; background: var(--c); transform-origin: left; animation: barFill 1.1s ease-out both; animation-delay: .3s; }
+.c2 { --c: #2563eb; }
+.c3 { --c: #0891b2; }
+.c4 { --c: #ea580c; }
+
+/* 趋势图 */
 .section-title { font-size: 15px; font-weight: 700; margin: 22px 0 10px; }
+.trend-card { animation: rise .55s ease both; animation-delay: .3s; }
+.chart { display: flex; align-items: flex-end; gap: 5px; height: 180px; padding-top: 14px; }
+.bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; min-width: 0; }
+.bar-val { height: 16px; font-size: 10px; color: var(--muted, #6b7688); font-variant-numeric: tabular-nums; }
+.bar-val-empty { visibility: hidden; }
+.bar-track { flex: 1; width: 100%; max-width: 22px; display: flex; align-items: flex-end; }
+.bar { width: 100%; border-radius: 6px 6px 0 0; background: linear-gradient(180deg, #2f6feb, #06b6d4); transform-origin: bottom; animation: barGrow .8s cubic-bezier(.2, .8, .2, 1) both; }
+.bar.peak { background: linear-gradient(180deg, #f59e0b, #ef4444); }
+.bar-day { height: 18px; margin-top: 6px; font-size: 10px; color: var(--muted, #6b7688); white-space: nowrap; }
+
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes breathe { 0%, 100% { opacity: .45; transform: scale(1); } 50% { opacity: .85; transform: scale(1.12); } }
+@keyframes barFill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes barGrow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+@media (max-width: 520px) {
+  .stat-grid { grid-template-columns: 1fr; }
+  .stat-card { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 0 12px; }
+  .stat-ico { grid-row: span 2; }
+  .stat-num { margin: 0; }
+  .stat-bar { grid-column: span 2; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-panel, .stat-card, .trend-card, .bar, .stat-bar::after, .hero-glow { animation: none !important; }
+}
 </style>
