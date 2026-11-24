@@ -122,14 +122,14 @@
           </div>
         </div>
 
-        <!-- 通讯录/分享二维码统一到公开名片页（那里有本地 vCard 二维码，各环境都能存通讯录） -->
+        <!-- 名片二维码统一到公开名片页：码内容是名片地址（短链好扫），微信扫开名片页后再点「存入通讯录」 -->
         <div class="card cv-qr-card">
-          <button class="cv-qr-img" @click="router.push(`/c/${card.slug}?save=1`)" title="点击查看存入通讯录二维码">
+          <button class="cv-qr-img" @click="router.push(`/c/${card.slug}?save=1`)" title="点击查看我的名片二维码">
             <img :src="qrApi + '/qr.svg?size=440'" alt="我的名片二维码" />
           </button>
           <div class="cv-qr-text">
             <h3>我的名片二维码</h3>
-            <p>点击查看「存入通讯录」二维码 · 相机扫一扫即可保存</p>
+            <p>点击查看大图 · 微信扫一扫打开名片后可存入通讯录</p>
           </div>
         </div>
 

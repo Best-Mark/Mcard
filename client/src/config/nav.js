@@ -1,6 +1,6 @@
 // 导航唯一真相源：H5 底部 tab / 抽屉 与 PC 侧栏共用同一份菜单定义。
 // 两端只负责「怎么跳转」，菜单项本身（文案/图标/分组/目标）在此一处定义。
-// kind: route=站内跳转；public=打开自己公开名片（query 可为 ?save=1）；share=分享名片；logout=退出登录。
+// kind: route=站内跳转；public=打开自己公开名片（query 可为 ?save=1 = 弹名片二维码大图）；share=分享名片；logout=退出登录。
 // path 可带 ?focus=xxx，由 CardEdit.vue 的 applyFocus 响应（模板与配色等子页）。
 
 export const BOTTOM_TABS = [
@@ -17,7 +17,7 @@ export const DRAWER_GROUPS = [
     items: [
       { label: '我的名片', ico: '▤', kind: 'route', path: '/me' },
       { label: '公开名片页', ico: '↗', kind: 'public', query: '' },
-      { label: '存入通讯录二维码', ico: '▦', kind: 'public', query: '?save=1' },
+      { label: '我的名片二维码', ico: '▦', kind: 'public', query: '?save=1' },
       { label: '名片集市', ico: '⌕', kind: 'route', path: '/market' },
       { label: '分享名片', ico: '↗', kind: 'share' }
     ]

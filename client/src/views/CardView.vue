@@ -128,28 +128,20 @@
           </div>
         </div>
 
-        <!-- 通讯录二维码：内容就是 vCard，相机扫一扫直接弹「添加到通讯录」 -->
+        <!-- 名片二维码：码里是名片地址短链（不是整段 vCard），微信扫一扫必开；
+             打开名片页后再点页面里的「存入通讯录」按钮保存，兼容 iPhone / 安卓 / 鸿蒙。 -->
         <div class="card card-pad cv-block cv-contact-qr" id="contact-qr">
-          <h3 class="cv-sec-title">存入通讯录</h3>
-          <p class="small muted cv-qr-lead">用手机相机扫一扫下方二维码，即可把名片直接存入通讯录（iPhone / 安卓 / 鸿蒙通用）</p>
-          <button class="cv-vcard-qr" @click="vcardQrModal = true" title="点击放大">
-            <img v-if="vcardQrDataUrl" :src="vcardQrDataUrl" alt="存入通讯录二维码" />
-            <img v-else :src="vcardQrApi" alt="存入通讯录二维码" fetchpriority="high" decoding="async" />
+          <h3 class="cv-sec-title">扫码打开名片 · 存入通讯录</h3>
+          <p class="small muted cv-qr-lead">用微信或手机相机扫一扫下方二维码打开名片，再点页面里的「存入通讯录」按钮即可保存（iPhone / 安卓 / 鸿蒙通用）。也可把二维码转发给朋友浏览</p>
+          <button class="cv-vcard-qr" @click="qrModal = true" title="点击放大">
+            <img :src="qrApi + '/qr.svg?size=360'" alt="名片地址二维码" fetchpriority="high" decoding="async" />
           </button>
           <div class="cv-qr-actions">
-            <button class="btn btn-primary" @click="vcardQrModal = true">放大二维码</button>
+            <button class="btn btn-primary" @click="qrModal = true">放大二维码</button>
             <a v-if="contactNative" class="btn btn-ghost" :href="vcfApi">{{ contactActionLabel }}</a>
             <button v-else class="btn btn-ghost" @click="saveContact">{{ contactActionLabel }}</button>
           </div>
           <p class="small muted" style="margin-top:8px">{{ contactActionTip }}</p>
-        </div>
-
-        <div class="card card-pad cv-block">
-          <h3 class="cv-sec-title">分享这张名片</h3>
-          <p class="small muted">下方二维码打开的是名片网页，可转发给朋友浏览</p>
-          <button class="cv-share-qr" @click="qrModal = true" title="点击放大">
-            <img :src="qrApi + '/qr.svg?size=360'" alt="名片网页二维码" />
-          </button>
         </div>
 
         <div class="card card-pad cv-exchange">
@@ -178,28 +170,15 @@
       </BottomSheet>
     </template>
 
-    <!-- 通讯录二维码大图：相机扫一扫直接加联系人 -->
-    <div v-if="vcardQrModal" class="modal-mask" @click.self="vcardQrModal = false">
-      <div class="modal center">
-        <h3>存入通讯录</h3>
-        <p class="small muted" style="margin:6px 0 12px">用<i style="font-style:normal;color:#07c160;font-weight:700">手机相机</i>或系统扫一扫，扫下方二维码即可添加（不是微信扫一扫）。</p>
-        <img :src="vcardQrDataUrl || vcardQrLargeApi" style="width:260px;height:260px;margin:4px auto;display:block" alt="通讯录二维码" />
-        <p class="small muted">iPhone 相机 / 安卓相机 / 鸿蒙相机 / 系统扫一扫均可识别</p>
-        <div class="btn-row" style="justify-content:center;margin-top:12px">
-          <button class="btn btn-primary" @click="saveQrFile({ url: vcardQrDataUrl || vcardQrApi, label: '通讯录二维码' })">保存二维码图片</button>
-          <button class="btn btn-ghost" @click="vcardQrModal = false">关闭</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 名片网页二维码大图 -->
+    <!-- 名片地址二维码大图：微信扫一扫打开名片页，再点页面里的「存入通讯录」保存 -->
     <div v-if="qrModal" class="modal-mask" @click.self="qrModal = false">
       <div class="modal center">
-        <h3>分享名片</h3>
-        <img :src="qrApi + '/qr.svg?size=640'" style="width:240px;height:240px;margin:12px auto" alt="二维码大图" />
-        <p class="small">扫一扫打开名片网页；长按图片可保存</p>
-        <div class="btn-row" style="justify-content:center">
-          <button class="btn btn-primary" @click="saveQr">下载二维码</button>
+        <h3>扫码打开名片</h3>
+        <p class="small muted" style="margin:6px 0 12px">用<i style="font-style:normal;color:#07c160;font-weight:700">微信扫一扫</i>下方二维码打开名片，再点页面里的「存入通讯录」按钮保存</p>
+        <img :src="qrApi + '/qr.svg?size=640'" style="width:260px;height:260px;margin:4px auto;display:block" alt="名片地址二维码" />
+        <p class="small muted">微信 / 手机相机 / 系统扫一扫均可打开，地址短、更好扫</p>
+        <div class="btn-row" style="justify-content:center;margin-top:12px">
+          <button class="btn btn-primary" @click="saveQr">保存二维码图片</button>
           <button class="btn btn-ghost" @click="qrModal = false">关闭</button>
         </div>
       </div>
@@ -272,15 +251,12 @@ const route = useRoute(); const router = useRouter()
 const slug = route.params.slug
 const qrApi = `/api/cards/public/${slug}`
 const vcfApi = `${qrApi}/card.vcf`
-const vcardQrApi = `${qrApi}/vcard.svg?size=520`
-const vcardQrLargeApi = `${qrApi}/vcard.svg?size=720`
-const vcardQrPngApi = `${qrApi}/vcard.png?size=720`
-// vCard 高清图用服务端 vcard.png（与公开二维码同款美化样式：码点/码眼/渐变/配色），秒开且保存即高清
-const vcardQrDataUrl = ref('')
+// 二维码统一用名片地址短链（qr.svg/qr.png）：码点少、微信扫一扫必开；
+// 存通讯录在打开的名片页里点按钮完成，不再把整段 vCard 塞进二维码（太密、微信不认、难扫）。
 const card = ref(null); const loading = ref(true); const error = ref('')
 const currentTheme = ref('ocean'); const isOwner = ref(false)
 const template = ref('classic')
-const qrModal = ref(false); const vcardQrModal = ref(false); const guide = ref(''); const guideImage = ref(''); const exchangeOpen = ref(false)
+const qrModal = ref(false); const guide = ref(''); const guideImage = ref(''); const exchangeOpen = ref(false)
 const mapOpen = ref(false)
 const mySlug = ref(''); const exchanging = ref(false)
 const favorite = ref(false); const favBusy = ref(false)
@@ -409,63 +385,16 @@ async function saveQrFile(q) {
   showToast(r.kind === 'downloaded' ? '二维码已开始下载' : '已打开二维码，请长按保存', 'success')
 }
 
-// 与 server/src/services/vcard.js 同口径的本地构造：优先用服务端 vcard.txt（唯一真相源），
-// 失败（如服务端未重启）时用本函数兜底，保证二维码永远能显示、相机扫一扫能加联系人。
-function localVcard(c) {
-  if (!c) return ''
-  const esc = s => String(s || '').replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;')
-  const name = String(c.name || c.name_en || '').trim()
-  const western = /^[\x00-\x7F]+$/.test(name) && name.includes(' ')
-  const i = western ? name.lastIndexOf(' ') : -1
-  const family = i >= 0 ? name.slice(0, i) : ''
-  const given = i >= 0 ? name.slice(i + 1) : name
-  const origin = windowRef.location.origin
-  const url = `${origin}/c/${c.slug}`
-  const notes = []
-  if (c.bio) notes.push(c.bio)
-  if (c.company_intro) notes.push(`公司简介：${c.company_intro}`)
-  const extra = []
-  if (c.wechat) extra.push(`微信：${c.wechat}`)
-  if (c.alipay) extra.push(`支付宝：${c.alipay}`)
-  if (c.whatsapp) extra.push(`WhatsApp：${c.whatsapp}`)
-  if (c.website) extra.push(`主页：${c.website}`)
-  if (c.shop_url) extra.push(`店铺：${c.shop_url}`)
-  if (extra.length) notes.push(extra.join('\n'))
-  // 与服务端同口径：网址已有 URL: 字段，不再重复塞 NOTE（拉长二维码、降低扫码成功率）
-  const lines = [
-    'BEGIN:VCARD', 'VERSION:3.0',
-    `N:${esc(family)};${esc(given)};;;`,
-    `FN:${esc(name || '名片')}`,
-    c.company || c.department ? `ORG:${esc(c.company)};${esc(c.department)}` : '',
-    c.title ? `TITLE:${esc(c.title)}` : '',
-    c.mobile ? `TEL;TYPE=CELL,VOICE:${esc(c.mobile)}` : '',
-    c.phone ? `TEL;TYPE=WORK,VOICE:${esc(c.phone)}` : '',
-    c.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(c.email).trim()) ? `EMAIL;TYPE=INTERNET,WORK:${esc(c.email)}` : '',
-    c.address || c.address_detail ? `ADR;TYPE=WORK:;;${esc(c.address_detail)};${esc(c.address)};;;` : '',
-    `URL:${esc(url)}`,
-    `NOTE:${esc(notes.filter(Boolean).join('\n'))}`,
-    'END:VCARD'
-  ].filter(Boolean)
-  return lines.join('\r\n') + '\r\n'
-}
-
-function buildVcardQr(c) {
-  if (!c) return
-  // 直接用服务端 vcard.png：与公开二维码同款美化样式，免前端生成（省 ~45ms 且样式一致）
-  vcardQrDataUrl.value = vcardQrPngApi
-}
-
 async function load() {
   loading.value = true; error.value = ''
   try {
     const { data } = await api.get(qrApi)
     card.value = data.data
-    buildVcardQr(data.data)
     currentTheme.value = THEMES[data.data.theme] ? data.data.theme : 'ocean'
     template.value = data.data.template || 'classic'
     setupWechatShare(api, {
       title: `${card.value.name || '名片'} · ${card.value.title || card.value.company || '电子名片'}`,
-      desc: `${[card.value.company, card.value.department, card.value.title].filter(Boolean).join(' · ') || '电子名片'}，扫码即可存入通讯录`,
+      desc: `${[card.value.company, card.value.department, card.value.title].filter(Boolean).join(' · ') || '电子名片'}，扫码打开名片`,
       link: card.value.url || windowRef.location.href,
       imgUrl: absoluteMediaUrl(card.value.avatar || card.value.logo || card.value.cover)
     })
@@ -475,10 +404,9 @@ async function load() {
         try { favorite.value = !!(await api.get(`/api/cards/public/${slug}/favorite`)).data.data?.favorite } catch { /* 忽略 */ }
       }
     }
-    // 工作台「存入通讯录」跳过来：立即弹层（弹层图默认用服务端 vcard.svg，秒开；
-    // 本地高清 dataURL 后台生成好后无缝替换，供保存 PNG 用），不再干等 JS 生成
+    // 工作台「我的名片二维码」跳过来：弹名片地址码，微信扫开名片页后再存入通讯录
     if (String(route.query.save) === '1') {
-      vcardQrModal.value = true
+      qrModal.value = true
       // save 是一次性展示参数，清掉它和可能残留的登录凭证，避免被原生转发带出去
       const u = new URL(windowRef.location.href)
       let changed = false
@@ -544,7 +472,7 @@ async function saveContact() {
   if (isWeChat()) { await showGuide('contact'); return }
   if (isIOS()) {
     // iOS Safari：直接跳 .vcf 唤起系统「添加联系人」弹层（覆盖在当前页，不会触发 visibilitychange）。
-    // 若被拦截无法弹出，用户可点页面上的二维码图标用相机扫码兜底——不再主动弹窗打断。
+    // 若被拦截无法弹出，用户可复制页面里的手机号手动新建联系人——不再主动弹窗打断。
     openVcfInline(vcfApi)
     return
   }
@@ -801,8 +729,6 @@ async function toggleFavorite() {
 .cv-vcard-qr img { display: block; width: 100%; height: 100%; }
 .cv-qr-actions { display: flex; gap: 10px; justify-content: center; }
 .cv-qr-actions .btn { min-width: 128px; }
-.cv-share-qr { display: block; width: 160px; height: 160px; margin: 8px auto 0; padding: 8px; background: #fff; border: 1px solid var(--line, #d9e1ee); border-radius: 10px; }
-.cv-share-qr img { display: block; width: 100%; height: 100%; }
 
 /* ============ 7 套模板骨架差异化 ============
    换「模板」= 换排版骨架（封面形态 / 头像位置 / 信息排布 / 底栏）；
