@@ -24,10 +24,14 @@
           <div v-if="mode === 'register'" class="field"><label>昵称（选填）</label><input v-model.trim="nickname" class="input" placeholder="展示用名称" /></div>
           <button class="btn btn-primary btn-block btn-lg" :disabled="busy" @click="submit">{{ busy ? '请稍候…' : (mode === 'login' ? '登录' : '注册并登录') }}</button>
 
-          <div v-if="wxEnabled && isWechat" class="wx-divider"><span>或</span></div>
+          <div v-if="wxEnabled" class="wx-divider"><span>或</span></div>
           <button v-if="wxEnabled && isWechat" class="btn btn-wechat btn-block btn-lg" :disabled="wxBusy" @click="startWxLogin">
             <svg class="wx-ico" viewBox="0 0 24 24" fill="currentColor"><path d="M9.1 4C5.2 4 2 6.7 2 10c0 2 .9 3.8 2.4 5L4 17l2.3-1.1c.9.3 1.8.5 2.8.5h.6a5.5 5.5 0 0 1-.2-1.4c0-3.4 3.3-6.1 7.3-6.1h.6C16.2 6.3 13 4 9.1 4ZM6.6 8.6a.9.9 0 1 1 0-1.8.9.9 0 0 1 0 1.8Zm5 0a.9.9 0 1 1 0-1.8.9.9 0 0 1 0 1.8Z"/><path d="M22 14.3c0-2.7-2.7-4.9-6-4.9s-6 2.2-6 4.9 2.7 4.9 6 4.9c.7 0 1.4-.1 2-.3l1.9 1-.5-1.7c1.6-.9 2.6-2.3 2.6-3.9Zm-8-1.3a.8.8 0 1 1 0-1.6.8.8 0 0 1 0 1.6Zm4 0a.8.8 0 1 1 0-1.6.8.8 0 0 1 0 1.6Z"/></svg>
             {{ wxBusy ? '正在跳转…' : '微信快捷登录' }}
+          </button>
+          <button v-if="wxEnabled && !isWechat" class="btn btn-wechat btn-block btn-lg" :disabled="qrBusy" @click="startQrLogin">
+            <svg class="wx-ico" viewBox="0 0 24 24" fill="currentColor"><path d="M9.1 4C5.2 4 2 6.7 2 10c0 2 .9 3.8 2.4 5L4 17l2.3-1.1c.9.3 1.8.5 2.8.5h.6a5.5 5.5 0 0 1-.2-1.4c0-3.4 3.3-6.1 7.3-6.1h.6C16.2 6.3 13 4 9.1 4ZM6.6 8.6a.9.9 0 1 1 0-1.8.9.9 0 0 1 0 1.8Zm5 0a.9.9 0 1 1 0-1.8.9.9 0 0 1 0 1.8Z"/><path d="M22 14.3c0-2.7-2.7-4.9-6-4.9s-6 2.2-6 4.9 2.7 4.9 6 4.9c.7 0 1.4-.1 2-.3l1.9 1-.5-1.7c1.6-.9 2.6-2.3 2.6-3.9Zm-8-1.3a.8.8 0 1 1 0-1.6.8.8 0 0 1 0 1.6Zm4 0a.8.8 0 1 1 0-1.6.8.8 0 0 1 0 1.6Z"/></svg>
+            {{ qrBusy ? '正在准备…' : '微信扫码登录' }}
           </button>
 
           <p class="center small muted" style="margin-top:16px">
@@ -39,6 +43,20 @@
         </template>
       </div>
       <p class="hint" style="margin-top:14px">演示环境可直接注册。正式上线建议接入短信验证码登录与图形验证码风控。</p>
+    </div>
+
+    <!-- 浏览器微信扫码登录弹层 -->
+    <div v-if="qrModal" class="modal-mask" @click.self="closeQrLogin">
+      <div class="modal center" style="max-width:360px">
+        <h3 style="margin:0 0 6px">微信扫码登录</h3>
+        <p class="small muted" style="margin:0 0 12px">用手机微信扫一扫，授权后自动登录（与微信内登录同一账号）</p>
+        <div v-if="qrImage" class="qr-box"><img :src="qrImage" alt="微信登录二维码" /></div>
+        <div v-else class="qr-box qr-loading">二维码生成中…</div>
+        <p class="small" :style="{ color: qrStatus === 'expired' ? 'var(--danger)' : 'var(--muted)', margin: '10px 0' }">{{ qrTip }}</p>
+        <button class="btn btn-ghost btn-block" :disabled="qrBusy" @click="closeQrLogin">
+          {{ qrBusy ? '正在登录…' : '取消' }}
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -56,6 +74,11 @@ const wxBusy = ref(false)
 const wxEnabled = computed(() => !!siteConfig.wechat_login_enabled)
 const bindTicket = ref(''); const wxNickname = ref(''); const wxAvatar = ref(''); const errMsg = ref('')
 const isWechat = /MicroMessenger/i.test(navigator.userAgent)
+
+// 浏览器扫码登录：二维码会话 + 轮询兑换（一次性凭证，消费后不可重试）
+const qrModal = ref(false); const qrImage = ref(''); const qrBusy = ref(false)
+const qrStatus = ref('pending'); const qrTip = ref('请使用微信扫一扫')
+let qrPollTimer = null; let qrExpiresAt = 0
 
 const ERR_TEXT = {
   state: '授权状态校验失败，请重新发起登录',
@@ -105,7 +128,59 @@ async function startWxLogin() {
     location.href = data.data.url
   } catch (e) { showToast(e.message, 'error'); wxBusy.value = false }
 }
-onBeforeUnmount(() => clearTimeout(wxJumpTimer))
+onBeforeUnmount(() => { clearTimeout(wxJumpTimer); stopQrPoll() })
+
+function stopQrPoll() { if (qrPollTimer) { clearInterval(qrPollTimer); qrPollTimer = null } }
+function closeQrLogin() {
+  if (qrBusy.value) return
+  stopQrPoll()
+  qrModal.value = false
+  qrImage.value = ''
+}
+async function startQrLogin() {
+  if (qrBusy.value || busy.value) return
+  qrBusy.value = true
+  errMsg.value = ''
+  qrModal.value = true
+  qrStatus.value = 'pending'
+  qrTip.value = '二维码生成中…'
+  qrImage.value = ''
+  try {
+    const { data } = await api.post('/api/auth/wechat/qr-session')
+    const sid = data?.data?.sid
+    if (!sid) throw new Error('未获取到登录会话')
+    qrImage.value = `/api/auth/wechat/qr-image?sid=${encodeURIComponent(sid)}`
+    qrExpiresAt = Date.now() + (Number(data.data.ttl) || 300) * 1000
+    qrTip.value = '请使用微信扫一扫'
+    stopQrPoll()
+    qrPollTimer = setInterval(() => pollQrStatus(sid), 2000)
+  } catch (e) {
+    qrModal.value = false
+    showToast(e.message, 'error')
+  } finally { qrBusy.value = false }
+}
+async function pollQrStatus(sid) {
+  if (qrBusy.value || !qrModal.value) return
+  if (Date.now() > qrExpiresAt) { stopQrPoll(); qrStatus.value = 'expired'; qrTip.value = '二维码已过期，请关闭后重新扫码'; return }
+  try {
+    const { data } = await api.get('/api/auth/wechat/qr-status', { params: { sid } })
+    const s = data?.data || {}
+    if (s.status === 'done') {
+      stopQrPoll()
+      qrBusy.value = true // 兑换中防重入
+      qrTip.value = '登录成功，正在跳转…'
+      setAuth(s.token, s.user)
+      await router.replace(route.query.redirect || '/me')
+      showToast('微信扫码登录成功', 'success')
+    } else if (s.status === 'expired') {
+      stopQrPoll()
+      qrStatus.value = 'expired'
+      qrTip.value = '二维码已过期，请关闭后重新扫码'
+    } else if (qrTip.value === '请使用微信扫一扫') {
+      qrTip.value = '等待微信授权…'
+    }
+  } catch { /* 轮询网络抖动不打断，下轮继续 */ }
+}
 
 async function submit() {
   if (!/^1\d{10}$/.test(phone.value)) return showToast('请输入 11 位手机号', 'error')
