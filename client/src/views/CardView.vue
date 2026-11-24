@@ -183,6 +183,7 @@ import { showToast, auth, siteConfig } from '../store'
 import { THEMES, themeOf, themeVars } from '../utils/themes'
 import { isWeChat, isIOS, saveImageUrl, prepareExternalOpen, openVcfInline } from '../utils/save-image'
 import { shareOrCopy, mapLinks } from '../utils/share'
+import { setupWechatShare, absoluteMediaUrl } from '../utils/wx-share'
 
 const route = useRoute(); const router = useRouter()
 const slug = route.params.slug
@@ -248,6 +249,12 @@ async function load() {
     card.value = data.data
     currentTheme.value = THEMES[data.data.theme] ? data.data.theme : 'ocean'
     template.value = data.data.template || 'classic'
+    setupWechatShare(api, {
+      title: `${card.value.name || '名片'} · ${card.value.title || card.value.company || '电子名片'}`,
+      desc: `${[card.value.company, card.value.department, card.value.title].filter(Boolean).join(' · ') || '电子名片'}，扫码即可存入通讯录`,
+      link: card.value.url || windowRef.location.href,
+      imgUrl: absoluteMediaUrl(card.value.avatar || card.value.logo || card.value.cover)
+    })
     if (auth.token) {
       try { const mine = await api.get('/api/cards/mine'); isOwner.value = mine.data.data?.slug === slug } catch { /* 忽略 */ }
       if (!isOwner.value) {
@@ -290,6 +297,10 @@ async function saveContact() {
   else showToast('已打开名片文件，请选择导入通讯录')
 }
 async function doShare() {
+  if (isWeChat()) {
+    showToast('已设为名片卡片：点右上角「···」→ 发送给朋友 / 分享到朋友圈', 'error')
+    return
+  }
   const r = await shareOrCopy({ title: card.value?.name || '电子名片', text: card.value?.title || '扫一扫保存我的名片', url: card.value?.url || windowRef.location.href })
   if (r === 'copied') showToast('链接已复制，快分享给朋友', 'success')
   else if (r === 'failed') showToast('复制失败，请手动复制地址栏链接', 'error')

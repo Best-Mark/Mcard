@@ -52,6 +52,44 @@ async function wxFetch(url) {
   return res.json()
 }
 
+// ---------- 微信 JS-SDK 分享签名（公开接口：公开名片页未登录也要显示分享卡片）----------
+// 复用公众号网页授权配置（同一主体 appid），AppSecret 全程留在服务端。
+// token/ticket 缓存 7000s（官方 7200s，留 200s 余量），失败不缓存、下次自动重试。
+let jsTicketCache = { token: '', tokenAt: 0, ticket: '', ticketAt: 0 }
+async function wxAccessToken(appId, secret) {
+  if (jsTicketCache.token && Date.now() - jsTicketCache.tokenAt < 7000000) return jsTicketCache.token
+  const r = await wxFetch(`${API}/cgi-bin/token?grant_type=client_credential&appid=${encodeURIComponent(appId)}&secret=${encodeURIComponent(secret)}`)
+  if (!r.access_token) throw new Error(r.errmsg || '获取 access_token 失败')
+  jsTicketCache.token = r.access_token; jsTicketCache.tokenAt = Date.now()
+  return r.access_token
+}
+async function wxJsTicket(appId, secret) {
+  if (jsTicketCache.ticket && Date.now() - jsTicketCache.ticketAt < 7000000) return jsTicketCache.ticket
+  const token = await wxAccessToken(appId, secret)
+  const r = await wxFetch(`${API}/cgi-bin/ticket/getticket?access_token=${encodeURIComponent(token)}&type=jsapi`)
+  if (r.errcode) throw new Error(r.errmsg || '获取 jsapi_ticket 失败')
+  jsTicketCache.ticket = r.ticket; jsTicketCache.ticketAt = Date.now()
+  return r.ticket
+}
+// 签名 URL 必须与当前页面地址逐字一致（含 query、不含 hash），否则微信报 invalid signature。
+router.get('/wechat/jssdk-sign', wrap(async (req, res) => {
+  const c = wxa()
+  if (!c.appId || !c.secret) return fail(res, 400, '公众号未配置，无法设置微信分享卡片')
+  let u
+  try { u = new URL(String(req.query.url || '')) } catch { return fail(res, 400, '分享地址无效') }
+  const host = String(req.headers.host || '')
+  if (u.host && host && u.host !== host) return fail(res, 400, '分享地址与当前站点不一致')
+  const signUrl = `${u.origin}${u.pathname}${u.search}`
+  try {
+    const ticket = await wxJsTicket(c.appId, c.secret)
+    const noncestr = crypto.randomBytes(8).toString('hex')
+    const timestamp = Math.floor(Date.now() / 1000)
+    const str = `jsapi_ticket=${ticket}&noncestr=${noncestr}&timestamp=${timestamp}&url=${signUrl}`
+    const signature = crypto.createHash('sha1').update(str, 'utf8').digest('hex')
+    ok(res, { appId: c.appId, timestamp, nonceStr: noncestr, signature })
+  } catch (e) { fail(res, 500, e.message || '微信分享签名失败') }
+}))
+
 // 前端点「微信快捷登录」：拿到授权跳转地址（AppSecret 全程留在服务端）
 router.get('/wechat/url', wrap((req, res) => {
   if (!enabled()) return fail(res, 400, '微信快捷登录未配置或数据源不全')

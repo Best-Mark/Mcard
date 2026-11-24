@@ -6,7 +6,7 @@
       <div class="spacer"></div>
       <button class="dash-icon" aria-label="分享名片" @click="doShare">↗</button>
       <button class="dash-icon" aria-label="二维码" @click="qrModal = true">▦</button>
-      <button class="dash-icon" aria-label="菜单" @click="menuOpen = true">☰</button>
+      <button class="dash-menu-btn" aria-label="打开菜单" @click="menuOpen = true">☰ <span>菜单</span></button>
     </header>
 
     <!-- 加载 / 错误 / 未创建 -->
@@ -134,7 +134,7 @@
             <b>{{ auth.user?.phone || '我的账户' }}</b>
             <span class="small muted">我的名片工作台</span>
           </div>
-          <button class="dash-icon" @click="menuOpen = false" aria-label="关闭">✕</button>
+          <button class="drawer-close" @click="menuOpen = false" aria-label="关闭">✕</button>
         </div>
         <nav class="drawer-nav">
           <router-link to="/me" @click="menuOpen = false"><i>▤</i>我的名片</router-link>
@@ -215,6 +215,7 @@ import { auth, logout, showToast, siteConfig } from '../store'
 import { THEMES, themeOf, themeVars } from '../utils/themes'
 import { isWeChat, isIOS, saveImageUrl, prepareExternalOpen, openVcfInline } from '../utils/save-image'
 import { shareOrCopy, mapLinks } from '../utils/share'
+import { setupWechatShare, absoluteMediaUrl } from '../utils/wx-share'
 
 const router = useRouter()
 const card = ref(null); const stats = ref({ views: 0, exchanges: 0, daily: [] }); const orders = ref([])
@@ -250,6 +251,12 @@ async function load() {
   try {
     const [c, s, o] = await Promise.all([api.get('/api/cards/mine'), api.get('/api/cards/mine/stats'), api.get('/api/orders/mine')])
     card.value = c.data.data; stats.value = s.data.data; orders.value = o.data.data
+    setupWechatShare(api, {
+      title: `${card.value.name || '我的'} · ${card.value.title || card.value.company || '电子名片'}`,
+      desc: `${[card.value.company, card.value.department, card.value.title].filter(Boolean).join(' · ') || '电子名片'}，扫码即可存入通讯录`,
+      link: card.value.url || window.location.href,
+      imgUrl: absoluteMediaUrl(card.value.avatar || card.value.logo || card.value.cover)
+    })
   } catch (e) { loadError.value = e.message || '网络异常' } finally { loading.value = false }
 }
 onMounted(load)
@@ -301,6 +308,11 @@ async function saveContact() {
   showToast(r.kind === 'downloaded' ? '已下载，打开即可导入通讯录' : '已打开名片文件，请选择导入通讯录', 'success')
 }
 async function doShare() {
+  if (isWeChat()) {
+    // 微信不允许 JS 主动拉起转发面板，只能配置好卡片内容后引导用户走右上角菜单
+    showToast('已设为名片卡片：点右上角「···」→ 发送给朋友 / 分享到朋友圈', 'error')
+    return
+  }
   const r = await shareOrCopy({ title: card.value?.name || '电子名片', text: card.value?.title || '扫一扫保存我的名片', url: card.value?.url || window.location.href })
   if (r === 'copied') showToast('链接已复制，快分享给朋友', 'success')
   else if (r === 'failed') showToast('复制失败，请手动复制地址栏链接', 'error')
@@ -314,6 +326,8 @@ function doLogout() { logout(); router.push('/') }
 .dash-brand { font-weight: 800; font-size: 18px; color: #fff; }
 .dash-brand em { font-style: normal; opacity: .75; }
 .dash-icon { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.16); color: #fff; font-size: 18px; display: grid; place-items: center; }
+.dash-menu-btn { display: flex; align-items: center; gap: 5px; height: 36px; padding: 0 12px; border-radius: 18px; background: rgba(255,255,255,.18); color: #fff; font-size: 12px; font-weight: 600; }
+.dash-menu-btn span { font-size: 12px; }
 .dash-loading { margin-top: 20px; }
 .cv-cover { height: 148px; position: relative; background: var(--t-cover, var(--primary)); border-radius: 0 0 28px 28px; overflow: hidden; }
 .cv-cover::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: linear-gradient(90deg, transparent, #d4af6a, transparent); opacity: .8; }
@@ -363,13 +377,14 @@ function doLogout() { logout(); router.push('/') }
 .progress-track i { display: block; height: 100%; background: var(--primary); transition: width .3s; }
 
 .drawer-mask { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.55); }
-.drawer { position: absolute; right: 0; left: auto; top: 0; bottom: 0; width: min(86vw, 340px); max-width: 100%; background: #fff; color: #0f172a; display: flex; flex-direction: column; animation: slideIn .22s ease; box-shadow: -4px 0 24px rgba(0,0,0,.25); }
-@keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+/* 右上角下拉：贴住触发按钮下方展开，避免整屏侧栏压住名片 */
+.drawer { position: absolute; right: 12px; left: auto; top: 56px; bottom: auto; width: min(86vw, 340px); max-width: 100%; max-height: calc(100vh - 72px); border-radius: 14px; overflow: hidden; background: #fff; color: #0f172a; display: flex; flex-direction: column; animation: dropIn .2s ease; box-shadow: 0 12px 40px rgba(0,0,0,.3); }
+@keyframes dropIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 .drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 16px; background: #2563eb; color: #fff; flex: 0 0 auto; }
 .drawer-head b { display: block; font-size: 14px; }
 .drawer-head span { color: rgba(255,255,255,.7); }
-.drawer-head .dash-icon { background: rgba(255,255,255,.16); }
-.drawer-nav { flex: 1; overflow-y: auto; padding: 8px 0; background: #fff; }
+.drawer-close { width: 30px; height: 30px; flex: 0 0 30px; border-radius: 50%; background: rgba(255,255,255,.16); color: #fff; font-size: 14px; }
+.drawer-nav { flex: 1; overflow-y: auto; padding: 8px 0; background: #fff; min-height: 0; }
 .drawer-nav a, .drawer-nav button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 18px; font-size: 14px; color: #0f172a; text-align: left; }
 .drawer-nav a:hover, .drawer-nav button:hover { background: #f1f5f9; }
 .drawer-nav i { width: 22px; text-align: center; font-style: normal; }
