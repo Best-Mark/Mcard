@@ -149,7 +149,7 @@
           <router-link :to="`/c/${card?.slug || ''}`" @click="menuOpen = false"><i>↗</i>公开名片页</router-link>
           <router-link to="/me/contacts" @click="menuOpen = false"><i>★</i>我的名片夹</router-link>
           <div class="drawer-sep">数据与运营</div>
-          <button @click="scrollToStats"><i>📊</i>浏览统计</button>
+          <router-link to="/me/stats" @click="menuOpen = false"><i>📊</i>浏览统计 / 订单</router-link>
           <router-link to="/me/plans" @click="menuOpen = false"><i>💎</i>套餐 / 续期</router-link>
           <router-link to="/me/print" @click="menuOpen = false"><i>🖨</i>实体名片版式</router-link>
           <button @click="menuOpen = false; qrModal = true"><i>▦</i>我的二维码</button>
@@ -157,40 +157,6 @@
         <div class="drawer-foot"><button class="btn btn-ghost btn-block" @click="doLogout">退出登录</button></div>
       </aside>
     </div>
-
-    <!-- 数据中心（侧栏「浏览统计」滚到这里） -->
-    <template v-if="card && !loading && !loadError">
-      <div class="container dash-data" id="dash-data">
-        <div class="stat-grid">
-          <div class="stat"><b>{{ stats.views }}</b><span>累计浏览</span></div>
-          <div class="stat"><b>{{ stats.exchanges }}</b><span>交换名片</span></div>
-          <div class="stat"><b>{{ card.active ? (card.expires_at ? expireDays : '永久') : 0 }}</b><span>剩余有效天数</span></div>
-          <div class="stat"><b>{{ card.active ? '已开通' : '待开通' }}</b><span>当前状态</span></div>
-        </div>
-        <div class="section-title">近 14 天浏览趋势</div>
-        <div class="card card-pad">
-          <div v-if="!stats.daily?.length" class="empty small">暂无浏览记录，把二维码分享出去就能看到数据</div>
-          <div v-else class="chart">
-            <div v-for="d in stats.daily" :key="d.day" class="bar-col" :title="`${d.day}：${d.n} 次`">
-              <div class="bar" :style="{ height: Math.max(4, d.n / maxView * 100) + '%' }"></div>
-              <span>{{ d.day.slice(5) }}</span>
-            </div>
-          </div>
-        </div>
-        <div class="section-title">最近订单</div>
-        <div v-if="!orders.length" class="card card-pad small muted">还没有订单</div>
-        <div v-else class="table-wrap">
-          <table><thead><tr><th>订单号</th><th>套餐</th><th>金额</th><th>状态</th><th>时间</th></tr></thead>
-            <tbody><tr v-for="o in orders" :key="o.id">
-              <td class="mono">{{ o.orderNo }}</td><td>{{ o.packageName }}</td>
-              <td>¥{{ (o.amountCents / 100).toFixed(2) }}</td>
-              <td><span class="badge" :class="o.status === 'paid' ? 'ok' : 'warn'">{{ statusText(o.status) }}</span></td>
-              <td>{{ o.createdAt }}</td>
-            </tr></tbody>
-          </table>
-        </div>
-      </div>
-    </template>
 
     <!-- 二维码大图 -->
     <div v-if="qrModal" class="modal-mask" @click.self="qrModal = false">
@@ -218,7 +184,7 @@ import { shareOrCopy, mapLinks } from '../utils/share'
 import { setupWechatShare, absoluteMediaUrl } from '../utils/wx-share'
 
 const router = useRouter()
-const card = ref(null); const stats = ref({ views: 0, exchanges: 0, daily: [] }); const orders = ref([])
+const card = ref(null)
 const loading = ref(true); const busy = ref(false); const newSlug = ref(''); const loadError = ref('')
 const menuOpen = ref(false); const qrModal = ref(false); const improveOpen = ref(false)
 let loadStarted = false
@@ -226,9 +192,7 @@ const qrApi = computed(() => `/api/cards/public/${card.value?.slug || ''}`)
 const t = computed(() => themeOf({ theme: THEMES[card.value?.theme] ? card.value.theme : 'ocean', accent: card.value?.accent }))
 const cardVars = computed(() => card.value ? themeVars(t.value) : {})
 const maps = computed(() => mapLinks(card.value?.address || ''))
-const maxView = computed(() => Math.max(1, ...(stats.value.daily || []).map(d => d.n)))
-const expireDays = computed(() => card.value?.expires_at ? Math.max(0, Math.ceil((new Date(String(card.value.expires_at).replace(' ', 'T') + 'Z') - Date.now()) / 86400000)) : 0)
-const identityLine = computed(() => [card.value?.title, card.value?.company, card.value?.department].filter(Boolean).join(' · '))
+
 const hasContact = computed(() => !!(card.value?.mobile || card.value?.phone || card.value?.email || card.value?.wechat || card.value?.alipay || card.value?.address))
 const checklist = computed(() => {
   const c = card.value || {}
@@ -249,8 +213,8 @@ async function load() {
   loading.value = true
   loadError.value = ''
   try {
-    const [c, s, o] = await Promise.all([api.get('/api/cards/mine'), api.get('/api/cards/mine/stats'), api.get('/api/orders/mine')])
-    card.value = c.data.data; stats.value = s.data.data; orders.value = o.data.data
+    const { data } = await api.get('/api/cards/mine')
+    card.value = data.data
     setupWechatShare(api, {
       title: `${card.value.name || '我的'} · ${card.value.title || card.value.company || '电子名片'}`,
       desc: `${[card.value.company, card.value.department, card.value.title].filter(Boolean).join(' · ') || '电子名片'}，扫码即可存入通讯录`,
@@ -272,11 +236,6 @@ async function createCard() {
 }
 
 function goEdit(focus) { router.push({ path: '/me/card', query: focus ? { focus } : {} }) }
-function scrollToStats() {
-  menuOpen.value = false
-  setTimeout(() => document.getElementById('dash-data')?.scrollIntoView({ behavior: 'smooth' }), 50)
-}
-function statusText(s) { return ({ paid: '已支付', pending: '待支付', cancelled: '已取消' })[s] || s }
 function shortUrl(u) { return String(u || '').replace(/^https?:\/\//, '').slice(0, 30) }
 function safeUrl(u) { try { const x = new URL(u); return ['http:', 'https:'].includes(x.protocol) ? x.href : '#' } catch { return '#' } }
 function tel(v) { if (v) window.location.href = `tel:${v}`; else showToast('尚未填写电话') }
@@ -321,16 +280,17 @@ function doLogout() { logout(); router.push('/') }
 </script>
 
 <style scoped>
-.dash-page { min-height: 100vh; background: var(--t-bg, var(--bg-page)); color: var(--t-text, var(--text)); padding-bottom: 84px; }
-.dash-top { height: 52px; display: flex; align-items: center; gap: 6px; padding: 0 12px; position: sticky; top: 0; z-index: 20; background: var(--t-cover, var(--primary)); color: #fff; }
+/* 工作台参考商务名片风格：深蓝→亮蓝→青蓝渐变 + 浅蓝底 + 白卡大圆角 */
+.dash-page { min-height: 100vh; background: #f4f7fe; color: #172033; padding-bottom: 84px; --dash-cover: linear-gradient(90deg,#143b8f 0%,#2f6feb 52%,#06b6d4 100%); }
+.dash-top { height: 52px; display: flex; align-items: center; gap: 6px; padding: 0 12px; position: sticky; top: 0; z-index: 20; background: var(--dash-cover); color: #fff; }
 .dash-brand { font-weight: 800; font-size: 18px; color: #fff; }
 .dash-brand em { font-style: normal; opacity: .75; }
 .dash-icon { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.16); color: #fff; font-size: 18px; display: grid; place-items: center; }
 .dash-menu-btn { display: flex; align-items: center; gap: 5px; height: 36px; padding: 0 12px; border-radius: 18px; background: rgba(255,255,255,.18); color: #fff; font-size: 12px; font-weight: 600; }
 .dash-menu-btn span { font-size: 12px; }
 .dash-loading { margin-top: 20px; }
-.cv-cover { height: 148px; position: relative; background: var(--t-cover, var(--primary)); border-radius: 0 0 28px 28px; overflow: hidden; }
-.cv-cover::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: linear-gradient(90deg, transparent, #d4af6a, transparent); opacity: .8; }
+.cv-cover { height: 148px; position: relative; background: var(--dash-cover); border-radius: 0 0 28px 28px; overflow: hidden; }
+.cv-cover::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: linear-gradient(90deg, transparent, rgba(255,255,255,.7), transparent); opacity: .8; }
 .cv-brand { position: absolute; right: 18px; top: 20px; color: #fff; font-weight: 800; font-size: 15px; letter-spacing: .5px; max-width: 60%; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cv-brand em { font-style: normal; opacity: .75; }
 .cv-edit-cover { position: absolute; left: 16px; top: 18px; color: #fff; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.25); padding: 6px 12px; border-radius: 999px; font-size: 12px; }
@@ -360,7 +320,7 @@ function doLogout() { logout(); router.push('/') }
 .contact-row button { color: var(--primary); font-size: 12px; }
 .cv-bio { font-size: 13px; line-height: 1.7; white-space: pre-wrap; }
 .cv-links { display: flex; flex-direction: column; gap: 8px; }
-.cv-links a { display: flex; justify-content: space-between; padding: 10px 12px; border-radius: 8px; background: var(--bg-page); font-size: 13px; }
+.cv-links a { display: flex; justify-content: space-between; padding: 10px 12px; border-radius: 8px; background: #f4f7fe; font-size: 13px; }
 .cv-links a span { color: var(--muted); font-size: 11px; }
 .cv-qr-card { margin-top: 12px; padding: 22px 18px 20px; text-align: center; }
 .cv-qr-img { display: block; width: 140px; height: 140px; margin: 0 auto 14px; padding: 8px; background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 4px 14px rgba(15,23,42,.06); }
@@ -395,18 +355,15 @@ function doLogout() { logout(); router.push('/') }
 .drawer-improve button.done { color: #64748b; }
 .drawer-improve button span { width: 16px; display: inline-block; color: #2563eb; }
 .drawer-foot { padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid #e2e8f0; background: #fff; flex: 0 0 auto; }
-.dash-data { margin-top: 24px; padding-bottom: 20px; }
-/* 联络卡模板在工作台的呼应：深蓝金高档商务 */
-.dash-tpl-contact .cv-cover { background: linear-gradient(135deg,#0a1633 0%,#1e3a8a 55%,#2b4fa8 100%); }
-.dash-tpl-contact .cv-cover::after { background: linear-gradient(90deg, transparent, #d4af6a, #f0d898, #d4af6a, transparent); height: 3px; opacity: 1; }
-.dash-tpl-contact .cv-profile { border-radius: 12px; border: 1px solid #dbe4f5; box-shadow: 0 10px 30px rgba(15,23,42,.14); }
-.dash-tpl-contact .cv-avatar { border-radius: 10px; border: 2px solid #fff; }
-.dash-tpl-contact .cv-name { color: #0f2147; }
-.dash-tpl-contact .cv-org { color: #1e40af; }
-.dash-tpl-contact .cv-tags span { border-radius: 4px; border-color: #1e40af; background: #eff4ff; color: #1e40af; }
-.dash-tpl-contact .cv-actions i { border-radius: 10px; background: #eff4ff; color: #1e40af; }
-.dash-tpl-contact .cv-qr-card { border-color: #dbe4f5; }
-.dash-tpl-contact .cv-dock { background: rgba(11,26,58,.97); border-top: 2px solid #1e40af; }
-.dash-tpl-contact .cv-dock .btn-ghost { background: rgba(255,255,255,.14); color: #fff; border-color: transparent; }
+/* 工作台配色统一为参考商务名片（深蓝→亮蓝→青蓝），不随名片模板/主题改变 */
+.dash-tpl-contact .cv-cover, .dash-tpl-classic .cv-cover, .dash-tpl-minimal .cv-cover,
+.dash-tpl-elite .cv-cover, .dash-tpl-vivid .cv-cover, .dash-tpl-seal .cv-cover { background: var(--dash-cover); }
+.dash-page .cv-profile { background: #fff; border: 1px solid #e8eef8; border-radius: 24px; box-shadow: 0 4px 16px rgba(15,23,42,.05); }
+.dash-page .cv-name { color: #172033; }
+.dash-page .cv-org { color: #2f6feb; }
+.dash-page .cv-tags span { border-color: #c7d2fe; background: #eff6ff; color: #1d4ed8; border-radius: 8px; }
+.dash-page .card { border-radius: 20px; border-color: #e8eef8; box-shadow: 0 4px 16px rgba(15,23,42,.05); }
+.dash-page .cv-dock { background: #fff; border-top: 1px solid #e8eef8; }
+.share-fab { background: linear-gradient(135deg,#2f6feb,#06b6d4); box-shadow: 0 8px 20px rgba(47,111,235,.32); }
 @media (min-width: 720px) { .cv-main { max-width: 640px; } }
 </style>
