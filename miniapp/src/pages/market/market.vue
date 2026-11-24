@@ -23,12 +23,32 @@
           <text v-for="ind in meta.industries" :key="ind.key" class="chip" :class="{ on: industry === ind.key }" @tap="setIndustry(ind.key)">{{ ind.icon }} {{ ind.label }}</text>
         </view>
       </scroll-view>
-      <view class="region-pickers">
+      <view class="city-head">
+        <text>选择城市：</text>
+        <text class="map-btn" @tap="openMapPicker">⌖ 地图选点</text>
+      </view>
+      <scroll-view scroll-x class="city-chips">
+        <view class="city-wrap">
+          <text v-for="c in cityChips" :key="c.name" class="city-chip" :class="{ on: isCityActive(c.name) }" @tap="pickCity(c)">
+            <text v-if="c.isCurrent" class="current-dot"></text>{{ c.name }}
+          </text>
+          <text class="city-chip more" @tap="showMore = !showMore">更多 ▾</text>
+        </view>
+      </scroll-view>
+      <view v-if="showMore" class="region-pickers">
         <picker :range="provinceNames" :value="provinceIdx" @change="onProvince">
           <view class="picker">{{ province || '全部省份' }} ▾</view>
         </picker>
         <picker :range="cityNames" :value="cityIdx" @change="onCity">
           <view class="picker">{{ city || '全部城市' }} ▾</view>
+        </picker>
+      </view>
+      <view class="sort-row">
+        <text>排序：</text>
+        <text class="sort-btn" :class="{ on: sort === 'distance' }" @tap="setSort('distance')">📍 离我最近</text>
+        <text class="sort-btn" :class="{ on: sort === 'views' }" @tap="setSort('views')">🔥 热度</text>
+        <picker :range="radiusLabels" :value="radiusIdx" @change="onRadius">
+          <text class="radius-pick">范围 {{ radiusLabels[radiusIdx] }} ▾</text>
         </picker>
       </view>
     </view>
@@ -40,7 +60,7 @@
         <button class="btn tiny primary" style="margin-top:20rpx" @tap="load">重试</button>
       </view>
       <block v-else>
-        <view class="count">共找到 {{ total }} 张公开名片<text v-if="distanceMode"> · 按距离由近到远</text></view>
+        <view class="count">共找到 {{ total }} 张公开名片<text v-if="distanceMode && sort === 'distance'"> · 按距离由近到远</text><text v-else-if="sort === 'views'"> · 按热度排序</text><text v-if="radiusKm > 0"> · {{ radiusKm }} km 内</text></view>
         <view v-if="!list.length" class="state">
           <view class="empty-ico">⌕</view>
           <text class="b">附近还没有上架的名片</text>
@@ -82,7 +102,8 @@ import { ref, computed } from 'vue'
 import { onLoad, onPullDownRefresh, onShareAppMessage } from '@dcloudio/uni-app'
 import { api, toast, geoLocate, getRegions } from '../../utils/request'
 
-const meta = ref({ industries: [], cities: [] })
+const FALLBACK_HOT = ['北京', '上海', '广州', '深圳', '杭州', '成都', '武汉', '西安', '重庆', '南京', '厦门', '三亚']
+const meta = ref({ industries: [], cities: [], hotCities: [] })
 const list = ref([])
 const total = ref(0)
 const loading = ref(true)
@@ -95,6 +116,13 @@ const coords = ref(null)
 const locating = ref(false)
 const sourceLabel = ref('')
 const regions = ref([])
+const currentCity = ref('')
+const showMore = ref(false)
+const sort = ref('distance')
+const radiusKm = ref(0)
+const radiusOptions = [0, 5, 20, 50, 100, 500]
+const radiusLabels = ['不限', '5 km', '20 km', '50 km', '100 km', '500 km']
+const radiusIdx = ref(0)
 const cityNames = computed(() => ['不使用城市', ...cityOptions.value.map(c => c.name)])
 const cityIdx = computed(() => city.value ? cityNames.value.indexOf(city.value) : 0)
 const provinceNames = computed(() => ['全部省份', ...regions.value.filter(r => r.level === 1).map(r => r.name)])
@@ -108,6 +136,55 @@ const cityOptions = computed(() => {
   return meta.value.cities || []
 })
 const distanceMode = computed(() => !!(coords.value || city.value))
+
+// 城市标签栏：当前定位城市排第一，其后热门城市，去重
+const cityChips = computed(() => {
+  const hot = (meta.value.hotCities?.length ? meta.value.hotCities : FALLBACK_HOT).slice()
+  const list = []
+  if (currentCity.value) list.push({ name: currentCity.value, isCurrent: true })
+  for (const name of hot) { if (!list.some(x => x.name === name)) list.push({ name, isCurrent: false }) }
+  return list
+})
+function cityOf(name) {
+  const all = meta.value.cities || []
+  return all.find(c => c.name === name) || all.find(c => c.name.includes(name) || name.includes(c.name)) || null
+}
+function isCityActive(name) {
+  if (coords.value && !city.value) return false
+  return city.value === name
+}
+function pickCity(c) {
+  showMore.value = false
+  city.value = c.name
+  province.value = ''
+  const hit = cityOf(c.name)
+  coords.value = hit ? { lat: hit.lat, lng: hit.lng } : null
+  sort.value = 'distance'
+  load()
+}
+function setSort(s) {
+  if (s === 'distance' && !distanceMode.value) return
+  sort.value = s
+  load()
+}
+function onRadius(e) {
+  radiusIdx.value = Number(e.detail.value)
+  radiusKm.value = radiusOptions[radiusIdx.value]
+  load()
+}
+function openMapPicker() {
+  uni.$off('map-picked')
+  uni.$once('map-picked', p => {
+    if (!p || !Number.isFinite(p.lat) || !Number.isFinite(p.lng)) return
+    coords.value = { lat: p.lat, lng: p.lng }
+    city.value = ''
+    province.value = ''
+    sort.value = 'distance'
+    toast('已按地图选点位置排序', 'success')
+    load()
+  })
+  uni.navigateTo({ url: '/pages/map-picker/map-picker?lat=' + (coords.value?.lat || '') + '&lng=' + (coords.value?.lng || '') })
+}
 
 const locateLabel = computed(() => coords.value ? '已获取你的位置' : city.value ? `以 ${city.value} 为中心` : '未定位 · 按热度推荐')
 const locateHint = computed(() => coords.value ? `按附近距离排序${sourceLabel.value ? ' · ' + sourceLabel.value : ''}` : city.value ? '选择城市或重新定位可按距离排序' : '点重新定位或选择城市以按距离发现伙伴')
@@ -128,6 +205,8 @@ async function load() {
     if (city.value) params.city = city.value
     if (keyword.value.trim()) params.q = keyword.value.trim()
     if (coords.value) { params.lat = coords.value.lat; params.lng = coords.value.lng }
+    if (sort.value) params.sort = sort.value
+    if (radiusKm.value > 0 && distanceMode.value) params.radiusKm = radiusKm.value
     const query = Object.keys(params).map(k => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`).join('&')
     const r = await api.get('/api/cards/public/market?' + query, false)
     list.value = r.list; total.value = r.total
@@ -154,7 +233,9 @@ async function relocate() {
     const pos = await geoLocate(city.value || '上海')
     coords.value = pos
     sourceLabel.value = { wechat: '微信定位', gps: 'GPS 定位', ip: 'IP 定位', default: '城市兜底' }[pos.source] || ''
+    if (pos.city && pos.source !== 'default') currentCity.value = pos.city
     if (!city.value && pos.city) city.value = pos.city
+    sort.value = 'distance'
     toast(pos.source === 'default' ? '已用城市中心坐标，可再点重新定位' : '定位成功，按附近距离排序', pos.source === 'default' ? 'none' : 'success')
     load()
   } catch (e) { toast(e.message || '定位失败，请改用城市选择', 'error') }
@@ -167,9 +248,10 @@ onLoad(async () => {
   loadMeta()
   // 预热四级定位，拿到坐标后再加载列表以按距离排序
   try {
-    const pos = await geoLocate('上海')
+    const pos = await geoLocate()
     coords.value = pos
     sourceLabel.value = { wechat: '微信定位', gps: 'GPS 定位', ip: 'IP 定位', default: '城市兜底' }[pos.source] || ''
+    if (pos.city && pos.source !== 'default') currentCity.value = pos.city
   } catch {}
   load()
 })
@@ -194,6 +276,18 @@ onShareAppMessage(() => ({ title: '名片集市 · 发现附近业务对口伙�
 .chip-wrap { display: inline-flex; gap: 14rpx; padding-bottom: 6rpx; }
 .chip { flex-shrink: 0; font-size: 24rpx; padding: 10rpx 22rpx; border-radius: 999rpx; border: 2rpx solid #e8edf4; background: #f5f7fb; color: #6b7688; }
 .chip.on { background: #2563eb; border-color: #2563eb; color: #fff; font-weight: 700; }
+.city-head { display: flex; align-items: center; justify-content: space-between; margin-top: 20rpx; font-size: 24rpx; font-weight: 600; }
+.map-btn { font-size: 22rpx; color: #2563eb; border: 2rpx solid #2563eb; border-radius: 999rpx; padding: 6rpx 20rpx; }
+.city-chips { margin-top: 14rpx; width: 100%; white-space: nowrap; }
+.city-wrap { display: inline-flex; gap: 14rpx; padding-bottom: 6rpx; }
+.city-chip { flex-shrink: 0; font-size: 24rpx; padding: 10rpx 24rpx; border-radius: 999rpx; border: 2rpx solid #e8edf4; background: #f5f7fb; color: #6b7688; }
+.city-chip.on { background: #16a34a; border-color: #16a34a; color: #fff; font-weight: 700; }
+.city-chip.more { border-style: dashed; }
+.current-dot { display: inline-block; width: 10rpx; height: 10rpx; border-radius: 50%; background: currentColor; margin-right: 8rpx; vertical-align: middle; }
+.sort-row { display: flex; align-items: center; gap: 12rpx; margin-top: 18rpx; font-size: 22rpx; flex-wrap: wrap; }
+.sort-btn { font-size: 22rpx; padding: 8rpx 18rpx; border-radius: 10rpx; border: 2rpx solid #e8edf4; background: #f5f7fb; color: #6b7688; }
+.sort-btn.on { border-color: #2563eb; color: #2563eb; background: #eff6ff; font-weight: 700; }
+.radius-pick { color: #6b7688; background: #f5f7fb; border-radius: 10rpx; padding: 8rpx 14rpx; }
 .picker { margin-top: 18rpx; border: 2rpx solid #e8edf4; border-radius: 12rpx; padding: 16rpx 18rpx; font-size: 26rpx; color: #162033; }
 .region-pickers { display: flex; gap: 12rpx; }
 .region-pickers picker { flex: 1; min-width: 0; }

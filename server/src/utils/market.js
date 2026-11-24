@@ -53,8 +53,24 @@ const CITIES = [
   { name: '贵阳', lat: 26.6470, lng: 106.6302 },
   { name: '海口', lat: 20.0442, lng: 110.1999 },
   { name: '无锡', lat: 31.4912, lng: 120.3119 },
-  { name: '温州', lat: 28.0037, lng: 120.6994 }
+  { name: '温州', lat: 28.0037, lng: 120.6994 },
+  { name: '三亚', lat: 18.2528, lng: 109.5119 },
+  { name: '濮阳', lat: 35.7619, lng: 115.0292 }
 ]
+
+// 热门城市标签顺序（唯一真相源，前端横向标签栏按此渲染；首位由前端用当前定位城市替换）
+// 坐标从 CITIES 取，不在 CITIES 的通过 geo 字典/地理编码兜底
+const HOT_CITIES = ['北京', '上海', '广州', '深圳', '杭州', '成都', '武汉', '西安', '重庆', '南京', '厦门', '三亚']
+
+// 城市名 → {lat,lng}（先精确匹配，再模糊匹配），供「选城市即设坐标原点」使用
+function cityCoords(name) {
+  if (!name) return null
+  const n = String(name).trim()
+  const exact = CITIES.find(c => c.name === n)
+  if (exact) return { lat: exact.lat, lng: exact.lng }
+  const fuzzy = CITIES.find(c => c.name.includes(n) || n.includes(c.name))
+  return fuzzy ? { lat: fuzzy.lat, lng: fuzzy.lng } : null
+}
 
 // Haversine 距离（公里）
 function distanceKm(lat1, lng1, lat2, lng2) {
@@ -66,4 +82,4 @@ function distanceKm(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-module.exports = { INDUSTRIES, INDUSTRY_KEYS, CITIES, isIndustry, normalizeIndustry, distanceKm }
+module.exports = { INDUSTRIES, INDUSTRY_KEYS, CITIES, HOT_CITIES, cityCoords, isIndustry, normalizeIndustry, distanceKm }

@@ -10,7 +10,7 @@ const { makeSlug, normalizeSlug } = require('../utils/slug')
 const qr = require('../services/qrcode')
 const vcard = require('../services/vcard')
 const { CARD_TEMPLATES, isTemplate } = require('../utils/cardTemplates')
-const { INDUSTRIES, CITIES, isIndustry, normalizeIndustry, distanceKm } = require('../utils/market')
+const { INDUSTRIES, CITIES, HOT_CITIES, cityCoords, isIndustry, normalizeIndustry, distanceKm } = require('../utils/market')
 const { MATERIAL_TYPES, VISIT_SOURCES, isMaterialType, isVisitSource, CARD_WATCH_FIELDS, NOTIFY_TYPES } = require('../utils/constants')
 const notify = require('../services/notify')
 
@@ -119,7 +119,7 @@ router.get('/public/meta', wrap((req, res) => {
 // 名片集市元数据（行业清单 + 内置城市坐标）——固定路径，必须在 /public/:slug 之前
 router.get('/public/market/meta', wrap((req, res) => {
   res.set('Cache-Control', 'public, max-age=3600')
-  ok(res, { industries: INDUSTRIES, cities: CITIES })
+  ok(res, { industries: INDUSTRIES, cities: CITIES, hotCities: HOT_CITIES })
 }))
 
 // 名片集市：按距离发现附近、行业对口、关键词命中的上架名片
@@ -131,14 +131,19 @@ router.get('/public/market', wrap((req, res) => {
   const province = String(req.query.province || '').trim().slice(0, 30)
   const district = String(req.query.district || '').trim().slice(0, 30)
   const limit = Math.min(60, Math.max(1, Number(req.query.limit) || 30))
+  // 距离范围（公里）：0/空=不限；上限 2000km（全国）
+  const radiusRaw = Number(req.query.radiusKm)
+  const radiusKm = Number.isFinite(radiusRaw) && radiusRaw > 0 ? Math.min(2000, radiusRaw) : 0
+  // 排序：distance=距离近优先（默认，有原点时）；views=浏览量优先
+  const sort = String(req.query.sort || '') === 'views' ? 'views' : 'distance'
 
-  // 定位原点：优先精确经纬度，否则用城市名匹配内置坐标
+  // 定位原点：优先精确经纬度（地图拖拽选点），否则用城市名匹配内置坐标
   let originLat = null, originLng = null
   const la = Number(req.query.lat), ln = Number(req.query.lng)
   if (Number.isFinite(la) && Number.isFinite(ln) && Math.abs(la) <= 90 && Math.abs(ln) <= 180) {
     originLat = la; originLng = ln
   } else if (city) {
-    const hit = CITIES.find(c => c.name === city || c.name.includes(city) || city.includes(c.name))
+    const hit = cityCoords(city)
     if (hit) { originLat = hit.lat; originLng = hit.lng }
   }
 
@@ -155,17 +160,21 @@ router.get('/public/market', wrap((req, res) => {
       .join(' ').toLowerCase().includes(needle))
   }
   const origin = originOf(req)
-  const list = rows.map(r => marketView(r, originLat, originLng, origin))
-  // 排序：有原点时距离近优先（无坐标的排末尾），再按浏览量；无原点时纯按浏览量
+  let list = rows.map(r => marketView(r, originLat, originLng, origin))
+  // 距离范围内筛选：只在设了原点且 radiusKm>0 时生效；无坐标的名片不在范围内
+  if (radiusKm > 0 && originLat != null) {
+    list = list.filter(x => x.distanceKm != null && x.distanceKm <= radiusKm)
+  }
+  // 排序：distance=有原点时距离近优先（无坐标排末尾）再按浏览量；views=纯浏览量优先
   list.sort((a, b) => {
-    if (originLat != null) {
+    if (sort === 'distance' && originLat != null) {
       if (a.distanceKm == null && b.distanceKm != null) return 1
       if (a.distanceKm != null && b.distanceKm == null) return -1
       if (a.distanceKm != b.distanceKm) return a.distanceKm - b.distanceKm
     }
     return b.views - a.views
   })
-  ok(res, { list: list.slice(0, limit), total: list.length, origin: originLat != null ? { lat: originLat, lng: originLng } : null })
+  ok(res, { list: list.slice(0, limit), total: list.length, origin: originLat != null ? { lat: originLat, lng: originLng } : null, radiusKm, sort })
 }))
 
 // 任意文本转二维码（小程序支付码等场景使用）——必须放在 /public/:slug 之前

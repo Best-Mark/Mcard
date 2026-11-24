@@ -30,8 +30,17 @@
           {{ ind.icon }} {{ ind.label }}
         </button>
       </div>
-      <div class="mk-city-row">
-        <label>按地区筛选：</label>
+      <div class="mk-city-head">
+        <span>选择城市：</span>
+        <button class="mk-map-btn" :disabled="loading" @click="openMapPicker">⌖ 地图选点</button>
+      </div>
+      <div class="mk-city-chips">
+        <button v-for="c in cityChips" :key="c.name" class="city-chip" :class="{ on: isCityActive(c.name) }" @click="pickCity(c)">
+          <span v-if="c.isCurrent" class="current-dot"></span>{{ c.name }}
+        </button>
+        <button class="city-chip more" :class="{ on: !!province && !isCityActive(city) }" @click="showMoreCity = !showMoreCity">更多 ▾</button>
+      </div>
+      <div v-if="showMoreCity" class="mk-city-more">
         <select v-model="province" class="select" @change="onProvinceChange">
           <option value="">全部省份</option>
           <option v-for="p in provinceOptions" :key="p.code" :value="p.name">{{ p.name }}</option>
@@ -45,6 +54,22 @@
           <option v-for="d in districtOptions" :key="d.name" :value="d.name">{{ d.name }}</option>
         </select>
       </div>
+      <div class="mk-sort-row">
+        <span>排序：</span>
+        <button class="sort-btn" :class="{ on: sort === 'distance' }" :disabled="!distanceMode" @click="setSort('distance')">📍 离我最近</button>
+        <button class="sort-btn" :class="{ on: sort === 'views' }" @click="setSort('views')">🔥 热度优先</button>
+        <span class="mk-radius">
+          范围：
+          <select v-model.number="radiusKm" class="select select-sm" :disabled="!distanceMode" @change="applyFilter">
+            <option :value="0">不限</option>
+            <option :value="5">5 km</option>
+            <option :value="20">20 km</option>
+            <option :value="50">50 km</option>
+            <option :value="100">100 km</option>
+            <option :value="500">500 km</option>
+          </select>
+        </span>
+      </div>
     </div>
 
     <div class="container mk-list">
@@ -54,7 +79,7 @@
         <button class="btn btn-primary btn-sm" @click="load">重试</button>
       </div>
       <template v-else>
-        <div class="mk-count small muted">共找到 {{ total }} 张公开名片<span v-if="distanceMode"> · 按距离由近到远</span></div>
+        <div class="mk-count small muted">共找到 {{ total }} 张公开名片<span v-if="distanceMode && sort === 'distance'"> · 按距离由近到远</span><span v-else-if="sort === 'views'"> · 按热度排序</span><span v-if="radiusKm > 0"> · {{ radiusKm }} km 内</span></div>
         <div v-if="!list.length" class="mk-empty">
           <div class="mk-empty-ico">⌕</div>
           <b>附近还没有上架的名片</b>
@@ -89,6 +114,8 @@
         <div v-if="list.length && list.length < total" class="mk-more small muted">已显示 {{ list.length }} / {{ total }}，可缩小筛选范围查看更多</div>
       </template>
     </div>
+
+    <MapPicker v-if="mapPickerOpen" @confirm="onMapPicked" @close="mapPickerOpen = false" />
   </div>
 </template>
 
@@ -97,10 +124,12 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
 import { showToast, toggleDrawer } from '../store'
-import { getCurrentPosition, getPositionQualityLabel } from '../utils/geo'
+import { getCurrentPosition, getPositionQualityLabel, setManualPosition } from '../utils/geo'
+import { CITIES as FALLBACK_CITIES, HOT_CITIES as FALLBACK_HOT } from '../utils/city-data'
+import MapPicker from '../components/MapPicker.vue'
 
 const router = useRouter()
-const meta = ref({ industries: [], cities: [], regions: [] })
+const meta = ref({ industries: [], cities: [], hotCities: [], regions: [] })
 const list = ref([])
 const total = ref(0)
 const loading = ref(true)
@@ -113,6 +142,11 @@ const district = ref('')
 const coords = ref(null)
 const locating = ref(false)
 const positionMeta = ref({ label: '', level: '' })
+const currentCity = ref('')          // 定位到的当前城市（标签栏首位）
+const showMoreCity = ref(false)
+const mapPickerOpen = ref(false)
+const sort = ref('distance')
+const radiusKm = ref(0)
 const distanceMode = computed(() => !!(coords.value || city.value))
 
 const locateLabel = computed(() => {
@@ -140,6 +174,56 @@ async function loadMeta() {
     const { data } = await api.get('/api/geo/regions')
     meta.value.regions = data?.data?.regions || []
   } catch { /* 区域数据失败不影响基础筛选 */ }
+}
+
+// 城市标签栏：当前定位城市排第一（带圆点），其后为热门城市，去重
+const cityChips = computed(() => {
+  const hot = (meta.value.hotCities?.length ? meta.value.hotCities : FALLBACK_HOT).slice()
+  const cur = currentCity.value
+  const list = []
+  if (cur) list.push({ name: cur, isCurrent: true })
+  for (const name of hot) {
+    if (list.some(x => x.name === name)) continue
+    list.push({ name, isCurrent: false })
+  }
+  return list
+})
+function cityOf(name) {
+  const all = (meta.value.cities?.length ? meta.value.cities : FALLBACK_CITIES)
+  return all.find(c => c.name === name) || all.find(c => c.name.includes(name) || name.includes(c.name)) || null
+}
+function isCityActive(name) {
+  if (coords.value && !city.value) return false // 地图选点模式不高亮城市标签
+  return city.value === name || (!!coords.value && currentCity.value === name && !city.value)
+}
+// 点城市标签：设为原点（城市中心坐标），立即按距离排序
+function pickCity(c) {
+  showMoreCity.value = false
+  city.value = c.name
+  province.value = ''
+  district.value = ''
+  const hit = cityOf(c.name)
+  coords.value = hit ? { lat: hit.lat, lng: hit.lng } : null
+  if (sort.value === 'views') sort.value = 'distance'
+  load()
+}
+function setSort(s) {
+  if (s === 'distance' && !distanceMode.value) return
+  sort.value = s
+  load()
+}
+function openMapPicker() { mapPickerOpen.value = true }
+function onMapPicked(p) {
+  mapPickerOpen.value = false
+  if (!p || !Number.isFinite(p.lat) || !Number.isFinite(p.lng)) return
+  coords.value = { lat: p.lat, lng: p.lng }
+  city.value = ''  // 自定义原点不再按城市名过滤
+  province.value = ''
+  district.value = ''
+  setManualPosition(p.lat, p.lng, '')
+  sort.value = 'distance'
+  showToast('已按地图选点位置排序', 'success')
+  load()
 }
 
 // 省级选项（level=1）
@@ -171,6 +255,8 @@ async function load() {
     if (district.value) params.district = district.value
     if (keyword.value.trim()) params.q = keyword.value.trim()
     if (coords.value) { params.lat = coords.value.lat; params.lng = coords.value.lng }
+    if (sort.value) params.sort = sort.value
+    if (radiusKm.value > 0 && distanceMode.value) params.radiusKm = radiusKm.value
     const { data } = await api.get('/api/cards/public/market', { params })
     list.value = data.data.list
     total.value = data.data.total
@@ -188,7 +274,9 @@ async function relocate() {
     const pos = await getCurrentPosition({ city: city.value || undefined, forceRefresh: true, timeout: 10000 })
     coords.value = { lat: pos.lat, lng: pos.lng }
     positionMeta.value = getPositionQualityLabel()
+    if (pos.city && pos.source !== 'default') currentCity.value = pos.city
     if (!city.value && pos.city) city.value = pos.city
+    sort.value = 'distance'
     showToast(pos.source === 'default' ? '已用城市中心坐标排序，可点「重新定位」再试' : '定位成功，按附近距离排序', pos.source === 'default' ? 'error' : 'success')
     load()
   } catch (e) {
@@ -200,9 +288,10 @@ onMounted(async () => {
   loadMeta()
   // 进入集市即后台预热四级定位（先用缓存/城市兜底即时出结果，再渐进升级）
   try {
-    const pos = await getCurrentPosition({ city: '上海' })
+    const pos = await getCurrentPosition({})
     coords.value = { lat: pos.lat, lng: pos.lng }
     positionMeta.value = getPositionQualityLabel()
+    if (pos.city && pos.source !== 'default') currentCity.value = pos.city
   } catch {}
   load()
 })
@@ -232,9 +321,21 @@ onMounted(async () => {
 .mk-chips { display: flex; gap: 8px; overflow-x: auto; margin-top: 12px; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
 .chip { flex-shrink: 0; font-size: 12px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line, #e8edf4); background: var(--bg-page, #f4f6fb); color: var(--muted, #6b7688); }
 .chip.on { background: var(--primary, #2563eb); border-color: var(--primary, #2563eb); color: #fff; font-weight: 700; }
-.mk-city-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; font-size: 13px; }
-.mk-city-row label { font-weight: 600; }
+.mk-city-head { display: flex; align-items: center; justify-content: space-between; margin-top: 13px; font-size: 13px; font-weight: 600; }
+.mk-map-btn { font-size: 12px; font-weight: 600; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--primary, #2563eb); background: transparent; color: var(--primary, #2563eb); }
+.mk-city-chips { display: flex; gap: 8px; overflow-x: auto; margin-top: 9px; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+.city-chip { flex-shrink: 0; font-size: 13px; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line, #e8edf4); background: var(--bg-page, #f4f6fb); color: var(--muted, #6b7688); white-space: nowrap; }
+.city-chip.on { background: #16a34a; border-color: #16a34a; color: #fff; font-weight: 700; }
+.city-chip.more { border-style: dashed; }
+.current-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 5px; vertical-align: middle; }
+.mk-city-more { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.mk-sort-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 12px; flex-wrap: wrap; }
+.sort-btn { font-size: 12px; padding: 5px 11px; border-radius: 8px; border: 1px solid var(--line, #e8edf4); background: var(--bg-page, #f4f6fb); color: var(--muted, #6b7688); }
+.sort-btn.on { border-color: var(--primary, #2563eb); color: var(--primary, #2563eb); background: color-mix(in srgb, var(--primary, #2563eb) 10%, transparent); font-weight: 700; }
+.sort-btn:disabled { opacity: .45; }
+.mk-radius { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; color: var(--muted, #6b7688); }
 .select { border: 1px solid var(--line, #e8edf4); border-radius: 8px; padding: 6px 10px; background: var(--bg-card, #fff); color: var(--text, #0f172a); }
+.select-sm { padding: 4px 8px; font-size: 12px; }
 .mk-list { padding-top: 14px; }
 .mk-state, .mk-empty { text-align: center; padding: 48px 16px; color: var(--muted, #6b7688); }
 .mk-count { margin-bottom: 10px; }
