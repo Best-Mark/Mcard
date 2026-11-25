@@ -47,5 +47,7 @@ export const FUNC_ICONS = {
   share: { path: 'M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13', color: '' },
   nav: { path: 'M3 11l19-9-9 19-2-8z', color: '' },
   close: { path: 'M18 6L6 18M6 6l12 12', color: '' },
-  camera: { path: 'M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z', color: '' }
+  camera: { path: 'M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z', color: '' },
+  // 微信「我 → 我的二维码」同款：三个定位方框 + 右下角点阵，语义就是二维码，不做品牌色
+  qrcode: { path: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM18 14h3v3h-3zM14 18h3v3h-3zM18 18h3v3h-3z', color: '' }
 }

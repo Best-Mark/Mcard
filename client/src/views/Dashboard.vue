@@ -9,7 +9,7 @@
       <span class="dash-sub">我的名片</span>
       <span class="spacer"></span>
       <button class="dash-icon" aria-label="分享名片" @click="doShare">↗</button>
-      <button class="dash-icon" aria-label="查看二维码" @click="router.push(`/c/${card.slug}?save=1`)">▦</button>
+      <button class="dash-icon" aria-label="查看二维码" @click="router.push(`/c/${card.slug}?save=1`)"><AppIcon name="qrcode" :size="19" /></button>
       <!-- 与其它页面一致：纯图标（无「菜单」文字），图标用 global.css 的 .menu-glyph 三横线，抽屉打开时旋转 -->
       <button class="nav-menu-btn dash-menu-btn" aria-label="菜单" @click="toggleDrawer"><i class="menu-glyph"></i></button>
     </header>
@@ -49,6 +49,7 @@ import { isWeChat } from '../utils/save-image'
 import { shareOrCopy } from '../utils/share'
 import { setCardShare } from '../utils/wx-share'
 import CardView from './CardView.vue'
+import AppIcon from '../components/AppIcon.vue'
 
 const router = useRouter()
 

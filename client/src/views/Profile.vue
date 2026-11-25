@@ -11,7 +11,7 @@
     <div class="pf-header">
       <div class="pf-bg" aria-hidden="true"></div>
       <button class="pf-gear" aria-label="设置" @click="toggleDrawer">⚙</button>
-      <button v-if="card" class="pf-qr" aria-label="我的名片二维码" @click="goQr">▦</button>
+      <button v-if="card" class="pf-qr" aria-label="我的名片二维码" @click="goQr"><AppIcon name="qrcode" :size="19" /></button>
 
       <!-- 个人中心只显示账户层信息（users）：头像=账户头像、昵称=账户昵称。
            名片层的姓名/职位/公司/名片头像绝不在此展示（2026-11-25 用户定稿：CTO 不该出现在个人资料里）。 -->
@@ -61,7 +61,7 @@
       <!-- 公开页/二维码/复制链接本是同一件事：点开二维码弹层，里面可复制地址、可进公开页，
            不再拆成三个 cell（2026-11-25 用户定稿）。 -->
       <button v-if="card" class="pf-cell" @click="goQr">
-        <i class="pf-cell-ico">▦</i><span class="pf-cell-t">我的名片</span>
+        <i class="pf-cell-ico pf-cell-ico-qr"><AppIcon name="qrcode" :size="19" /></i><span class="pf-cell-t">我的名片</span>
         <span class="pf-cell-extra">二维码 · 链接</span><span class="pf-cell-arrow">›</span>
       </button>
       <div v-else class="pf-cell pf-cell-muted">还没有名片，可在「名片」栏创建</div>
@@ -218,6 +218,7 @@ function logoutNow() { logout(); router.push('/') }
 .pf-cell:last-child { border-bottom: 0; }
 .pf-cell:active { background: #f1f5f9; }
 .pf-cell-ico { width: 22px; text-align: center; font-style: normal; font-size: 17px; color: var(--primary); flex-shrink: 0; }
+.pf-cell-ico-qr { display: inline-flex; align-items: center; justify-content: center; }
 .pf-cell-t { flex: 1; min-width: 0; }
 .pf-cell-extra { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40%; }
 .pf-cell-arrow { font-size: 18px; color: var(--muted); flex-shrink: 0; }
