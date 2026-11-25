@@ -35,10 +35,17 @@
             <div class="section-title" style="margin-top:0">名片信息</div>
 
             <div class="identity-block">
-              <div class="block-title">🏢 公司 / 品牌 LOGO <span class="muted small">代表企业或品牌 · 名片的视觉主体</span></div>
+              <div class="block-title">🏢 公司 / 品牌 LOGO</div>
               <div class="field">
-                <div v-if="form.logo" class="logo-current"><img :src="form.logo" alt="当前 LOGO" /><span>当前 LOGO · 可到素材库替换</span></div>
-                <AssetPicker v-model="form.logo" label="从素材库选" />
+                <!-- 点缩略图直接开素材库；「从素材库选」按钮保持同行，窄屏时提示文字先省略 -->
+                <div class="logo-row">
+                  <button type="button" class="logo-thumb-btn" title="点击从素材库替换 LOGO" aria-label="更换公司 LOGO" @click="openLogoPicker">
+                    <img v-if="form.logo" :src="form.logo" alt="当前 LOGO" />
+                    <span v-else class="logo-thumb-empty">+</span>
+                  </button>
+                  <span class="small muted logo-hint">{{ form.logo ? '当前 LOGO · 点击图片可替换' : '点击图片从素材库选择 LOGO' }}</span>
+                  <AssetPicker ref="logoPicker" v-model="form.logo" label="从素材库选" />
+                </div>
               </div>
             </div>
 
@@ -205,6 +212,8 @@ const RegionPicker = defineAsyncComponent(() => import('../components/RegionPick
 
 const router = useRouter()
 const route = useRoute()
+const logoPicker = ref(null)
+function openLogoPicker() { logoPicker.value?.open() }
 const DEFAULT_TPL = 'contact'
 const DEFAULT_PAL = paletteOf(DEFAULT_TPL)
 const blank = {
@@ -573,8 +582,11 @@ async function finish() {
 .identity-block.divided { border-top: 1px solid var(--line, #e8edf4); margin-top: 16px; padding-top: 16px; }
 .block-title { font-size: 14px; font-weight: 700; color: var(--text, #0f172a); margin-bottom: 12px; }
 .block-title .muted { font-weight: 400; margin-left: 6px; }
-.logo-current { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 12px; color: var(--muted); }
-.logo-current img { width: 48px; height: 48px; object-fit: contain; border: 1px solid var(--line); border-radius: 10px; background: #fff; padding: 4px; }
+.logo-row { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; }
+.logo-thumb-btn { flex: 0 0 48px; width: 48px; height: 48px; padding: 4px; border: 1px dashed var(--line, #e8edf4); border-radius: 10px; background: #fff; cursor: pointer; }
+.logo-thumb-btn img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.logo-thumb-empty { display: grid; place-items: center; width: 100%; height: 100%; color: var(--muted, #94a3b8); font-size: 22px; }
+.logo-hint { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .locate-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .locate-row .mono { color: var(--muted); }
 .market-value { padding: 12px 14px; margin-bottom: 14px; border-radius: 12px; background: linear-gradient(135deg, #ecfeff, #eff6ff); border: 1px solid #c7d2fe; }
