@@ -175,12 +175,14 @@
     <!-- 名片地址二维码大图：微信扫一扫打开名片页，再点页面里的「存入通讯录」保存 -->
     <div v-if="qrModal" class="modal-mask" @click.self="qrModal = false">
       <div class="modal center">
-        <h3>扫码打开名片</h3>
-        <p class="small muted" style="margin:6px 0 12px">用<i style="font-style:normal;color:#07c160;font-weight:700">微信扫一扫</i>下方二维码打开名片，再点页面里的「存入通讯录」按钮保存</p>
-        <img :src="qrApi + '/qr.svg?size=640'" style="width:260px;height:260px;margin:4px auto;display:block" alt="名片地址二维码" />
-        <p class="small muted">微信 / 手机相机 / 系统扫一扫均可打开，地址短、更好扫</p>
-        <div class="btn-row" style="justify-content:center;margin-top:12px">
-          <button class="btn btn-primary" @click="saveQr">保存二维码图片</button>
+        <h3>我的名片</h3>
+        <img :src="qrApi + '/qr.svg?size=640'" style="width:240px;height:240px;margin:4px auto 10px;display:block" alt="名片地址二维码" />
+        <p class="cv-qr-url" @click="copy(publicLink, '名片链接')" title="点击复制名片链接">{{ publicLink }}</p>
+        <p class="small muted center">客户扫一扫即可打开名片、存入通讯录；链接永久不变</p>
+        <!-- 一个入口承载三件事：看二维码、复制链接、公开页（关闭弹层即当前公开页） -->
+        <div class="btn-row" style="justify-content:center;margin-top:14px;flex-wrap:wrap">
+          <button class="btn btn-primary" @click="copy(publicLink, '名片链接')">复制名片链接</button>
+          <button class="btn btn-ghost" @click="saveQr">保存二维码</button>
           <button class="btn btn-ghost" @click="qrModal = false">关闭</button>
         </div>
       </div>
@@ -671,6 +673,8 @@ async function toggleFavorite() {
 /* .cv-clean .cv-profile > * 会把子元素强制 position:relative，这里用更高优先级锁回绝对定位 */
 .cv-clean .cv-main > .cv-profile > .cv-qr-entry { position: absolute; }
 .cv-qr-entry img { display: block; width: 100%; height: 100%; }
+/* 二维码弹层里的名片地址：可点复制，长链接省略不撑破卡片 */
+.cv-qr-url { margin: 0 0 8px; padding: 8px 10px; border-radius: 8px; background: var(--bg-page, #f1f5f9); color: var(--primary, #2563eb); font-size: 12px; font-weight: 600; text-align: center; word-break: break-all; cursor: pointer; }
 .cv-name { font-size: 22px; font-weight: 800; letter-spacing: -.5px; }
 .cv-en { font-size: 12px; color: var(--t-muted); font-weight: 500; margin-left: 6px; }
 .cv-title { color: var(--t-muted); font-size: 12px; margin-top: 3px; }

@@ -58,17 +58,11 @@
     <!-- 下半部分：App 分组 cell 列表（贴边方角，图标+标题+副标题+角标+箭头） -->
     <div class="pf-group">
       <div class="pf-group-title">我的名片</div>
-      <router-link v-if="card" :to="`/c/${card.slug}`" class="pf-cell">
-        <i class="pf-cell-ico">▤</i><span class="pf-cell-t">公开名片页</span>
-        <span class="pf-cell-extra">/c/{{ card.slug }}</span><span class="pf-cell-arrow">›</span>
-      </router-link>
+      <!-- 公开页/二维码/复制链接本是同一件事：点开二维码弹层，里面可复制地址、可进公开页，
+           不再拆成三个 cell（2026-11-25 用户定稿）。 -->
       <button v-if="card" class="pf-cell" @click="goQr">
-        <i class="pf-cell-ico">▦</i><span class="pf-cell-t">名片二维码</span>
-        <span class="pf-cell-extra">客户扫码即存</span><span class="pf-cell-arrow">›</span>
-      </button>
-      <button v-if="card" class="pf-cell" @click="copyLink">
-        <i class="pf-cell-ico">⧉</i><span class="pf-cell-t">复制名片链接</span>
-        <span class="pf-cell-extra">永久不变</span><span class="pf-cell-arrow">›</span>
+        <i class="pf-cell-ico">▦</i><span class="pf-cell-t">我的名片</span>
+        <span class="pf-cell-extra">二维码 · 链接</span><span class="pf-cell-arrow">›</span>
       </button>
       <div v-else class="pf-cell pf-cell-muted">还没有名片，可在「名片」栏创建</div>
     </div>
@@ -169,13 +163,6 @@ async function saveAvatar(url) {
 function goQr() {
   if (!card.value?.slug) return showToast('还没有名片', 'error')
   router.push(`/c/${card.value.slug}?save=1`)
-}
-async function copyLink() {
-  if (!card.value?.slug) return showToast('还没有名片', 'error')
-  try {
-    await navigator.clipboard.writeText(`${location.origin}/c/${card.value.slug}`)
-    showToast('名片链接已复制', 'success')
-  } catch { showToast('复制失败，请手动复制地址栏链接', 'error') }
 }
 function logoutNow() { logout(); router.push('/') }
 </script>
