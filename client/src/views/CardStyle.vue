@@ -88,10 +88,10 @@
               </div>
               <div class="grid2">
                 <div class="field"><label>码点形状</label>
-                  <select v-model="card.qr_style.dot" class="input"><option value="square">方形</option><option value="dots">圆点</option><option value="rounded">圆角</option></select>
+                  <BottomSelect v-model="card.qr_style.dot" :options="DOT_OPTIONS" title="码点形状" />
                 </div>
                 <div class="field"><label>定位角样式</label>
-                  <select v-model="card.qr_style.eye" class="input"><option value="square">方形</option><option value="rounded">圆角</option><option value="circle">圆形</option></select>
+                  <BottomSelect v-model="card.qr_style.eye" :options="EYE_OPTIONS" title="定位角样式" />
                 </div>
                 <div class="field"><label>渐变终点色（不选=纯色）</label>
                   <div class="swatch-grid compact">
@@ -102,7 +102,7 @@
                   </div>
                 </div>
                 <div class="field"><label>中心 Logo 底板</label>
-                  <select v-model="card.qr_style.logoShape" class="input"><option value="rounded">圆角方</option><option value="circle">圆形</option><option value="none">无底板</option></select>
+                  <BottomSelect v-model="card.qr_style.logoShape" :options="LOGO_OPTIONS" title="中心 Logo 底板" />
                 </div>
                 <div class="field"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" v-model="card.qr_logo" /> 二维码中心 Logo</label></div>
               </div>
@@ -131,6 +131,7 @@ import api from '../api'
 import { showToast } from '../store'
 import { THEMES, paletteOf } from '../utils/themes'
 import CardPreview from '../components/CardPreview.vue'
+import BottomSelect from '../components/BottomSelect.vue'
 
 const router = useRouter()
 const card = ref(null)
@@ -158,6 +159,9 @@ const SECTIONS = [
 // 强调色板：直接来自主题唯一真相源 THEMES（不再弹系统取色器，那东西在手机上没有确定的返回语义）
 const ACCENT_SWATCHES = Object.entries(THEMES).map(([k, v]) => ({ key: k, label: v.label, color: v.accent }))
 // 二维码配色板：常用深码 / 浅底安全色；渐变终点允许「无」
+const DOT_OPTIONS = [{ value: 'square', label: '方形' }, { value: 'dots', label: '圆点' }, { value: 'rounded', label: '圆角' }]
+const EYE_OPTIONS = [{ value: 'square', label: '方形' }, { value: 'rounded', label: '圆角' }, { value: 'circle', label: '圆形' }]
+const LOGO_OPTIONS = [{ value: 'rounded', label: '圆角方' }, { value: 'circle', label: '圆形' }, { value: 'none', label: '无底板' }]
 const QR_SWATCHES = [
   { label: '墨黑', color: '#0f172a' }, { label: '深蓝', color: '#1e3a8a' },
   { label: '翠绿', color: '#0f766e' }, { label: '金棕', color: '#b45309' },

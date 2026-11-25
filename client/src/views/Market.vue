@@ -46,14 +46,7 @@
       </div>
       <div class="mk-radius-row">
         <span class="mk-radius-label">范围：</span>
-        <select v-model.number="radiusKm" class="select select-sm" :disabled="!distanceMode" @change="applyFilter">
-          <option :value="0">不限</option>
-          <option :value="5">5 km</option>
-          <option :value="20">20 km</option>
-          <option :value="50">50 km</option>
-          <option :value="100">100 km</option>
-          <option :value="500">500 km</option>
-        </select>
+        <BottomSelect v-model="radiusKm" :options="RADIUS_OPTIONS" title="选择范围" :disabled="!distanceMode" trigger-class="select select-sm" @change="applyFilter" />
       </div>
     </div>
 
@@ -123,6 +116,7 @@ import MapPicker from '../components/MapPicker.vue'
 import ScrollChips from '../components/ScrollChips.vue'
 import CityPicker from '../components/CityPicker.vue'
 import BottomSheet from '../components/BottomSheet.vue'
+import BottomSelect from '../components/BottomSelect.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -142,6 +136,10 @@ const currentCity = ref('')          // 定位到的当前城市（蓝卡显示�
 const cityPickerOpen = ref(false)
 const mapPickerOpen = ref(false)
 const sort = ref('distance')
+const RADIUS_OPTIONS = [
+  { value: 0, label: '不限' }, { value: 5, label: '5 km' }, { value: 20, label: '20 km' },
+  { value: 50, label: '50 km' }, { value: 100, label: '100 km' }, { value: 500, label: '500 km' }
+]
 const radiusKm = ref(0)
 const distanceMode = computed(() => !!(coords.value || city.value))
 

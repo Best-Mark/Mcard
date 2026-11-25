@@ -124,9 +124,7 @@
             <div v-if="!materials.length" class="small muted" style="padding:12px 0">还没有内容，添加第一项吧。</div>
             <div v-for="(m, i) in materials" :key="m.id || m._k || i" class="material-row">
               <div class="mr-head">
-                <select v-model="m.type" class="input mr-type">
-                  <option v-for="t in materialTypes" :key="t.key" :value="t.key">{{ t.label }}</option>
-                </select>
+                <BottomSelect v-model="m.type" :options="materialTypeOptions" title="选择资料类型" trigger-class="input mr-type" />
                 <input v-model="m.title" class="input" placeholder="标题，如 2026 产品手册" maxlength="60" />
                 <button class="btn btn-sm btn-danger" @click="materials.splice(i, 1)">删</button>
               </div>
@@ -217,6 +215,7 @@ import { refreshPosition, setManualPosition, reverseGeocode, geocode } from '../
 import LogoUploader from '../components/LogoUploader.vue'
 import AssetPicker from '../components/AssetPicker.vue'
 import BottomSheet from '../components/BottomSheet.vue'
+import BottomSelect from '../components/BottomSelect.vue'
 import CardPreview from '../components/CardPreview.vue'
 
 const MapPicker = defineAsyncComponent(() => import('../components/MapPicker.vue'))
@@ -252,6 +251,7 @@ const sections = computed(() => [
 const marketMeta = ref({ industries: [], cities: [] })
 const materials = ref([])
 const materialTypes = ref([])
+const materialTypeOptions = computed(() => materialTypes.value.map(t => ({ value: t.key, label: t.label })))
 const locating = ref(false)
 const geoBusy = ref(false)
 const mapOpen = ref(false)
