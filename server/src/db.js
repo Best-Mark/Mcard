@@ -79,6 +79,17 @@ function addColumnIfMissing(table, column, definition) {
   const exists = db.prepare(`PRAGMA table_info(${table})`).all().some(c => c.name === column)
   if (!exists) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`)
 }
+// 推广/分销：账户层字段（与后台 role 彻底独立，推广员是 C 端用户身份，不授予任何后台权限）
+// is_promoter 仅由后台「用户管理」开关；invited_by 注册时一次性绑定不可更改（邀请归因零丢失）；
+// invite_code 是推广员的专属短码；balance_cents 是可提现佣金余额（分）。
+for (const [col, def] of [
+  ['is_promoter', 'INTEGER NOT NULL DEFAULT 0'],
+  ['invited_by', 'INTEGER'],
+  ['invite_code', "TEXT NOT NULL DEFAULT ''"],
+  ['balance_cents', 'INTEGER NOT NULL DEFAULT 0']
+]) addColumnIfMissing('users', col, def)
+db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_invite_code ON users(invite_code) WHERE invite_code <> '';`)
+db.exec(`CREATE INDEX IF NOT EXISTS idx_users_invited_by ON users(invited_by);`)
 addColumnIfMissing('cards', 'company_intro', "TEXT NOT NULL DEFAULT ''")
 for (const col of ['alipay', 'wechat_qr', 'alipay_qr', 'wechat_pay_qr', 'alipay_pay_qr', 'shop_url']) {
   addColumnIfMissing('cards', col, "TEXT NOT NULL DEFAULT ''")
@@ -243,6 +254,40 @@ CREATE TABLE IF NOT EXISTS user_assets (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_user_assets_user ON user_assets(user_id, created_at);
+
+-- 推广佣金流水：注册奖励 + 被邀请人每笔消费的返佣，逐笔留痕（唯一真相源）。
+-- promoter_id=拿佣金的人；invitee_id=带来收益的下线用户；order_id=消费返佣对应订单（注册奖励为 NULL）。
+-- 幂等键 uniq_promo_order 保证同一订单只返佣一次（支付回调/补单/查单重入都安全）。
+CREATE TABLE IF NOT EXISTS commissions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  promoter_id INTEGER NOT NULL,
+  invitee_id INTEGER NOT NULL,
+  type TEXT NOT NULL DEFAULT 'order',
+  order_id INTEGER,
+  amount_cents INTEGER NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_comm_promoter ON commissions(promoter_id, id);
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_promo_order ON commissions(order_id) WHERE order_id IS NOT NULL;
+-- 注册奖励幂等：每个被邀请人一生只发一次注册奖（重复绑定/重入不会重复发）
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_promo_register ON commissions(invitee_id) WHERE type = 'register';
+CREATE INDEX IF NOT EXISTS idx_comm_invitee ON commissions(invitee_id, type);
+
+-- 提现单：推广员把佣金余额提现，状态 pending/paid/rejected，后台审核。
+CREATE TABLE IF NOT EXISTS withdrawals (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  amount_cents INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  channel TEXT NOT NULL DEFAULT '',
+  account TEXT NOT NULL DEFAULT '',
+  remark TEXT NOT NULL DEFAULT '',
+  admin_note TEXT NOT NULL DEFAULT '',
+  handled_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_withdraw_user ON withdrawals(user_id, id);
+CREATE INDEX IF NOT EXISTS idx_withdraw_status ON withdrawals(status, id);
 `)
 
 // 访客画像/来源分析 + 名片夹打标：存量库补列（自愈，CREATE TABLE IF NOT EXISTS 不改老表）

@@ -2,7 +2,7 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 import api from './api'
-import { ensureSiteConfig } from './store'
+import { ensureSiteConfig, setAuth, auth, bindPendingInvite } from './store'
 import './styles/global.css'
 import './styles/desktop.css'
 // 模板缩略图配色唯一真相源：CardEdit / CardStyle 共用；全局引入保证配色风格页打开就有色块
@@ -10,6 +10,15 @@ import './styles/template-thumbs.css'
 
 createApp(App).use(router).mount('#app')
 ensureSiteConfig(api)
+
+// 自愈：已登录用户刷新后静默拉取权威用户态，同步推广员等后台可变的身份标记。
+// 失败保留 localStorage 旧值，不影响主流程。
+if (auth.token) {
+  api.get('/api/auth/me').then(async ({ data }) => {
+    if (data?.data?.id) setAuth(auth.token, data.data)
+    await bindPendingInvite(api)
+  }).catch(() => {})
+}
 
 // 健壮：图片加载失败统一兜底（捕获阶段可拦住 Vue 模板里所有 <img>，无需逐处加 @error）
 // 自愈：先重试一次（清缓存重取），仍失败才换占位，避免偶发网络抖动留下破图

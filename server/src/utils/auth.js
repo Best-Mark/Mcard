@@ -13,7 +13,7 @@ const parseToken = req => {
 const authRequired = (req, res, next) => {
   const payload = parseToken(req)
   if (!payload) return res.status(401).json({ code: 401, msg: '请先登录' })
-  const user = db.prepare('SELECT id, phone, nickname, role, status, avatar, auth_source, wx_openid FROM users WHERE id = ?').get(payload.id)
+  const user = db.prepare('SELECT id, phone, nickname, role, status, avatar, auth_source, wx_openid, is_promoter FROM users WHERE id = ?').get(payload.id)
   if (!user || user.status !== 'active') return res.status(401).json({ code: 401, msg: '账号不可用' })
   req.user = user
   next()

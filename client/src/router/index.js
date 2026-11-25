@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import api from '../api'
-import { setAuth, showToast, siteConfig, ensureSiteConfig } from '../store'
+import { setAuth, showToast, siteConfig, ensureSiteConfig, bindPendingInvite, auth } from '../store'
 import { isWeChat } from '../utils/save-image'
 import { scheduleDefaultShare } from '../utils/wx-share'
 import { isPC } from '../utils/device'
@@ -29,6 +29,7 @@ const Notifications = () => import('../views/Notifications.vue')
 const MaterialView = () => import('../views/MaterialView.vue')
 const BatchScan = () => import('../views/BatchScan.vue')
 const Admin = () => import('../views/Admin.vue')
+const PromoCenter = () => import('../views/PromoCenter.vue')
 
 const routes = [
   // PC 门户首页；H5 访问 /portal 时也重定向回集市，避免移动端看到桌面宽屏布局
@@ -54,6 +55,7 @@ const routes = [
   { path: '/me/stats', name: 'stats', component: Stats, meta: { auth: true } },
   { path: '/me/notifications', name: 'notifications', component: Notifications, meta: { auth: true } },
   { path: '/me/batch-scan', name: 'batch-scan', component: BatchScan, meta: { auth: true } },
+  { path: '/me/promo', name: 'promo', component: PromoCenter, meta: { auth: true, promoter: true } },
   { path: '/admin/login', name: 'admin-login', component: Admin },
   { path: '/admin', name: 'admin', component: Admin, meta: { admin: true } },
   { path: '/:pathMatch(.*)*', redirect: '/' }
@@ -74,6 +76,7 @@ function consumeAuthHash(to) {
   try { user = JSON.parse(raw) } catch { return }
   if (!user || !user.id) return
   setAuth(token, user)
+  bindPendingInvite(api) // 静默登录场景的邀请归因兜底
   history.replaceState(null, '', location.pathname + location.search)
 }
 
@@ -109,6 +112,9 @@ async function maybeWechatSilentLogin(to) {
 // 用一次性凭证换登录态，成功后立即从 URL 清除 ticket（防泄露/防刷新重放）。
 let ticketHandled = false
 router.beforeEach(async (to, _from, next) => {
+  // 邀请归因零丢失：任何页面带邀请参数都落地保存，登录成功后由各登录入口回传绑定。
+  const inv = to.query.invite || to.query.invite_code || to.query.ref
+  if (inv) localStorage.setItem('mcard_invite', String(inv).slice(0, 20))
   consumeAuthHash(to)
   // 门户首页仅 PC 形态可见；H5/小程序 web-view 内访问一律回集市
   if (to.path === '/portal' && !isPC.value) return next('/market')
@@ -132,6 +138,7 @@ router.beforeEach(async (to, _from, next) => {
   }
   if (await maybeWechatSilentLogin(to)) return next(false) // 已整页跳微信授权，当前导航取消
   if (to.meta.auth && !localStorage.getItem('mcard_token')) return next({ path: '/login', query: { redirect: to.fullPath } })
+  if (to.meta.promoter && !auth.isPromoter) return next('/me')
   if (to.meta.admin && !localStorage.getItem('mcard_admin_token')) return next('/admin/login')
   next()
 })

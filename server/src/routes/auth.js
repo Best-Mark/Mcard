@@ -7,6 +7,7 @@ const settings = require('../utils/settings')
 const { requestUrl } = require('../utils/origin')
 const { ok, fail, wrap } = require('../utils/response')
 const { sign, signBind, verifyBind, signShareTicket, verifyShareTicket, cleanShareTickets, authRequired } = require('../utils/auth')
+const promo = require('../services/promo')
 
 const router = express.Router()
 cleanShareTickets() // 自愈：清理过期残留的一次性登录凭证
@@ -269,7 +270,7 @@ router.get('/wechat/callback', wrap(async (req, res) => {
       // 静默登录只补微信身份：snsapi_base 拿不到头像，绝不把空串写进 users.avatar（账户层唯一真相源）
       if (autoTarget) db.prepare("UPDATE users SET auth_source='wechat', wx_openid=COALESCE(wx_openid,?), updated_at=datetime('now') WHERE id=?").run(openid, user.id)
       else db.prepare("UPDATE users SET avatar=?, auth_source='wechat', wx_openid=COALESCE(wx_openid,?), updated_at=datetime('now') WHERE id=?").run(avatar, openid, user.id)
-      user = db.prepare('SELECT id, phone, nickname, role, status, avatar FROM users WHERE id = ?').get(user.id)
+      user = db.prepare('SELECT id, phone, nickname, role, status, avatar, is_promoter FROM users WHERE id = ?').get(user.id)
       const jwt = sign(user)
       const pub = publicUser(user)
       if (qrSid) {
@@ -292,7 +293,7 @@ router.get('/wechat/callback', wrap(async (req, res) => {
     }
     const r = db.prepare("INSERT INTO users (phone, password_hash, nickname, avatar, wx_openid, wx_unionid, auth_source) VALUES (?,?,?,?,?,?, 'wechat')")
       .run(null, bcrypt.hashSync(crypto.randomBytes(24).toString('hex'), 10), autoTarget ? '微信用户' : (nickname || '微信用户'), avatar, openid, unionid)
-    user = db.prepare('SELECT id, phone, nickname, role, status, avatar FROM users WHERE id = ?').get(r.lastInsertRowid)
+    user = db.prepare('SELECT id, phone, nickname, role, status, avatar, is_promoter FROM users WHERE id = ?').get(r.lastInsertRowid)
     const jwt = sign(user)
     const pub = publicUser(user)
     if (qrSid) {
@@ -345,14 +346,20 @@ router.post('/wechat/bind', wrap((req, res) => {
 }))
 
 router.post('/register', wrap((req, res) => {
-  const { phone, password, nickname } = req.body || {}
+  const { phone, password, nickname, invite } = req.body || {}
   if (!/^1\d{10}$/.test(phone || '')) return fail(res, 400, '请输入 11 位手机号')
   if (!password || String(password).length < 6) return fail(res, 400, '密码至少 6 位')
   if (db.prepare('SELECT id FROM users WHERE phone = ?').get(phone)) return fail(res, 400, '该手机号已注册')
   const result = db.prepare('INSERT INTO users (phone, password_hash, nickname) VALUES (?,?,?)')
     .run(phone, bcrypt.hashSync(String(password), 10), String(nickname || '').slice(0, 30))
-  const user = db.prepare('SELECT id, phone, nickname, role, status FROM users WHERE id = ?').get(result.lastInsertRowid)
-  ok(res, { token: sign(user), user })
+  const userId = result.lastInsertRowid
+  // 邀请归因：注册成功后一次性绑定邀请人并发注册奖励（失败不影响注册主流程）
+  try {
+    const b = promo.bindInvite(userId, invite)
+    if (b.invited) promo.grantRegisterReward(b.promoterId, userId)
+  } catch (e) { console.error('[Promo] 注册归因失败', e.message) }
+  const user = db.prepare('SELECT id, phone, nickname, role, status, is_promoter FROM users WHERE id = ?').get(userId)
+  ok(res, { token: sign(user), user: publicUser(user) })
 }))
 
 router.post('/login', wrap((req, res) => {
@@ -364,7 +371,11 @@ router.post('/login', wrap((req, res) => {
 }))
 
 function publicUser(u) {
-  return { id: u.id, phone: u.phone, nickname: u.nickname, role: u.role, status: u.status, avatar: u.avatar || '', auth_source: u.auth_source || 'password' }
+  return {
+    id: u.id, phone: u.phone, nickname: u.nickname, role: u.role, status: u.status,
+    avatar: u.avatar || '', auth_source: u.auth_source || 'password',
+    is_promoter: !!u.is_promoter
+  }
 }
 
 router.get('/me', authRequired, (req, res) => ok(res, req.user))
@@ -397,7 +408,7 @@ router.put('/profile', authRequired, wrap((req, res) => {
   const nickname = String(req.body?.nickname ?? '').trim().slice(0, 30)
   if (!nickname) return fail(res, 400, '昵称不能为空')
   db.prepare('UPDATE users SET nickname = ? WHERE id = ?').run(nickname, req.user.id)
-  const u = db.prepare('SELECT id, phone, nickname, role, status, avatar FROM users WHERE id = ?').get(req.user.id)
+  const u = db.prepare('SELECT id, phone, nickname, role, status, avatar, is_promoter FROM users WHERE id = ?').get(req.user.id)
   ok(res, { user: publicUser(u) })
 }))
 
@@ -410,7 +421,7 @@ router.post('/share-ticket', authRequired, wrap((req, res) => {
 router.post('/share-ticket/exchange', wrap((req, res) => {
   const uid = verifyShareTicket(req.body?.ticket)
   if (!uid) return fail(res, 400, '登录凭证无效或已过期，请重新登录')
-  const user = db.prepare('SELECT id, phone, nickname, role, status, avatar FROM users WHERE id = ?').get(uid)
+  const user = db.prepare('SELECT id, phone, nickname, role, status, avatar, is_promoter FROM users WHERE id = ?').get(uid)
   if (!user || user.status !== 'active') return fail(res, 400, '账号不可用')
   ok(res, { token: sign(user), user })
 }))

@@ -49,6 +49,25 @@ export function logout() {
 export function isLogged() {
   return !!uni.getStorageSync('mcard_token')
 }
+// 推广员身份：账户层 users.is_promoter，登录后随 user 对象落 mcard_user（与后台 role 无关）
+export function isPromoterUser() {
+  const u = uni.getStorageSync('mcard_user')
+  return !!(u && u.is_promoter)
+}
+// 邀请码落地：任何入口（分享链接 query / 扫码 scene）都可调用，登录后统一回传绑定。
+export function saveInvite(code) {
+  const c = String(code || '').trim().slice(0, 20)
+  if (c) uni.setStorageSync('mcard_invite', c)
+}
+// 登录成功后的邀请归因兜底绑定（失败不阻断登录，保留待下次重试）
+export async function bindPendingInvite() {
+  const invite = uni.getStorageSync('mcard_invite') || ''
+  if (!invite || !isLogged()) return
+  try {
+    await request('/api/promo/bind-invite', { method: 'POST', data: { invite } })
+    uni.removeStorageSync('mcard_invite')
+  } catch { /* 忽略 */ }
+}
 export function goLogin() {
   uni.navigateTo({ url: '/pages/login/login' })
 }

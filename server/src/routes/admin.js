@@ -116,10 +116,66 @@ router.get('/orders', adminRequired, wrap((req, res) => {
 // ---------- 用户 ----------
 router.get('/users', adminRequired, wrap((_req, res) => {
   const rows = db.prepare(`SELECT u.id, u.phone, u.nickname, u.role, u.status, u.created_at,
+    u.is_promoter, u.invite_code, u.balance_cents,
     (SELECT COUNT(*) FROM cards c WHERE c.user_id = u.id) AS card_count,
-    (SELECT COUNT(*) FROM orders o WHERE o.user_id = u.id AND o.status = 'paid') AS paid_orders
+    (SELECT COUNT(*) FROM orders o WHERE o.user_id = u.id AND o.status = 'paid') AS paid_orders,
+    (SELECT COUNT(*) FROM users inv WHERE inv.invited_by = u.id) AS invitee_count
     FROM users u ORDER BY u.id DESC LIMIT 300`).all()
   ok(res, rows)
+}))
+
+// 设置/取消推广员：仅超管可操作。开启时生成唯一邀请码（自愈：存量推广员缺码时补发）。
+router.put('/users/:id/promoter', superRequired, wrap((req, res) => {
+  const on = !!req.body?.enabled
+  const u = db.prepare('SELECT id, is_promoter FROM users WHERE id = ?').get(req.params.id)
+  if (!u) return fail(res, 404, '用户不存在')
+  const promo = require('../services/promo')
+  const tx = db.transaction(() => {
+    db.prepare('UPDATE users SET is_promoter = ?, updated_at = datetime(\'now\') WHERE id = ?').run(on ? 1 : 0, u.id)
+    if (on) promo.ensureInviteCode(u.id)
+  })
+  tx()
+  const fresh = db.prepare('SELECT id, is_promoter, invite_code FROM users WHERE id = ?').get(u.id)
+  ok(res, { isPromoter: !!fresh.is_promoter, inviteCode: fresh.invite_code })
+}))
+
+// ---------- 推广分销概览 / 提现审核 ----------
+router.get('/promo/overview', adminRequired, wrap((_req, res) => {
+  const cfg = require('../utils/settings').promoConfig()
+  ok(res, {
+    enabled: cfg.enabled,
+    promoters: db.prepare('SELECT COUNT(*) AS n FROM users WHERE is_promoter = 1').get().n,
+    invitedUsers: db.prepare('SELECT COUNT(*) AS n FROM users WHERE invited_by IS NOT NULL').get().n,
+    commissionTotalCents: db.prepare('SELECT COALESCE(SUM(amount_cents),0) AS n FROM commissions').get().n,
+    pendingWithdrawals: db.prepare("SELECT COUNT(*) AS n FROM withdrawals WHERE status = 'pending'").get().n,
+    pendingAmountCents: db.prepare("SELECT COALESCE(SUM(amount_cents),0) AS n FROM withdrawals WHERE status = 'pending'").get().n
+  })
+}))
+
+router.get('/promo/withdrawals', adminRequired, wrap((req, res) => {
+  const status = String(req.query.status || '')
+  const rows = db.prepare(`SELECT w.*, u.phone, u.nickname FROM withdrawals w JOIN users u ON u.id = w.user_id
+    WHERE (@status = '' OR w.status = @status) ORDER BY w.id DESC LIMIT 200`).all({ status })
+  ok(res, rows.map(r => ({
+    id: r.id, userId: r.user_id, phone: r.phone, nickname: r.nickname,
+    amountCents: r.amount_cents, status: r.status, channel: r.channel, account: r.account,
+    remark: r.remark, adminNote: r.admin_note, createdAt: r.created_at, handledAt: r.handled_at
+  })))
+}))
+
+// 审核提现：批准/驳回。驳回时把金额退回推广员余额（钱不会凭空消失）。
+router.put('/promo/withdrawals/:id/review', adminRequired, wrap((req, res) => {
+  const approve = !!req.body?.approve
+  const adminNote = String(req.body?.adminNote || '').slice(0, 200)
+  const w = db.prepare("SELECT * FROM withdrawals WHERE id = ? AND status = 'pending'").get(req.params.id)
+  if (!w) return fail(res, 404, '提现单不存在或已处理')
+  const tx = db.transaction(() => {
+    db.prepare("UPDATE withdrawals SET status = ?, admin_note = ?, handled_at = datetime('now') WHERE id = ?")
+      .run(approve ? 'paid' : 'rejected', adminNote, w.id)
+    if (!approve) db.prepare('UPDATE users SET balance_cents = balance_cents + ? WHERE id = ?').run(w.amount_cents, w.user_id)
+  })
+  tx()
+  ok(res, { updated: true, status: approve ? 'paid' : 'rejected' })
 }))
 
 router.put('/users/:id/status', superRequired, wrap((req, res) => {

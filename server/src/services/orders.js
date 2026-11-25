@@ -1,5 +1,6 @@
 const db = require('../db')
 const { makeSlug } = require('../utils/slug')
+const promo = require('./promo')
 
 const toSqlTime = d => new Date(d).toISOString().slice(0, 19).replace('T', ' ')
 
@@ -12,6 +13,10 @@ function activateOrder(orderId, payNo = '') {
     if (!pkg) return { changed: false, reason: '套餐不存在' }
 
     db.prepare("UPDATE orders SET status = 'paid', pay_no = ?, paid_at = datetime('now') WHERE id = ?").run(payNo, order.id)
+
+    // 消费返佣：订单支付成功即给「邀请人」发放返佣（同事务、uniq_promo_order 幂等）。
+    // 受后台 promo_enabled 开关控制；失败已被 promo 内部捕获，绝不影响名片开通主流程。
+    promo.grantOrderCommission(order)
 
     let card = db.prepare('SELECT * FROM cards WHERE user_id = ?').get(order.user_id)
     if (!card) {

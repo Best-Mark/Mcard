@@ -96,7 +96,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
-import { setAuth, showToast, siteConfig } from '../store'
+import { setAuth, showToast, siteConfig, bindPendingInvite } from '../store'
 import AppIcon from '../components/AppIcon.vue'
 
 const route = useRoute(); const router = useRouter()
@@ -127,6 +127,9 @@ const QR_FAIL_TEXT = {
 }
 
 onMounted(() => {
+  // 邀请归因：任何来源带 ?invite=码 都落地保存（全路径兼容 invite/invite_code/ref），登录成功后统一回传绑定。
+  const inv = route.query.invite || route.query.invite_code || route.query.ref
+  if (inv) localStorage.setItem('mcard_invite', String(inv).slice(0, 20))
   const err = route.query.err
   if (err) errMsg.value = ERR_TEXT[err] || '微信登录失败，请重试'
   const hash = new URLSearchParams(location.hash.replace(/^#/, ''))
@@ -146,6 +149,12 @@ onMounted(() => {
     router.replace({ path: route.path, query: route.query })
   }
 })
+
+// 所有登录方式统一收口：先建登录态，再把落地的邀请码回传绑定（失败不阻断登录）。
+async function afterLogin(token, user) {
+  setAuth(token, user)
+  await bindPendingInvite(api)
+}
 
 let wxJumpTimer = null
 async function startWxLogin() {
@@ -215,7 +224,7 @@ async function pollQrStatus(sid) {
       qrStatus.value = 'done'
       qrBusy.value = true
       qrTip.value = '登录成功，正在进入…'
-      setAuth(s.token, s.user)
+      await afterLogin(s.token, s.user)
       await router.replace(route.query.redirect || '/me')
       showToast('微信扫码登录成功', 'success')
     } else if (s.status === 'failed') {
@@ -241,8 +250,11 @@ async function submit() {
   busy.value = true
   try {
     const url = mode.value === 'login' ? '/api/auth/login' : '/api/auth/register'
-    const { data } = await api.post(url, { phone: phone.value, password: password.value, nickname: nickname.value })
-    setAuth(data.data.token, data.data.user)
+    const invite = localStorage.getItem('mcard_invite') || ''
+    const payload = { phone: phone.value, password: password.value, nickname: nickname.value }
+    if (mode.value === 'register' && invite) payload.invite = invite
+    const { data } = await api.post(url, payload)
+    await afterLogin(data.data.token, data.data.user)
     showToast('登录成功', 'success')
     router.replace(route.query.redirect || '/me')
   } catch (e) { showToast(e.message, 'error') } finally { busy.value = false }
@@ -254,7 +266,7 @@ async function submitBind() {
   busy.value = true
   try {
     const { data } = await api.post('/api/auth/wechat/bind', { phone: phone.value, password: password.value, ticket: bindTicket.value })
-    setAuth(data.data.token, data.data.user)
+    await afterLogin(data.data.token, data.data.user)
     showToast('绑定成功，已登录', 'success')
     router.replace(route.query.redirect || '/me')
   } catch (e) { showToast(e.message, 'error') } finally { busy.value = false }

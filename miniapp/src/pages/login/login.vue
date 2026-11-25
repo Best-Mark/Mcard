@@ -28,7 +28,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { api, setAuth, toast } from '../../utils/request'
+import { api, setAuth, toast, bindPendingInvite } from '../../utils/request'
 
 const mode = ref('login')
 const phone = ref(''); const password = ref(''); const nickname = ref(''); const busy = ref(false)
@@ -39,8 +39,12 @@ async function submit() {
   busy.value = true
   try {
     const url = mode.value === 'login' ? '/api/auth/login' : '/api/auth/register'
-    const data = await api.post(url, { phone: phone.value, password: password.value, nickname: nickname.value }, false)
+    const invite = uni.getStorageSync('mcard_invite') || ''
+    const payload = { phone: phone.value, password: password.value, nickname: nickname.value }
+    if (mode.value === 'register' && invite) payload.invite = invite
+    const data = await api.post(url, payload, false)
     setAuth(data.token, data.user)
+    await bindPendingInvite()
     toast('登录成功', 'success')
     setTimeout(() => uni.navigateBack({ delta: 1, fail: () => uni.redirectTo({ url: '/pages/index/index' }) }), 600)
   } catch (e) { toast(e.message) } finally { busy.value = false }

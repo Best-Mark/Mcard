@@ -99,6 +99,16 @@ const GROUPS = {
       { key: 'share_image', label: '分享图片池（每行一个绝对 URL，仅 jpg/png/gif 生效）', type: 'textarea', large: true }
     ]
   },
+  promo: {
+    label: '推广分销',
+    fields: [
+      { key: 'promo_enabled', label: '启用推广分销（true / false）', type: 'text' },
+      { key: 'promo_register_reward_cents', label: '注册奖励（分，被邀请人注册成功给推广员）', type: 'text' },
+      { key: 'promo_order_rate', label: '消费返佣比例（%，如 10 表示订单金额的 10%）', type: 'text' },
+      { key: 'promo_withdraw_min_cents', label: '最低提现额（分）', type: 'text' },
+      { key: 'promo_invite_base_url', label: '邀请链接前缀（留空=自动用当前站点域名，如 https://card.example.com）', type: 'text' }
+    ]
+  },
   notify: {
     label: '消息通知',
     fields: [
@@ -210,6 +220,27 @@ function mapConfig() {
     amapKey: fromDb('amap_key'),
     provider: fromDb('map_provider') || 'amap',
     defaultCity: fromDb('map_default_city') || '上海'
+  }
+}
+
+// 推广分销规则（唯一真相源）：奖励金额/返佣比例/提现门槛后台可改，服务端结算时直读。
+// rate 限制 0~100，金额为非负整数分；脏值一律回落默认，绝不因配置异常给负数或超高返佣。
+function promoConfig() {
+  // 空值（未种子/后台清空）一律回落默认，不能让 Number('')=0 变成「0 分奖励、0% 返佣」。
+  const num = (k, def) => {
+    const raw = get(k, null)
+    if (raw === null || raw === '' || raw === undefined) return def
+    const n = Math.round(Number(raw))
+    return Number.isFinite(n) && n >= 0 ? n : def
+  }
+  const rateRaw = get('promo_order_rate', null)
+  const rate = rateRaw === null || rateRaw === '' ? 10 : (Number.isFinite(Number(rateRaw)) && Number(rateRaw) >= 0 && Number(rateRaw) <= 100 ? Number(rateRaw) : 10)
+  return {
+    enabled: String(get('promo_enabled', '')) === 'true',
+    registerRewardCents: num('promo_register_reward_cents', 100),
+    orderRate: rate,
+    withdrawMinCents: num('promo_withdraw_min_cents', 1000),
+    inviteBaseUrl: String(get('promo_invite_base_url', '') || '').trim()
   }
 }
 
@@ -344,6 +375,11 @@ function seedDefaults() {
     share_title: SHARE_POOL_DEFAULTS.share_title.join('\n'),
     share_desc: SHARE_POOL_DEFAULTS.share_desc.join('\n'),
     share_image: '',
+    promo_enabled: 'false',
+    promo_register_reward_cents: '100',
+    promo_order_rate: '10',
+    promo_withdraw_min_cents: '1000',
+    promo_invite_base_url: '',
     ...NOTIFY_TEMPLATE_DEFAULTS
   }
   const tx = db.transaction(() => {
@@ -352,4 +388,4 @@ function seedDefaults() {
   tx()
 }
 
-module.exports = { PUBLIC_KEYS, PUBLIC_DERIVED_KEYS, SHARE_KEYS, SHARE_POOL_DEFAULTS, NOTIFY_KEYS, NOTIFY_TEMPLATE_DEFAULTS, GROUPS, SENSITIVE_KEYS, ALL_KEYS, MASK, fingerprint, get, normalizePool, shareView, notifyView, payConfig, smsConfig, wechatOauthConfig, wechatLoginEnabled, mapConfig, ossConfig, publicView, adminView, seedDefaults }
+module.exports = { PUBLIC_KEYS, PUBLIC_DERIVED_KEYS, SHARE_KEYS, SHARE_POOL_DEFAULTS, NOTIFY_KEYS, NOTIFY_TEMPLATE_DEFAULTS, GROUPS, SENSITIVE_KEYS, ALL_KEYS, MASK, fingerprint, get, normalizePool, shareView, notifyView, payConfig, smsConfig, wechatOauthConfig, wechatLoginEnabled, mapConfig, promoConfig, ossConfig, publicView, adminView, seedDefaults }

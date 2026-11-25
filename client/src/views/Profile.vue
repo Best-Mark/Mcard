@@ -67,6 +67,15 @@
       <div v-else class="pf-cell pf-cell-muted">还没有名片，可在「名片」栏创建</div>
     </div>
 
+    <!-- 推广中心：仅推广员可见（后台在用户管理开启），普通用户完全不渲染此分组 -->
+    <div v-if="auth.isPromoter" class="pf-group">
+      <div class="pf-group-title">推广</div>
+      <router-link to="/me/promo" class="pf-cell pf-cell-promo">
+        <i class="pf-cell-ico"><AppIcon name="nav" :size="20" /></i><span class="pf-cell-t">推广中心</span>
+        <span class="pf-cell-extra">邀请 · 收益 · 提现</span><span class="pf-cell-arrow">›</span>
+      </router-link>
+    </div>
+
     <div class="pf-group">
       <div class="pf-group-title">账号与服务</div>
       <router-link to="/me/notifications" class="pf-cell" :class="{ 'has-badge': unread > 0 }">
@@ -234,6 +243,7 @@ function logoutNow() { logout(); router.push('/') }
 .pf-cell:active { background: #f1f5f9; }
 .pf-cell-ico { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; text-align: center; font-style: normal; font-size: 17px; color: var(--primary); flex-shrink: 0; }
 .pf-cell-ico-qr { display: inline-flex; align-items: center; justify-content: center; }
+.pf-cell-promo .pf-cell-ico { color: #b8860b; }
 .pf-cell-t { flex: 1; min-width: 0; }
 .pf-cell-extra { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40%; }
 .pf-cell-arrow { font-size: 18px; color: var(--muted); flex-shrink: 0; }

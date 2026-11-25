@@ -5,7 +5,8 @@ const read = key => { try { return JSON.parse(localStorage.getItem(key) || 'null
 export const auth = reactive({
   token: localStorage.getItem('mcard_token') || '',
   user: read('mcard_user'),
-  isAdmin: false
+  isAdmin: false,
+  isPromoter: false
 })
 
 export const adminAuth = reactive({
@@ -23,8 +24,20 @@ export function setAuth(token, user) {
   auth.token = token || ''
   auth.user = user || null
   auth.isAdmin = !!user && ['admin', 'super_admin'].includes(user.role)
+  auth.isPromoter = !!user && !!user.is_promoter
   localStorage.setItem('mcard_token', auth.token)
   localStorage.setItem('mcard_user', JSON.stringify(auth.user))
+}
+
+// 邀请归因统一出口：登录后回传本地落地的邀请码，成功即清除。失败不阻断登录，下次仍可重试。
+// 传 api 参数避免 store ↔ api 循环依赖（api 顶层 import 了本模块）。
+export async function bindPendingInvite(api) {
+  const invite = localStorage.getItem('mcard_invite') || ''
+  if (!invite || !auth.token) return
+  try {
+    await api.post('/api/promo/bind-invite', { invite })
+    localStorage.removeItem('mcard_invite')
+  } catch { /* 归因兜底失败不影响登录，localStorage 保留待下次重试 */ }
 }
 
 export function setAdminAuth(token, user) {

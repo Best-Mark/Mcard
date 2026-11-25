@@ -205,13 +205,43 @@
         <section v-if="tab === 'users'">
           <div class="panel-head stand-alone"><h2>用户管理</h2><span class="small muted">共 {{ users.length }} 位</span></div>
           <div class="card panel">
-            <div class="table-wrap"><table><thead><tr><th>手机号</th><th>昵称</th><th>角色</th><th>名片数</th><th>已付订单</th><th>状态</th><th>操作</th></tr></thead>
+            <div class="table-wrap"><table><thead><tr><th>手机号</th><th>昵称</th><th>角色</th><th>推广员</th><th>邀请数</th><th>佣金余额</th><th>名片数</th><th>已付订单</th><th>状态</th><th>操作</th></tr></thead>
               <tbody><tr v-for="u in users" :key="u.id">
-                <td>{{ u.phone }}</td><td>{{ u.nickname }}</td><td>{{ u.role }}</td><td>{{ u.card_count }}</td><td>{{ u.paid_orders }}</td>
+                <td>{{ u.phone }}</td><td>{{ u.nickname }}</td><td>{{ u.role }}</td>
+                <td><button type="button" class="switch" :class="{ on: !!u.is_promoter }" role="switch" :aria-checked="!!u.is_promoter" :disabled="busy" @click="togglePromoter(u)"><i></i></button></td>
+                <td>{{ u.invitee_count || 0 }}</td>
+                <td>¥{{ ((u.balance_cents || 0) / 100).toFixed(2) }}</td>
+                <td>{{ u.card_count }}</td><td>{{ u.paid_orders }}</td>
                 <td><span class="badge" :class="u.status === 'active' ? 'ok' : 'off'">{{ u.status }}</span></td>
                 <td><button class="btn btn-sm btn-ghost" :disabled="busy || u.role === 'super_admin'" @click="setUserStatus(u)">{{ u.status === 'active' ? '停用' : '启用' }}</button></td>
               </tr></tbody></table></div>
             <div v-if="!users.length" class="empty">暂无用户</div>
+          </div>
+        </section>
+
+        <!-- 推广管理 -->
+        <section v-if="tab === 'promo'">
+          <div class="panel-head stand-alone"><h2>推广分销</h2><span class="small muted">推广员由「用户管理」开关设定；佣金规则在「配置中心 → 推广分销」调整</span></div>
+          <div class="promo-kpis">
+            <div class="promo-kpi"><span>推广开关</span><b :class="promoOverview.enabled ? 'ok' : 'off'">{{ promoOverview.enabled ? '已启用' : '已关闭' }}</b></div>
+            <div class="promo-kpi"><span>推广员</span><b>{{ promoOverview.promoters || 0 }}</b></div>
+            <div class="promo-kpi"><span>已绑定用户</span><b>{{ promoOverview.invitedUsers || 0 }}</b></div>
+            <div class="promo-kpi"><span>累计佣金</span><b>¥{{ ((promoOverview.commissionTotalCents || 0) / 100).toFixed(2) }}</b></div>
+            <div class="promo-kpi"><span>待审提现</span><b>{{ promoOverview.pendingWithdrawals || 0 }} 笔 · ¥{{ ((promoOverview.pendingAmountCents || 0) / 100).toFixed(2) }}</b></div>
+          </div>
+          <div class="card panel">
+            <div class="panel-head"><h3>提现审核</h3>
+              <div class="filter-bar"><button class="chip" :class="{ on: wdStatus === '' }" @click="wdStatus=''; loadWithdrawals()">全部</button><button class="chip" :class="{ on: wdStatus === 'pending' }" @click="wdStatus='pending'; loadWithdrawals()">待审核</button><button class="chip" :class="{ on: wdStatus === 'paid' }" @click="wdStatus='paid'; loadWithdrawals()">已打款</button><button class="chip" :class="{ on: wdStatus === 'rejected' }" @click="wdStatus='rejected'; loadWithdrawals()">已驳回</button></div>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th>ID</th><th>推广员</th><th>金额</th><th>收款方式</th><th>账号</th><th>备注</th><th>状态</th><th>操作</th></tr></thead>
+              <tbody><tr v-for="w in withdrawals" :key="w.id">
+                <td>#{{ w.id }}</td><td>{{ w.nickname }} <span class="small muted">{{ w.phone }}</span></td>
+                <td><b>¥{{ (w.amount_cents / 100).toFixed(2) }}</b></td><td>{{ w.channel }}</td><td class="small">{{ w.account }}</td>
+                <td class="small muted">{{ w.remark || '-' }}</td>
+                <td><span class="badge" :class="w.status === 'paid' ? 'ok' : w.status === 'rejected' ? 'off' : 'warn'">{{ w.status }}</span></td>
+                <td><template v-if="w.status === 'pending'"><button class="btn btn-sm btn-primary" :disabled="busy" @click="reviewWithdrawal(w, true)">通过</button> <button class="btn btn-sm btn-ghost" :disabled="busy" @click="reviewWithdrawal(w, false)">驳回</button></template><span v-else class="small muted">{{ w.handled_at || '-' }}</span></td>
+              </tr></tbody></table></div>
+            <div v-if="!withdrawals.length" class="empty">暂无提现记录</div>
           </div>
         </section>
 
@@ -546,6 +576,7 @@ const ICONS = {
   card: ['M2 5h20v14H2z', 'M2 10h20', 'M6 15h6'],
   order: ['M6 2h12v20l-3-2-3 2-3-2-3 2z', 'M9 8h6', 'M9 12h6'],
   users: ['M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2', 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8', 'M23 21v-2a4 4 0 0 0-3-3.87', 'M16 3.13a4 4 0 0 1 0 7.75'],
+  promo: ['M3 11l18-8-8 18-2-8-8-2z', 'M11 13l10-10'],
   config: ['M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3', 'M1 14h6M9 8h6M17 16h6'],
   update: ['M21 2v6h-6', 'M3 12a9 9 0 0 1 15-6.7L21 8', 'M3 22v-6h6', 'M21 12a9 9 0 0 1-15 6.7L3 16'],
   external: ['M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6', 'M15 3h6v6', 'M10 14 21 3'],
@@ -567,7 +598,8 @@ const ic = n => ICONS[n] || ICONS.overview
 const menus = [
   { k: 'overview', t: '数据概览', i: 'overview', group: 'main' }, { k: 'packages', t: '时段套餐', i: 'package', group: 'main' },
   { k: 'cards', t: '名片管理', i: 'card', group: 'main' }, { k: 'orders', t: '订单管理', i: 'order', group: 'main' },
-  { k: 'users', t: '用户管理', i: 'users', group: 'main' }, { k: 'config', t: '配置中心', i: 'config', group: 'sys' },
+  { k: 'users', t: '用户管理', i: 'users', group: 'main' }, { k: 'promo', t: '推广管理', i: 'promo', group: 'main' },
+  { k: 'config', t: '配置中心', i: 'config', group: 'sys' },
   { k: 'regions', t: '定位管理', i: 'location', group: 'sys' },
   { k: 'oss', t: '对象存储', i: 'cloud', group: 'sys' },
   { k: 'update', t: '版本更新', i: 'update', group: 'sys' }
@@ -580,6 +612,7 @@ const currentTitle = computed(() => menus.find(m => m.k === tab.value)?.t || '')
 const phone = ref(''); const password = ref(''); const busy = ref(false); const loading = ref(false)
 const tab = ref('overview'); const stats = ref({}); const packages = ref([]); const cards = ref([])
 const orders = ref([]); const users = ref([]); const cfg = ref({}); const cfgGroups = ref([])
+const promoOverview = ref({}); const withdrawals = ref([]); const wdStatus = ref('')
 const activeGroup = ref('site'); const revealed = ref({}); const manualSecrets = ref({}); const pendingSecrets = ref({})
 const smsPhone = ref(''); const smsBusy = ref(false)
 const regions = ref([]); const regionLevel = ref(0); const regionBusy = ref(false)
@@ -839,6 +872,7 @@ async function loadTab(k) {
     if (k === 'cards') await loadCards()
     if (k === 'orders') await loadOrders()
     if (k === 'users') users.value = (await api.get('/api/admin/users')).data.data
+    if (k === 'promo') { promoOverview.value = (await api.get('/api/admin/promo/overview')).data.data; await loadWithdrawals() }
     if (k === 'config') {
       const d = (await api.get('/api/admin/config')).data.data
       cfg.value = d.values || {}
@@ -916,6 +950,28 @@ async function setUserStatus(u) {
   busy.value = true
   try { await api.put(`/api/admin/users/${u.id}/status`, { status: u.status === 'active' ? 0 : 1 }); await loadTab('users'); showToast('已更新', 'success') }
   catch (e) { showToast(e.message, 'error') } finally { busy.value = false }
+}
+async function togglePromoter(u) {
+  if (busy.value) return
+  busy.value = true
+  try {
+    const r = (await api.put(`/api/admin/users/${u.id}/promoter`, { enabled: !u.is_promoter })).data.data
+    u.is_promoter = r.isPromoter ? 1 : 0
+    u.invite_code = r.inviteCode || ''
+    showToast(r.isPromoter ? '已设为推广员' : '已取消推广员', 'success')
+  } catch (e) { showToast(e.message, 'error') } finally { busy.value = false }
+}
+async function loadWithdrawals() {
+  withdrawals.value = (await api.get('/api/admin/promo/withdrawals', { params: { status: wdStatus.value } })).data.data
+}
+async function reviewWithdrawal(w, approve) {
+  if (busy.value) return
+  busy.value = true
+  try {
+    await api.put(`/api/admin/promo/withdrawals/${w.id}/review`, { approve, adminNote: '' })
+    showToast(approve ? '已通过，请线下打款' : '已驳回，金额已退回余额', 'success')
+    await Promise.all([loadWithdrawals(), api.get('/api/admin/promo/overview').then(r => { promoOverview.value = r.data.data })])
+  } catch (e) { showToast(e.message, 'error') } finally { busy.value = false }
 }
 function onVerifyFileChosen(e) {
   const input = e.target
@@ -1261,6 +1317,15 @@ async function saveUpdateConfig() {
 .panel-head h3 { font-size: 14px; }
 .panel-head .small { margin-left: auto; }
 .panel-head.stand-alone { margin: 0 0 12px; }
+.filter-bar { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+.chip { padding: 5px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg-card, #fff); color: var(--muted, #64748b); font-size: 12px; cursor: pointer; }
+.chip.on { border-color: #2563eb; background: #eff6ff; color: #2563eb; font-weight: 700; }
+.promo-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.promo-kpi { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg-card, #fff); }
+.promo-kpi span { font-size: 12px; color: var(--muted, #64748b); }
+.promo-kpi b { font-size: 18px; }
+.promo-kpi b.ok { color: #10b981; }
+.promo-kpi b.off { color: #94a3b8; }
 .link { margin-left: auto; color: var(--primary); font-size: 12px; }
 .chart-wrap { height: 168px; }
 .line-chart { width: 100%; height: 140px; overflow: visible; }

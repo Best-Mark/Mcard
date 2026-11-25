@@ -21,7 +21,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { setAuth, showToast } from '../store'
+import { setAuth, showToast, bindPendingInvite } from '../store'
+import api from '../api'
 
 const router = useRouter()
 const route = useRoute()
@@ -53,6 +54,7 @@ onMounted(async () => {
   // 时序：先同步落地 token（localStorage + 响应式 store），再让路由守卫看到凭证，
   // 最后用 router.replace 由 vue-router 自身清理 URL（不再裸调 history.replaceState 与之竞态）。
   setAuth(token, user)
+  await bindPendingInvite(api) // 邀请归因兜底（失败不阻断登录）
   const target = route.query.redirect || '/me'
   try {
     await router.replace(target)

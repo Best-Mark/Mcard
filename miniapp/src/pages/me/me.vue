@@ -36,6 +36,8 @@
         <view class="cell" @tap="go('/pages/print/print')"><view class="ico">▤</view><view>实体版式</view></view>
         <view class="cell" @tap="go('/pages/market/market')"><view class="ico">⌕</view><view>名片集市</view></view>
         <view class="cell" @tap="go('/pages/account/account')"><view class="ico">👤</view><view>账号资料</view></view>
+        <!-- 推广中心：仅推广员可见（后台在用户管理开启），普通用户完全不渲染 -->
+        <view v-if="isPromoter" class="cell cell-promo" @tap="go('/pages/promo/promo')"><view class="ico">➤</view><view>推广中心</view></view>
       </view>
 
       <!-- 上架集市：把名片变成 7×24 小时获客入口 -->
@@ -80,9 +82,9 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { api, baseUrl, isLogged, goLogin, logout, toast, getUnreadCount } from '../../utils/request'
+import { api, baseUrl, isLogged, goLogin, logout, toast, getUnreadCount, isPromoterUser } from '../../utils/request'
 
-const logged = ref(false); const loading = ref(true); const card = ref(null)
+const logged = ref(false); const loading = ref(true); const card = ref(null); const isPromoter = ref(false)
 const stats = ref({}); const orders = ref([]); const newSlug = ref(''); const busy = ref(false)
 const unread = ref(0)
 const go = url => uni.navigateTo({ url })
@@ -92,6 +94,7 @@ const days = computed(() => card.value?.expires_at
 
 async function load() {
   logged.value = isLogged()
+  isPromoter.value = isPromoterUser()
   loading.value = true
   if (!logged.value) { loading.value = false; return }
   try {
@@ -101,6 +104,13 @@ async function load() {
     card.value = c; stats.value = s; orders.value = o
   } catch (e) { toast(e.message) } finally { loading.value = false }
   getUnreadCount().then(n => { unread.value = n }).catch(() => {})
+  // 自愈：后台可能刚变更推广员身份，静默拉权威用户态同步（失败保留本地缓存）
+  api.get('/api/auth/me').then(u => {
+    if (u && u.id) {
+      isPromoter.value = !!u.is_promoter
+      uni.setStorageSync('mcard_user', u)
+    }
+  }).catch(() => {})
 }
 onShow(load)
 
@@ -133,6 +143,7 @@ function logoutNow() { logout(); logged.value = false; card.value = null; uni.na
 .mb-desc { margin-top: 8rpx; font-size: 22rpx; line-height: 1.5; opacity: .92; }
 .mb-arrow { font-size: 40rpx; opacity: .85; }
 .cell { background: #fff; border-radius: 20rpx; padding: 22rpx 4rpx; text-align: center; font-size: 22rpx; box-shadow: 0 6rpx 20rpx rgba(15,23,42,.04); position: relative; }
+.cell-promo .ico { color: #b8860b; }
 .cdot { position: absolute; top: 14rpx; right: 20rpx; min-width: 30rpx; height: 30rpx; line-height: 30rpx; padding: 0 6rpx; border-radius: 15rpx; background: #ef4444; color: #fff; font-size: 18rpx; }
 .ico { width: 56rpx; height: 56rpx; border-radius: 16rpx; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 28rpx; margin: 0 auto 10rpx; }
 .section { font-size: 30rpx; font-weight: 700; margin-bottom: 14rpx; }
