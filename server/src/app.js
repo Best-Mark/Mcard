@@ -61,11 +61,13 @@ function sendSpa(req, res) {
 
   const m = req.path.match(/^\/c\/([a-z0-9-]+)\/?$/)
   if (m) {
-    const card = db.prepare('SELECT slug, name, title, company, bio, cover, avatar FROM cards WHERE slug = ?').get(m[1])
+    const card = db.prepare('SELECT slug, name, title, company, bio, company_intro, logo, cover, avatar FROM cards WHERE slug = ?').get(m[1])
     if (card) {
-      const title = `${card.name || '名片'} · ${card.title || card.company || '电子名片'}`
-      const desc = String(card.bio || `${card.name || ''} ${card.title || ''} ${card.company || ''}`).slice(0, 150)
-      const image = card.cover || card.avatar || ''
+      // 与前端分享口径一致：标题「XXX的名片」，描述首选简介（存量 company_intro 回落），
+      // 缩略图 LOGO → 头像 → 封面（cover 仅作最后兜底，svg/webp 由微信侧自行忽略）。
+      const title = `${card.name || '名片'}的名片`
+      const desc = String(card.bio || card.company_intro || `${card.name || ''} ${card.title || ''} ${card.company || ''}`).slice(0, 150)
+      const image = card.logo || card.avatar || card.cover || ''
       const meta = [
         `<title>${esc(title)}</title>`,
         `<meta name="description" content="${esc(desc)}">`,

@@ -38,16 +38,27 @@ img { display: block; max-width: 100%; }
 .container.wide { width: min(100% - 28px, 1120px); }
 .page { padding: 18px 0 60px; }
 
-/* 统一移动端顶栏：与名片页封面同口径「顶到物理屏幕最上」，状态栏区域也绘制背景。
-   --safe-top 两级 fallback：老 WebView 不认 env() 时为 0，不塌陷。 */
-:root { --topbar-h: 56px; --safe-top: env(safe-area-inset-top, 0px); }
+/* ===== 顶部安全区唯一真相源 =====
+   微信内置浏览器 WebView 的内容区从原生导航栏下方开始，若页面再吃一次
+   env(safe-area-inset-top) 会把顶栏整体推下，与导航栏之间出现间距（2026-11-25 实锤）。
+   故 --safe-top 默认 0；仅 PWA 独立模式（无原生导航栏、页面真顶到状态栏）才取真值。
+   所有页面顶栏/沉浸头/全屏看图一律引用本变量，禁止各自裸写 env(safe-area-inset-top)。
+   display-mode 在老 WebView 不识别时整块规则被忽略，等于默认 0，无害。 */
+:root { --topbar-h: 56px; --safe-top: 0px; }
+@media (display-mode: standalone) {
+  :root { --safe-top: env(safe-area-inset-top, 0px); }
+}
+
 .topbar {
   position: sticky; top: 0; z-index: 50; display: flex; align-items: center;
-  gap: 12px; height: calc(var(--topbar-h) + env(safe-area-inset-top, 0px));
-  padding: env(safe-area-inset-top, 0px) 16px 0; box-sizing: border-box;
+  gap: 12px; height: calc(var(--topbar-h) + var(--safe-top));
+  padding: var(--safe-top) 16px 0; box-sizing: border-box;
   background: rgba(255,255,255,.94); backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--line);
 }
+/* 顶栏居顶的唯一真相源：.page 默认 18px 顶部留白，仅当它是页面首个子元素时抵消。
+   覆盖消息/名片夹/统计等所有带顶栏的页，避免逐页打补丁；Profile 原私有覆写随之删除。 */
+.page > .topbar:first-child { margin-top: -18px; }
 .topbar .brand { font-weight: 800; letter-spacing: -.4px; font-size: 17px; }
 .topbar .brand em { color: var(--primary); font-style: normal; }
 .topbar .spacer { flex: 1; }
@@ -80,7 +91,9 @@ img { display: block; max-width: 100%; }
 .btn:hover { transform: translateY(-1px); }
 .btn:active { transform: translateY(0); }
 .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
-.btn-primary { background: linear-gradient(135deg, var(--primary), var(--primary-2)); color: #fff; box-shadow: 0 4px 14px rgba(37,99,235,.24); }
+/* ⚠️ 渐变前必须写纯色 fallback：微信老 WebView 解析不了「渐变里嵌 var()」，
+   整条 background 失效会露白底，配合白字就是「按钮文字消失」（2026-11-25 实锤）。 */
+.btn-primary { background: var(--primary, #2563eb); background: linear-gradient(135deg, var(--primary), var(--primary-2)); color: #fff; box-shadow: 0 4px 14px rgba(37,99,235,.24); }
 .btn-ok { background: var(--ok); color: #fff; }
 .btn-warn { background: #ea580c; color: #fff; }
 .btn-danger { background: #fee2e2; color: var(--danger); }

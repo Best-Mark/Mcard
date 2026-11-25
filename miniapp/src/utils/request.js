@@ -343,3 +343,56 @@ export function uploadAsset(filePath) {
 export function deleteAsset(id) {
   return request('/api/assets/' + id, { method: 'DELETE', auth: true })
 }
+
+// ---------- 分享素材池（对齐 MShop 的分享池兜底，唯一真相源在服务端 settings.js）----------
+// ⚠️ 小程序新增纯 require js 文件在部分开发者工具热重载时会白屏，故池逻辑并入本既有文件，不新建模块。
+// 池内容来自匿名接口 /api/public/config 下发的 share_title / share_desc / share_image；
+// 缺省时回落内置文案，保证任何页面转发出去都有像样的标题/缩略图，不是裸链接。
+const SHARE_TITLE_FALLBACK = ['一张名片，扫码存进通讯录', '资料随时改，二维码终身不变', '认识一下，这是我的电子名片']
+const sharePool = { titles: [], descs: [], images: [] }
+const warmedImages = new Map()
+let sharePoolLoading = null
+
+const poolOf = v => (Array.isArray(v) ? v : v ? [v] : []).map(s => String(s || '').trim()).filter(Boolean).slice(0, 10)
+const pickOne = arr => (arr.length ? arr[Math.floor(Math.random() * arr.length)] : '')
+
+/** 拉取分享素材池（onLaunch 预取，失败静默用内置兜底；并发只发一次） */
+export function prefetchShareCard() {
+  if (sharePoolLoading) return sharePoolLoading
+  sharePoolLoading = request('/api/public/config').then(d => {
+    sharePool.titles = poolOf(d?.share_title)
+    sharePool.descs = poolOf(d?.share_desc)
+    sharePool.images = poolOf(d?.share_image).map(toShareImageUrl)
+    warmShareImages()
+  }).catch(() => {}).finally(() => { sharePoolLoading = null })
+  return sharePoolLoading
+}
+
+function toShareImageUrl(u) {
+  const s = String(u || '')
+  if (/^https?:\/\//i.test(s)) return s
+  return s.startsWith('/') ? API_BASE + s : ''
+}
+
+/** 预热图片池前 5 张到本地临时路径，避免微信分享面板首次打开时缩略图转圈（失败静默） */
+function warmShareImages() {
+  for (const url of sharePool.images.slice(0, 5)) {
+    if (warmedImages.has(url)) continue
+    uni.downloadFile({
+      url,
+      success: res => { if (res.statusCode === 200) warmedImages.set(url, res.tempFilePath) },
+      fail: () => {}
+    })
+  }
+}
+
+/** 分享标题：优先预热池随机，池空回落内置文案 */
+export function getShareCardTitle() {
+  return pickOne(sharePool.titles) || pickOne(SHARE_TITLE_FALLBACK)
+}
+
+/** 分享缩略图：优先已预热的本地路径（秒出），否则用池里的网络图 */
+export function getShareCardImage() {
+  const url = pickOne(sharePool.images)
+  return url ? (warmedImages.get(url) || url) : ''
+}

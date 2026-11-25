@@ -1,10 +1,12 @@
 import { isWeChat, configWx } from './wx-sdk'
+import { sharePools, pick } from '../config/shareConfig'
 
-// 微信 JS-SDK 分享卡片：让转发到微信好友/朋友圈显示成一张名片（标题+描述+头像缩略图）。
-// 签名与 config 统一走 wx-sdk.js（一次 config 配齐分享+定位接口，避免 jsApiList 互相覆盖）。
-// 返回 true=已按名片内容配置好分享卡片；false=非微信或配置失败（调用方降级为复制链接）。
-let configuredKey = ''
-
+// 微信 JS-SDK 分享卡片：让转发到微信好友/朋友圈显示成一张像样的卡片（标题+描述+缩略图）。
+// 签名与 config 统一走 wx-sdk.js（一次 config 配齐分享+定位+扫码接口，避免 jsApiList 互相覆盖）。
+// 对齐 MShop 的分享池兜底：调用方缺哪样就从对应素材池随机补哪样；路由层再挂一层全局默认分享，
+// 避免未接入分享的页面转发出去是裸链接（标题是网址、封面空白）。
+// ⚠️ MCard 特有约束：分享链接必须干净（不带 wx_ticket / save 等内部参数），
+//    且 /me 系列是登录后的工作台——别人打开会被守卫踢去登录页，一律换成公开集市地址。
 export function absoluteMediaUrl(p) {
   if (!p) return ''
   if (/^https?:\/\//i.test(p)) return p
@@ -12,34 +14,132 @@ export function absoluteMediaUrl(p) {
   return ''
 }
 
-// opts: { title, desc, link, imgUrl }
-export async function setupWechatShare(api, opts) {
-  if (!isWeChat() || !opts?.link) return false
-  const key = `${opts.link}|${opts.title || ''}`
+// 把分享链接洗成「别人能直接打开」的公开地址：
+// 1) 去掉 wx_ticket（一次性登录凭证，随转发泄露会让对方登录成分享者）、save/wxdebug/src 等内部参数；
+// 2) /me* 工作台与根路径落到公开集市，避免访客被路由守卫重定向去登录。
+export function cleanShareLink(raw) {
+  const fallback = `${window.location.origin}/market`
+  try {
+    const u = new URL(raw || window.location.href, window.location.origin)
+    for (const k of ['wx_ticket', 'save', 'wxdebug', 'src']) u.searchParams.delete(k)
+    if (/^\/me(\/|$)/.test(u.pathname) || u.pathname === '/') u.pathname = '/market'
+    u.hash = ''
+    return u.toString()
+  } catch { return fallback }
+}
+
+// 缩略图只认 JPG / PNG / GIF：微信解析不出 svg / webp 的缩略图，硬传会变成灰块甚至整卡退化成网址。
+// 无效图宁可不传，让微信自己抓页面首图；og:image 也不覆盖（保留服务端对 /c/:slug 注入的名片图）。
+function cardImage(u) {
+  const abs = absoluteMediaUrl(u)
+  return /\.(jpe?g|png|gif)(\?|$)/i.test(abs) ? abs : ''
+}
+
+function setMeta(attr, key, val) {
+  if (!val) return
+  let el = document.head.querySelector(`meta[${attr}="${key}"]`)
+  if (!el) {
+    el = document.createElement('meta')
+    el.setAttribute(attr, key)
+    document.head.appendChild(el)
+  }
+  el.setAttribute('content', val)
+}
+
+// og / itemprop meta 与 wx 无关，任何环境都同步：微信不认 JS-SDK 或未签名成功时按 DOM 抓取兜底。
+export function setShareMeta({ title, desc, img } = {}) {
+  if (typeof document === 'undefined') return
+  const image = cardImage(img)
+  setMeta('property', 'og:title', title || '')
+  setMeta('itemprop', 'name', title || '')
+  setMeta('property', 'og:description', desc || '')
+  setMeta('itemprop', 'description', desc || '')
+  setMeta('name', 'description', desc || '')
+  if (image) {
+    setMeta('property', 'og:image', image)
+    setMeta('itemprop', 'image', image)
+  }
+}
+
+let configuredKey = ''
+// 本路由内是否已由页面显式配置过卡片：全局兜底看到标记就跳过，避免覆盖名片页刚设好的卡片。
+let customShareSet = false
+
+/** 标记本路由已有自定义分享卡片（页面自行配置并调用 setWechatShare 时自动置位） */
+export function markShareSet() { customShareSet = true }
+
+/**
+ * 设置当前页面转发卡片。opts: { title, desc, link, imgUrl, imgCandidates }
+ * 缺任一项（含空串）就从素材池随机补；link 统一洗成干净公开地址。
+ * imgCandidates = 有序候选图（如名片 LOGO→头像），逐个取第一个微信可解析的；
+ *   全都不合格才落到分享池。cardImage 会滤掉 svg/webp，避免转发卡变灰块。
+ * @returns {Promise<boolean>} 是否配置成功（非微信或签名失败返回 false，但 meta 已同步）
+ */
+export async function setupWechatShare(api, opts = {}, { fromDefault = false } = {}) {
+  if (!fromDefault) customShareSet = true
+  const pools = sharePools()
+  const title = opts.title || pick(pools.titles)
+  const desc = opts.desc || pick(pools.descs)
+  const candidates = Array.isArray(opts.imgCandidates) ? opts.imgCandidates : [opts.imgUrl]
+  const imgUrl = candidates.map(cardImage).find(Boolean) || pick(pools.images)
+  const link = cleanShareLink(opts.link)
+  setShareMeta({ title, desc, img: imgUrl })
+  if (!isWeChat()) return false
+  const key = `${window.location.href.split('#')[0]}|${link}|${title || ''}`
   if (configuredKey === key && window.wx?.config) return true
   try {
     const { wx, ok } = await configWx(api)
     if (!ok || !wx?.config) return false
-    // wx.ready 已由 configWx 等待；这里直接配置分享数据，并做一次短容错重试（权限异步校验窗口）
-    const base = {
-      title: opts.title || '电子名片',
-      desc: opts.desc || '扫一扫，存入通讯录',
-      link: opts.link,
-      imgUrl: opts.imgUrl || ''
+    const card = {
+      title: title || document.title || 'MCard 电子名片',
+      desc: desc || '',
+      link,
+      imgUrl: cardImage(imgUrl)
     }
-    let applied = false
+    // 同步调用栈内设置：部分 iOS 内核只认 wx.ready 调用栈内的设置，await 之后就失效
     const apply = () => {
-      if (applied) return
-      applied = true
-      wx.updateAppMessageShareData?.({ ...base, success: () => { applied = true } })
-      wx.updateTimelineShareData?.({ title: base.title, link: base.link, imgUrl: base.imgUrl })
-      wx.onMenuShareAppMessage?.({ ...base })
-      wx.onMenuShareTimeline?.({ title: base.title, link: base.link, imgUrl: base.imgUrl })
-      configuredKey = key
+      wx.updateAppMessageShareData?.(card)
+      wx.updateTimelineShareData?.({ title: card.title, link: card.link, imgUrl: card.imgUrl })
+      // 老接口也设一遍：新接口在部分机型「回调 ok、转发出去仍是网址」，老接口反而生效
+      wx.onMenuShareAppMessage?.(card)
+      wx.onMenuShareTimeline?.({ title: card.title, link: card.link, imgUrl: card.imgUrl })
     }
     apply()
-    // 容错：若首次落在微信权限离线校验窗口，300ms 后重试一次（configWx 已配好，重试只重设分享数据）
+    // 容错：首次落在微信权限离线校验窗口时，300ms 后重设一次分享数据
     setTimeout(apply, 300)
+    configuredKey = key
     return true
   } catch { return false }
+}
+
+// 兼容旧调用名（部分页面仍直接 import setWechatShare）
+export const setWechatShare = setupWechatShare
+
+/**
+ * 名片分享卡片唯一真相源：/c/:slug 公开页与 /me 工作台共用同一口径。
+ * 标题「XXX的名片」；描述首选简介（存量 company_intro 回落，空则落分享池）；
+ * 缩略图 LOGO → 头像，都不合格再由 setupWechatShare 落分享池。
+ * 工作台必须自己配置，不能只靠异步嵌入的 CardView——否则加载慢时转发走全局兜底。
+ */
+export function setCardShare(api, card, link) {
+  return setupWechatShare(api, {
+    title: `${card?.name || '名片'}的名片`,
+    desc: String(card?.bio || card?.company_intro || '').slice(0, 120),
+    link: link || card?.url || '',
+    imgCandidates: [card?.logo, card?.avatar].map(absoluteMediaUrl)
+  })
+}
+
+// ── 全局默认分享兜底 ──────────────────────────────────────────────
+// 页面未显式配置卡片时，路由切换 900ms 后用素材池随机配一张默认卡片：
+// link 走 cleanShareLink（干净 + /me 落公开集市），保证任何页面转发出去都能被访客直接打开。
+let defaultShareTimer = null
+export function scheduleDefaultShare(api) {
+  customShareSet = false
+  if (defaultShareTimer) clearTimeout(defaultShareTimer)
+  defaultShareTimer = setTimeout(() => {
+    defaultShareTimer = null
+    if (customShareSet) return
+    setupWechatShare(api, {}, { fromDefault: true }).catch(() => { /* 兜底失败保持微信默认行为 */ })
+  }, 900)
 }

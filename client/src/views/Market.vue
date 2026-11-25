@@ -333,7 +333,7 @@ onMounted(async () => {
 .mk-map-btn { font-size: 12px; font-weight: 600; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--primary, #2563eb); background: transparent; color: var(--primary, #2563eb); }
 .mk-sort-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 12px; flex-wrap: wrap; }
 .sort-btn { font-size: 12px; padding: 5px 11px; border-radius: 8px; border: 1px solid var(--line, #e8edf4); background: var(--bg-page, #f4f6fb); color: var(--muted, #6b7688); }
-.sort-btn.on { border-color: var(--primary, #2563eb); color: var(--primary, #2563eb); background: color-mix(in srgb, var(--primary, #2563eb) 10%, transparent); font-weight: 700; }
+.sort-btn.on { border-color: var(--primary, #2563eb); color: var(--primary, #2563eb); background: #eef2ff; background: color-mix(in srgb, var(--primary, #2563eb) 10%, transparent); font-weight: 700; }
 .sort-btn:disabled { opacity: .45; }
 .select { border: 1px solid var(--line, #e8edf4); border-radius: 8px; padding: 6px 10px; background: var(--bg-card, #fff); color: var(--text, #0f172a); }
 .select-sm { padding: 4px 8px; font-size: 12px; }

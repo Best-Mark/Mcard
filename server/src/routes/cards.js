@@ -75,6 +75,7 @@ function publicView(row, origin) {
     tags: parseJson(row.tags, []), links: parseJson(row.links, []),
     template: isTemplate(row.template) ? row.template : DEFAULT_TEMPLATE,
     industry: normalizeIndustry(row.industry),
+    industryLabel: INDUSTRIES.find(i => i.key === row.industry)?.label || '',
     latitude: row.latitude ?? null, longitude: row.longitude ?? null, market_opt_in: !!row.market_opt_in,
     theme: row.theme, accent: row.accent, qr_fg: row.qr_fg, qr_bg: row.qr_bg, qr_logo: !!row.qr_logo,
     qr_style: normalizeStyle(parseJson(row.qr_style, {})),
@@ -117,7 +118,8 @@ function marketView(row, originLat, originLng, origin) {
     industry: normalizeIndustry(row.industry), industryLabel: industry?.label || '',
     province: row.province || '', city: row.city || '', district: row.district || '', distanceKm: distance,
     avatar: row.avatar, logo: row.logo, cover: row.cover,
-    tags: parseJson(row.tags, []), bio: row.bio, views: row.views || 0,
+    // 简介统一字段名 bio：存量只填过 company_intro 的老名片回落到 bio，前端只认一个字段。
+    tags: parseJson(row.tags, []), bio: row.bio || row.company_intro || '', views: row.views || 0,
     template: isTemplate(row.template) ? row.template : DEFAULT_TEMPLATE, theme: row.theme, accent: row.accent
   }
 }
@@ -178,7 +180,7 @@ router.get('/public/market', wrap((req, res) => {
   const relevance = new Map()
   if (tokens.length) {
     rows = rows.filter(r => {
-      const hay = [r.name, r.name_en, r.title, r.company, r.bio, r.city, r.tags, r.industry]
+      const hay = [r.name, r.name_en, r.title, r.company, r.bio, r.company_intro, r.city, r.tags, r.industry]
         .filter(Boolean).join(' ')
       const s = relevanceScore(q, tokens, hay)
       if (s > 0) { relevance.set(r.id, s); return true }
@@ -226,6 +228,11 @@ router.get('/public/:slug', wrap((req, res) => {
       .run(row.id, req.ip || '', String(req.headers['user-agent'] || '').slice(0, 300), String(req.headers.referer || '').slice(0, 500), source)
     db.prepare('UPDATE cards SET views = views + 1 WHERE id = ?').run(row.id)
     row.views += 1
+    // 「XXX查看了我的名片」：仅登录访客可识别身份，匿名浏览不打扰；notify 内部做 24h 去重
+    if (payload?.id) {
+      const viewer = db.prepare('SELECT id, nickname, phone FROM users WHERE id = ?').get(payload.id)
+      try { notify.notifyViewed(row, viewer) } catch { /* 通知失败不影响名片读取 */ }
+    }
   }
   ok(res, publicView(row, originOf(req)))
 }))
@@ -445,6 +452,15 @@ const FORMAT_RULES = {
     hint: '店铺网址需填完整的 http(s) 网址'
   }
 }
+// 网址归一化：用户习惯填「Card.microdot.net」这类无协议网址，与展示层 CardView.safeUrl 同口径
+// 自动补 https:// 再校验。唯一真相源放在服务端，H5/小程序/后台提交都能受益；
+// 否则无协议 URL 被 400 拒绝，而前端静默吞错、照样跳回名片，用户看到的就是「改了不更新」。
+function normalizeFieldValue(key, value) {
+  const s = String(value ?? '').trim()
+  if ((key === 'website' || key === 'shop_url') && s && !/^https?:\/\//i.test(s)) return `https://${s}`
+  return s
+}
+
 // 校验输入：空值合法（ wiping 字段）；非空按规则校验。返回错误提示或空串。
 function validateFieldFormat(key, value) {
   const rule = FORMAT_RULES[key]
@@ -493,6 +509,8 @@ router.put('/mine', authRequired, wrap((req, res) => {
     } else {
       v = String(v ?? '').slice(0, 2000)
     }
+    // 网址补协议在格式校验之前（否则无协议 URL 直接 400）
+    if (key === 'website' || key === 'shop_url') v = normalizeFieldValue(key, v)
     const formatError = validateFieldFormat(key, v)
     if (formatError) return fail(res, 400, `${FIELD_LABELS[key] || key}${formatError}`)
     if (CARD_WATCH_FIELDS.includes(key) && String(row[key] ?? '') !== String(v ?? '')) {

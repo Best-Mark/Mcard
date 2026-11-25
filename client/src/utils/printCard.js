@@ -213,7 +213,7 @@ function back(card, t, qrText, brand, printBack) {
       ${logoMarkup(card, 44, 7, 12, true)}
       <text x="${W / 2}" y="24" text-anchor="middle" font-size="6.5" font-weight="700" fill="#fff">${name}</text>
       <text x="${W / 2}" y="31" text-anchor="middle" font-size="2.8" fill="#fff" opacity=".88">${esc(card.title || '')}</text>
-      ${card.company_intro ? `<text x="${W / 2}" y="35" text-anchor="middle" font-size="2.1" fill="#fff" opacity=".72">${esc(String(card.company_intro).slice(0, 38))}</text>` : ''}
+      ${(card.bio || card.company_intro) ? `<text x="${W / 2}" y="35" text-anchor="middle" font-size="2.1" fill="#fff" opacity=".72">${esc(String(card.bio || card.company_intro).slice(0, 38))}</text>` : ''}
       <line x1="38" y1="37" x2="58" y2="37" stroke="#fff" stroke-opacity=".6" stroke-width=".3"/>
       <text x="${W / 2}" y="43" text-anchor="middle" font-size="2.7" fill="#fff" opacity=".9">${phone}</text>
       <text x="${W / 2}" y="54" text-anchor="middle" font-size="2.2" fill="#fff" opacity=".7">${tagline} · 扫一扫，存进通讯录</text>

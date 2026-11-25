@@ -46,6 +46,7 @@ import api from '../api'
 import { showToast, toggleDrawer } from '../store'
 import { isWeChat } from '../utils/save-image'
 import { shareOrCopy } from '../utils/share'
+import { setCardShare } from '../utils/wx-share'
 import CardView from './CardView.vue'
 
 const router = useRouter()
@@ -70,6 +71,9 @@ async function load() {
       return
     }
     card.value = c
+    // 工作台自己配微信转发卡片：嵌入的 CardView 是异步组件且要再拉一次公开接口，
+    // 只靠它配置会在加载慢时被路由 900ms 兜底抢先（转发成「MCard 电子名片」+灰块）。
+    setCardShare(api, c, c.url || '')
   } catch (e) { loadError.value = e.message || '网络异常' } finally { loading.value = false }
 }
 onMounted(load)
@@ -85,7 +89,8 @@ async function createCard() {
 }
 
 async function doShare() {
-  const url = card.value?.slug ? `${location.origin}/c/${card.value.slug}` : location.origin
+  // 优先用服务端下发的公开 URL（动态域名、干净无 query），绝不带地址栏上的内部参数
+  const url = card.value?.url || (card.value?.slug ? `${location.origin}/c/${card.value.slug}` : location.origin)
   if (isWeChat()) return showToast('点右上角「···」→ 发送给朋友 / 分享到朋友圈', 'error')
   const r = await shareOrCopy({ title: '我的电子名片', text: '扫一扫保存我的名片', url })
   if (r === 'copied') showToast('链接已复制，快分享给朋友', 'success')
@@ -96,7 +101,7 @@ async function doShare() {
 <style scoped>
 /* 工作台头部：中性品牌蓝，不随名片模板变化（它是工作台 chrome，不属于名片本身） */
 /* 沉浸式顶到物理屏幕最上：状态栏区域也绘制品牌蓝，左右统一 16px */
-.dash-top { height: calc(50px + env(safe-area-inset-top, 0px)); display: flex; align-items: center; gap: 8px; padding: env(safe-area-inset-top, 0px) 16px 0; background: linear-gradient(90deg,#143b8f,#2563eb 60%,#06b6d4); color: #fff; }
+.dash-top { height: calc(50px + var(--safe-top)); display: flex; align-items: center; gap: 8px; padding: var(--safe-top) 16px 0; background: linear-gradient(90deg,#143b8f,#2563eb 60%,#06b6d4); color: #fff; }
 .dash-brand { font-weight: 800; font-size: 18px; }
 .dash-brand em { font-style: normal; opacity: .75; }
 .dash-sub { font-size: 12px; opacity: .8; }

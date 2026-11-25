@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import api from '../api'
 import { setAuth, showToast } from '../store'
 import { isWeChat } from '../utils/save-image'
+import { scheduleDefaultShare } from '../utils/wx-share'
 import { isPC } from '../utils/device'
 
 // 路由懒加载：按访问分块加载，减小首屏 JS 体积。
@@ -86,4 +87,8 @@ router.beforeEach(async (to, _from, next) => {
   if (to.meta.admin && !localStorage.getItem('mcard_admin_token')) return next('/admin/login')
   next()
 })
+
+// 全局分享兜底：本页 900ms 内没有页面自己配置卡片，就用素材池随机配一张默认卡片。
+// 解决大量未接入分享的页面转发出去是「网址 + 空白封面」裸链接的问题（对齐 MShop）。
+router.afterEach(() => scheduleDefaultShare(api))
 export default router

@@ -141,7 +141,7 @@ onMounted(load)
 .src-badge.favorite { background: #fffbeb; color: #b45309; }
 .src-badge.exchange { background: #eff6ff; color: #1d4ed8; }
 .cc-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 3px; }
-.cc-tags i { font-style: normal; font-size: 10px; padding: 2px 7px; border-radius: 999px; background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--primary); }
+.cc-tags i { font-style: normal; font-size: 10px; padding: 2px 7px; border-radius: 999px; background: #eef2ff; background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--primary); }
 .cc-note { color: var(--muted); margin-top: 3px; }
 .modal-mask { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.55); display: grid; place-items: center; padding: 20px; }
 .modal { width: 100%; max-width: 360px; background: var(--bg-card, #fff); border-radius: 14px; padding: 20px; }

@@ -647,7 +647,9 @@ const GROUP_META = {
   miniapp: { i: 'phone', desc: '微信 / 支付宝 / 抖音小程序的应用标识与密钥。' },
   wechat_oauth: { i: 'wechat', desc: '公众号网页授权：H5 在微信里免密登录并获取昵称头像。' },
   map: { i: 'location', desc: '高德地图 Key（IP 定位/逆地理/地理编码），未配置时自动降级到免费 API 与城市中心坐标。' },
-  oss: { i: 'cloud', desc: '对象存储：local 本地 / aliyun 阿里云 OSS / tencent 腾讯云 COS。密钥只写不读，留空沿用已保存值；项目路径前缀用于多项目共用一个 Bucket 时隔离目录。' }
+  oss: { i: 'cloud', desc: '对象存储：local 本地 / aliyun 阿里云 OSS / tencent 腾讯云 COS。密钥只写不读，留空沿用已保存值；项目路径前缀用于多项目共用一个 Bucket 时隔离目录。' },
+  share: { i: 'share', desc: '转发到微信好友/朋友圈的素材池：标题、描述、图片每行一条，缺哪样随机补哪样。留空自动用内置文案；图片仅 jpg/png/gif 生效。' },
+  notify: { i: 'mail', desc: '站内消息文案模板：收藏/交换/查看/关注更新四类，可用变量 {actorName}（操作者）、{cardName}（名片名）、{summary}（变更摘要）。留空自动用内置文案；「有人查看」可单独关闭。' }
 }
 const OPTIONS = {
   pay_mode: [['mock', 'mock · 模拟支付'], ['wechat', 'wechat · 微信支付']],

@@ -11,14 +11,14 @@
     <div class="pf-header">
       <div class="pf-bg" aria-hidden="true"></div>
       <button class="pf-gear" aria-label="设置" @click="toggleDrawer">⚙</button>
+      <button v-if="card" class="pf-qr" aria-label="我的名片二维码" @click="goQr">▦</button>
 
       <div class="pf-user">
-        <label class="pf-ava" title="点击更换账号头像">
+        <div class="pf-ava" title="从素材库选择头像">
           <img v-if="avatar" :src="avatar" alt="账号头像" />
           <span v-else>{{ (auth.user?.phone || card?.name || '名').slice(0, 1) }}</span>
           <i class="pf-ava-cam"><AppIcon name="camera" :size="12" /></i>
-          <input type="file" accept="image/*" :disabled="avatarSaving" @change="onAvatarFile" />
-        </label>
+        </div>
         <div class="pf-ident">
           <div class="pf-name">
             {{ card?.name || auth.user?.phone || '我的账户' }}
@@ -26,7 +26,6 @@
           </div>
           <div class="pf-slogan">{{ card?.title || card?.company || '一张永不失效的二维码，让客户一键存下你' }}</div>
         </div>
-        <button v-if="card" class="pf-qr" aria-label="我的名片二维码" @click="goQr">▦</button>
       </div>
 
       <!-- 套餐有效期玻璃条：到期日期来自 card.expiresAt（兼容 expires_at） -->
@@ -75,6 +74,11 @@
 
     <div class="pf-group">
       <div class="pf-group-title">账号与服务</div>
+      <div class="pf-cell">
+        <i class="pf-cell-ico">👤</i><span class="pf-cell-t">更换头像</span>
+        <AssetPicker v-model="avatarPick" label="从素材库选" />
+        <span class="pf-cell-arrow">›</span>
+      </div>
       <router-link to="/me/card" class="pf-cell">
         <i class="pf-cell-ico">✎</i><span class="pf-cell-t">编辑资料</span><span class="pf-cell-arrow">›</span>
       </router-link>
@@ -101,6 +105,7 @@ import { useRouter } from 'vue-router'
 import api from '../api'
 import { auth, logout, toggleDrawer, showToast } from '../store'
 import AppIcon from '../components/AppIcon.vue'
+import AssetPicker from '../components/AssetPicker.vue'
 
 const router = useRouter()
 const card = ref(null)
@@ -147,24 +152,21 @@ async function load() {
 }
 onMounted(load)
 
-async function onAvatarFile(e) {
-  const file = e.target.files?.[0]
-  e.target.value = ''
-  if (!file || avatarSaving.value) return
-  avatarSaving.value = true
-  try {
-    const fd = new FormData()
-    fd.append('file', file)
-    const { data } = await api.post('/api/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
-    await saveAvatar(data?.data?.url || '')
-    const d = data?.data || {}
-    const saved = d.converted && d.originalSize > d.size ? ` · 已压缩 ${Math.round((1 - d.size / d.originalSize) * 100)}%` : ''
-    showToast(`头像已更新${saved}`, 'success')
-  } catch (err) { showToast(err.message || '头像更新失败', 'error') }
-  finally { avatarSaving.value = false }
-}
+// 头像唯一来源 = 图片素材库（项目不再有独立本地上传）；选中即保存到服务端。
+const avatarPick = computed({
+  get: () => avatar.value,
+  set: async url => {
+    if (!url || url === avatar.value || avatarSaving.value) return
+    avatarSaving.value = true
+    try {
+      await saveAvatar(url)
+      showToast('头像已更新', 'success')
+    } catch (e) { showToast(e.message || '头像更新失败', 'error') }
+    finally { avatarSaving.value = false }
+  }
+})
 async function saveAvatar(url) {
-  if (!url || avatarSaving.value) return
+  if (!url) return
   const { data } = await api.put('/api/auth/avatar', { avatar: url })
   avatar.value = data?.data?.avatar || url
   if (card.value) card.value.avatar = avatar.value
@@ -184,26 +186,31 @@ function logoutNow() { logout(); router.push('/') }
 </script>
 
 <style scoped>
-/* 头卡头像点击直接上传；素材库选图入口在编辑资料页（CardEdit），功能不丢 */
-.profile-page { padding-top: 0; }
+/* 头卡头像点击直接上传；素材库选图入口在编辑资料页（CardEdit），功能不丢。
+   顶栏居顶由全局 .page > .topbar:first-child 统一处理，这里不再私有覆写 padding。 */
 
 /* ===== 上半部分：深渐变头卡（MShop 观感，视觉焦点，内缩圆角形态例外） ===== */
-.pf-header { position: relative; margin: 12px 12px 0; padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 14px; border-radius: 18px; overflow: hidden; color: #fff; background: linear-gradient(135deg, #17357c, #2563eb 60%, #06b6d4); box-shadow: 0 10px 28px rgba(23,53,124,.22); }
+.pf-header { position: relative; margin: 12px 12px 0; padding: 12px 16px 14px; border-radius: 18px; overflow: hidden; color: #fff; background: linear-gradient(135deg, #17357c, #2563eb 60%, #06b6d4); box-shadow: 0 10px 28px rgba(23,53,124,.22); }
 .pf-bg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; background-image: radial-gradient(rgba(255,255,255,.05) .8px, transparent 1.1px), repeating-linear-gradient(115deg, rgba(255,255,255,.02) 0 1px, transparent 1px 4px), radial-gradient(160% 120% at 20% 0%, rgba(255,255,255,.12), transparent 52%); border-radius: 18px; }
-.pf-header > *:not(.pf-bg) { position: relative; z-index: 1; }
-.pf-gear { position: absolute; right: 14px; top: calc(14px + env(safe-area-inset-top, 0px)); z-index: 2; width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,.16); color: #fff; display: grid; place-items: center; }
+/* ⚠️ 只给需要盖在 .pf-bg 上的内容层加层级，不能用 > *:not(.pf-bg) 通配——
+   那条选择器特异性(0,2,0)高于 .pf-gear/.pf-qr 的(0,1,0)，会把它们的 absolute 覆写成 relative，
+   导致齿轮压到头像上、二维码落到套餐条上（2026-11-25 实机截图实锤）。 */
+.pf-header > .pf-user, .pf-header > .pf-plan { position: relative; z-index: 1; }
+.pf-gear { position: absolute; right: 14px; top: 12px; z-index: 2; width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,.16); color: #fff; display: grid; place-items: center; }
 .pf-user { display: flex; align-items: center; gap: 12px; }
 .pf-ava { position: relative; width: 54px; height: 54px; flex: 0 0 54px; border-radius: 50%; background: rgba(255,255,255,.2); border: 2.5px solid rgba(255,255,255,.55); display: grid; place-items: center; font-size: 21px; font-weight: 800; overflow: hidden; cursor: pointer; }
 .pf-ava img { width: 100%; height: 100%; object-fit: cover; }
 .pf-ava input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .pf-ava-cam { position: absolute; right: -1px; bottom: -1px; width: 18px; height: 18px; border-radius: 50%; background: #fff; color: #2563eb; display: grid; place-items: center; }
-.pf-ident { flex: 1; min-width: 0; padding-right: 34px; }
+/* 右侧给「二维码 + 设置」两个圆形按钮留位，避免姓名/副标题被压到按钮底下 */
+.pf-ident { flex: 1; min-width: 0; padding-right: 72px; }
 .pf-name { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pf-status { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; flex-shrink: 0; }
 .pf-status.ok { background: rgba(255,255,255,.2); color: #fff; }
 .pf-status.warn { background: #f59e0b; color: #fff; }
 .pf-slogan { font-size: 12px; color: rgba(255,255,255,.75); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pf-qr { position: absolute; right: 16px; top: calc(58px + env(safe-area-inset-top, 0px)); width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,.16); color: #fff; font-size: 19px; display: grid; place-items: center; }
+/* 二维码入口固定在头卡右上、齿轮左侧；与齿轮同一水平线，不再压到套餐玻璃条 */
+.pf-qr { position: absolute; right: 54px; top: 12px; z-index: 2; width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,.16); color: #fff; font-size: 18px; display: grid; place-items: center; }
 .pf-plan { margin-top: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-radius: 12px; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.16); }
 .pf-plan-left { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .pf-plan-label { font-size: 11px; color: rgba(255,255,255,.68); }

@@ -80,7 +80,7 @@ onMounted(load)
 
 <style scoped>
 .mv-page { min-height: 100vh; background: var(--bg-page, #f4f6fb); padding-bottom: 40px; }
-.mv-top { height: calc(52px + env(safe-area-inset-top, 0px)); display: flex; align-items: center; gap: 12px; padding: env(safe-area-inset-top, 0px) 16px 0; background: var(--bg-card, #fff); border-bottom: 1px solid var(--line, #e8edf4); }
+.mv-top { height: calc(52px + var(--safe-top)); display: flex; align-items: center; gap: 12px; padding: var(--safe-top) 16px 0; background: var(--bg-card, #fff); border-bottom: 1px solid var(--line, #e8edf4); }
 .mv-back { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; color: var(--primary); font-size: 26px; line-height: 1; }
 .mv-brand { margin-left: auto; font-weight: 800; font-size: 17px; color: var(--primary); }
 .mv-brand em { font-style: normal; opacity: .6; }

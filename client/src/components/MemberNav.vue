@@ -38,6 +38,7 @@ import api from '../api'
 import { auth, ui, closeDrawer, logout, showToast } from '../store'
 import { shareOrCopy } from '../utils/share'
 import { isWeChat } from '../utils/save-image'
+import { setCardShare } from '../utils/wx-share'
 import { BOTTOM_TABS, DRAWER_GROUPS, runNavItem } from '../config/nav'
 import { isPC } from '../utils/device'
 
@@ -48,6 +49,7 @@ const show = computed(() => !isPC.value && ((route.path.startsWith('/me') && !ro
 // 集市放在正中并做凸起强调：当前阶段以发现对口伙伴为重点（数据源唯一真相在 config/nav.js）
 const tabs = BOTTOM_TABS
 const slug = ref('')
+const myCard = ref(null)
 const unread = ref(0)
 let slugBusy = false
 let unreadTimer = null
@@ -76,7 +78,8 @@ async function loadSlug(force) {
   slugBusy = true
   try {
     const { data } = await api.get('/api/cards/mine')
-    slug.value = data?.data?.slug || ''
+    myCard.value = data?.data || null
+    slug.value = myCard.value?.slug || ''
   } catch { /* 菜单其余入口不依赖 slug，失败不阻断 */ }
   finally { slugBusy = false }
 }
@@ -89,9 +92,12 @@ async function goPublic(query) {
 async function doShare() {
   closeDrawer()
   await loadSlug()
-  const url = slug.value ? `${location.origin}/c/${slug.value}` : location.origin
+  const url = myCard.value?.url || (slug.value ? `${location.origin}/c/${slug.value}` : location.origin)
+  // 与名片页/工作台同口径：微信内配好转发卡片；非微信系统分享/复制也用「XXX的名片」。
+  if (myCard.value) setCardShare(api, myCard.value, url)
+  const name = myCard.value?.name || '名片'
   if (isWeChat()) return showToast('点右上角「···」→ 发送给朋友 / 分享到朋友圈', 'error')
-  const r = await shareOrCopy({ title: '我的电子名片', text: '扫一扫保存我的名片', url })
+  const r = await shareOrCopy({ title: `${name}的名片`, text: myCard.value?.bio || '扫一扫保存我的名片', url })
   if (r === 'copied') showToast('链接已复制', 'success')
   else if (r === 'failed') showToast('复制失败，请手动复制地址栏链接', 'error')
 }
@@ -152,7 +158,7 @@ onBeforeUnmount(() => {
 /* 名片集市为重点入口：中间凸起圆钮，不随页面主题变化 */
 .m-tabs button.feature i {
   width: 42px; height: 42px; margin-top: -16px; border-radius: 50%; display: grid; place-items: center;
-  background: linear-gradient(135deg, var(--primary), #4338ca); color: #fff; font-size: 22px;
+  background: #2563eb; background: linear-gradient(135deg, var(--primary), #4338ca); color: #fff; font-size: 22px;
   box-shadow: 0 6px 18px rgba(37,99,235,.42); border: 3px solid #fff; box-sizing: border-box;
 }
 .m-tabs button.feature span { margin-top: -2px; }

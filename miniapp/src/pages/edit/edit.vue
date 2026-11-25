@@ -28,11 +28,11 @@
         <view class="field"><text class="label">英文名</text><input v-model="form.name_en" class="input" /></view>
         <view class="field"><text class="label">职位</text><input v-model="form.title" class="input" /></view>
         <view class="field"><text class="label">公司</text><input v-model="form.company" class="input" /></view>
-        <view class="field"><text class="label">公司简介</text><textarea v-model="form.company_intro" class="textarea" placeholder="介绍公司业务、优势与服务，展示在名片「公司简介」区块" /></view>
         <view class="field"><text class="label">部门</text><input v-model="form.department" class="input" /></view>
         <view class="field"><text class="label">公司主页 URL</text><input v-model="form.website" class="input" placeholder="https://" /></view>
         <view class="field"><text class="label">店铺 URL</text><input v-model="form.shop_url" class="input" placeholder="https:// 淘宝 / 抖音 / 微店等" /></view>
-        <view class="field"><text class="label">个人简介</text><textarea v-model="form.bio" class="textarea" /></view>
+        <!-- 简介只留一个字段 bio（与 H5 名片/打印/分享同口径）；存量 company_intro 在 loadCard 归一回 bio -->
+        <view class="field"><text class="label">简介</text><textarea v-model="form.bio" class="textarea" maxlength="1000" placeholder="一句话介绍自己或公司业务，展示在名片「简介」区块" /></view>
         <view class="field"><text class="label">标签（逗号分隔）</text><input v-model="tagsText" class="input" placeholder="设计, 品牌" /></view>
       </view>
 
@@ -260,6 +260,9 @@ onLoad(async options => {
     const c = await api.get('/api/cards/mine')
     if (!c) return uni.redirectTo({ url: '/pages/me/me' })
     form.value = { ...blank, ...c, qr_logo: !!c.qr_logo, qr_style: { ...blank.qr_style, ...(c.qr_style || {}) } }
+    // 存量兼容（与 H5 CardEdit 同口径）：只填过 company_intro 的老名片归一到 bio，保存时写回 bio
+    if (!form.value.bio && c.company_intro) form.value.bio = c.company_intro
+    form.value.company_intro = ''
     tagsText.value = (c.tags || []).join(', ')
   } catch (e) { toast(e.message) }
   // 从「上架集市」入口进来：渲染后滚到集市卡片，直接看到上架开关

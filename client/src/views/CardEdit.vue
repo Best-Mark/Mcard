@@ -35,10 +35,9 @@
             <div class="section-title" style="margin-top:0">名片信息</div>
 
             <div class="identity-block">
-              <div class="block-title">🏢 公司 / 品牌 LOGO <span class="muted small">代表企业或品牌 · 名片的视觉主体（自动去底成透明 PNG）</span></div>
+              <div class="block-title">🏢 公司 / 品牌 LOGO <span class="muted small">代表企业或品牌 · 名片的视觉主体</span></div>
               <div class="field">
-                <div v-if="form.logo" class="logo-current"><img :src="form.logo" alt="当前 LOGO" /><span>当前 LOGO · 重新上传可替换</span></div>
-                <LogoUploader v-model="form.logo" />
+                <div v-if="form.logo" class="logo-current"><img :src="form.logo" alt="当前 LOGO" /><span>当前 LOGO · 可到素材库替换</span></div>
                 <AssetPicker v-model="form.logo" label="从素材库选" />
               </div>
             </div>
@@ -61,8 +60,8 @@
             <div class="section-title" style="margin-top:0">标签简介</div>
             <p class="small muted" style="margin-bottom:12px">先用几个标签让人一眼记住你，再用简介补充说明。</p>
             <div class="field"><label>标签（逗号分隔，最多 8 个）</label><input v-model="tagsText" class="input" placeholder="品牌顾问, 设计, 马拉松" /></div>
-            <div class="field"><label>个人简介</label><textarea v-model="form.bio" class="textarea" maxlength="600" placeholder="一句话介绍自己，展示在名片首页"></textarea></div>
-            <div class="field"><label>公司简介</label><textarea v-model="form.company_intro" class="textarea" maxlength="1000" placeholder="介绍公司业务、优势与服务，展示在名片「公司简介」区块，并写入通讯录备注"></textarea></div>
+            <!-- 简介只留一个字段 bio：用户反馈两个简介（个人/公司）让人混淆。存量 company_intro 在 loadCard 归一回 bio。 -->
+            <div class="field"><label>简介</label><textarea v-model="form.bio" class="textarea" maxlength="1000" placeholder="一句话介绍自己或公司业务，展示在名片「简介」区块，并写入通讯录备注"></textarea></div>
             <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
           </div>
 
@@ -110,25 +109,18 @@
             <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
           </div>
 
-          <!-- 公司相册（内部字段名仍为 materials） -->
+          <!-- 公司相册：直接复用图片素材库多选，访客在名片上点开即进全屏看图 -->
           <div v-show="active === 'materials'" class="card card-pad" id="focus-materials">
             <div class="section-title" style="margin-top:0">公司相册</div>
-            <p class="small muted" style="margin-bottom:12px">图片、产品册、作品集或链接，访客在名片上点开即看，无需跳转。</p>
-            <div v-if="!materials.length" class="small muted" style="padding:12px 0">还没有内容，添加第一项吧。</div>
-            <div v-for="(m, i) in materials" :key="m.id || m._k || i" class="material-row">
-              <div class="mr-head">
-                <BottomSelect v-model="m.type" :options="materialTypeOptions" title="选择资料类型" trigger-class="input mr-type" />
-                <input v-model="m.title" class="input" placeholder="标题，如 2026 产品手册" maxlength="60" />
-                <button class="btn btn-sm btn-danger" @click="materials.splice(i, 1)">删</button>
-              </div>
-              <div class="mr-url">
-                <input v-model="m.url" class="input" :placeholder="m.type === 'link' ? 'https://…' : '上传图片/文件或粘贴链接'" />
-                <label v-if="m.type === 'file'" class="btn btn-sm btn-ghost upload-btn">上传图片/文件
-                  <input type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" @change="e => uploadMaterial(e, m)" />
-                </label>
+            <p class="small muted" style="margin-bottom:12px">从图片素材库勾选即可，访客在名片上点开进全屏浏览、可返回。无需逐条填标题和网址。</p>
+            <AssetPicker v-model="galleryUrls" multiple :max="20" label="从素材库选图" />
+            <div v-if="galleryUrls.length" class="gallery-edit-grid">
+              <div v-for="(url, i) in galleryUrls" :key="url" class="gallery-edit-cell">
+                <img :src="url" :alt="'相册图片 ' + (i + 1)" loading="lazy" />
+                <button class="gallery-edit-del" aria-label="移除此图" @click="removeGalleryImage(url)">✕</button>
               </div>
             </div>
-            <button class="btn btn-sm btn-ghost" @click="addMaterial">+ 添加一项</button>
+            <div v-else class="small muted" style="padding:12px 0">还没有选图，点上方「从素材库选图」。</div>
             <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
           </div>
 
@@ -141,7 +133,7 @@
                 <button v-if="sectionIndex > 0" class="btn btn-sm btn-ghost" @click="goSection(sectionIndex - 1)">‹ 上一项</button>
                 <button v-if="sectionIndex < sections.length - 1" class="btn btn-sm btn-ghost" @click="goSection(sectionIndex + 1)">下一项 ›</button>
               </template>
-              <button class="btn btn-sm btn-primary" :disabled="saving || loadError || !loaded" @click="finish">{{ sectionIndex === sections.length - 1 || sectionIndex < 0 ? '完成，返回名片' : '返回名片' }}</button>
+              <button class="btn btn-sm btn-primary" :disabled="saving || finishing || loadError || !loaded" @click="finish">{{ finishing ? '保存中…' : (sectionIndex === sections.length - 1 || sectionIndex < 0 ? '完成，返回名片' : '返回名片') }}</button>
             </div>
           </div>
         </div>
@@ -201,7 +193,6 @@ import api from '../api'
 import { showToast, toggleDrawer } from '../store'
 import { THEMES, paletteOf } from '../utils/themes'
 import { refreshPosition, setManualPosition, reverseGeocode, geocode } from '../utils/geo'
-import LogoUploader from '../components/LogoUploader.vue'
 import AssetPicker from '../components/AssetPicker.vue'
 import BottomSheet from '../components/BottomSheet.vue'
 import BottomSelect from '../components/BottomSelect.vue'
@@ -233,14 +224,25 @@ const showPreview = ref(false)
 const sections = computed(() => [
   { key: 'identity', label: '名片信息', icon: '👤', done: !!(form.value.name && (form.value.title || form.value.company)) },
   { key: 'contact', label: '联系方式', icon: '📞', done: !!(form.value.mobile || form.value.phone || form.value.email || form.value.wechat || form.value.address) },
-  { key: 'bio', label: '标签简介', icon: '📝', done: !!(form.value.bio || form.value.company_intro || tagList.value.length) },
+  { key: 'bio', label: '标签简介', icon: '📝', done: !!(form.value.bio || tagList.value.length) },
   { key: 'materials', label: '公司相册', icon: '📚', done: !!materials.value.length },
   { key: 'links', label: '更多信息', icon: '🔗', done: !!(form.value.website || form.value.shop_url || form.value.links?.length) }
 ])
 const marketMeta = ref({ industries: [], cities: [] })
 const materials = ref([])
 const materialTypes = ref([])
-const materialTypeOptions = computed(() => materialTypes.value.map(t => ({ value: t.key, label: t.label })))
+// 公司相册 = 素材库图片 URL 数组；内部仍映射成 card_materials 的 {type:'file',title,url} 结构，
+// 保持后端 /mine/materials 契约不变，但用户只需选图，不再逐条填类型/标题/网址。
+const galleryUrls = computed({
+  get: () => materials.value.filter(m => m.url).map(m => m.url),
+  set: urls => {
+    materials.value = (urls || []).filter(Boolean).map((url, i) => {
+      const old = materials.value.find(m => m.url === url)
+      return { ...(old || {}), type: 'file', title: (old?.title || `图片 ${i + 1}`).slice(0, 60), url, sort: i }
+    })
+  }
+})
+function removeGalleryImage(url) { galleryUrls.value = galleryUrls.value.filter(u => u !== url) }
 const geoBusy = ref(false)
 const mapOpen = ref(false)
 const regionOpen = ref(false)
@@ -254,6 +256,7 @@ const sourceLabel = computed(() => ({
 }[positionSource.value] || '已定位'))
 const tagsText = ref('')
 const saving = ref(false)
+const finishing = ref(false)
 const loading = ref(false)
 const loaded = ref(false)
 const loadError = ref('')
@@ -277,6 +280,10 @@ async function loadCard() {
       ...blank, ...data.data, qr_logo: !!data.data.qr_logo,
       qr_style: { ...blank.qr_style, ...(data.data.qr_style || {}) }
     }
+    // 存量兼容：老名片只有 company_intro 没有 bio 时，归一到唯一的简介字段 bio；
+    // 保存时 bio 会写回，company_intro 不再单独提交（名片/vCard/分享全以 bio 为准）。
+    if (!form.value.bio && data.data.company_intro) form.value.bio = data.data.company_intro
+    form.value.company_intro = ''
     tagsText.value = (data.data.tags || []).join(', ')
     loaded.value = true
     dirtySections.value = {}
@@ -385,21 +392,6 @@ async function onMapPicked(p) {
   showToast('坐标已填入，记得点保存', 'success')
 }
 
-async function upload(e, field) {
-  const file = e.target.files?.[0]
-  if (!file) return
-  const fd = new FormData()
-  fd.append('file', file)
-  try {
-    const { data } = await api.post('/api/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
-    form.value[field] = data.data.url
-    const d = data.data
-    const saved = d.converted && d.originalSize > d.size ? ` · 已压缩 ${Math.round((1 - d.size / d.originalSize) * 100)}%` : ''
-    showToast(`上传成功${saved}，记得点保存`, 'success')
-  } catch (err) { showToast(err.message, 'error') }
-  e.target.value = ''
-}
-
 // 每类字段清单：保存时只提交当前分类，真正实现「填一类存一类」的渐进式完善
 const SECTION_FIELDS = {
   identity: ['name', 'name_en', 'title', 'company', 'department', 'logo'],
@@ -423,15 +415,20 @@ function enqueueSave(key, silent = false) {
   return task
 }
 async function saveSection(key, silent = false) {
-  if (loadError.value || !loaded.value) return
+  if (loadError.value || !loaded.value) return true
   if (key === 'materials') return saveMaterials(silent)
   const fields = SECTION_FIELDS[key] || []
-  if (key === 'identity' && !form.value.name) return (silent ? null : showToast('请填写姓名', 'error'))
+  // 姓名为空时不提交 name 字段即可，其它同组字段（职位/公司/LOGO）照常保存——
+  // 原来整组 return 会连累同组修改一起丢失，表现为「改了公司名返回没更新」。
+  if (key === 'identity' && !form.value.name && !silent) showToast('姓名为空，本次未保存姓名', 'error')
   saving.value = true
   autoSaveText.value = '正在保存…'
   try {
     const payload = {}
-    for (const f of fields) payload[f] = form.value[f]
+    for (const f of fields) {
+      if (key === 'identity' && f === 'name' && !form.value.name) continue
+      payload[f] = form.value[f]
+    }
     if (fields.includes('tags')) payload.tags = tagList.value
     if (fields.includes('links')) payload.links = form.value.links.filter(l => l.label || l.url)
     await api.put('/api/cards/mine', payload)
@@ -439,10 +436,13 @@ async function saveSection(key, silent = false) {
     dirtySections.value = { ...dirtySections.value, [key]: false }
     if (!silent) showToast('已保存', 'success')
     autoSaveText.value = '✓ 已保存 · 右侧预览始终最新'
+    return true
   } catch (e) {
     const msg = e.message || '保存失败，请检查网络后重试'
     autoSaveText.value = `⚠ ${msg}`
-    if (!silent) showToast(msg, 'error')
+    // 自动保存失败也必须弹出：静默失败 + 点完成照样跳转 = 用户以为改成功了，返回却是旧数据
+    showToast(`${msg} · 请修正后重试`, 'error')
+    return false
   } finally { saving.value = false }
 }
 
@@ -476,25 +476,12 @@ async function saveMaterials(silent = false) {
     dirtySections.value = { ...dirtySections.value, materials: false }
     if (!silent) showToast('资料夹已保存', 'success')
     autoSaveText.value = '✓ 已保存 · 右侧预览始终最新'
+    return true
   } catch (e) {
     autoSaveText.value = '保存失败，请检查网络后修改任意字段重试'
-    if (!silent) showToast(e.message, 'error')
+    showToast(e.message || '资料夹保存失败，请重试', 'error')
+    return false
   } finally { saving.value = false }
-}
-let materialSeq = 0
-function addMaterial() { materials.value.push({ _k: `new-${++materialSeq}`, type: 'link', title: '', url: '' }) }
-async function uploadMaterial(e, row) {
-  const file = e.target?.files?.[0]
-  if (!file) return
-  const prev = row.url
-  const fd = new FormData()
-  fd.append('file', file)
-  try {
-    const { data } = await api.post('/api/upload/doc', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
-    row.url = data?.data?.url || ''
-    showToast('文件已上传，将自动保存', 'success')
-  } catch (err) { row.url = prev; showToast(err.message, 'error') }
-  e.target.value = ''
 }
 
 // 字段变更 debounce 后自动保存当前分类，切换分类时立即保存上一分类；预览由 form 直接驱动，无需等保存。
@@ -530,14 +517,24 @@ function goSection(index) {
 
 async function finish() {
   clearTimeout(saveTimer)
-  // 收敛所有脏分类（不只是当前分类），并等待串行链跑完再跳——保证模板/配色/资料都落库，
-  // 否则刚改完展示模板直接返回名片会读到旧数据，必须刷新才生效（2026-11-25 实修）。
-  if (formReady) {
-    const dirty = Object.keys(dirtySections.value).filter(k => dirtySections.value[k])
-    for (const k of dirty) await enqueueSave(k, true)
-    await saveChain
-  }
-  router.push('/me')
+  if (finishing.value) return
+  finishing.value = true
+  // 收敛所有脏分类（不只是当前分类），并等待串行链跑完再跳——保证资料都落库。
+  // 关键：任一分类保存失败就留在编辑页，绝不能无条件跳回 /me（否则用户以为改成功、
+  // 返回却是旧数据，正是「编辑完公司 URL 返回不更新」的故障形态）。
+  try {
+    if (formReady) {
+      const dirty = Object.keys(dirtySections.value).filter(k => dirtySections.value[k])
+      const results = []
+      for (const k of dirty) results.push(await enqueueSave(k, true))
+      await saveChain
+      if (results.some(r => r === false)) {
+        autoSaveText.value = '⚠ 有分类保存失败，请修正后再点完成'
+        return
+      }
+    }
+    router.push('/me')
+  } finally { finishing.value = false }
 }
 </script>
 
@@ -598,11 +595,11 @@ async function finish() {
 .region-sheet-head { padding: 16px 18px 6px; }
 .region-sheet-body { padding: 0 18px 18px; max-height: 70vh; overflow-y: auto; }
 .link-row { display: grid; grid-template-columns: 1fr 1.5fr auto; gap: 8px; margin-bottom: 8px; }
-.material-row { padding: 10px; margin-bottom: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-page, rgba(0,0,0,.02)); }
-.material-row .mr-head { display: grid; grid-template-columns: 110px 1fr auto; gap: 8px; align-items: center; margin-bottom: 8px; }
-.material-row .mr-url { display: flex; gap: 8px; align-items: center; }
-.material-row .mr-url .input { flex: 1; }
-.material-row .mr-type { padding: 8px 6px; }
+/* 公司相册：素材库选图后的缩略图网格，移除按钮右上角常驻 */
+.gallery-edit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; margin-top: 12px; }
+.gallery-edit-cell { position: relative; aspect-ratio: 1; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--bg-page, #f4f6fb); }
+.gallery-edit-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gallery-edit-del { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border: 0; border-radius: 50%; background: rgba(15,23,42,.72); color: #fff; font-size: 12px; line-height: 1; }
 .theme-list { display: flex; flex-wrap: wrap; gap: 8px; }
 .theme-item { border: 1px solid var(--line); border-radius: 10px; padding: 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; }
 .theme-item.on { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37,99,235,.12); }
@@ -649,7 +646,7 @@ async function finish() {
 /* 简洁联络 contact：深蓝径向底 + 单白卡金顶条（与公开名片页同口径） */
 .preview-card.pv-contact { border-radius: 22px; border: 0; box-shadow: 0 12px 28px -14px rgba(0,0,0,.6); overflow: hidden; }
 .pv-contact .preview-head { background: var(--ng-page-bg) !important; border-radius: 0; border-bottom: 4px solid var(--ng-gold); }
-.pv-contact .preview-avatar { border-radius: 12px; background: linear-gradient(145deg,var(--ng-navy),#0e2233); color: #fff; box-shadow: inset 0 0 0 2px rgba(216,187,133,.5); }
+.pv-contact .preview-avatar { border-radius: 12px; background: #1d3a55; background: linear-gradient(145deg,#1d3a55,#0e2233); color: #fff; box-shadow: inset 0 0 0 2px rgba(216,187,133,.5); }
 .pv-contact .preview-body { color: var(--ng-ink); }
 .pv-contact .preview-tags i { border-radius: 99px; background: var(--ng-paper); color: #6b5a3c; box-shadow: inset 0 0 0 1px rgba(185,147,85,.35); }
 /* 深蓝鎏金 navygold：金线封顶 + 深蓝封面 + 纸色标签 */

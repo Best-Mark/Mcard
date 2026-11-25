@@ -43,6 +43,7 @@ import api from '../api'
 import { auth, logout, showToast } from '../store'
 import { shareOrCopy } from '../utils/share'
 import { isWeChat } from '../utils/save-image'
+import { setCardShare } from '../utils/wx-share'
 
 const route = useRoute()
 const router = useRouter()
@@ -60,11 +61,12 @@ async function loadUnread() {
   try { const { data } = await api.get('/api/notifications/unread'); unread.value = data?.data?.unread || 0 } catch {}
 }
 const slug = ref('')
+const myCard = ref(null)
 let slugBusy = false
 async function loadSlug() {
   if (slugBusy || slug.value) return
   slugBusy = true
-  try { const { data } = await api.get('/api/cards/mine'); slug.value = data?.data?.slug || '' } catch {} finally { slugBusy = false }
+  try { const { data } = await api.get('/api/cards/mine'); myCard.value = data?.data || null; slug.value = myCard.value?.slug || '' } catch {} finally { slugBusy = false }
 }
 async function goPublic(query) {
   await loadSlug()
@@ -73,9 +75,11 @@ async function goPublic(query) {
 }
 async function doShare() {
   await loadSlug()
-  const url = slug.value ? `${location.origin}/c/${slug.value}` : location.origin
+  const url = myCard.value?.url || (slug.value ? `${location.origin}/c/${slug.value}` : location.origin)
+  if (myCard.value) setCardShare(api, myCard.value, url)
+  const name = myCard.value?.name || '名片'
   if (isWeChat()) return showToast('点右上角「···」分享', 'error')
-  const r = await shareOrCopy({ title: '我的电子名片', text: '扫一扫保存我的名片', url })
+  const r = await shareOrCopy({ title: `${name}的名片`, text: myCard.value?.bio || '扫一扫保存我的名片', url })
   if (r === 'copied') showToast('链接已复制', 'success')
   else if (r === 'failed') showToast('复制失败，请手动复制地址栏链接', 'error')
 }

@@ -47,13 +47,9 @@
           </div>
         </div>
 
-        <div v-if="card.bio" class="cp-block" data-sec="bio">
-          <h3>关于我</h3><p class="cp-bio">{{ card.bio }}</p>
-        </div>
-
-        <div v-if="card.company_intro" class="cp-block" data-sec="bio">
-          <h3>公司简介 <span v-if="card.company">· {{ card.company }}</span></h3>
-          <p class="cp-bio">{{ card.company_intro }}</p>
+        <!-- 与名片页同口径：只显示一个「简介」区块，存量 company_intro 回落 -->
+        <div v-if="introText" class="cp-block" data-sec="bio">
+          <h3>简介</h3><p class="cp-bio">{{ introText }}</p>
         </div>
 
         <div v-if="card.links?.length" class="cp-block" data-sec="links">
@@ -139,6 +135,8 @@ const detailAddress = computed(() => {
   return [c.address, c.address_detail].filter(Boolean).join(' ')
 })
 const fullAddress = computed(() => [regionLine.value.replace(/ · /g, ''), detailAddress.value].filter(Boolean).join(' '))
+// 与名片页同口径：简介 bio 优先，存量 company_intro 回落
+const introText = computed(() => props.card?.bio || props.card?.company_intro || '')
 const contactFields = computed(() => {
   const c = props.card || {}
   return [

@@ -121,7 +121,7 @@ onMounted(load)
 .spacer { flex: 1; }
 .notif-list { display: flex; flex-direction: column; gap: 10px; }
 .notif-item { display: flex; align-items: flex-start; gap: 12px; padding: 14px; border-left: 3px solid transparent; cursor: pointer; }
-.notif-item.unread { border-left-color: var(--primary); background: color-mix(in srgb, var(--primary) 5%, var(--bg-card)); }
+.notif-item.unread { border-left-color: var(--primary); background: #f5f8ff; background: color-mix(in srgb, var(--primary) 5%, var(--bg-card)); }
 .ni-ico { font-size: 22px; line-height: 1.2; }
 .ni-body { flex: 1; min-width: 0; }
 .ni-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }

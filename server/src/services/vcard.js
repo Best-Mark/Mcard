@@ -23,8 +23,9 @@ function build(card, baseUrl) {
   const [family, given, formatted] = splitName(card.name || card.name_en)
   const url = `${baseUrl}/c/${card.slug}`
   const notes = []
-  if (card.bio) notes.push(card.bio)
-  if (card.company_intro) notes.push(`公司简介：${card.company_intro}`)
+  // 简介统一为一段：bio 优先，存量 company_intro 回落，不再分「个人/公司」两条。
+  const intro = card.bio || card.company_intro || ''
+  if (intro) notes.push(intro)
   // 跨系统兜底：微信/支付宝/座机/网址写进 NOTE，X-* 被忽略的系统仍可见
   const extra = []
   if (card.wechat) extra.push(`微信：${card.wechat}`)

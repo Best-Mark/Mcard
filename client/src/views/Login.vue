@@ -264,7 +264,7 @@ function cancelBind() { bindTicket.value = ''; wxNickname.value = ''; wxAvatar.v
 
 <style scoped>
 .login-page { min-height: 100vh; background: var(--bg); padding-bottom: 40px; }
-.login-top { height: calc(56px + env(safe-area-inset-top, 0px)); display: flex; align-items: center; padding: env(safe-area-inset-top, 0px) 16px 0; }
+.login-top { height: calc(56px + var(--safe-top)); display: flex; align-items: center; padding: var(--safe-top) 16px 0; }
 .login-top .brand { font-weight: 800; letter-spacing: -.4px; font-size: 17px; }
 .login-top .brand em { color: var(--primary); font-style: normal; }
 .login-content { width: min(100% - 32px, 400px); margin: 0 auto; padding-top: 24px; }

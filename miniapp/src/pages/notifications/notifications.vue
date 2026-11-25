@@ -60,7 +60,7 @@ async function markAll() {
   busy.value = true
   try { await markNotificationRead(0); list.value.forEach(n => { n.isRead = true }); unread.value = 0 } catch {} finally { busy.value = false }
 }
-function iconOf(t) { return ({ card_update: '🔄', new_favorite: '⭐', new_exchange: '🤝' })[t] || '🔔' }
+function iconOf(t) { return ({ card_update: '🔄', new_favorite: '⭐', new_exchange: '🤝', new_view: '👀' })[t] || '🔔' }
 function timeOf(s) {
   if (!s) return ''
   const t = new Date(String(s).replace(' ', 'T') + (String(s).includes('Z') ? '' : 'Z'))

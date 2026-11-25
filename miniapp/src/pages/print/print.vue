@@ -14,7 +14,7 @@
             </view>
             <view class="pp-body">
               <image class="pp-qr" :src="baseUrl + '/api/cards/public/' + card.slug + '/qr.png?size=440'" mode="aspectFit" />
-              <view class="pp-intro">{{ card.company_intro || card.bio || '扫一扫，保存我的电子名片' }}</view>
+              <view class="pp-intro">{{ card.bio || card.company_intro || '扫一扫，保存我的电子名片' }}</view>
               <view class="pp-contact">{{ card.mobile || '' }} {{ card.email ? ' · ' + card.email : '' }}</view>
               <view class="pp-tip">扫码存入通讯录 · 资料可改二维码不变</view>
             </view>
@@ -94,7 +94,7 @@ async function savePoster() {
   ctx.drawImage(qrPath, 24, 175, 175, 175)
   ctx.setFillStyle('#162033')
   ctx.setFontSize(15)
-  wrapText(ctx, c.company_intro || c.bio || '', 320, 4).forEach((line, i) => ctx.fillText(line, 24, 390 + i * 22))
+  wrapText(ctx, c.bio || c.company_intro || '', 320, 4).forEach((line, i) => ctx.fillText(line, 24, 390 + i * 22))
   ctx.setFillStyle('#64748b')
   ctx.setFontSize(12)
   ctx.fillText(String(c.mobile || '').slice(0, 34), 24, 495)

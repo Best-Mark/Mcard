@@ -5,7 +5,9 @@ const crypto = require('crypto')
 const config = require('../config')
 
 // 公开键：匿名接口 /api/public/config 仅下发这些
-const PUBLIC_KEYS = ['site_name', 'site_desc', 'contact', 'notice', 'qr_brand']
+// share_* 是分享素材池（标题/描述/图片，每行一条），匿名可读——对齐 MShop 的 share_config 白名单口径
+const SHARE_KEYS = ['share_title', 'share_desc', 'share_image']
+const PUBLIC_KEYS = ['site_name', 'site_desc', 'contact', 'notice', 'qr_brand', ...SHARE_KEYS]
 // 公开派生键：由后端算好后下发，前端据此决定是否显示微信快捷登录入口（不下发任何 key/secret）
 const PUBLIC_DERIVED_KEYS = ['wechat_login_enabled']
 
@@ -85,7 +87,63 @@ const GROUPS = {
       { key: 'oss_secret_key', label: 'AccessKey Secret（阿里云）/ SecretKey（腾讯云）', type: 'secret' },
       { key: 'oss_custom_domain', label: '自定义域名（可选，不含协议头与结尾斜杠）', type: 'text' }
     ]
+  },
+  share: {
+    label: '分享素材池',
+    fields: [
+      { key: 'share_title', label: '分享标题池（每行一条，随机取用）', type: 'textarea', large: true },
+      { key: 'share_desc', label: '分享描述池（每行一条，随机取用）', type: 'textarea', large: true },
+      { key: 'share_image', label: '分享图片池（每行一个绝对 URL，仅 jpg/png/gif 生效）', type: 'textarea', large: true }
+    ]
+  },
+  notify: {
+    label: '消息通知',
+    fields: [
+      { key: 'notify_favorite_title', label: '被收藏 · 标题', type: 'text' },
+      { key: 'notify_favorite_body', label: '被收藏 · 正文（变量 {actorName}）', type: 'text' },
+      { key: 'notify_exchange_title', label: '被交换 · 标题', type: 'text' },
+      { key: 'notify_exchange_body', label: '被交换 · 正文（变量 {actorName}）', type: 'text' },
+      { key: 'notify_view_title', label: '被查看 · 标题', type: 'text' },
+      { key: 'notify_view_body', label: '被查看 · 正文（变量 {actorName}、{cardName}）', type: 'text' },
+      { key: 'notify_update_title', label: '关注名片更新 · 标题', type: 'text' },
+      { key: 'notify_update_body', label: '关注名片更新 · 正文（变量 {cardName}、{summary}）', type: 'text' },
+      { key: 'notify_view_enabled', label: '启用「有人查看了我的名片」通知（true / false）', type: 'text' }
+    ]
   }
+}
+
+// 通知模板默认值（唯一真相源）：留空即回落这批。变量占位符由 notify.js 统一渲染。
+const NOTIFY_TEMPLATE_DEFAULTS = {
+  notify_favorite_title: '名片动态',
+  notify_favorite_body: '{actorName} 收藏了你的名片',
+  notify_exchange_title: '名片动态',
+  notify_exchange_body: '{actorName} 与你交换了名片',
+  notify_view_title: '名片动态',
+  notify_view_body: '{actorName} 查看了你的名片',
+  notify_update_title: '名片有更新',
+  notify_update_body: '你关注的名片「{cardName}」更新了：{summary}',
+  notify_view_enabled: 'true'
+}
+const NOTIFY_KEYS = Object.keys(NOTIFY_TEMPLATE_DEFAULTS)
+
+// 分享素材池默认值（唯一真相源）：后台留空即回落这批，前端与小程序不再各自硬编码文案。
+// MCard 场景是电子名片，文案围绕「存通讯录 / 二维码不变」，与 MShop 的「好物」口径区分。
+const SHARE_POOL_DEFAULTS = {
+  share_title: [
+    '一张名片，扫码存进通讯录',
+    '资料随时改，二维码终身不变',
+    '认识一下，这是我的电子名片',
+    '存下联系方式，随时都能找到我',
+    '换手机也不怕，名片二维码不变'
+  ],
+  share_desc: [
+    '电话、微信、地址一目了然，扫码即可存入通讯录。',
+    '资料随时更新，二维码长期有效，不用换码。',
+    '电子名片：一扫即存，再也不会弄丢联系方式。',
+    '点开看看，扫一扫就能把我存进手机。',
+    '名片信息都在这里，长按或扫码即可保存。'
+  ],
+  share_image: []
 }
 
 const SENSITIVE_KEYS = Object.values(GROUPS).flatMap(g => g.fields).filter(f => f.type === 'secret').map(f => f.key)
@@ -180,6 +238,34 @@ function wechatLoginEnabled() {
   return c.enabled && !!c.appId && !!c.secret
 }
 
+// 分享素材池：任意值（JSON 数组字符串 / 换行文本 / 旧单值）→ 清洗后的数组（最多 10 条）。
+// 只收字符串条目，避免脏值被 String() 强转成 "[object Object]" 当素材发出去。
+function normalizePool(v, fallback = []) {
+  let arr = []
+  if (Array.isArray(v)) arr = v
+  else if (typeof v === 'string' && v.trim()) {
+    const s = v.trim()
+    if (s.startsWith('[')) { try { const p = JSON.parse(s); if (Array.isArray(p)) arr = p } catch { /* 非 JSON 按换行处理 */ } }
+    if (!arr.length) arr = s.split(/[\r\n]+/)
+  }
+  const clean = arr.map(x => String(x ?? '').trim()).filter(Boolean).slice(0, 10)
+  return clean.length ? clean : fallback
+}
+
+// 分享素材池视图：空值一律回落内置默认池，保证任何页面都有素材可抽
+function shareView() {
+  const out = {}
+  for (const k of SHARE_KEYS) out[k] = normalizePool(get(k, ''), SHARE_POOL_DEFAULTS[k])
+  return out
+}
+
+// 通知模板视图：空值回落内置默认，notify.js 渲染时统一走这里（唯一真相源）
+function notifyView() {
+  const out = {}
+  for (const k of NOTIFY_KEYS) out[k] = String(get(k, '') || '').trim() || NOTIFY_TEMPLATE_DEFAULTS[k]
+  return out
+}
+
 // 公开配置：白名单键 + 派生开关（绝不外泄任何 key/secret）
 function publicView() {
   const out = {}
@@ -187,6 +273,8 @@ function publicView() {
   for (const k of PUBLIC_DERIVED_KEYS) {
     if (k === 'wechat_login_enabled') out[k] = wechatLoginEnabled()
   }
+  // 分享素材池下发数组；后台未配置时用内置默认池（前端/小程序不再各自硬编码）
+  Object.assign(out, shareView())
   return out
 }
 
@@ -204,6 +292,8 @@ function adminView() {
     out[k] = val ? MASK : ''
     out[`${k}_fp`] = val ? fingerprint(val) : ''
   }
+  // 分享池配置中心所见即所得：空池展示内置默认文案（C 端实际分享出去的就是这批）
+  for (const k of SHARE_KEYS) out[k] = normalizePool(map[k], SHARE_POOL_DEFAULTS[k]).join('\n')
   return out
 }
 
@@ -246,7 +336,11 @@ function seedDefaults() {
     oss_bucket: '',
     oss_access_key: '',
     oss_secret_key: '',
-    oss_custom_domain: ''
+    oss_custom_domain: '',
+    share_title: SHARE_POOL_DEFAULTS.share_title.join('\n'),
+    share_desc: SHARE_POOL_DEFAULTS.share_desc.join('\n'),
+    share_image: '',
+    ...NOTIFY_TEMPLATE_DEFAULTS
   }
   const tx = db.transaction(() => {
     for (const [k, v] of Object.entries(seeds)) stmt.run(k, JSON.stringify(String(v || '')))
@@ -254,4 +348,4 @@ function seedDefaults() {
   tx()
 }
 
-module.exports = { PUBLIC_KEYS, PUBLIC_DERIVED_KEYS, GROUPS, SENSITIVE_KEYS, ALL_KEYS, MASK, fingerprint, get, payConfig, smsConfig, wechatOauthConfig, wechatLoginEnabled, mapConfig, ossConfig, publicView, adminView, seedDefaults }
+module.exports = { PUBLIC_KEYS, PUBLIC_DERIVED_KEYS, SHARE_KEYS, SHARE_POOL_DEFAULTS, NOTIFY_KEYS, NOTIFY_TEMPLATE_DEFAULTS, GROUPS, SENSITIVE_KEYS, ALL_KEYS, MASK, fingerprint, get, normalizePool, shareView, notifyView, payConfig, smsConfig, wechatOauthConfig, wechatLoginEnabled, mapConfig, ossConfig, publicView, adminView, seedDefaults }

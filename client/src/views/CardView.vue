@@ -6,6 +6,8 @@
     3. 「存入通讯录」的操作步骤只在 guide 弹层内展示，页面任何位置都不摆步骤；
     4. 公司名水印缩在卡片右下角、低透明，不遮挡姓名/职位/联系方式；
     5. 联系方式值按模板底色取高对比色：固定配色模板用 --cv-ink，主题驱动模板用 --t-text，不得用装饰色牺牲可读性；
+       次级操作（导航/收藏/交换）只在公开访客页的悬浮「⋯」里；owner 工作台预览不显示——
+       自己的名片无收藏/交换可言（后端也会拦「不能收藏自己的名片」），导航在地址区已有按钮（2026-11-25 用户定稿）；
     6. 页面底部留白 ≥ dock 高度（单排约 92px），末张卡片不被遮挡；
     7. 配色/质感跟随主题强调色，不写死白色；尊重 prefers-reduced-motion。
   -->
@@ -70,13 +72,9 @@
 
         <!-- 仅 embed 裁剪正文；owner 与公开页渲染完全相同的整页内容 -->
         <template v-if="full">
-        <div v-if="card.bio" class="card card-pad cv-block">
-          <h3>关于我</h3><p class="cv-bio">{{ card.bio }}</p>
-        </div>
-
-        <div v-if="card.company_intro" class="card card-pad cv-block">
-          <h3>公司简介 <span class="small muted" v-if="card.company">· {{ card.company }}</span></h3>
-          <p class="cv-bio">{{ card.company_intro }}</p>
+        <!-- 简介只保留一个区块：字段 bio，标题统一叫「简介」；存量 company_intro 由 introText 回落 -->
+        <div v-if="introText" class="card card-pad cv-block">
+          <h3>简介</h3><p class="cv-bio">{{ introText }}</p>
         </div>
 
         <div v-if="card.links?.length" class="card card-pad cv-block">
@@ -134,12 +132,13 @@
           <router-link to="/login?redirect=/me/card" class="btn btn-primary">免费创建我的名片 →</router-link>
         </div>
 
-        <p class="cv-footer">由 <b>{{ siteConfig.site_name }}</b> 提供技术支持 · 资料可改 · 二维码不变</p>
+        <p class="cv-footer">由 <b>{{ siteConfig.site_name }}</b> 提供技术支持</p>
         </template>
       </div>
-      <!-- 次级操作收进悬浮「⋯」：导航/收藏/交换名片，不铺在正文 -->
-      <button v-if="full" class="cv-fab" :class="{ on: moreOpen }" @click="moreOpen = !moreOpen" aria-label="更多操作">⋯</button>
-      <div v-if="moreOpen" class="cv-fab-mask" @click="moreOpen = false">
+      <!-- 次级操作收进悬浮「⋯」：导航/收藏/交换名片，不铺在正文。
+           owner 工作台是自己的名片：收藏会被后端拦、交换对自己无意义、导航地址区已有按钮，故不显示。 -->
+      <button v-if="full && !owner" class="cv-fab" :class="{ on: moreOpen }" @click="moreOpen = !moreOpen" aria-label="更多操作">⋯</button>
+      <div v-if="full && !owner && moreOpen" class="cv-fab-mask" @click="moreOpen = false">
         <div class="cv-fab-menu" @click.stop>
           <button v-if="fullAddress && maps.length" @click="moreOpen = false; openMapSheet()">导航到此处</button>
           <button @click="moreOpen = false; toggleFavorite()">{{ favorite ? '★ 已收藏' : '☆ 收藏名片' }}</button>
@@ -187,24 +186,24 @@
       </div>
     </div>
 
-    <!-- 相册大图：点缩略图直接看，不跳中间页；资料场景不放二维码，避免与名片二维码混淆 -->
-    <div v-if="galleryIndex >= 0" class="modal-mask gallery-mask" @click.self="galleryIndex = -1">
-      <div class="gallery-viewer">
+    <!-- 全屏看图：点相册缩略图进入，顶部「返回」回名片，左右切换；对齐小程序 uni.previewImage 观感 -->
+    <div v-if="galleryIndex >= 0" class="gallery-fullscreen" role="dialog" aria-label="相册大图浏览">
+      <div class="gf-top">
+        <button class="gf-back" aria-label="返回名片" @click="galleryIndex = -1">‹ 返回</button>
+        <span class="gf-count">{{ galleryIndex + 1 }} / {{ imageMaterials.length }}</span>
+        <span class="gf-title">{{ imageMaterials[galleryIndex]?.title || '相册' }}</span>
+      </div>
+      <div class="gf-stage" @click.self="galleryIndex = -1">
         <img :src="fullUrl(imageMaterials[galleryIndex]?.url)" :alt="imageMaterials[galleryIndex]?.title" />
-        <div class="gallery-cap">
-          <span class="small">{{ imageMaterials[galleryIndex]?.title }}</span>
-          <span class="small muted">{{ galleryIndex + 1 }} / {{ imageMaterials.length }}</span>
-        </div>
-        <div class="btn-row" style="justify-content:center;gap:8px">
-          <button class="btn btn-ghost" :disabled="galleryIndex <= 0" @click="galleryIndex--">上一张</button>
-          <button class="btn btn-ghost" :disabled="galleryIndex >= imageMaterials.length - 1" @click="galleryIndex++">下一张</button>
-        </div>
-        <button class="btn btn-ghost" style="margin-top:8px" @click="galleryIndex = -1">关闭</button>
+      </div>
+      <div class="gf-nav">
+        <button :disabled="galleryIndex <= 0" @click="galleryIndex--">‹ 上一张</button>
+        <button :disabled="galleryIndex >= imageMaterials.length - 1" @click="galleryIndex++">下一张 ›</button>
       </div>
     </div>
 
     <!-- 保存引导弹层：微信内「去浏览器添加」的步骤只在这里出现，不铺在名片页面上 -->
-    <div v-if="guide" class="modal-mask" @click.self="guide = ''">
+    <div v-if="guide" class="modal-mask" @click.self="closeGuide">
       <div class="modal">
         <h3>{{ guide === 'contact' ? '存入通讯录' : '保存二维码' }}</h3>
         <template v-if="guide === 'contact'">
@@ -213,17 +212,17 @@
             <div class="guide-steps-t">{{ contactSteps.title }}</div>
             <ol><li v-for="(s, i) in contactSteps.lines" :key="i" v-html="s"></li></ol>
           </div>
-          <p class="small muted" style="margin-top:10px">已自动带上登录状态，在浏览器里无需再次登录。</p>
+          <p class="small muted" style="margin-top:10px">{{ guideWithLogin ? '已自动带上登录状态，在浏览器里无需再次登录。' : '访客无需登录，在浏览器里一样能保存名片。' }}</p>
         </template>
         <template v-else-if="inWeChat">
-          <p>微信内置浏览器限制下载。请点右上角「···」→ <b>在浏览器中打开</b>（已自动带上登录状态），再点保存。</p>
+          <p>微信内置浏览器限制下载。请点右上角「···」→ <b>在浏览器中打开</b>{{ guideWithLogin ? '（已自动带上登录状态）' : '（无需登录）' }}，再点保存。</p>
         </template>
         <template v-else>
           <p v-html="saveTip"></p>
         </template>
         <img v-if="guide !== 'contact'" :src="guideImage || (qrApi + '/qr.svg?size=520')" style="width:200px;height:200px;margin:10px auto;object-fit:contain" alt="二维码" />
         <div class="btn-row">
-          <button class="btn btn-ghost" @click="guide = ''">知道了</button>
+          <button class="btn btn-ghost" @click="closeGuide">知道了</button>
         </div>
       </div>
     </div>
@@ -244,7 +243,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 // embed：嵌入模式（只渲染封面+身份区，其余由宿主页呈现）；owner：持有者预览（/me 我的名片）。
@@ -261,7 +260,7 @@ import { showToast, auth, siteConfig } from '../store'
 import { THEMES, themeOf, themeVars } from '../utils/themes'
 import { isWeChat, isIOS, saveImageUrl, prepareExternalOpen, openVcfInline, deviceEnv, SAVE_IMAGE_TIPS } from '../utils/save-image'
 import { shareOrCopy, mapLinks } from '../utils/share'
-import { setupWechatShare, absoluteMediaUrl } from '../utils/wx-share'
+import { setCardShare } from '../utils/wx-share'
 import { getCachedPosition } from '../utils/geo'
 import BottomSheet from '../components/BottomSheet.vue'
 import AppIcon from '../components/AppIcon.vue'
@@ -272,9 +271,11 @@ const embed = props.embed
 const owner = props.owner
 // 是否渲染公开页整页内容：owner 模式与公开页完全一致，只有 embed 才裁成头部
 const full = !embed
-const slug = props.embedSlug || route.params.slug
-const qrApi = `/api/cards/public/${slug}`
-const vcfApi = `${qrApi}/card.vcf`
+// slug 必须响应式：名片夹/后台可连续打开 /c/a → /c/b，组件复用时不会重新挂载，
+// 常量写法会让第二张名片仍显示第一张（编辑返回不更新的同类问题）。
+const slug = computed(() => props.embedSlug || route.params.slug)
+const qrApi = computed(() => `/api/cards/public/${slug.value}`)
+const vcfApi = computed(() => `${qrApi.value}/card.vcf`)
 // 二维码统一用名片地址短链（qr.svg/qr.png）：码点少、微信扫一扫必开；
 // 存通讯录在打开的名片页里点按钮完成，不再把整段 vCard 塞进二维码（太密、微信不认、难扫）。
 const card = ref(null); const loading = ref(true); const error = ref('')
@@ -354,7 +355,16 @@ const displayTitle = computed(() => {
   const parts = template.value === 'navygold' ? [c.title, c.department] : [c.title, c.company, c.department]
   return parts.filter(Boolean).join(' · ')
 })
+// 简介唯一真相源：只保留「简介」一个概念（bio），不再分「关于我/公司简介」两块。
+// 存量兼容：老名片只填了 company_intro 的，回落到简介展示，避免历史内容凭空消失。
+const introText = computed(() => card.value?.bio || card.value?.company_intro || '')
 const windowRef = window
+// 分享唯一真相源：服务端 publicView 下发的 url = ${origin}/c/${slug}（动态域名、干净无 query）。
+// 微信「···」原生转发用的是 JS-SDK 配置的 link，不是地址栏 URL——owner 页也必须配成这个地址，
+// 否则别人打开的是 /me（被守卫踢去登录，登录后看到「我的名片页」），而不是被分享的那张名片。
+const publicLink = computed(() => card.value?.url || `${windowRef.location.origin}/c/${slug.value}`)
+// 微信内引导「在浏览器中打开」是否真的带上了登录凭证：未登录访客拿不到 ticket，文案不能谎称已带登录态
+const guideWithLogin = ref(false)
 const fullUrl = u => (u ? new URL(u, windowRef.location.origin).href : '')
 // 模板里区分微信/Safari 的保存引导（微信→去浏览器，iOS→长按图片）
 const inWeChat = isWeChat()
@@ -402,7 +412,19 @@ const CONTACT_STEPS = {
     '手机扫码打开此页，可直接拨号、一键存档'
   ] }
 }
-const contactSteps = computed(() => CONTACT_STEPS[deviceEnvKey] || CONTACT_STEPS.other)
+const contactSteps = computed(() => {
+  const base = CONTACT_STEPS[deviceEnvKey] || CONTACT_STEPS.other
+  if (deviceEnvKey !== 'wechat') return base
+  // 未登录访客拿不到 wx_ticket，文案不能谎称「已自动带上登录状态」——
+  // 保存名片到通讯录本就不需要登录，访客在浏览器里照样能保存。
+  return {
+    title: base.title,
+    lines: [
+      `点右上角「···」→ <b>在浏览器中打开</b>${guideWithLogin.value ? '（已自动带上登录状态，无需再次登录）' : '（无需登录，访客也能保存）'}`,
+      ...base.lines.slice(1)
+    ]
+  }
+})
 
 // 联系方式逐项一键复制（借鉴名片全能王「点字段直接复制」，比只打电话更通用）
 // 标签与值同排展示，统一带冒号（复制提示仍用纯字段名）
@@ -429,29 +451,37 @@ function safeUrl(u) {
   const full = /^https?:\/\//i.test(s) ? s : `https://${s}`
   try { const x = new URL(full); return ['http:', 'https:'].includes(x.protocol) ? x.href : '#' } catch { return '#' }
 }
-// 微信内显示「去浏览器打开」引导前，先把登录凭证写进当前 URL，外部浏览器打开即免二次登录
+// 微信内显示「去浏览器打开」引导前，尝试把登录凭证写进当前 URL，外部浏览器打开即免二次登录。
+// 未登录访客（含非注册用户）拿不到 ticket——记录结果，文案据实说明，不能谎称已带登录态。
 async function showGuide(kind) {
-  if (isWeChat()) await prepareExternalOpen(api)
+  guideWithLogin.value = isWeChat() ? !!(await prepareExternalOpen(api)) : false
   guide.value = kind
+}
+// 引导看完即抹掉地址栏上的一次性登录凭证：避免用户紧接着用微信「···」转发时把 ticket 带出去
+function closeGuide() {
+  guide.value = ''
+  const u = new URL(windowRef.location.href)
+  if (u.searchParams.has('wx_ticket')) {
+    u.searchParams.delete('wx_ticket')
+    windowRef.history.replaceState(null, '', u.toString())
+  }
 }
 
 async function load() {
   loading.value = true; error.value = ''
   try {
-    const { data } = await api.get(qrApi)
+    const { data } = await api.get(qrApi.value)
     card.value = data.data
     currentTheme.value = THEMES[data.data.theme] ? data.data.theme : 'ocean'
     template.value = data.data.template || 'contact'
-    if (!embed && !owner) setupWechatShare(api, {
-      title: `${card.value.name || '名片'} · ${card.value.title || card.value.company || '电子名片'}`,
-      desc: `${[card.value.company, card.value.department, card.value.title].filter(Boolean).join(' · ') || '电子名片'}，扫码打开名片`,
-      link: card.value.url || windowRef.location.href,
-      imgUrl: absoluteMediaUrl(card.value.avatar || card.value.logo || card.value.cover)
-    })
+    // owner 页（/me）同样要配置微信分享卡片：微信「···」原生转发取的是这里配的 link，
+    // 不配就会把当前 /me 链接发出去 → 别人打开被守卫踢去登录，登录后看到「我的名片页」。
+    // 口径与工作台共用 setCardShare（唯一真相源）。
+    if (full) setCardShare(api, card.value, publicLink.value)
     if (!embed && !owner && auth.token) {
-      try { const mine = await api.get('/api/cards/mine'); isOwner.value = mine.data.data?.slug === slug } catch { /* 忽略 */ }
+      try { const mine = await api.get('/api/cards/mine'); isOwner.value = mine.data.data?.slug === slug.value } catch { /* 忽略 */ }
       if (!isOwner.value) {
-        try { favorite.value = !!(await api.get(`/api/cards/public/${slug}/favorite`)).data.data?.favorite } catch { /* 忽略 */ }
+        try { favorite.value = !!(await api.get(`${qrApi.value}/favorite`)).data.data?.favorite } catch { /* 忽略 */ }
       }
     }
     // 工作台「我的名片二维码」跳过来：弹名片地址码，微信扫开名片页后再存入通讯录
@@ -464,10 +494,13 @@ async function load() {
       if (changed) windowRef.history.replaceState(null, '', u.toString())
     }
   } catch (e) { error.value = e.message } finally { loading.value = false }
-  if (embed || owner) return // 嵌入预览/持有者预览不拉资料夹、不上报浏览，不污染访问统计
-  // 资料夹与来源/城市上报：不阻塞名片主流程，失败静默
-  try { materialsList.value = (await api.get(`${qrApi}/materials`)).data.data?.list || [] } catch { /* 忽略 */ }
-  traceVisit()
+  // 资料夹是名片正文的一部分：owner 预览也要拉，否则「公司相册」在 /me 永远空白。
+  // 嵌入预览（只裁头部的旧用法）才整段跳过。失败静默不阻塞主流程。
+  if (!embed) {
+    try { materialsList.value = (await api.get(`${qrApi.value}/materials`)).data.data?.list || [] } catch { /* 忽略 */ }
+  }
+  // 浏览上报仅公开页：owner/embed 不污染访问统计
+  if (!embed && !owner) traceVisit()
 }
 async function traceVisit() {
   try {
@@ -476,10 +509,21 @@ async function traceVisit() {
     // 默认城市兜底不算真实定位，不上报，避免把未授权访客都记成「上海」脏数据
     let city = ''
     try { const p = getCachedPosition(); city = p.source && p.source !== 'default' ? (p.city || '') : '' } catch { /* 无缓存 */ }
-    if (src || city) await api.post(`${qrApi}/trace`, { source: src, city })
+    if (src || city) await api.post(`${qrApi.value}/trace`, { source: src, city })
   } catch { /* 上报失败静默 */ }
 }
 onMounted(load)
+// 同组件参数变化（名片夹连续看 /c/a → /c/b）：组件复用不会重新 mounted，
+// 必须重置跟随名片的状态再重新加载，否则第二张名片显示第一张的内容。
+watch(slug, () => {
+  card.value = null
+  materialsList.value = []
+  qrModal.value = false; guide.value = ''; exchangeOpen.value = false
+  mapOpen.value = false; moreOpen.value = false; galleryIndex.value = -1
+  favorite.value = false; isOwner.value = false; mySlug.value = ''
+  windowRef.scrollTo?.(0, 0)
+  load()
+})
 
 function tel(v) { if (v) windowRef.location.href = `tel:${v}`; else showToast('尚未填写电话') }
 function sms(v) { if (v) windowRef.location.href = `sms:${v}`; else showToast('尚未填写手机号') }
@@ -523,7 +567,7 @@ async function copy(v, label) {
 }
 async function saveQr() {
   guideImage.value = ''
-  const r = await saveImageUrl(`${qrApi}/qr.png?size=900`, `${slug}-二维码.png`)
+  const r = await saveImageUrl(`${qrApi.value}/qr.png?size=900`, `${slug.value}-二维码.png`)
   if (r.kind === 'longpress') { await showGuide('qr'); return }
   showToast(r.kind === 'downloaded' ? '二维码已开始下载' : '已打开二维码，请长按保存', 'success')
 }
@@ -533,10 +577,10 @@ async function saveContact() {
   if (isIOS()) {
     // iOS Safari：直接跳 .vcf 唤起系统「添加联系人」弹层（覆盖在当前页，不会触发 visibilitychange）。
     // 若被拦截无法弹出，用户可复制页面里的手机号手动新建联系人——不再主动弹窗打断。
-    openVcfInline(vcfApi)
+    openVcfInline(vcfApi.value)
     return
   }
-  const r = await saveImageUrl(vcfApi, `${card.value.name || slug}.vcf`)
+  const r = await saveImageUrl(vcfApi.value, `${card.value.name || slug.value}.vcf`)
   if (r.kind === 'downloaded') showToast('已下载，打开即可导入通讯录', 'success')
   else showToast('已打开名片文件，请选择导入通讯录')
 }
@@ -545,19 +589,20 @@ async function doShare() {
     showToast('已设为名片卡片：点右上角「···」→ 发送给朋友 / 分享到朋友圈', 'error')
     return
   }
-  const r = await shareOrCopy({ title: card.value?.name || '电子名片', text: card.value?.title || '扫一扫保存我的名片', url: card.value?.url || windowRef.location.href })
+  // 复制出去的必须是干净的公开名片地址，绝不能是带 wx_ticket/save 的地址栏 URL
+  const r = await shareOrCopy({ title: card.value?.name || '电子名片', text: card.value?.title || '扫一扫保存我的名片', url: publicLink.value })
   if (r === 'copied') showToast('链接已复制，快分享给朋友', 'success')
   else if (r === 'failed') showToast('复制失败，请手动复制地址栏链接', 'error')
 }
 function openExchange() {
-  if (isOwner.value && card.value) mySlug.value = slug
+  if (isOwner.value && card.value) mySlug.value = slug.value
   exchangeOpen.value = true
 }
 async function doExchange() {
   if (!mySlug.value) return showToast('请填写你的名片短码')
   exchanging.value = true
   try {
-    await api.post(`${qrApi}/exchange`, { slug: mySlug.value })
+    await api.post(`${qrApi.value}/exchange`, { slug: mySlug.value })
     showToast('交换成功，已在双方记录中留存', 'success')
     exchangeOpen.value = false
   } catch (e) { showToast(e.message, 'error') } finally { exchanging.value = false }
@@ -568,7 +613,7 @@ async function toggleFavorite() {
   if (isOwner.value) return showToast('不能收藏自己的名片')
   favBusy.value = true
   try {
-    const { data } = await api.post(`${qrApi}/favorite`)
+    const { data } = await api.post(`${qrApi.value}/favorite`)
     favorite.value = !!data.data?.favorite
     showToast(favorite.value ? '已收藏到我的名片夹' : '已取消收藏', 'success')
   } catch (e) { showToast(e.message, 'error') } finally { favBusy.value = false }
@@ -599,10 +644,10 @@ async function toggleFavorite() {
 }
 .cv-cover > * { position: relative; z-index: 1; }
 @media (prefers-reduced-motion: reduce) { .cv-cover::before { animation: none; opacity: .7; } }
-.cv-back { position: absolute; left: 16px; top: calc(14px + env(safe-area-inset-top)); font-size: 30px; color: #fff; line-height: 1; }
+.cv-back { position: absolute; left: 16px; top: calc(14px + var(--safe-top)); font-size: 30px; color: #fff; line-height: 1; }
 /* 持有者预览的编辑入口：与返回按钮同位，稍缩字号避免与品牌字重叠 */
 .cv-owner-edit { font-size: 22px; width: 34px; text-align: center; z-index: 2; }
-.cv-brand { position: absolute; right: 16px; top: calc(18px + env(safe-area-inset-top)); color: #fff; font-weight: 800; opacity: .9; }
+.cv-brand { position: absolute; right: 16px; top: calc(18px + var(--safe-top)); color: #fff; font-weight: 800; opacity: .9; }
 .cv-brand em { font-style: normal; opacity: .75; }
 .cv-main { margin-top: -48px; position: relative; }
 .cv-loading { padding: 60px 0; text-align: center; }
@@ -635,7 +680,7 @@ async function toggleFavorite() {
 .notice-card { margin-top: 12px; border-color: #fcd34d; background: #fffbeb; color: #92400e; }
 /* 操作栏已并入联系方式行：整行点击复制该字段，行尾按钮给出电话/短信/邮件等操作 */
 .cv-contact-acts { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
-.cv-row-act { padding: 5px 9px; border-radius: 7px; background: color-mix(in srgb, var(--t-accent) 12%, transparent); color: var(--t-accent); font-size: 11px; font-weight: 600; white-space: nowrap; }
+.cv-row-act { padding: 5px 9px; border-radius: 7px; background: rgba(0,0,0,.05); background: color-mix(in srgb, var(--t-accent) 12%, transparent); color: var(--t-accent); font-size: 11px; font-weight: 600; white-space: nowrap; }
 .cv-block { margin-top: 12px; background: var(--t-surface); }
 .cv-block h3, .cv-sec-title { font-size: 14px; margin-bottom: 10px; padding-left: 10px; border-left: 3px solid var(--t-accent, #2563eb); line-height: 1.3; }
 .cv-bio { color: var(--t-muted); font-size: 13px; white-space: pre-wrap; }
@@ -667,12 +712,19 @@ async function toggleFavorite() {
 .cv-gallery-cell img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; background: #fff; }
 .cv-gallery-cell > span:not(.cv-gallery-file-ico) { font-size: 10px; line-height: 1.3; width: 100%; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cv-gallery-file { justify-content: center; min-height: 96px; }
-.cv-gallery-file-ico { width: 100%; aspect-ratio: 1; display: grid; place-items: center; border-radius: 6px; background: color-mix(in srgb, var(--t-accent) 12%, transparent); color: var(--t-accent); }
+.cv-gallery-file-ico { width: 100%; aspect-ratio: 1; display: grid; place-items: center; border-radius: 6px; background: rgba(0,0,0,.05); background: color-mix(in srgb, var(--t-accent) 12%, transparent); color: var(--t-accent); }
 .cv-gallery-file small { font-size: 9px; color: var(--t-muted); }
-.gallery-mask { z-index: 3000; }
-.gallery-viewer { width: min(92vw, 560px); max-height: 92vh; overflow-y: auto; background: var(--t-surface); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
-.gallery-viewer > img { width: 100%; max-height: 68vh; object-fit: contain; background: #fff; border-radius: 8px; }
-.gallery-cap { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+/* 全屏看图：四边定位（老 WebView 不认 inset:0），z 高于 dock(60)/fab(64)/tabbar(110)，低于微信原生层 */
+.gallery-fullscreen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 3000; background: #0b0f16; display: flex; flex-direction: column; color: #fff; }
+.gf-top { flex: 0 0 auto; min-height: calc(50px + var(--safe-top)); padding: var(--safe-top) 14px 0; display: flex; align-items: center; gap: 12px; background: rgba(0,0,0,.55); }
+.gf-back { border: 0; background: transparent; color: #fff; font-size: 15px; font-weight: 600; padding: 8px 4px; min-width: 60px; text-align: left; }
+.gf-count { font-size: 13px; color: rgba(255,255,255,.85); font-variant-numeric: tabular-nums; }
+.gf-title { flex: 1; min-width: 0; text-align: right; font-size: 12px; color: rgba(255,255,255,.7); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gf-stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 10px; overflow: hidden; }
+.gf-stage img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+.gf-nav { flex: 0 0 auto; display: flex; justify-content: center; gap: 14px; padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px)); background: rgba(0,0,0,.55); }
+.gf-nav button { border: 0; border-radius: 999px; background: rgba(255,255,255,.14); color: #fff; font-size: 14px; font-weight: 600; padding: 10px 18px; }
+.gf-nav button:disabled { opacity: .35; }
 .cv-maps { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .cv-maps a { font-size: 12px; padding: 6px 10px; border-radius: 8px; background: rgba(0,0,0,.05); background: color-mix(in srgb, var(--t-accent) 12%, transparent); color: var(--t-accent); font-weight: 600; }
 /* 导航入口：地址区只留一个「导航到此处」，点底部「导航」或此处再选地图 */
@@ -804,7 +856,7 @@ async function toggleFavorite() {
 /* ② 极简白 minimal：无封面 + 大留白 + 超大姓名 + 细线分隔（瑞士极简） */
 .cv-tpl-minimal { background: #fff; }
 .cv-tpl-minimal .cv-cover { height: 54px; border-radius: 0; background: #fff; border-bottom: 1px solid #e5e7eb; }
-.cv-tpl-minimal .cv-brand { color: #111827; opacity: 1; top: calc(16px + env(safe-area-inset-top)); }
+.cv-tpl-minimal .cv-brand { color: #111827; opacity: 1; top: calc(16px + var(--safe-top)); }
 .cv-tpl-minimal .cv-back { color: #111827; }
 .cv-tpl-minimal .cv-main { margin-top: 0; }
 .cv-tpl-minimal .card { border: 0; border-bottom: 1px solid #eef0f3; border-radius: 0; box-shadow: none; background: transparent; }
@@ -890,18 +942,20 @@ async function toggleFavorite() {
   --cv-card-shadow: 0 26px 60px -22px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.06);
   --cv-card-blur: none; --cv-topbar-h: 6px; --cv-topbar-x: 0;
   --cv-topbar-bg: linear-gradient(90deg,var(--ng-navy),var(--ng-navy-2) 40%,var(--ng-gold-2) 78%,var(--ng-gold));
-  --cv-logo-bg: linear-gradient(145deg,var(--ng-navy),#0e2233); --cv-logo-radius: 14px;
+  --cv-logo-bg-solid: #1d3a55; --cv-logo-bg: linear-gradient(145deg,#1d3a55,#0e2233); --cv-logo-radius: 14px;
   --cv-logo-shadow: inset 0 0 0 2px rgba(216,187,133,.5),0 8px 18px -8px rgba(18,32,46,.6);
   --cv-name-size: 27px; --cv-name-weight: 900; --cv-name-spacing: .04em; --cv-name-color: #12202e; --cv-name-font: inherit;
   --cv-role-color: #4a5b6e; --cv-role-size: 12.5px; --cv-role-spacing: .06em;
   --cv-org-color: #1d3a55; --cv-org-border: 1px dashed #e2ddd2;
   --cv-tag-bg: #f4f1ea; --cv-tag-color: #6b5a3c; --cv-tag-shadow: inset 0 0 0 1px rgba(185,147,85,.28); --cv-tag-radius: 99px;
   --cv-btn-radius: 13px; --cv-btn-font: inherit; --cv-btn-spacing: .02em;
-  --cv-btn-main-bg: linear-gradient(135deg,var(--ng-navy),#0f2739); --cv-btn-main-color: #fff; --cv-btn-main-shadow: 0 10px 22px -12px rgba(18,32,46,.85);
+  /* ⚠️ 微信老 WebView 解析不了「渐变里嵌 var()」，会整条失效变白底 → 白字消失（2026-11-25 实锤）。
+     渐变内的色值一律写字面量；使用处再加同色纯色 fallback（见 .cv-clean .cv-site/.cv-dock .btn-primary）。 */
+  --cv-btn-main-solid: #1d3a55; --cv-btn-main-bg: linear-gradient(135deg,#1d3a55,#0f2739); --cv-btn-main-color: #fff; --cv-btn-main-shadow: 0 10px 22px -12px rgba(18,32,46,.85);
   --cv-btn-ghost-bg: #f7f5f0; --cv-btn-ghost-color: #1d3a55; --cv-btn-ghost-shadow: inset 0 0 0 1px #e6e0d4;
-  --cv-btn-save-bg: linear-gradient(135deg,#c9a163,#a8834a); --cv-btn-save-color: #fff; --cv-btn-save-shadow: 0 12px 24px -14px rgba(169,131,74,.9);
+  --cv-btn-save-solid: #a8834a; --cv-btn-save-bg: linear-gradient(135deg,#c9a163,#a8834a); --cv-btn-save-color: #fff; --cv-btn-save-shadow: 0 12px 24px -14px rgba(169,131,74,.9);
   --cv-steps-bg: #faf8f3; --cv-steps-color: #5c6a79; --cv-steps-shadow: inset 0 0 0 1px #eee8dc; --cv-steps-radius: 12px; --cv-steps-title: #a8834a; --cv-steps-b: #1d3a55;
-  --cv-mini-bg: #f4f1ea; --cv-mini-color: #1d3a55; --cv-mini-shadow: inset 0 0 0 1px rgba(185,147,85,.28); --cv-mini-on-bg: linear-gradient(135deg,#c9a163,#a8834a); --cv-mini-on-color: #fff;
+  --cv-mini-bg: #f4f1ea; --cv-mini-color: #1d3a55; --cv-mini-shadow: inset 0 0 0 1px rgba(185,147,85,.28); --cv-mini-on-solid: #a8834a; --cv-mini-on-bg: linear-gradient(135deg,#c9a163,#a8834a); --cv-mini-on-color: #fff;
   --cv-block-title: #b99355; --cv-link-color: #1d3a55;
   --cv-foot-color: #a9b1ba; --cv-foot-b: #b99355; --cv-hint-color: #9fb0c0;
   --cv-wm-color: #12202e; --cv-wm-opacity: .04;
@@ -940,7 +994,7 @@ async function toggleFavorite() {
   --cv-role-color: #8fa6ba; --cv-role-size: 12.5px; --cv-role-spacing: .1em;
   --cv-org-color: #cfe6e0; --cv-org-border: 1px solid rgba(255,255,255,.12);
   --cv-tag-bg: rgba(255,255,255,.07); --cv-tag-color: #a8c3d6; --cv-tag-shadow: inset 0 0 0 1px rgba(255,255,255,.1); --cv-tag-radius: 99px;
-  --cv-btn-main-bg: linear-gradient(135deg,#2ea88f,#1b7d6a); --cv-btn-main-color: #fff; --cv-btn-main-shadow: 0 14px 28px -16px rgba(46,168,143,.9);
+  --cv-btn-main-solid: #1b7d6a; --cv-btn-main-bg: linear-gradient(135deg,#2ea88f,#1b7d6a); --cv-btn-main-color: #fff; --cv-btn-main-shadow: 0 14px 28px -16px rgba(46,168,143,.9);
   --cv-btn-ghost-bg: rgba(255,255,255,.08); --cv-btn-ghost-color: #dfeaf2; --cv-btn-ghost-shadow: inset 0 0 0 1px rgba(255,255,255,.14);
   --cv-btn-save-bg: rgba(255,255,255,.1); --cv-btn-save-color: #eaf4f1; --cv-btn-save-shadow: inset 0 0 0 1px rgba(255,255,255,.2);
   --cv-steps-bg: rgba(255,255,255,.05); --cv-steps-color: #9db1c2; --cv-steps-shadow: inset 0 0 0 1px rgba(255,255,255,.1); --cv-steps-title: #7fd3c1; --cv-steps-b: #dff0ec;
@@ -1210,8 +1264,8 @@ async function toggleFavorite() {
 .cv-tpl-sidebar .cv-contact-label { text-align: right; }
 .cv-tpl-sidebar .cv-contact-value, .cv-tpl-sidebar .cv-block { text-align: right; }
 .cv-clean .cv-cover { height: 0; border-radius: 0; background: transparent; }
-.cv-clean .cv-back { top: calc(10px + env(safe-area-inset-top)); left: 16px; color: var(--cv-back-color); background: var(--cv-back-bg); border-radius: 50%; width: 34px; height: 34px; display: grid; place-items: center; font-size: 24px; backdrop-filter: blur(6px); }
-.cv-clean .cv-brand { top: calc(18px + env(safe-area-inset-top)); color: var(--cv-brand-color); }
+.cv-clean .cv-back { top: calc(10px + var(--safe-top)); left: 16px; color: var(--cv-back-color); background: var(--cv-back-bg); border-radius: 50%; width: 34px; height: 34px; display: grid; place-items: center; font-size: 24px; backdrop-filter: blur(6px); }
+.cv-clean .cv-brand { top: calc(18px + var(--safe-top)); color: var(--cv-brand-color); }
 .cv-clean .cv-main { max-width: 430px; margin: 30px auto 0; }
 .cv-clean .cv-main > .card, .cv-clean .cv-main > .cv-profile { border-radius: 0; border: 0; box-shadow: none; background: transparent; margin-top: 0; }
 .cv-clean .cv-main > .cv-profile {
@@ -1263,7 +1317,7 @@ async function toggleFavorite() {
     linear-gradient(180deg, rgba(255,255,255,.5), rgba(255,255,255,0) 32%),
     repeating-linear-gradient(112deg, rgba(var(--glow-rgb, 37,99,235), .018) 0 1px, transparent 1px 5px);
 }
-.cv-clean .cv-avatar { width: 64px; height: 64px; flex: 0 0 64px; border-radius: var(--cv-logo-radius); font-size: 26px; color: var(--cv-btn-main-color); background: var(--cv-logo-bg); box-shadow: var(--cv-logo-shadow); }
+.cv-clean .cv-avatar { width: 64px; height: 64px; flex: 0 0 64px; border-radius: var(--cv-logo-radius); font-size: 26px; color: var(--cv-btn-main-color); background: var(--cv-logo-bg-solid, #1d3a55); background: var(--cv-logo-bg); box-shadow: var(--cv-logo-shadow); }
 .cv-clean .cv-name { color: var(--cv-name-color); font-size: var(--cv-name-size); font-weight: var(--cv-name-weight); letter-spacing: var(--cv-name-spacing); font-family: var(--cv-name-font); }
 .cv-clean .cv-en { color: var(--cv-ink-2); }
 .cv-clean .cv-title { color: var(--cv-role-color); font-size: var(--cv-role-size); letter-spacing: var(--cv-role-spacing); font-weight: 400; }
@@ -1282,17 +1336,19 @@ async function toggleFavorite() {
 .cv-clean .cv-links a, .cv-clean .cv-gallery-cell { border-color: var(--cv-line); background: var(--cv-panel-bg); }
 .cv-clean .cv-links b, .cv-clean .cv-region-line, .cv-clean .cv-contact-row b { color: var(--cv-link-color); }
 .cv-clean .cv-map-launch, .cv-clean .cv-maps a { background: var(--cv-mini-bg); color: var(--cv-mini-color); box-shadow: var(--cv-mini-shadow); }
-/* 主页与店铺「打开/复制」、联系方式行内按钮：跟模板配色，不再用全局蓝渐变/灰描边 */
+/* 主页与店铺「打开/复制」、联系方式行内按钮：跟模板配色，不再用全局蓝渐变/灰描边。
+   ⚠️ 每条 background 前先写同色纯色兜底：微信老 WebView 解析不了渐变里的 var / color-mix，
+   整条 background 失效会露白底，配合白字就「文字消失」（2026-11-25 打电话/开网址返回后实锤）。 */
 .cv-clean .cv-site .btn { border-radius: var(--cv-btn-radius, 8px); font-size: 12px; padding: 7px 12px; }
-.cv-clean .cv-site .btn-primary { background: var(--cv-btn-main-bg, var(--t-accent)); color: var(--cv-btn-main-color, #fff); box-shadow: var(--cv-btn-main-shadow, none); border-color: transparent; }
+.cv-clean .cv-site .btn-primary { background: var(--cv-btn-main-solid, var(--t-accent, #2563eb)); background: var(--cv-btn-main-bg, var(--t-accent)); color: var(--cv-btn-main-color, #fff); box-shadow: var(--cv-btn-main-shadow, none); border-color: transparent; }
 .cv-clean .cv-site .btn-ghost { background: var(--cv-btn-ghost-bg, transparent); color: var(--cv-btn-ghost-color, var(--cv-ink)); box-shadow: var(--cv-btn-ghost-shadow, inset 0 0 0 1px var(--cv-line)); border-color: transparent; }
 .cv-clean .cv-row-act { background: var(--cv-mini-bg); color: var(--cv-mini-color); box-shadow: var(--cv-mini-shadow); border-radius: var(--cv-btn-radius, 7px); }
 /* 简洁模板底部 dock（/me 与公开页共用同一套）：跟模板配色，拉开主/次层次，不再通用深灰+主题绿 */
 .cv-clean .cv-dock { gap: 7px; padding: 10px 10px calc(10px + env(safe-area-inset-bottom)); background: var(--cv-panel-bg); border-top: 1px solid var(--cv-line); color: var(--cv-ink); }
 .cv-clean .cv-dock .btn { border-radius: var(--cv-btn-radius, 8px); font-weight: 700; }
-.cv-clean .cv-dock .btn-primary { background: var(--cv-btn-main-bg, var(--t-accent)); color: var(--cv-btn-main-color, #fff); box-shadow: var(--cv-btn-main-shadow, none); border-color: transparent; }
-/* ghost 用模板主色的极淡底 + 描边，比纯透明底有层次；深色模板靠 color-mix 自动降饱和不刺眼 */
-.cv-clean .cv-dock .btn-ghost { background: color-mix(in srgb, var(--cv-btn-ghost-color, var(--cv-ink)) 10%, var(--cv-panel-bg)); color: var(--cv-btn-ghost-color, var(--cv-ink)); box-shadow: var(--cv-btn-ghost-shadow, inset 0 0 0 1px var(--cv-line)); border-color: transparent; }
+.cv-clean .cv-dock .btn-primary { background: var(--cv-btn-main-solid, var(--t-accent, #2563eb)); background: var(--cv-btn-main-bg, var(--t-accent)); color: var(--cv-btn-main-color, #fff); box-shadow: var(--cv-btn-main-shadow, none); border-color: transparent; }
+/* ghost 用模板主色的极淡底 + 描边，比纯透明底有层次；color-mix 前先给纯透明兜底，避免老 WebView 解析失败露白底 */
+.cv-clean .cv-dock .btn-ghost { background: transparent; background: color-mix(in srgb, var(--cv-btn-ghost-color, var(--cv-ink)) 10%, var(--cv-panel-bg)); color: var(--cv-btn-ghost-color, var(--cv-ink)); box-shadow: var(--cv-btn-ghost-shadow, inset 0 0 0 1px var(--cv-line)); border-color: transparent; }
 .cv-clean .cv-create-own { border-top: 1px solid var(--cv-line); }
 .cv-clean .cv-create-copy b { color: var(--cv-link-color); }
 .cv-clean .cv-footer { background: var(--cv-panel-bg); border-radius: 0 0 var(--cv-card-radius) var(--cv-card-radius); padding: 16px var(--cv-card-x) 20px; color: var(--cv-foot-color); letter-spacing: .1em; }
@@ -1305,7 +1361,7 @@ async function toggleFavorite() {
 
 /* ============ 深蓝鎏金 navygold：参考名片配色与结构（放在最后覆盖通用商务风）============ */
 .cv-tpl-navygold { color: var(--ng-ink); background: var(--ng-page-bg); }
-.cv-tpl-navygold .cv-cover { border-radius: 0 0 22px 22px; background: linear-gradient(135deg, var(--ng-navy) 0%, var(--ng-deep) 100%); }
+.cv-tpl-navygold .cv-cover { border-radius: 0 0 22px 22px; background: #1d3a55; background: linear-gradient(135deg, #1d3a55 0%, #0c1a26 100%); }
 .cv-tpl-navygold .card { border-color: rgba(185,147,85,.28); border-radius: 16px; box-shadow: 0 10px 30px -18px rgba(0,0,0,.55); }
 .cv-tpl-navygold .cv-profile {
   position: relative; overflow: hidden; border-radius: 22px; padding: 30px 24px 22px;
@@ -1325,7 +1381,7 @@ async function toggleFavorite() {
 .cv-tpl-navygold .cv-profile > * { position: relative; z-index: 2; }
 .cv-tpl-navygold .cv-avatar {
   width: 64px; height: 64px; flex: 0 0 64px; border-radius: 14px; font-size: 26px; color: #fff;
-  background: linear-gradient(145deg, var(--ng-navy), #0e2233);
+  background: #1d3a55; background: linear-gradient(145deg, #1d3a55, #0e2233);
   box-shadow: inset 0 0 0 2px rgba(216,187,133,.5), 0 8px 18px -8px rgba(18,32,46,.6);
 }
 .cv-tpl-navygold .cv-name { color: var(--ng-ink); font-size: 27px; font-weight: 900; letter-spacing: .04em; }
@@ -1346,7 +1402,7 @@ async function toggleFavorite() {
   font-size: 14.5px; font-weight: 700; letter-spacing: .02em; box-shadow: inset 0 0 0 1px #e6e0d4;
 }
 .cv-tpl-navygold .cv-actions button:first-child {
-  background: linear-gradient(135deg, var(--ng-navy), #0f2739); color: #fff;
+  background: #1d3a55; background: linear-gradient(135deg, #1d3a55, #0f2739); color: #fff;
   box-shadow: 0 10px 22px -12px rgba(18,32,46,.85);
 }
 .cv-tpl-navygold .cv-actions button:last-child:nth-child(odd) { grid-column: 1 / -1; }
@@ -1365,6 +1421,9 @@ async function toggleFavorite() {
 .cv-tpl-navygold .cv-footer { color: #a9b1ba; letter-spacing: .1em; }
 .cv-tpl-navygold .cv-footer b { color: var(--ng-gold); }
 .cv-tpl-navygold .cv-dock { background: rgba(18,32,46,.96); border-top: 2px solid var(--ng-gold); }
-.cv-tpl-navygold .cv-dock .btn-primary { background: linear-gradient(135deg, #c9a163, #a8834a); color: #fff; box-shadow: 0 12px 24px -14px rgba(169,131,74,.9); }
+.cv-tpl-navygold .cv-dock .btn-primary { background: #a8834a; background: linear-gradient(135deg, #c9a163, #a8834a); color: #fff; box-shadow: 0 12px 24px -14px rgba(169,131,74,.9); }
 .cv-tpl-navygold .cv-dock .btn-ghost { background: rgba(255,255,255,.12); color: #fff; border-color: rgba(216,187,133,.35); }
+/* 正文「主页与店铺」按钮同样走深蓝鎏金配色：纯色兜底 + 字面量渐变，不用全局蓝（深蓝页上刺眼且老 WebView 会解析失败露白底） */
+.cv-tpl-navygold .cv-site .btn-primary { background: #1d3a55; background: linear-gradient(135deg, #1d3a55, #0f2739); color: #fff; border-color: transparent; }
+.cv-tpl-navygold .cv-site .btn-ghost { background: #f4f1ea; color: #1d3a55; border-color: transparent; }
 </style>

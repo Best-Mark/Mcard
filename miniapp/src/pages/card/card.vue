@@ -40,14 +40,10 @@
           <button class="act" @tap="copyText(card.alipay, '支付宝账号已复制')"><text class="ico">支</text><text>存支付宝</text></button>
         </view>
 
-        <view v-if="card.bio" class="card block">
-          <view class="section">关于我</view>
-          <view class="content">{{ card.bio }}</view>
-        </view>
-
-        <view v-if="card.company_intro" class="card block">
-          <view class="section">公司简介<text v-if="card.company" class="muted small"> · {{ card.company }}</text></view>
-          <view class="content">{{ card.company_intro }}</view>
+        <!-- 简介只保留一个区块：字段 bio，标题统一叫「简介」；存量 company_intro 兜底 -->
+        <view v-if="introText" class="card block">
+          <view class="section">简介</view>
+          <view class="content">{{ introText }}</view>
         </view>
 
         <view v-if="card.links && card.links.length" class="card block">
@@ -101,7 +97,8 @@
           </view>
         </view>
 
-        <view class="card block">
+        <!-- 自己看自己名片时不显示「交换名片」（与 H5 owner 隐藏悬浮菜单同口径） -->
+        <view v-if="!isSelf" class="card block">
           <view class="section">交换名片</view>
           <input v-model.trim="mySlug" class="input" placeholder="你的名片短码" />
           <button class="btn primary block" style="margin-top:16rpx" :disabled="exchanging" @tap="exchange">
@@ -109,12 +106,12 @@
           </button>
         </view>
 
-        <view class="foot">由 MCard 提供技术支持 · 资料可改 · 二维码不变</view>
+        <view class="foot">由 MCard 提供技术支持</view>
       </view>
 
       <view class="dock">
         <button class="btn primary" open-type="share">分享名片</button>
-        <button class="btn" @tap="savePhoneContact">存入通讯录</button>
+        <button v-if="!isSelf" class="btn" @tap="savePhoneContact">存入通讯录</button>
         <button class="btn" @tap="copyContact">复制名片信息</button>
       </view>
     </block>
@@ -124,7 +121,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad, onShareAppMessage } from '@dcloudio/uni-app'
-import { api, baseUrl, toast, copyText, callPhone, saveQrImage, parseSlug, getPublicMaterials, traceVisit } from '../../utils/request'
+import { api, baseUrl, toast, copyText, callPhone, saveQrImage, parseSlug, getPublicMaterials, traceVisit, getShareCardImage } from '../../utils/request'
 
 const slug = ref('')
 const card = ref(null)
@@ -134,6 +131,7 @@ const mySlug = ref('')
 const exchanging = ref(false)
 const tpl = ref('classic')
 const materials = ref([])
+const isSelf = ref(false)
 
 // 动态光效用主题强调色，#rrggbb → rgb 分量
 const glowRgb = computed(() => {
@@ -167,6 +165,8 @@ const detailAddress = computed(() => {
   return [c.address, c.address_detail].filter(Boolean).join(' ')
 })
 const fullAddress = computed(() => [regionLine.value.replace(/ · /g, ''), detailAddress.value].filter(Boolean).join(' '))
+// 简介唯一真相源：bio，存量 company_intro 回落（与 H5 CardView 同口径）
+const introText = computed(() => card.value?.bio || card.value?.company_intro || '')
 const siteLinks = computed(() => {
   const c = card.value || {}
   const arr = []
@@ -182,6 +182,12 @@ async function load() {
     tpl.value = card.value?.template || 'classic'
   }
   catch (e) { error.value = e.message } finally { loading.value = false }
+  // 本人视角判定（与 H5 owner 同口径）：自己看自己名片时隐藏「交换名片/存入通讯录」，
+  // 否则就是自己跟自己交换、把自己存通讯录。未登录/失败一律当访客，不影响公开浏览。
+  isSelf.value = false
+  if (uni.getStorageSync('mcard_token')) {
+    api.get('/api/cards/mine', true).then(mine => { isSelf.value = !!mine && mine.slug === slug.value }).catch(() => {})
+  }
   // 资料夹 + 来源上报（扫码进入 scene 记为 qr），失败静默
   getPublicMaterials(slug.value).then(d => { materials.value = d.list || [] }).catch(() => {})
   const src = String(entrySrc.value || '')
@@ -228,7 +234,7 @@ function copyContact() {
     c.website ? `公司主页：${c.website}` : '',
     c.shop_url ? `店铺：${c.shop_url}` : '',
     (c.address || c.address_detail || c.province) ? `地址：${fullAddress.value}` : '',
-    c.company_intro ? `公司简介：${c.company_intro}` : '',
+    introText.value ? `简介：${introText.value}` : '',
     `电子名片：${c.url || baseUrl + '/c/' + c.slug}`
   ].filter(Boolean).join('\n')
   copyText(text, '名片信息已复制')
@@ -275,10 +281,19 @@ async function exchange() {
   } catch (e) { toast(e.message) } finally { exchanging.value = false }
 }
 
-onShareAppMessage(() => ({
-  title: card.value ? `${card.value.name} 的电子名片` : 'MCard 电子名片',
-  path: `/pages/card/card?slug=${slug.value}`
-}))
+// 分享口径（2026-11-25 用户定稿）：标题「XXX的名片」；描述首选简介；
+// 缩略图 LOGO → 头像 → 分享池兜底，滤掉 svg/webp（微信解析不出会变灰块）。
+onShareAppMessage(() => {
+  const c = card.value
+  const absolute = u => (!u ? '' : /^https?:\/\//i.test(u) ? u : u.startsWith('/') ? baseUrl + u : '')
+  const imageUrl = [c?.logo, c?.avatar].map(absolute).find(u => /\.(jpe?g|png|gif)(\?|$)/i.test(u)) || getShareCardImage()
+  return {
+    title: c ? `${c.name}的名片` : 'MCard 电子名片',
+    desc: introText.value,
+    path: `/pages/card/card?slug=${slug.value}`,
+    imageUrl
+  }
+})
 </script>
 
 <style scoped>
