@@ -270,3 +270,19 @@
 .cv-tpl-seal { --cv-page-bg:#eef2f9; --cv-panel-bg:#fff; --cv-card-bg:#fff; --cv-card-shadow:4px 4px 0 rgba(30,58,138,.12); --cv-ink:#12213c; --cv-ink-2:#475569; --cv-line:#cbd5e1; --cv-name-color:#12213c; --cv-role-color:#1e3a8a; --cv-org-color:#1e3a8a; --cv-tag-bg:#fff; --cv-tag-color:#1e3a8a; --cv-tag-shadow:inset 0 0 0 1px #1e3a8a; --cv-topbar-bg:#1e3a8a; --cv-logo-bg:#12213c; --cv-logo-bg-solid:#12213c; --cv-btn-main-solid:#12213c; --cv-btn-main-bg:#12213c; --cv-btn-main-color:#fff; --cv-btn-ghost-bg:#fff; --cv-btn-ghost-color:#12213c; --cv-btn-save-bg:#1e3a8a; --cv-btn-save-color:#fff; --cv-mini-bg:#fff; --cv-mini-color:#12213c; --cv-block-title:#12213c; --cv-link-color:#1e3a8a; --cv-foot-color:#64748b; --cv-foot-b:#12213c; --cv-wm-color:#12213c; --cv-back-color:#fff; --cv-back-bg:rgba(18,33,60,.6); --cv-brand-color:#fff; }
 /* 深蓝鎏金 navygold：沿用已有 --ng-* 色系 */
 .cv-tpl-navygold { --cv-page-bg:var(--ng-page-bg); --cv-panel-bg:#fff; --cv-card-bg:#fff; --cv-ink:var(--ng-ink); --cv-ink-2:var(--ng-ink-2); --cv-line:var(--ng-line); --cv-name-color:var(--ng-ink); --cv-role-color:var(--ng-ink-2); --cv-org-color:var(--ng-navy); --cv-tag-bg:var(--ng-paper); --cv-tag-color:#6b5a3c; --cv-topbar-bg:linear-gradient(90deg,var(--ng-navy),var(--ng-navy-2) 40%,var(--ng-gold-2) 78%,var(--ng-gold)); --cv-logo-bg:linear-gradient(145deg,#1d3a55,#0e2233); --cv-logo-bg-solid:#1d3a55; --cv-btn-main-solid:#1d3a55; --cv-btn-main-bg:linear-gradient(135deg,#1d3a55,#0f2739); --cv-btn-main-color:#fff; --cv-btn-ghost-bg:#f7f5f0; --cv-btn-ghost-color:#1d3a55; --cv-btn-save-bg:linear-gradient(135deg,#c9a163,#a8834a); --cv-btn-save-color:#fff; --cv-mini-bg:#f4f1ea; --cv-mini-color:#1d3a55; --cv-block-title:var(--ng-navy); --cv-link-color:var(--ng-navy); --cv-foot-color:#a9b1ba; --cv-foot-b:var(--ng-gold); --cv-back-color:var(--ng-gold-2); --cv-back-bg:rgba(12,26,38,.5); --cv-brand-color:rgba(255,255,255,.85); }
+
+/* 头部深底（2026-11-26 用户定）：金黑简洁联络 / 深蓝鎏金两套的姓名卡改成深蓝底+沙金字，
+   下面信息区仍是白卡，形成「深色身份区 + 浅色信息区」层次。只改这两套，纸白/暖木/多巴胺等浅色模板不动。
+   变量只在 card-template-palettes.css 定义一次，card-sheet.css 负责使用。 */
+.cv-clean.cv-tpl-contact,
+.cv-clean.cv-tpl-navygold {
+  --cv-header-solid: #12202e;
+  --cv-header-bg: linear-gradient(135deg,#132a3d 0%,#0c1a26 62%,#1d3a55 100%);
+  --cv-header-ink: #f7f4ee;
+  --cv-header-muted: rgba(247,244,238,.74);
+  --cv-header-accent: #d8bb85;
+  --cv-header-line: rgba(216,187,133,.28);
+  --cv-header-tag-bg: rgba(216,187,133,.14);
+  --cv-wm-color: #d8bb85;
+  --cv-wm-opacity: .08;
+}
