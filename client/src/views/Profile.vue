@@ -9,7 +9,6 @@
     <!-- 个人中心上半部分：参照 MShop 的深渐变头卡观感（内缩圆角作为视觉焦点例外，
          下方分组列表仍严格遵守用户端「卡片左右贴边、方角」约定）。套餐/日期用 MCard 自有数据。 -->
     <div class="pf-header">
-      <div class="pf-bg" aria-hidden="true"></div>
       <span class="pf-sheen" aria-hidden="true"></span>
       <button class="pf-gear" aria-label="设置" @click="toggleDrawer"><AppIcon name="settings" :size="18" /></button>
       <button v-if="card" class="pf-qr" aria-label="我的名片二维码" @click="goQr"><AppIcon name="qrcode" :size="19" /></button>
@@ -172,21 +171,25 @@ function logoutNow() { logout(); router.push('/') }
 /* 头像=换头像、昵称=编辑资料；下方 cell 不再重复这两项（2026-11-25 用户定稿）。
    顶栏居顶由全局 .page > .topbar:first-child 统一处理，这里不再私有覆写 padding。 */
 
-/* ===== 上半部分：丝绸质感头卡（视觉焦点，内缩圆角形态例外） =====
-   丝绸 = 多层柔光底 + 两组同角度、1px 极淡明暗细丝（间距 4/7px，不再是粗条纹）；
-   扫光走 transform/opacity（不触发重排），16s 一轮、扫约 6s；负 delay 让刚进页面就看到一次，
-   不是「加载完才发现没动」。兼容：只用 rgba / transform / opacity，不用 inset、color-mix。 */
-.pf-header { position: relative; margin: 12px 12px 0; padding: 12px 16px 14px; border-radius: 18px; overflow: hidden; color: #fff; background: radial-gradient(120% 140% at 8% 0%, rgba(126,182,255,.42), rgba(126,182,255,0) 48%), radial-gradient(100% 120% at 94% 8%, rgba(34,211,238,.30), rgba(34,211,238,0) 52%), linear-gradient(122deg, #17357c 0%, #2457c5 38%, #2563eb 62%, #0e9bbd 100%); box-shadow: 0 10px 28px rgba(23,53,124,.22); }
-.pf-bg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 0; pointer-events: none; border-radius: 18px; background-image: radial-gradient(160% 120% at 20% 0%, rgba(255,255,255,.12), transparent 54%), repeating-linear-gradient(118deg, rgba(255,255,255,.028) 0 1px, rgba(255,255,255,0) 1px 4px), repeating-linear-gradient(118deg, rgba(4,26,80,.032) 0 1px, rgba(4,26,80,0) 1px 7px), linear-gradient(96deg, rgba(6,20,70,.16) 0%, rgba(6,20,70,0) 38%, rgba(255,255,255,.05) 62%, rgba(255,255,255,0) 100%); }
-.pf-sheen { position: absolute; top: -30%; bottom: -30%; left: 0; z-index: 0; width: 42%; pointer-events: none; opacity: 0; background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.10) 30%, rgba(255,255,255,.26) 50%, rgba(255,255,255,.10) 70%, rgba(255,255,255,0) 100%); transform: translateX(-140%) skewX(-18deg); animation: pf-silk-sweep 16s ease-in-out infinite; animation-delay: -2.2s; will-change: transform, opacity; }
-@keyframes pf-silk-sweep {
-  0% { transform: translateX(-140%) skewX(-18deg); opacity: 0; }
-  5% { opacity: 1; }
-  38% { transform: translateX(360%) skewX(-18deg); opacity: 0; }
-  100% { transform: translateX(360%) skewX(-18deg); opacity: 0; }
+/* ===== 上半部分：丝绸质感头卡（照 MShop 个人中心 .mh 定稿参数，不再自创）=====
+   参考 MShop miniapp/src/pages/mine/mine.vue .mh：哑光微颗粒(0.8px/.055 + 0.7px/.03)
+   + 极细缎纹(1px/4px, .02) + 大尺度光影(.12 高光 / .09 暗角)；
+   光效：::before 柔光只做 opacity 呼吸 26s（无位移），::after 斜光带 26s、亮度 .05、扫完淡出停半程。
+   用户此前反馈过「有遮罩在动 / 颜色从左向右扫」，所以亮度与周期严格按定稿压住。 */
+.pf-header { position: relative; margin: 12px 12px 0; padding: 12px 16px 14px; border-radius: 18px; overflow: hidden; color: #fff; background-image: radial-gradient(rgba(255,255,255,.055) .8px, transparent 1.1px), radial-gradient(rgba(255,255,255,.03) .7px, transparent 1px), repeating-linear-gradient(115deg, rgba(255,255,255,.02) 0 1px, transparent 1px 4px), radial-gradient(160% 120% at 20% 0%, rgba(255,255,255,.12) 0%, transparent 52%), radial-gradient(130% 110% at 85% 95%, rgba(0,0,0,.09) 0%, transparent 55%), radial-gradient(120% 140% at 8% 0%, rgba(126,182,255,.42), rgba(126,182,255,0) 48%), radial-gradient(100% 120% at 94% 8%, rgba(34,211,238,.30), rgba(34,211,238,0) 52%), linear-gradient(122deg, #17357c 0%, #2457c5 38%, #2563eb 62%, #0e9bbd 100%); background-size: .4em .4em, .4em .4em, auto, auto, auto, auto, auto, cover; background-position: 0 0, .2em .2em, 0 0, center, center, center, center, center; background-repeat: repeat, repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat; box-shadow: 0 10px 28px rgba(23,53,124,.22); }
+.pf-sheen { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 0; pointer-events: none; overflow: hidden; border-radius: inherit; }
+.pf-sheen::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(140% 110% at 28% 12%, rgba(255,255,255,.10) 0%, rgba(255,255,255,.03) 42%, transparent 68%); animation: pfGlow 26s ease-in-out infinite alternate; }
+.pf-sheen::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(105deg, transparent 42%, rgba(255,255,255,.05) 50%, transparent 58%); transform: translateX(-130%); animation: pfSheen 26s ease-in-out infinite; }
+@keyframes pfGlow { 0% { opacity: .45; } 100% { opacity: 1; } }
+@keyframes pfSheen {
+  0% { transform: translateX(-130%); opacity: 0; }
+  20% { opacity: 1; }
+  46% { transform: translateX(130%); opacity: 1; }
+  60% { opacity: 0; }
+  100% { transform: translateX(130%); opacity: 0; }
 }
-@media (prefers-reduced-motion: reduce) { .pf-sheen { animation: none; } }
-/* ⚠️ 只给需要盖在 .pf-bg / .pf-sheen 上的内容层加层级，不能用 > *:not(...) 通配——
+@media (prefers-reduced-motion: reduce) { .pf-sheen::before { animation: none; opacity: .7; } .pf-sheen::after { display: none; } }
+/* ⚠️ 只给需要盖在光效层上的内容加层级，不能用 > *:not(...) 通配——
    那条选择器特异性高于 .pf-gear/.pf-qr 的(0,1,0)，会把它们的 absolute 覆写成 relative，
    导致齿轮压到头像上、二维码落到套餐条上（2026-11-25 实机截图实锤）。 */
 .pf-header > .pf-user, .pf-header > .pf-plan { position: relative; z-index: 1; }
