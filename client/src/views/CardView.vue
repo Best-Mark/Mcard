@@ -44,27 +44,7 @@
           <router-link to="/me/plans" class="btn btn-primary">立即开通</router-link>
         </div>
 
-        <!-- 简洁联络模板：卡内操作区（拨号 / 复制号码 / 金色存档）+ 按环境的操作指引 -->
-        <div v-if="isCleanTpl" class="cv-cta">
-          <div class="cv-cta-grid">
-            <a v-if="contactPhone" class="cv-cta-btn cv-cta-main" :href="'tel:' + contactPhone">拨打电话</a>
-            <button v-else class="cv-cta-btn cv-cta-main" @click="showToast('尚未填写电话')">拨打电话</button>
-            <button class="cv-cta-btn cv-cta-ghost" @click="copy(contactPhone || '', '号码')">复制号码</button>
-          </div>
-          <a v-if="contactNative" class="cv-cta-save" :href="vcfApi">{{ contactActionLabel }}</a>
-          <button v-else class="cv-cta-save" @click="saveContact">{{ contactActionLabel }}</button>
-          <div class="cv-cta-steps">
-            <div class="cv-cta-steps-t">{{ contactSteps.title }}</div>
-            <ol><li v-for="(s, i) in contactSteps.lines" :key="i" v-html="s"></li></ol>
-          </div>
-          <div class="cv-cta-mini">
-            <button @click="openMapSheet">↗ 导航到此处</button>
-            <button :class="{ 'on': favorite }" @click="toggleFavorite">{{ favorite ? '★ 已收藏' : '☆ 收藏名片' }}</button>
-            <button @click="doShare">⤴ 分享名片</button>
-          </div>
-        </div>
-
-        <div v-if="contactFields.length" class="card card-pad cv-block">
+        <div v-if="contactFields.length || fullAddress" class="card card-pad cv-block">
           <h3>联系方式 <span class="small muted">· 点一行即复制该字段</span></h3>
           <div v-for="f in contactFields" :key="f.key" class="cv-contact-row" @click="copy(f.value, f.label)">
             <div class="cv-contact-label">{{ f.label }}：</div>
@@ -164,16 +144,19 @@
 
         <p class="cv-footer">由 <b>{{ siteConfig.site_name }}</b> 提供技术支持 · 资料可改 · 二维码不变</p>
       </div>
-      <p v-if="isCleanTpl" class="cv-cta-hint">扫码即见名片 · 一键拨号 · 一键存档</p>
-
-      <div class="cv-dock" :class="{ 'cv-dock-hidden': isCleanTpl }">
-        <button class="btn btn-primary" @click="tel(card.mobile || card.phone)">📞 打电话</button>
-        <a v-if="contactNative" class="btn btn-ghost" :href="vcfApi">存入通讯录</a>
-        <button v-else class="btn btn-ghost" @click="saveContact">存入通讯录</button>
-        <button class="btn btn-ghost" @click="openMapSheet">导航</button>
-        <button class="btn btn-ghost" :class="{ 'fav-on': favorite }" @click="toggleFavorite">{{ favorite ? '★ 已收藏' : '☆ 收藏' }}</button>
+      <div class="cv-dock cv-dock-rich">
+        <div class="cv-dock-main">
+          <button class="btn btn-primary" :disabled="!contactPhone" @click="tel(contactPhone)">📞 打电话</button>
+          <button class="btn btn-ghost" :disabled="!contactPhone" @click="copy(contactPhone, '号码')">复制号码</button>
+          <a v-if="contactNative" class="btn btn-ghost" :href="vcfApi">存入通讯录</a>
+          <button v-else class="btn btn-ghost" @click="saveContact">存入通讯录</button>
+        </div>
+        <div class="cv-dock-sub">
+          <button v-if="fullAddress && maps.length" @click="openMapSheet">导航</button>
+          <button :class="{ 'on': favorite }" @click="toggleFavorite">{{ favorite ? '★ 已收藏' : '☆ 收藏' }}</button>
+          <button @click="doShare">分享名片</button>
+        </div>
       </div>
-      <button v-if="!isCleanTpl" class="cv-share-fab" @click="doShare" aria-label="分享名片">↗<span>分享</span></button>
       <BottomSheet :show="mapOpen" @update:show="mapOpen = $event">
         <div class="map-sheet-head"><b>选择导航地图</b><button @click="mapOpen = false">×</button></div>
         <div class="map-sheet-list">
@@ -214,12 +197,20 @@
       </div>
     </div>
 
-    <!-- 保存引导：微信内引导去浏览器；Safari/iOS 长按图片保存 -->
+    <!-- 保存引导弹层：微信内「去浏览器添加」的步骤只在这里出现，不铺在名片页面上 -->
     <div v-if="guide" class="modal-mask" @click.self="guide = ''">
       <div class="modal">
         <h3>{{ guide === 'contact' ? '存入通讯录' : '保存二维码' }}</h3>
-        <template v-if="inWeChat">
-          <p>微信内置浏览器限制通讯录写入与下载。请点右上角「···」→ <b>在浏览器中打开</b>（已自动带上登录状态，无需再次登录），再点「存入通讯录」即可直接打开系统添加界面。</p>
+        <template v-if="guide === 'contact'">
+          <p class="guide-lead">按下面步骤操作即可把名片存进手机通讯录：</p>
+          <div class="guide-steps">
+            <div class="guide-steps-t">{{ contactSteps.title }}</div>
+            <ol><li v-for="(s, i) in contactSteps.lines" :key="i" v-html="s"></li></ol>
+          </div>
+          <p class="small muted" style="margin-top:10px">已自动带上登录状态，在浏览器里无需再次登录。</p>
+        </template>
+        <template v-else-if="inWeChat">
+          <p>微信内置浏览器限制下载。请点右上角「···」→ <b>在浏览器中打开</b>（已自动带上登录状态），再点保存。</p>
         </template>
         <template v-else>
           <p v-html="saveTip"></p>
@@ -366,27 +357,27 @@ const contactPhone = computed(() => String(card.value?.mobile || card.value?.pho
 // 卡内「按环境」操作指引：参考简洁联络卡的 steps 区块，文案按当前环境给可操作步骤
 const CONTACT_STEPS = {
   wechat: { title: '微信内 · 推荐这样存', lines: [
-    '点上方金色按钮，名片信息即复制到剪贴板',
-    '打开通讯录 → 右上角「+」→「新建联系人」→ 粘贴',
-    '或点右上角「···」→ <b>在浏览器中打开</b>，再点金色按钮存为通讯录文件'
+    '点右上角「···」→ <b>在浏览器中打开</b>（已自动带上登录状态，无需再次登录）',
+    '在浏览器页面底部点「存入通讯录」',
+    '按系统提示添加；或先点底部「复制号码」，再去通讯录新建联系人粘贴'
   ] },
   ios: { title: 'iPhone 浏览器 · 三步存好', lines: [
-    '点上方金色按钮，文件存入「文件」App 的下载项',
-    '打开「文件」→ 浏览 → 下载 → 点开联系人文件',
-    '系统弹出联系人预览，点「添加所有信息」'
+    '点页面底部「存入通讯录」，系统弹出添加联系人界面',
+    '确认姓名与号码无误',
+    '点「完成」即保存到通讯录'
   ] },
   android: { title: '安卓 · 通常一步到位', lines: [
-    '点上方金色按钮，直接下载联系人文件',
+    '点页面底部「存入通讯录」，直接下载联系人文件',
     '通知栏点该文件，或到「文件管理」→ 下载 里点开',
     '选「导入到通讯录」，确认即完成'
   ] },
   harmony: { title: '鸿蒙 · 通常一步到位', lines: [
-    '点上方金色按钮，直接下载联系人文件',
+    '点页面底部「存入通讯录」，直接下载联系人文件',
     '到「文件管理」→ 下载 里点开',
     '选「导入到通讯录」，确认即完成'
   ] },
   other: { title: '电脑端 / 其他浏览器', lines: [
-    '点上方金色按钮下载联系人文件（.vcf）',
+    '点页面底部「存入通讯录」下载联系人文件（.vcf）',
     '双击文件即可导入 Outlook / 系统通讯录',
     '手机扫码打开此页，可直接拨号、一键存档'
   ] }
@@ -647,8 +638,7 @@ async function toggleFavorite() {
 .cv-dock .btn-primary { background: var(--t-accent, #2563eb); color: #fff; border-color: transparent; }
 .cv-dock .btn-ghost { background: rgba(255,255,255,.12); color: #e2e8f0; border-color: transparent; }
 .cv-dock .fav-on { color: #fbbf24; background: rgba(251,191,36,.16); border-color: rgba(251,191,36,.4); }
-.cv-share-fab { position: fixed; right: 16px; bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 61; width: 58px; height: 58px; border-radius: 16px; background: var(--t-accent, #2563eb); color: #fff; box-shadow: 0 8px 24px rgba(37,99,235,.42); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; font-size: 20px; }
-.cv-share-fab span { font-size: 10px; }
+
 
 /* ============ 布局模板：template × theme 正交组合，template 只改布局/形状，配色仍走 --t-* 变量 ============ */
 
@@ -762,7 +752,6 @@ async function toggleFavorite() {
 .cv-tpl-classic .cv-dock { background: #0f1c33; border-top: 1px solid var(--t-accent); padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); }
 .cv-tpl-classic .cv-dock .btn { font-size: 13px; border-radius: 8px; }
 .cv-tpl-classic .cv-dock .btn-ghost { background: #263550; color: #fff; border-color: transparent; }
-.cv-tpl-classic .cv-share-fab { background: var(--t-accent); border-radius: 16px; width: 60px; height: 60px; }
 
 /* ② 极简白 minimal：无封面 + 大留白 + 超大姓名 + 细线分隔（瑞士极简） */
 .cv-tpl-minimal { background: #fff; }
@@ -784,7 +773,6 @@ async function toggleFavorite() {
 .cv-tpl-minimal .cv-dock { background: #fff; border-top: 1px solid #e5e7eb; }
 .cv-tpl-minimal .cv-dock .btn-primary { background: var(--t-accent); }
 .cv-tpl-minimal .cv-dock .btn-ghost { background: #f3f4f6; color: #374151; }
-.cv-tpl-minimal .cv-share-fab { background: #fff; border: 2px solid var(--t-accent); color: var(--t-accent); box-shadow: 0 4px 14px rgba(0,0,0,.12); }
 
 /* ③ 尊享黑金 elite：深色沉浸 + 居中大头像金环 + 衬线署名（固定深底，强调色跟主题） */
 .cv-tpl-elite { background: #0b0d12; color: #f5f5f4; }
@@ -810,7 +798,6 @@ async function toggleFavorite() {
 .cv-tpl-elite .cv-links a { background: #1c1f26; border-color: rgba(255,255,255,.09); }
 .cv-tpl-elite .cv-dock { background: #0b0d12; border-top: 2px solid var(--t-accent); }
 .cv-tpl-elite .cv-dock .btn-ghost { background: rgba(255,255,255,.1); color: #f5f5f4; }
-.cv-tpl-elite .cv-share-fab { background: var(--t-accent); }
 
 /* ④ 活力渐变 vivid：大圆角渐变封面 + 悬浮头像 + 胶囊标签（年轻创业） */
 .cv-tpl-vivid { background: var(--t-bg); }
@@ -1095,7 +1082,7 @@ async function toggleFavorite() {
   --cv-block-title: #6b4a2e; --cv-link-color: #5a462f; --cv-foot-color: #b3a08a; --cv-foot-b: #6b4a2e; --cv-hint-color: #9c8871;
   --cv-back-color: #6b4a2e; --cv-back-bg: #fff; --cv-brand-color: #2a2118;
 }
-.cv-clean.cv-page { font-family: var(--cv-name-font, inherit); padding-bottom: 34px; }
+.cv-clean.cv-page { font-family: var(--cv-name-font, inherit); padding-bottom: 110px; }
 .cv-tpl-acid.cv-page { background-image: var(--cv-page-grid); }
 /* 渐变文字（E 霓虹） */
 .cv-tpl-neon .cv-name { -webkit-background-clip: text; background-clip: text; background-image: var(--cv-name-gradient); color: transparent; -webkit-text-fill-color: transparent; }
@@ -1128,15 +1115,14 @@ async function toggleFavorite() {
 /* H 杂志编辑：头像方形大图左置 + 顶部红条的杂志封面感 */
 .cv-tpl-magazine .cv-avatar { border-radius: 0; width: 82px; height: 82px; flex-basis: 82px; }
 .cv-tpl-magazine .cv-ident { border-left: 3px solid #c0392b; padding-left: 12px; }
-/* 指引块补充：虚线边（G）/ 左侧色条（H / L1 / L2） */
-.cv-tpl-pop .cv-cta-steps, .cv-tpl-magazine .cv-cta-steps, .cv-tpl-poster .cv-cta-steps, .cv-tpl-ticket .cv-cta-steps { border: var(--cv-steps-border, 0); border-left: var(--cv-steps-border-left, 0); }
+
 /* ===== L1 竖版海报：无卡片通栏、公司名居中、信息两列 ===== */
 .cv-tpl-poster .cv-main > .cv-profile { background: transparent; }
 .cv-tpl-poster .cv-profile { flex-direction: column; align-items: flex-start; gap: 0; }
 .cv-tpl-poster .cv-avatar { display: none; }
 .cv-tpl-poster .cv-org { text-align: center; letter-spacing: .28em; font-size: 11px; font-weight: 400; padding-bottom: 16px; }
 .cv-tpl-poster .cv-title { margin-top: 10px; }
-.cv-tpl-poster .cv-block, .cv-tpl-poster .cv-cta { padding-left: 0; padding-right: 0; }
+.cv-tpl-poster .cv-block { padding-left: 0; padding-right: 0; }
 .cv-tpl-poster .cv-contact-row { flex-direction: column; align-items: flex-start; gap: 4px; }
 .cv-tpl-poster .cv-contact-label { flex-basis: auto; letter-spacing: .2em; }
 .cv-tpl-poster .cv-block:has(.cv-contact-row) { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
@@ -1157,8 +1143,7 @@ async function toggleFavorite() {
   background: linear-gradient(180deg,#17222e,#0f1822); opacity: 1; border-radius: 0 10px 0 0;
 }
 .cv-tpl-horizontal .cv-profile { padding-right: 72px; }
-.cv-tpl-horizontal .cv-cta-grid { grid-template-columns: 1fr; gap: 7px; }
-.cv-tpl-horizontal .cv-cta-btn, .cv-tpl-horizontal .cv-cta-save { height: 38px; font-size: 12.5px; }
+
 /* ===== L4 侧栏竖排：左侧竖色带 + 内容右对齐 ===== */
 .cv-tpl-sidebar .cv-main > .cv-profile { padding-left: 72px; }
 .cv-tpl-sidebar .cv-main > .cv-profile::after {
@@ -1173,13 +1158,13 @@ async function toggleFavorite() {
 .cv-tpl-sidebar .cv-org { display: none; }
 .cv-tpl-sidebar .cv-contact-row { flex-direction: row-reverse; }
 .cv-tpl-sidebar .cv-contact-label { text-align: right; }
-.cv-tpl-sidebar .cv-contact-value, .cv-tpl-sidebar .cv-cta, .cv-tpl-sidebar .cv-block { text-align: right; }
-.cv-tpl-sidebar .cv-cta-mini, .cv-tpl-sidebar .cv-qr-actions { justify-content: flex-end; }
+.cv-tpl-sidebar .cv-contact-value, .cv-tpl-sidebar .cv-block { text-align: right; }
+.cv-tpl-sidebar .cv-qr-actions { justify-content: flex-end; }
 .cv-clean .cv-cover { height: 0; border-radius: 0; background: transparent; }
 .cv-clean .cv-back { top: calc(10px + env(safe-area-inset-top)); left: 12px; color: var(--cv-back-color); background: var(--cv-back-bg); border-radius: 50%; width: 34px; height: 34px; display: grid; place-items: center; font-size: 24px; backdrop-filter: blur(6px); }
 .cv-clean .cv-brand { top: calc(18px + env(safe-area-inset-top)); color: var(--cv-brand-color); }
 .cv-clean .cv-themes { bottom: auto; top: calc(20px + env(safe-area-inset-top)); }
-.cv-clean .cv-main { max-width: 430px; margin: 44px auto 0; }
+.cv-clean .cv-main { max-width: 430px; margin: 30px auto 0; }
 .cv-clean .cv-main > .card, .cv-clean .cv-main > .cv-profile { border-radius: 0; border: 0; box-shadow: none; background: transparent; margin-top: 0; }
 .cv-clean .cv-main > .cv-profile {
   border-radius: var(--cv-card-radius) var(--cv-card-radius) 0 0; padding: var(--cv-card-pad);
@@ -1191,9 +1176,9 @@ async function toggleFavorite() {
   background: var(--cv-topbar-bg);
 }
 .cv-clean .cv-main > .cv-profile::after {
-  content: attr(data-wm); position: absolute; right: -26px; top: 54px;
-  font-size: 88px; font-weight: 900; color: var(--cv-wm-color); opacity: var(--cv-wm-opacity);
-  letter-spacing: -4px; line-height: 1; pointer-events: none;
+  content: attr(data-wm); position: absolute; right: 10px; bottom: -6px;
+  font-size: 34px; font-weight: 800; color: var(--cv-wm-color); opacity: calc(var(--cv-wm-opacity, .04) * .7);
+  letter-spacing: -1px; line-height: 1; pointer-events: none; max-width: 60%; overflow: hidden; white-space: nowrap; text-overflow: clip;
 }
 .cv-clean .cv-profile > * { position: relative; z-index: 2; }
 /* ===== 高级感光效：只作用于简洁单卡，颜色跟随主题强调色（--glow-rgb）=====
@@ -1236,24 +1221,13 @@ async function toggleFavorite() {
 .cv-clean .cv-title { color: var(--cv-role-color); font-size: var(--cv-role-size); letter-spacing: var(--cv-role-spacing); font-weight: 400; }
 .cv-clean .cv-tags span { border-radius: var(--cv-tag-radius); background: var(--cv-tag-bg); color: var(--cv-tag-color); box-shadow: var(--cv-tag-shadow); }
 .cv-clean .cv-status { right: 14px; bottom: 6px; }
-.cv-cta { background: var(--cv-panel-bg); padding: 0 var(--cv-card-x) 8px; }
-.cv-cta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.cv-cta-btn { display: flex; align-items: center; justify-content: center; height: 50px; border-radius: var(--cv-btn-radius); font-size: 14.5px; font-weight: 700; letter-spacing: var(--cv-btn-spacing); font-family: var(--cv-btn-font); text-decoration: none; }
-.cv-cta-main { background: var(--cv-btn-main-bg); color: var(--cv-btn-main-color); box-shadow: var(--cv-btn-main-shadow); }
-.cv-cta-ghost { background: var(--cv-btn-ghost-bg); color: var(--cv-btn-ghost-color); box-shadow: var(--cv-btn-ghost-shadow); }
-.cv-cta-save { display: flex; align-items: center; justify-content: center; width: 100%; margin-top: 10px; height: 52px; border-radius: var(--cv-btn-radius); background: var(--cv-btn-save-bg); color: var(--cv-btn-save-color); box-shadow: var(--cv-btn-save-shadow); font-size: 15px; font-weight: 700; font-family: var(--cv-btn-font); text-decoration: none; }
-.cv-cta-steps { margin-top: 10px; background: var(--cv-steps-bg); border-radius: var(--cv-steps-radius); padding: 11px 13px; font-size: 11.5px; line-height: 1.9; color: var(--cv-steps-color); box-shadow: var(--cv-steps-shadow); }
-.cv-cta-steps-t { font-size: 11px; color: var(--cv-steps-title); font-weight: 700; letter-spacing: .08em; margin-bottom: 2px; }
-.cv-cta-steps ol { margin: 0; padding-left: 16px; }
-.cv-cta-steps b { color: var(--cv-steps-b); }
-.cv-cta-mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
-.cv-cta-mini button { padding: 9px 2px; border-radius: var(--cv-btn-radius); background: var(--cv-mini-bg); color: var(--cv-mini-color); box-shadow: var(--cv-mini-shadow); font-size: 11.5px; font-weight: 600; }
-.cv-cta-mini button.on { background: var(--cv-mini-on-bg); color: var(--cv-mini-on-color); }
 .cv-clean .cv-block { padding: 14px var(--cv-card-x); background: var(--cv-panel-bg); margin-top: 0; }
 .cv-clean .cv-block h3, .cv-clean .cv-sec-title { font-size: 12px; letter-spacing: .1em; color: var(--cv-block-title); border-left: 0; padding-left: 0; }
 .cv-clean .cv-block h3 .small.muted { letter-spacing: 0; }
 .cv-clean .cv-contact-row { padding: 11px 0; border-top: 1px solid var(--cv-line); }
 .cv-clean .cv-contact-label { flex-basis: 52px; color: var(--cv-ink-2); letter-spacing: .08em; }
+/* 号码/邮箱等值必须高对比：深色模板用亮色，避免浅字叠深底看不清 */
+.cv-clean .cv-contact-value { color: var(--cv-link-color); font-weight: 600; }
 .cv-clean .cv-bio, .cv-clean .small.muted, .cv-clean .cv-qr-lead { color: var(--cv-ink-2); }
 .cv-clean .cv-links a, .cv-clean .cv-gallery-cell { border-color: var(--cv-line); background: var(--cv-panel-bg); }
 .cv-clean .cv-links b, .cv-clean .cv-region-line, .cv-clean .cv-contact-row b { color: var(--cv-link-color); }
@@ -1263,8 +1237,20 @@ async function toggleFavorite() {
 .cv-clean .cv-create-copy b { color: var(--cv-link-color); }
 .cv-clean .cv-footer { background: var(--cv-panel-bg); border-radius: 0 0 var(--cv-card-radius) var(--cv-card-radius); padding: 16px var(--cv-card-x) 20px; color: var(--cv-foot-color); letter-spacing: .1em; }
 .cv-clean .cv-footer b { color: var(--cv-foot-b); }
-.cv-cta-hint { text-align: center; color: var(--cv-hint-color); font-size: 11px; letter-spacing: .08em; margin: 14px 0 0; }
-.cv-dock-hidden { display: none !important; }
+/* 底部快捷操作区：主操作（拨号/复制/存档）+ 次操作（导航/收藏/分享），两行不拥挤 */
+.cv-dock-rich { display: flex; flex-direction: column; gap: 7px; }
+.cv-dock-main { display: flex; gap: 6px; }
+.cv-dock-main .btn { flex: 1; }
+.cv-dock-sub { display: flex; gap: 6px; justify-content: center; }
+.cv-dock-sub button { flex: 1; background: transparent; border: 0; color: #cfd6e0; font-size: 12px; padding: 3px 0; }
+.cv-dock-sub button.on { color: #fbbf24; }
+/* 简洁模板的次操作行用主题色，适配浅/深底 */
+.cv-clean .cv-dock-sub button { color: var(--cv-mini-color, #cfd6e0); }
+.guide-lead { margin: 4px 0 10px; }
+.guide-steps { background: var(--t-bg, #f6f8fb); border-radius: 10px; padding: 12px 14px; }
+.guide-steps-t { font-size: 12px; font-weight: 700; color: var(--t-accent, #2563eb); margin-bottom: 6px; }
+.guide-steps ol { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.85; color: var(--t-text, #0f172a); }
+.guide-steps li + li { margin-top: 4px; }
 
 /* ============ 深蓝鎏金 navygold：参考名片配色与结构（放在最后覆盖通用商务风）============ */
 .cv-tpl-navygold { color: var(--ng-ink); background: var(--ng-page-bg); }
@@ -1282,9 +1268,9 @@ async function toggleFavorite() {
 }
 .cv-tpl-navygold .cv-main { max-width: 430px; }
 .cv-tpl-navygold .cv-profile::after {
-  content: attr(data-wm); position: absolute; right: -26px; top: 54px;
-  font-size: 80px; font-weight: 900; color: var(--ng-ink); opacity: .04;
-  letter-spacing: -4px; line-height: 1; pointer-events: none;
+  content: attr(data-wm); position: absolute; right: 10px; bottom: -4px;
+  font-size: 32px; font-weight: 800; color: var(--ng-ink); opacity: .028;
+  letter-spacing: -1px; line-height: 1; pointer-events: none; max-width: 60%; overflow: hidden; white-space: nowrap;
 }
 .cv-tpl-navygold .cv-profile > * { position: relative; z-index: 2; }
 .cv-tpl-navygold .cv-avatar {
@@ -1315,6 +1301,10 @@ async function toggleFavorite() {
 }
 .cv-tpl-navygold .cv-actions button:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .cv-tpl-navygold .cv-actions i { width: auto; height: auto; border-radius: 0; background: transparent; color: inherit; font-size: 17px; }
+/* 深蓝底上的内容块必须白底深字，否则号码/邮箱等深色文字在深背景上完全看不清 */
+.cv-tpl-navygold .cv-main > .card, .cv-tpl-navygold .cv-block {
+  background: #fff; border: 1px solid var(--ng-line);
+}
 .cv-tpl-navygold .cv-block h3, .cv-tpl-navygold .cv-sec-title { color: var(--ng-navy); border-left: 3px solid var(--ng-gold); padding-left: 9px; }
 .cv-tpl-navygold .cv-bio, .cv-tpl-navygold .small.muted, .cv-tpl-navygold .cv-qr-lead { color: var(--ng-ink-2); }
 .cv-tpl-navygold .cv-links a { border-color: var(--ng-line); background: #fff; }
@@ -1326,5 +1316,4 @@ async function toggleFavorite() {
 .cv-tpl-navygold .cv-dock { background: rgba(18,32,46,.96); border-top: 2px solid var(--ng-gold); }
 .cv-tpl-navygold .cv-dock .btn-primary { background: linear-gradient(135deg, #c9a163, #a8834a); color: #fff; box-shadow: 0 12px 24px -14px rgba(169,131,74,.9); }
 .cv-tpl-navygold .cv-dock .btn-ghost { background: rgba(255,255,255,.12); color: #fff; border-color: rgba(216,187,133,.35); }
-.cv-tpl-navygold .cv-share-fab { background: linear-gradient(135deg, #c9a163, #a8834a); box-shadow: 0 8px 20px rgba(169,131,74,.4); border-radius: 18px; }
 </style>
