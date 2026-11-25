@@ -417,7 +417,13 @@ const siteLinks = computed(() => {
 })
 
 function shortUrl(u) { return String(u || '').replace(/^https?:\/\//, '').slice(0, 30) }
-function safeUrl(u) { try { const x = new URL(u); return ['http:', 'https:'].includes(x.protocol) ? x.href : '#' } catch { return '#' } }
+// 用户常填「Card.microdot.net」这类无协议网址：自动补 https:// 再校验，否则按钮变 '#' 点了没反应
+function safeUrl(u) {
+  if (!u) return '#'
+  const s = String(u).trim()
+  const full = /^https?:\/\//i.test(s) ? s : `https://${s}`
+  try { const x = new URL(full); return ['http:', 'https:'].includes(x.protocol) ? x.href : '#' } catch { return '#' }
+}
 // 微信内显示「去浏览器打开」引导前，先把登录凭证写进当前 URL，外部浏览器打开即免二次登录
 async function showGuide(kind) {
   if (isWeChat()) await prepareExternalOpen(api)
@@ -498,8 +504,17 @@ function mapIcon(key) {
 }
 async function copy(v, label) {
   if (!v) return showToast(`尚未填写${label}`)
-  try { await navigator.clipboard.writeText(v); showToast(`${label}已复制`, 'success') }
-  catch { showToast(v) }
+  try {
+    if (navigator.clipboard?.writeText && window.isSecureContext) await navigator.clipboard.writeText(v)
+    else {
+      const ta = document.createElement('textarea')
+      ta.value = v; ta.style.cssText = 'position:fixed;left:-9999px;opacity:0'
+      document.body.appendChild(ta); ta.select()
+      const ok = document.execCommand('copy'); document.body.removeChild(ta)
+      if (!ok) throw new Error('copy failed')
+    }
+    showToast(`${label}已复制`, 'success')
+  } catch { showToast(`复制失败，${label}：${v}`) }
 }
 async function saveQr() {
   guideImage.value = ''
@@ -1267,11 +1282,17 @@ async function toggleFavorite() {
 .cv-clean .cv-links a, .cv-clean .cv-gallery-cell { border-color: var(--cv-line); background: var(--cv-panel-bg); }
 .cv-clean .cv-links b, .cv-clean .cv-region-line, .cv-clean .cv-contact-row b { color: var(--cv-link-color); }
 .cv-clean .cv-map-launch, .cv-clean .cv-maps a { background: var(--cv-mini-bg); color: var(--cv-mini-color); box-shadow: var(--cv-mini-shadow); }
-/* 简洁模板底部 dock 也跟模板配色（acid 荧光绿/neon 霓虹/pop 多巴胺…），不再用通用深灰+主题绿 */
-.cv-clean .cv-dock { background: var(--cv-panel-bg); border-top: 1px solid var(--cv-line); color: var(--cv-ink); }
-.cv-clean .cv-dock .btn { border-radius: var(--cv-btn-radius, 8px); }
-.cv-clean .cv-dock .btn-primary { background: var(--cv-btn-main-bg, var(--t-accent)); color: var(--cv-btn-main-color, #fff); box-shadow: var(--cv-btn-main-shadow, none); }
-.cv-clean .cv-dock .btn-ghost { background: var(--cv-btn-ghost-bg, transparent); color: var(--cv-btn-ghost-color, var(--cv-ink)); box-shadow: var(--cv-btn-ghost-shadow, inset 0 0 0 1px var(--cv-line)); }
+/* 主页与店铺「打开/复制」、联系方式行内按钮：跟模板配色，不再用全局蓝渐变/灰描边 */
+.cv-clean .cv-site .btn { border-radius: var(--cv-btn-radius, 8px); font-size: 12px; padding: 7px 12px; }
+.cv-clean .cv-site .btn-primary { background: var(--cv-btn-main-bg, var(--t-accent)); color: var(--cv-btn-main-color, #fff); box-shadow: var(--cv-btn-main-shadow, none); border-color: transparent; }
+.cv-clean .cv-site .btn-ghost { background: var(--cv-btn-ghost-bg, transparent); color: var(--cv-btn-ghost-color, var(--cv-ink)); box-shadow: var(--cv-btn-ghost-shadow, inset 0 0 0 1px var(--cv-line)); border-color: transparent; }
+.cv-clean .cv-row-act { background: var(--cv-mini-bg); color: var(--cv-mini-color); box-shadow: var(--cv-mini-shadow); border-radius: var(--cv-btn-radius, 7px); }
+/* 简洁模板底部 dock（/me 与公开页共用同一套）：跟模板配色，拉开主/次层次，不再通用深灰+主题绿 */
+.cv-clean .cv-dock { gap: 7px; padding: 10px 10px calc(10px + env(safe-area-inset-bottom)); background: var(--cv-panel-bg); border-top: 1px solid var(--cv-line); color: var(--cv-ink); }
+.cv-clean .cv-dock .btn { border-radius: var(--cv-btn-radius, 8px); font-weight: 700; }
+.cv-clean .cv-dock .btn-primary { background: var(--cv-btn-main-bg, var(--t-accent)); color: var(--cv-btn-main-color, #fff); box-shadow: var(--cv-btn-main-shadow, none); border-color: transparent; }
+/* ghost 用模板主色的极淡底 + 描边，比纯透明底有层次；深色模板靠 color-mix 自动降饱和不刺眼 */
+.cv-clean .cv-dock .btn-ghost { background: color-mix(in srgb, var(--cv-btn-ghost-color, var(--cv-ink)) 10%, var(--cv-panel-bg)); color: var(--cv-btn-ghost-color, var(--cv-ink)); box-shadow: var(--cv-btn-ghost-shadow, inset 0 0 0 1px var(--cv-line)); border-color: transparent; }
 .cv-clean .cv-create-own { border-top: 1px solid var(--cv-line); }
 .cv-clean .cv-create-copy b { color: var(--cv-link-color); }
 .cv-clean .cv-footer { background: var(--cv-panel-bg); border-radius: 0 0 var(--cv-card-radius) var(--cv-card-radius); padding: 16px var(--cv-card-x) 20px; color: var(--cv-foot-color); letter-spacing: .1em; }
