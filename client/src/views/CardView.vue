@@ -1577,7 +1577,15 @@ async function toggleFavorite() {
 
 /* ② 封面归零 + 主区单卡：所有模板一张连续大卡、无悬浮封面 */
 .cv-page.cv-clean .cv-cover { height: 0; border-radius: 0; background: transparent; overflow: visible; }
-.cv-page.cv-clean .cv-main { max-width: 430px; margin: 30px auto 0; }
+/* 顶部间距用 padding 而非 margin：margin-top 会塌陷穿透 .cv-page，把父元素连背景一起下推，
+   顶部露出 body 浅色背景形成白块（2026-11-25 实锤）。padding 用页面背景填充，深色主题不再露白。 */
+.cv-page.cv-clean { padding-top: 30px; }
+/* owner 页有蓝色工作台顶栏，卡片只需贴近顶栏的 12px，不需要公开页的 30px 留白 */
+.cv-page.cv-clean.cv-owner { padding-top: 12px; }
+/* embed 嵌入模式：无独立背景并保留原负偏移定位，不吃公开页的 padding/margin 归零 */
+.cv-page.cv-clean.cv-embed { padding-top: 0; }
+.cv-page.cv-clean.cv-embed .cv-main { margin-top: -34px; }
+.cv-page.cv-clean .cv-main { max-width: 430px; margin: 0 auto; }
 .cv-page.cv-clean .cv-main > .cv-profile {
   flex-direction: row; align-items: flex-start; text-align: left; flex-wrap: nowrap; gap: 14px;
   padding: var(--cv-card-pad); border-radius: 22px 22px 0 0;
