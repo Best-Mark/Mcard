@@ -87,11 +87,27 @@ function ownerView(row, origin) {
   return { ...publicView(row, origin), id: row.id, status: row.status, createdAt: row.created_at }
 }
 
+// 距离兜底：坐标与地址文本城市明显不符时（历史 bug：编辑页改了省市但坐标没随存，
+// 仍是旧的错误坐标，导致「两个都写郑州、距离却差 600km」），退回用城市中心算距离。
+// 只在「声明了城市 + 城市有中心坐标 + 名片坐标离该中心 > 150km」时触发，避免误伤郊区/相邻市选点。
+const MAX_CITY_COORD_GAP_KM = 150
+function effectiveCardCoord(row) {
+  if (row.latitude == null || row.longitude == null) return null
+  const city = String(row.city || '').trim()
+  if (!city) return { lat: row.latitude, lng: row.longitude }
+  const center = cityCoords(city)
+  if (!center || !Number.isFinite(center.lat) || !Number.isFinite(center.lng)) return { lat: row.latitude, lng: row.longitude }
+  const gap = distanceKm(center.lat, center.lng, row.latitude, row.longitude)
+  if (gap > MAX_CITY_COORD_GAP_KM) return { lat: center.lat, lng: center.lng } // 错配坐标 → 用城市中心兜底
+  return { lat: row.latitude, lng: row.longitude }
+}
+
 // 集市卡片视图：只暴露发现业务对口所需的最小信息，绝不外泄电话/邮箱/微信/收款码等私密字段
 function marketView(row, originLat, originLng, origin) {
   let distance = null
-  if (originLat != null && originLng != null && row.latitude != null && row.longitude != null) {
-    distance = Math.round(distanceKm(originLat, originLng, row.latitude, row.longitude) * 10) / 10
+  const coord = effectiveCardCoord(row)
+  if (originLat != null && originLng != null && coord) {
+    distance = Math.round(distanceKm(originLat, originLng, coord.lat, coord.lng) * 10) / 10
   }
   const industry = INDUSTRIES.find(i => i.key === row.industry)
   return {
