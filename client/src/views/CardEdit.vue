@@ -577,6 +577,14 @@ const SECTION_FIELDS = {
 const savedSections = ref({})
 const dirtySections = ref({})
 
+// 保存串行链：切分类自动保存与 finish 收敛可能并发发起，必须排队，后一次才能看到前一次结果，
+// 否则「选模板改5个字段」与「切走后 finish 保存当前分类」互相覆盖 → 模板要刷新才生效（2026-11-25 实修）。
+let saveChain = Promise.resolve()
+function enqueueSave(key, silent = false) {
+  const task = saveChain.then(() => saveSection(key, silent))
+  saveChain = task.catch(() => {})
+  return task
+}
 async function saveSection(key, silent = false) {
   if (loadError.value || !loaded.value) return
   if (key === 'materials') return saveMaterials(silent)
@@ -663,7 +671,10 @@ function scheduleAutoSave() {
   dirtySections.value = { ...dirtySections.value, [active.value]: true }
   autoSaveText.value = '有修改，即将自动保存…'
   clearTimeout(saveTimer)
-  saveTimer = setTimeout(() => { if (dirtySections.value[active.value]) saveSection(active.value, true) }, 900)
+  saveTimer = setTimeout(() => {
+    const key = active.value
+    if (dirtySections.value[key]) enqueueSave(key, true)
+  }, 900)
 }
 watch(form, scheduleAutoSave, { deep: true })
 watch(tagsText, scheduleAutoSave)
@@ -675,14 +686,20 @@ function goSection(index) {
   if (!s) return
   if (formReady && dirtySections.value[active.value]) {
     clearTimeout(saveTimer)
-    saveSection(active.value, true)
+    enqueueSave(active.value, true)
   }
   active.value = s.key
 }
 
 async function finish() {
   clearTimeout(saveTimer)
-  if (formReady && dirtySections.value[active.value]) await saveSection(active.value, true)
+  // 收敛所有脏分类（不只是当前分类），并等待串行链跑完再跳——保证模板/配色/资料都落库，
+  // 否则刚改完展示模板直接返回名片会读到旧数据，必须刷新才生效（2026-11-25 实修）。
+  if (formReady) {
+    const dirty = Object.keys(dirtySections.value).filter(k => dirtySections.value[k])
+    for (const k of dirty) await enqueueSave(k, true)
+    await saveChain
+  }
   router.push('/me')
 }
 </script>
