@@ -12,36 +12,22 @@ export const BOTTOM_TABS = [
 ]
 // 统计从底部移除，仍保留在抽屉「我的」组（入口不丢）；集市保持正中凸起位。
 
+// 抽屉只放「底部 tab / 当前页 / 我的页」都够不着、或需要跨页快速可达的入口。
+// 2026-11-25 用户定稿：原 17 项太长且大量重复（我的名片/集市/消息/名片夹/账户信息在底部 tab；
+// 分享/二维码在工作台顶部；公开页/编辑/配色/连扫/统计/套餐/实体版式在「我的」页），全部从抽屉移除。
+// 页面入口不变，只是抽屉收敛——PC 侧栏另有自己的固定导航，不依赖本分组。
 export const DRAWER_GROUPS = [
   {
-    title: '名片',
+    title: '快捷',
     items: [
-      { label: '我的名片', ico: '▤', kind: 'route', path: '/me' },
-      { label: '公开名片页', ico: '↗', kind: 'public', query: '' },
-      { label: '我的名片二维码', ico: '▦', kind: 'public', query: '?save=1' },
-      { label: '名片集市', ico: '⌕', kind: 'route', path: '/market' },
-      { label: '分享名片', ico: '↗', kind: 'share' }
-    ]
-  },
-  {
-    title: '资料',
-    items: [
-      { label: '编辑资料', ico: '✎', kind: 'route', path: '/me/card' },
-      { label: '配色风格', ico: '🎨', kind: 'route', path: '/me/card/style' },
-      { label: '完善资料', ico: '📝', kind: 'route', path: '/me/card?focus=bio' },
-      { label: '相册（图片/作品）', ico: '📚', kind: 'route', path: '/me/card?focus=materials' },
-      { label: '实体名片版式', ico: '🖨', kind: 'route', path: '/me/print' }
-    ]
-  },
-  {
-    title: '我的',
-    items: [
-      { label: '消息通知', ico: '🔔', kind: 'route', path: '/me/notifications', badge: 'unread' },
-      { label: '账户信息', ico: '◉', kind: 'route', path: '/me/profile' },
-      { label: '我的名片夹', ico: '▤', kind: 'route', path: '/me/contacts' },
-      { label: '展会连扫收名片', ico: '📷', kind: 'route', path: '/me/batch-scan' },
+      { label: '分享名片', ico: '↗', kind: 'share' },
       { label: '浏览统计 / 订单', ico: '📊', kind: 'route', path: '/me/stats' },
-      { label: '套餐 / 续期', ico: '💎', kind: 'route', path: '/me/plans' },
+      { label: '套餐 / 续期', ico: '💎', kind: 'route', path: '/me/plans' }
+    ]
+  },
+  {
+    title: '账户',
+    items: [
       { label: '退出登录', ico: '⏻', kind: 'logout', danger: true }
     ]
   }
