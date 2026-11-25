@@ -304,6 +304,9 @@ function scanOptions({ fg, bg }) {
     // 高对比：码色太浅改纯黑，底色太深改纯白（深色主题配浅色码的自定义色也覆盖掉）
     fg: lum(fg) > 110 ? '#0f172a' : (fg || '#0f172a'),
     bg: lum(bg) < 200 ? '#ffffff' : (bg || '#ffffff'),
+    // 静音区（quiet zone）≥4 模块：QR 规范要求，苹果原生相机/微信扫一扫对不足的静音区极敏感，
+    // 2 模块是历史默认值，客户主扫码场景统一扩到 4，宁可码点略小也要一次扫开。
+    margin: 4,
     logo: false,
     logoImage: '',
     style: qr.SCAN_STYLE
@@ -323,8 +326,11 @@ router.get('/public/:slug/qr.svg', wrap(async (req, res) => {
   let style = normalizeStyle(parseJson(row.qr_style, {}))
   if (req.query.style) { try { style = normalizeStyle(JSON.parse(String(req.query.style).slice(0, 4000))) } catch {} }
   let opts = { size, fg, bg, logo: logoOn, brand, logoImage, style }
-  if (String(req.query.scan || '') === '1') opts = { ...opts, ...scanOptions({ fg, bg, logoOn, logoImage, style }) }
-  res.type('image/svg+xml').set('Cache-Control', 'public, max-age=3600')
+  const isScan = String(req.query.scan || '') === '1'
+  if (isScan) opts = { ...opts, ...scanOptions({ fg, bg, logoOn, logoImage, style }) }
+  // 扫码主场景只缓存 60s：渲染逻辑（纠错/静音区/去 LOGO）升级后最多 1 分钟即可全网生效，
+  // 不再像以前 max-age=3600 卡一小时旧码。装饰码仍在编辑预览里高频改色，走长缓存无意义但也无害。
+  res.type('image/svg+xml').set('Cache-Control', isScan ? 'public, max-age=60' : 'public, max-age=3600')
     .send(qr.svg(requestUrl(req, `/c/${row.slug}`), opts))
 }))
 
@@ -335,9 +341,10 @@ router.get('/public/:slug/qr.png', wrap(async (req, res) => {
   const logoImage = row.qr_logo ? await qrCenterImage(row) : ''
   const style = normalizeStyle(parseJson(row.qr_style, {}))
   let opts = { size, fg: row.qr_fg, bg: row.qr_bg, logoImage, logo: !!row.qr_logo, brand: 'M', style }
-  if (String(req.query.scan || '') === '1') opts = { ...opts, ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg, logoOn: !!row.qr_logo, logoImage, style }) }
+  const isScan = String(req.query.scan || '') === '1'
+  if (isScan) opts = { ...opts, ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg, logoOn: !!row.qr_logo, logoImage, style }) }
   const buf = await qr.png(requestUrl(req, `/c/${row.slug}`), opts)
-  res.type('png').set('Cache-Control', 'public, max-age=3600').send(buf)
+  res.type('png').set('Cache-Control', isScan ? 'public, max-age=60' : 'public, max-age=3600').send(buf)
 }))
 
 // vCard 文本（唯一真相源仍是 services/vcard.build，前端拿它本地生成二维码，避免依赖图片接口）

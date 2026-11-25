@@ -1,5 +1,6 @@
 import { qrPath, inlineImage } from './printCard'
 import { themeOf } from './themes'
+import { scanQrUrl } from './qr'
 
 // 名片分享缩略图：生成一张「名片卡片样式」的 PNG（头像/姓名/职位/公司/标签 + 小二维码），
 // 替代过去难看的纯二维码缩略图。走 SVG→canvas→Blob→/api/upload，拿公网 URL 给微信 JS-SDK。
@@ -123,7 +124,7 @@ export async function buildAndUploadShareImage(api, view) {
       inlineImage(view.avatar || view.logo || ''),
       (async () => {
         try {
-          const res = await fetch(`${window.location.origin}/api/cards/public/${view.slug}/qr.png?size=200&scan=1`)
+          const res = await fetch(window.location.origin + scanQrUrl(view.slug, 'qr.png', 200))
           if (!res.ok) return ''
           const blob = await res.blob()
           if (!blob.size) return ''

@@ -86,7 +86,7 @@
         </view>
 
         <view class="card qr-card">
-          <image class="qr" :src="baseUrl + '/api/cards/public/' + card.slug + '/qr.png?size=440&scan=1'" mode="aspectFit" />
+          <image class="qr" :src="scanQrUrl(card.slug, 'qr.png', 440)" mode="aspectFit" />
           <view class="qr-info">
             <view class="section">扫一扫，存进通讯录</view>
             <view class="muted small">二维码永久固定，资料更新也不失效</view>
@@ -121,7 +121,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad, onShareAppMessage } from '@dcloudio/uni-app'
-import { api, baseUrl, toast, copyText, callPhone, saveQrImage, parseSlug, getPublicMaterials, traceVisit, getShareCardImage } from '../../utils/request'
+import { api, baseUrl, toast, copyText, callPhone, saveQrImage, parseSlug, getPublicMaterials, traceVisit, getShareCardImage, scanQrUrl } from '../../utils/request'
 
 const slug = ref('')
 const card = ref(null)

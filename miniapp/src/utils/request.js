@@ -138,8 +138,15 @@ export function currentPlatform() {
   return 'other'
 }
 
+// 扫码主场景 URL 版本：与 client/src/utils/qr.js 的 SCAN_V 约定同号。
+// 渲染逻辑（纠错/静音区/去 LOGO）升级时两端一起 +1，用新 query 击穿 CDN 旧图案缓存。
+const SCAN_V = 2
+export function scanQrUrl(slug, ext, size) {
+  return `${API_BASE}/api/cards/public/${slug}/${ext}?size=${size}&scan=1&qv=${SCAN_V}`
+}
+
 export function saveQrImage(slug) {
-  const url = `${API_BASE}/api/cards/public/${slug}/qr.png?size=720&scan=1`
+  const url = scanQrUrl(slug, 'qr.png', 720)
   uni.downloadFile({
     url,
     success: res => {
