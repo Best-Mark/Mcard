@@ -304,8 +304,8 @@
 
 /* 暗色信息区小字对比度（2026-11-26 用户反馈）：次要文字/页脚/提示统一提亮，
    保持各模板色相不变；浅底模板不在此列，避免深字变淡。 */
-.cv-clean.cv-tpl-glass  { --cv-ink-2:#c4d4e2; --cv-foot-color:#a7bccd; --cv-hint-color:#a7bccd; --cv-block-title:#9ee8d5; --cv-link-color:#9ee8d5; }
-.cv-clean.cv-tpl-elite  { --cv-ink-2:#d4d4d8; --cv-foot-color:#a1a1aa; --cv-hint-color:#a1a1aa; }
-.cv-clean.cv-tpl-neon   { --cv-ink-2:#d8d0ff; --cv-foot-color:#a99bd8; --cv-hint-color:#a99bd8; --cv-block-title:#7fe6ff; --cv-link-color:#9ee8ff; }
-.cv-clean.cv-tpl-acid   { --cv-ink-2:#b9cf3d; --cv-foot-color:#9fb23a; --cv-hint-color:#9fb23a; }
-.cv-clean.cv-tpl-poster { --cv-ink-2:#c2d2e0; --cv-foot-color:#9db0c2; --cv-hint-color:#9db0c2; }
+.cv-clean.cv-tpl-glass  { --cv-ink-2:#dce9f4; --cv-foot-color:#b8cbdc; --cv-hint-color:#b8cbdc; --cv-block-title:#9ee8d5; --cv-link-color:#9ee8d5; }
+.cv-clean.cv-tpl-elite  { --cv-ink-2:#e4e4e7; --cv-foot-color:#b5b5bd; --cv-hint-color:#b5b5bd; }
+.cv-clean.cv-tpl-neon   { --cv-ink-2:#f0eaff; --cv-foot-color:#c3b7ef; --cv-hint-color:#c3b7ef; --cv-block-title:#7fe6ff; --cv-link-color:#9ee8ff; }
+.cv-clean.cv-tpl-acid   { --cv-ink-2:#d6f06a; --cv-foot-color:#b3c44a; --cv-hint-color:#b3c44a; }
+.cv-clean.cv-tpl-poster { --cv-ink-2:#dce8f2; --cv-foot-color:#b0c3d4; --cv-hint-color:#b0c3d4; }
