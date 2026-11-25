@@ -10,7 +10,8 @@
       <span class="spacer"></span>
       <button class="dash-icon" aria-label="分享名片" @click="doShare">↗</button>
       <button class="dash-icon" aria-label="查看二维码" @click="router.push(`/c/${card.slug}?save=1`)">▦</button>
-      <button class="dash-menu-btn" aria-label="菜单" @click="toggleDrawer"><i class="menu-glyph"></i><span>菜单</span></button>
+      <!-- 与其它页面一致：纯图标（无「菜单」文字），图标用 global.css 的 .menu-glyph 三横线，抽屉打开时旋转 -->
+      <button class="nav-menu-btn dash-menu-btn" aria-label="菜单" @click="toggleDrawer"><i class="menu-glyph"></i></button>
     </header>
 
     <div v-if="loading" class="dash-loading"><div class="card card-pad">加载中…</div></div>
@@ -107,8 +108,9 @@ async function doShare() {
 .dash-sub { font-size: 12px; opacity: .8; }
 .dash-top .spacer { flex: 1; }
 .dash-icon { width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,.16); color: #fff; font-size: 17px; display: grid; place-items: center; }
-.dash-menu-btn { display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 11px; border-radius: 17px; background: rgba(255,255,255,.18); color: #fff; font-size: 12px; font-weight: 600; }
-.menu-glyph { width: 14px; height: 12px; border-top: 2px solid #fff; border-bottom: 2px solid #fff; position: relative; }
-.menu-glyph::after { content: ''; position: absolute; left: 0; right: 0; top: 5px; border-top: 2px solid #fff; }
+/* 与其它页面同款三横线图标（global.css 的 .menu-glyph）；深蓝头上只覆写颜色，不重画图标，
+   否则局部 border 画法会盖掉全局 background 画法，变成「=」且抽屉打开不旋转（2026-11-25 实锤）。 */
+.dash-menu-btn { background: rgba(255,255,255,.18); color: #fff; }
+.dash-menu-btn:active { background: rgba(255,255,255,.28); }
 .dash-loading { padding-top: 20px; }
 </style>
