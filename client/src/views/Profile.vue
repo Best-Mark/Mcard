@@ -69,9 +69,6 @@
 
     <div class="pf-group">
       <div class="pf-group-title">账号与服务</div>
-      <router-link to="/me/card/style" class="pf-cell">
-        <i class="pf-cell-ico">🎨</i><span class="pf-cell-t">配色风格</span><span class="pf-cell-arrow">›</span>
-      </router-link>
       <router-link to="/me/notifications" class="pf-cell" :class="{ 'has-badge': unread > 0 }">
         <i class="pf-cell-ico">🔔</i><span class="pf-cell-t">消息通知</span>
         <span v-if="unread > 0" class="pf-cell-badge">{{ unread > 99 ? '99+' : unread }}</span>
