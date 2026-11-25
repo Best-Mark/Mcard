@@ -5,11 +5,12 @@
 
 export const BOTTOM_TABS = [
   { path: '/me', label: '名片', ico: '▤', exact: true },
-  { path: '/me/stats', label: '统计', ico: '📊', exact: false },
-  { path: '/market', label: '集市', ico: '⌕', exact: true, feature: true },
   { path: '/me/contacts', label: '名片夹', ico: '▤', exact: false },
+  { path: '/market', label: '集市', ico: '⌕', exact: true, feature: true },
+  { path: '/me/notifications', label: '消息', ico: '🔔', exact: false },
   { path: '/me/profile', label: '我的', ico: '◉', exact: false }
 ]
+// 统计从底部移除，仍保留在抽屉「我的」组（入口不丢）；集市保持正中凸起位。
 
 export const DRAWER_GROUPS = [
   {

@@ -25,7 +25,7 @@
 
     <nav class="m-tabs">
       <button v-for="t in tabs" :key="t.path" :class="{ on: isActive(t), feature: t.feature }" @click="go(t.path)">
-        <i>{{ t.ico }}</i><span>{{ t.label }}</span>
+        <i>{{ t.ico }}<em v-if="t.path === '/me/notifications' && unread" class="m-tab-badge">{{ unread > 99 ? '99+' : unread }}</em></i><span>{{ t.label }}</span>
       </button>
     </nav>
   </div>
@@ -146,7 +146,8 @@ onBeforeUnmount(() => {
   padding-bottom: env(safe-area-inset-bottom); background: #fff; border-top: 1px solid var(--line); box-shadow: 0 -4px 18px rgba(15,23,42,.06);
 }
 .m-tabs button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0 7px; font-size: 11px; color: var(--muted); }
-.m-tabs button i { font-style: normal; font-size: 18px; line-height: 1.2; }
+.m-tabs button i { position: relative; font-style: normal; font-size: 18px; line-height: 1.2; }
+.m-tab-badge { position: absolute; top: -6px; right: -12px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: #ef4444; color: #fff; font-size: 10px; font-style: normal; line-height: 16px; text-align: center; }
 .m-tabs button.on { color: var(--primary); font-weight: 700; }
 /* 名片集市为重点入口：中间凸起圆钮，不随页面主题变化 */
 .m-tabs button.feature i {
