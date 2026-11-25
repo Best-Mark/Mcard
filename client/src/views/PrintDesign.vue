@@ -50,12 +50,29 @@
           <div class="card card-pad control-panel">
             <template v-if="openSection === 'color'">
               <div class="section-title" style="margin-top:0">印刷配色</div>
-              <p class="small muted">仅影响实体名片配色，不改变电子名片主题。</p>
+              <p class="small muted">与电子名片共用同一套主题配色（唯一真相源）；可单独微调，也可一键同步回电子名片。</p>
+              <!-- 电子名片当前配色：一键套用到实体名片 -->
+              <div class="share-color">
+                <div class="share-color-head"><b>电子名片当前配色</b><span class="small muted">{{ cardThemeLabel }} · {{ card?.accent || themeOf({ theme: card?.theme }).accent }}</span></div>
+                <div class="share-color-row">
+                  <span class="share-dot" :style="{ background: card?.accent || themeOf({ theme: card?.theme }).accent }"></span>
+                  <button class="btn btn-sm btn-primary" :disabled="busySync" @click="applyCardPalette">{{ busySync ? '套用中…' : '套用到实体名片' }}</button>
+                </div>
+              </div>
+              <div class="section-title" style="font-size:13px;margin:12px 0 6px">主题（底色 / 文字）</div>
               <div class="color-list">
-                <button v-for="v in PRINT_THEMES" :key="v.k" class="color-item" :class="{ on: printTheme === v.k }" @click="printTheme = v.k">
+                <button v-for="v in PRINT_THEMES" :key="v.k" class="color-item" :class="{ on: printTheme === v.k }" @click="printTheme = v.k; printAccent = ''">
                   <i :style="{ background: v.accent }"></i><span>{{ v.label }}</span>
                 </button>
               </div>
+              <div class="section-title" style="font-size:13px;margin:12px 0 6px">强调色（可选，留空=主题默认）</div>
+              <div class="color-list">
+                <button class="color-item" :class="{ on: !printAccent }" @click="printAccent = ''"><i style="background:#fff;border:1px solid var(--line)"></i><span>默认</span></button>
+                <button v-for="s in ACCENT_SWATCHES" :key="s.key" class="color-item" :class="{ on: printAccent === s.color }" @click="printAccent = s.color">
+                  <i :style="{ background: s.color }"></i><span>{{ s.label }}</span>
+                </button>
+              </div>
+              <button class="btn btn-sm btn-ghost" style="margin-top:12px" :disabled="busySync" @click="syncToCard">把这套配色同步回电子名片</button>
             </template>
 
             <template v-else-if="openSection === 'front'">
@@ -132,6 +149,8 @@ const card = ref(null)
 const template = ref('classic'); const printBack = ref('solid')
 const side = ref('front'); const guides = ref(false)
 const printTheme = ref('ocean')
+const printAccent = ref('')       // 空 = 用主题默认强调色；与电子名片 accent 同源
+const busySync = ref(false)
 const brand = ref('MCard'); const svgHtml = ref(''); const busy = ref(false); const loadError = ref('')
 // 横向功能条：6 项一次只显示一项内容，预览常驻顶部（抖音发布页同款）
 const SECTIONS = [
@@ -147,6 +166,8 @@ const sheetOpen = ref(false)
 
 // 印刷配色复用主题唯一真相源 THEMES，不另建颜色定义（参数唯一真相源约束）
 const PRINT_THEMES = Object.entries(THEMES).map(([k, v]) => ({ k, label: v.label, accent: v.accent }))
+const ACCENT_SWATCHES = Object.entries(THEMES).map(([k, v]) => ({ key: k, label: v.label, color: v.accent }))
+const cardThemeLabel = computed(() => THEMES[card.value?.theme]?.label || '默认主题')
 
 const FRONT_TPLS = [
   { k: 'classic', label: '经典商务', desc: '色条 + 头像 + 信息，最通用', cover: 'linear-gradient(135deg,#1e3a8a,#2563eb)' },
@@ -174,12 +195,12 @@ const currentLabel = computed(() => {
 async function render() {
   if (!card.value) return
   const payload = { ...card.value, printTemplate: template.value }
-  const pt = themeOf({ theme: printTheme.value })
+  const pt = themeOf({ theme: printTheme.value, accent: printAccent.value })
   svgHtml.value = await buildPrintSvg(payload, pt, {
     side: side.value, guides: guides.value, brand: brand.value, baseUrl: location.origin, printBack: printBack.value
   })
 }
-watch([template, printBack, side, guides, brand, printTheme], render)
+watch([template, printBack, side, guides, brand, printTheme, printAccent], render)
 
 async function load() {
   loadError.value = ''
@@ -187,18 +208,39 @@ async function load() {
     const { data } = await api.get('/api/cards/mine')
     card.value = data.data
     brand.value = siteConfig.site_name || 'MCard'
+    // 实体名片初始配色跟随电子名片，两边共享同一套（theme + accent）
     if (data.data?.theme && THEMES[data.data.theme]) printTheme.value = data.data.theme
+    printAccent.value = data.data?.accent || ''
     await render()
   } catch (e) { loadError.value = e.message || '网络异常' }
 }
 onMounted(load)
+
+// 把电子名片当前整套配色（主题 + 强调色）套用到实体名片
+function applyCardPalette() {
+  printTheme.value = card.value?.theme && THEMES[card.value.theme] ? card.value.theme : 'ocean'
+  printAccent.value = card.value?.accent || ''
+  showToast('已套用电子名片配色', 'success')
+}
+// 反向同步：把实体名片调好的配色写回电子名片，两边彻底共享（写回唯一真相源）
+async function syncToCard() {
+  if (busySync.value) return
+  busySync.value = true
+  try {
+    const accent = printAccent.value || themeOf({ theme: printTheme.value }).accent
+    await api.put('/api/cards/mine', { theme: printTheme.value, accent })
+    card.value.theme = printTheme.value
+    card.value.accent = accent
+    showToast('已同步回电子名片，公开页与二维码同步生效', 'success')
+  } catch (e) { showToast(e.message || '同步失败', 'error') } finally { busySync.value = false }
+}
 
 async function download(kind) {
   if (busy.value || !svgHtml.value) return
   busy.value = true
   try {
     const name = `名片-${card.value.name || card.value.slug}-${side.value}`
-    const pt = themeOf({ theme: printTheme.value })
+    const pt = themeOf({ theme: printTheme.value, accent: printAccent.value })
     if (kind === 'svg') saveText(svgHtml.value, `${name}.svg`, 'image/svg+xml;charset=utf-8')
     else {
       const svg = await buildPrintSvg({ ...card.value, printTemplate: template.value }, pt, {
@@ -281,6 +323,11 @@ async function download(kind) {
 .color-item { display: flex; flex-direction: column; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); }
 .color-item i { display: block; width: 34px; height: 34px; border-radius: 50%; border: 3px solid transparent; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
 .color-item.on i { border-color: var(--text); box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--primary); }
+/* 电子名片配色共享区 */
+.share-color { border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: var(--bg-page); }
+.share-color-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.share-color-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.share-dot { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,.18); flex: 0 0 30px; }
 .color-item.on { color: var(--primary); font-weight: 700; }
 
 /* 版式卡片：带骨架缩略图，一眼区分 */
