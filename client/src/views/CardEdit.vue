@@ -80,9 +80,8 @@
             <div class="field">
               <label>所在地区 <span class="muted small">（省 / 市 / 区 / 街道，可选到任意一级；定位用于导航与集市距离）</span></label>
               <div class="locate-row">
-                <span class="small region-path">{{ regionPath || '未选择' }}</span>
+                <button class="region-path region-path-btn small" :disabled="loading" @click="regionOpen = true">{{ regionPath || '点击选择地区' }} ⌄</button>
                 <span v-if="positionSource" class="badge small" :class="qualityClass">{{ sourceLabel }}</span>
-                <button class="btn btn-sm btn-ghost" :disabled="loading" @click="regionOpen = true">⌖ 选择地区</button>
                 <button class="btn btn-sm btn-ghost" :disabled="geoBusy || loading" @click="autoLocateAddress">{{ geoBusy ? '定位中…' : '◎ 自动定位' }}</button>
                 <button class="btn btn-sm btn-ghost" @click="mapOpen = true">🗺 地图选点</button>
               </div>
@@ -589,6 +588,8 @@ async function finish() {
 .market-checks span { font-size: 11px; color: var(--muted); }
 .market-checks span.ok { color: #0f766e; font-weight: 700; }
 .region-path { color: var(--text); font-weight: 600; min-width: 120px; }
+.region-path-btn { text-align: left; padding: 6px 8px; border: 1px solid var(--line, #e8edf4); border-radius: 8px; background: var(--bg-page, #f7f9fc); cursor: pointer; }
+.region-path-btn:disabled { opacity: .6; }
 .map-mask { position: fixed; inset: 0; background: rgba(15,23,42,.55); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 16px; }
 .map-modal { width: 100%; max-width: 680px; background: var(--bg-card, #fff); border-radius: 14px; padding: 14px; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
 .map-modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }

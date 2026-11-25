@@ -116,7 +116,8 @@ function rebuildFromSelection() {
   nextTickScroll()
 }
 function nextTickScroll() {
-  Promise.resolve().then(() => wheels.value.forEach((_, i) => setWheelScroll(i, wheels.value[i].index)))
+  // 必须等 Vue 把新的 list 渲染进 DOM 再滚，否则 wheelEls 里还是旧选项、scrollTo 落空
+  nextTick(() => wheels.value.forEach((_, i) => setWheelScroll(i, wheels.value[i].index)))
 }
 
 function clickItem(ci, ri) {
@@ -231,7 +232,12 @@ function confirm() {
     const { data } = await api.get('/api/geo/regions')
     all.value = data?.data?.regions || []
   } catch { all.value = [] }
-  finally { locate(); ready.value = true; startPoll() }
+  finally {
+    // ⚠️ 必须等 v-if="ready" 的滚轮 DOM 渲染完再 locate：否则 wheelEls 还是 null，
+    // setWheelScroll 直接 return，三列停在默认第一项（北京/…），传入的地区值根本没生效。
+    ready.value = true
+    nextTick(() => { locate(); startPoll() })
+  }
 })()
 
 onBeforeUnmount(stopPoll)
