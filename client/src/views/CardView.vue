@@ -13,8 +13,7 @@
   -->
   <div class="cv-page" :class="['cv-tpl-' + template, { 'cv-clean': isCleanTpl, 'cv-embed': embed, 'cv-owner': owner }]" :style="vars">
     <div class="cv-cover">
-      <button v-if="owner" class="cv-back cv-owner-edit" @click="router.push('/me/card')" aria-label="编辑名片">✎</button>
-      <button v-else-if="full" class="cv-back" @click="goBack" aria-label="返回">‹</button>
+      <button v-if="!owner && full" class="cv-back" @click="goBack" aria-label="返回">‹</button>
       <div class="cv-brand">M<em>Card</em></div>
     </div>
 
@@ -37,6 +36,7 @@
               <div class="cv-name">{{ card.name || card.name_en || '未填写姓名' }}
                 <span v-if="card.name_en" class="cv-en">{{ card.name_en }}</span>
               </div>
+              <button v-if="owner" class="cv-inline-edit" @click="router.push('/me/card')" title="编辑名片资料" aria-label="编辑名片资料">✎</button>
             </div>
             <div class="cv-title">{{ displayTitle || '点击进入编辑，完善你的职业信息' }}</div>
             <div v-if="template === 'navygold' && displayOrg" class="cv-org">{{ displayOrg }}</div>
@@ -694,8 +694,12 @@ async function toggleFavorite() {
 @media (prefers-reduced-motion: reduce) { .cv-cover::before { animation: none; opacity: .7; } }
 /* 返回键：主题毛玻璃圆钮（不是裸字符），任何模板都清晰可见、与名片同色系 */
 .cv-back { position: absolute; left: 14px; top: calc(12px + var(--safe-top)); width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; font-size: 26px; line-height: 1; color: #fff; background: rgba(var(--glow-rgb, 37,99,235), .30); border: 1px solid rgba(255,255,255,.30); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); box-shadow: inset 0 1px 0 rgba(255,255,255,.18); }
-/* 持有者预览的编辑入口：与返回按钮同位，稍缩字号避免与品牌字重叠 */
-.cv-owner-edit { font-size: 22px; width: 34px; text-align: center; z-index: 2; }
+/* 持有者预览：编辑入口收进名片卡的姓名行（卡片右上角是二维码，不再在封面上放铅笔） */
+.cv-inline-edit { flex: 0 0 auto; width: 26px; height: 26px; margin-left: 2px; display: grid; place-items: center; border-radius: 50%; font-size: 15px; line-height: 1; color: var(--t-accent, var(--primary)); background: rgba(var(--glow-rgb, 37,99,235), .10); border: 1px solid rgba(var(--glow-rgb, 37,99,235), .22); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.cv-inline-edit:active { transform: scale(.92); }
+/* owner 页已有蓝色工作台顶栏：封面白条不再需要，名片卡直接贴近顶栏（不影响公开页的模板封面） */
+.cv-owner .cv-cover { display: none; }
+.cv-owner .cv-main { margin-top: 12px !important; }
 .cv-brand { position: absolute; right: 16px; top: calc(18px + var(--safe-top)); color: #fff; font-weight: 800; opacity: .9; }
 .cv-brand em { font-style: normal; opacity: .75; }
 .cv-main { margin-top: -48px; position: relative; }
