@@ -5,6 +5,8 @@ import api from './api'
 import { loadSiteConfig } from './store'
 import './styles/global.css'
 import './styles/desktop.css'
+// 模板缩略图配色唯一真相源：CardEdit / CardStyle 共用；全局引入保证配色风格页打开就有色块
+import './styles/template-thumbs.css'
 
 createApp(App).use(router).mount('#app')
 loadSiteConfig(api)

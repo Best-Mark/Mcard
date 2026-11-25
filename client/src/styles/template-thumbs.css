@@ -1,0 +1,97 @@
+/* 名片模板选择器缩略图：唯一真相源。
+   由 CardEdit.vue（编辑资料）与 CardStyle.vue（独立配色风格页）共同 import，
+   新增模板时只在这里加一组 .thumb-<key> 规则，两端同步生效。 */
+
+.tpl-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.tpl-item { position: relative; border: 1px solid var(--line); border-radius: 14px; padding: 10px; text-align: left; display: flex; flex-direction: column; gap: 4px; transition: border-color .18s, box-shadow .18s, transform .18s; }
+.tpl-item:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(15,23,42,.08); }
+.tpl-item.on { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37,99,235,.16); }
+/* ===== 微缩版式缩略图：每套用不同"骨架快照"，一眼区分而非只换色 =====
+   结构：底色 + ::before 顶条/侧栏/色块 + ::after 信息线条 + .tpl-ava 头像块 */
+.tpl-thumb { display: block; height: 54px; border-radius: 9px; position: relative; overflow: hidden; }
+.tpl-thumb::before, .tpl-thumb::after { content: ''; position: absolute; pointer-events: none; }
+.tpl-ava { position: absolute; width: 24px; height: 24px; left: 12px; bottom: 8px; z-index: 2; }
+/* 信息线条通用：底部两行灰条，模拟姓名/职位 */
+.tpl-thumb::after { left: 44px; bottom: 12px; width: 42%; height: 3px; border-radius: 2px; background: rgba(120,130,145,.35); box-shadow: 0 7px 0 rgba(120,130,145,.2); }
+
+/* 经典商务：蓝封面 + 左下圆角头像 */
+.thumb-classic { background: linear-gradient(150deg,#1e3a8a,#3b82f6); }
+.thumb-classic::before { inset: 0; background: linear-gradient(180deg,transparent 55%,rgba(255,255,255,.95) 55%); }
+.thumb-classic .tpl-ava { border-radius: 8px; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.25); }
+/* 极简纸白：纯白 + 居中圆头像 + 细线 */
+.thumb-minimal { background: #f7f8fa; }
+.thumb-minimal::before { inset: 0; border-bottom: 1px solid #d8dde5; }
+.thumb-minimal .tpl-ava { left: 50%; transform: translateX(-50%); border-radius: 50%; background: #111827; }
+/* 尊享黑金：黑底 + 居中金环 */
+.thumb-elite { background: linear-gradient(150deg,#18181b,#3f3f46); }
+.thumb-elite::before { inset: 6px; border: 1px solid rgba(185,147,85,.6); }
+.thumb-elite .tpl-ava { left: 50%; transform: translateX(-50%); border-radius: 50%; border: 2px solid #b99355; background: #27272a; }
+/* 活力渐变：紫橙渐变 + 悬浮白卡 */
+.thumb-vivid { background: linear-gradient(135deg,#7c3aed,#db2777,#f59e0b); }
+.thumb-vivid::before { inset: 8px 10px 6px; background: rgba(255,255,255,.92); border-radius: 8px; }
+.thumb-vivid .tpl-ava { border-radius: 12px; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+/* 杂志方格：黑白粗框 */
+.thumb-seal { background: #fff; }
+.thumb-seal::before { inset: 0; border: 3px solid #111827; border-radius: 0; }
+.thumb-seal .tpl-ava { border-radius: 0; width: 28px; height: 28px; border: 3px solid #111827; background: #fff; }
+/* 金黑联络：深蓝底 + 顶部金条 + 白卡 */
+.thumb-contact { background: radial-gradient(120px 60px at 50% 0,#1d3a55,#0b1723); }
+.thumb-contact::before { left: 0; right: 0; top: 0; height: 5px; background: linear-gradient(90deg,#1d3a55,#d8bb85,#1d3a55); }
+.thumb-contact .tpl-ava { border-radius: 6px; width: 26px; height: 26px; background: #fff; border: 2px solid var(--ng-gold); }
+/* 深蓝鎏金：深蓝 + 中央鎏金框 + 大头像 */
+.thumb-navygold { background: radial-gradient(120px 70px at 50% 20%,#244563,#0b1723); }
+.thumb-navygold::before { inset: 5px; border: 1px solid rgba(216,187,133,.7); border-radius: 4px; }
+.thumb-navygold .tpl-ava { left: 50%; transform: translateX(-50%); border-radius: 8px; width: 32px; height: 32px; background: #fff; border: 2px solid var(--ng-gold); }
+/* 极简纸白：暖白 + 黑色方形头像 + 细线 */
+.thumb-paper { background: #faf9f6; }
+.thumb-paper::before { left: 12px; right: 12px; top: 10px; height: 1px; background: #d8d3c8; }
+.thumb-paper .tpl-ava { border-radius: 3px; background: #111; }
+/* 墨夜玻璃：深蓝 + 半透玻璃块 + 居中发光头像 */
+.thumb-glass { background: linear-gradient(150deg,#0c1c2e,#123a4a); }
+.thumb-glass::before { inset: 7px 10px; background: rgba(127,211,193,.12); border: 1px solid rgba(127,211,193,.45); border-radius: 10px; }
+.thumb-glass .tpl-ava { left: 50%; transform: translateX(-50%); border-radius: 10px; background: rgba(127,211,193,.28); box-shadow: inset 0 0 0 1px rgba(127,211,193,.7); }
+.thumb-glass::after { background: rgba(200,235,228,.5); box-shadow: 0 7px 0 rgba(200,235,228,.28); }
+/* 暖木衬线：木色渐变 + 居中圆头像 */
+.thumb-wood { background: linear-gradient(160deg,#f0e4d0,#d8bfa0); }
+.thumb-wood::before { inset: 6px; border: 1px solid rgba(92,61,36,.35); }
+.thumb-wood .tpl-ava { left: 50%; transform: translateX(-50%); border-radius: 50%; background: #8b5e3c; box-shadow: inset 0 0 0 2px rgba(255,255,255,.4); }
+/* 霓虹夜景：深紫 + 霓虹描边 + 渐变圆头像 */
+.thumb-neon { background: linear-gradient(150deg,#160b2e,#2d1a4d); }
+.thumb-neon::before { inset: 6px; border: 1px solid #ff4fa3; border-radius: 10px; box-shadow: 0 0 8px rgba(255,79,163,.6),inset 0 0 8px rgba(79,216,255,.4); }
+.thumb-neon .tpl-ava { border-radius: 50%; background: linear-gradient(135deg,#ff4fa3,#4fd8ff); box-shadow: 0 0 8px rgba(255,79,163,.9); }
+.thumb-neon::after { background: rgba(255,120,200,.6); box-shadow: 0 7px 0 rgba(120,220,255,.4); }
+/* 酸性荧光：黑底网格 + 荧光方块头像 */
+.thumb-acid { background-color: #0a0a0a; background-image: linear-gradient(rgba(204,255,0,.14) 1px,transparent 1px),linear-gradient(90deg,rgba(204,255,0,.14) 1px,transparent 1px); background-size: 10px 10px; }
+.thumb-acid::before { inset: 0; border: 2px solid #ccff00; border-radius: 0; }
+.thumb-acid .tpl-ava { border-radius: 0; background: #ccff00; box-shadow: 4px 4px 0 rgba(204,255,0,.45); }
+.thumb-acid::after { background: #ccff00; box-shadow: 0 7px 0 rgba(204,255,0,.55); }
+/* 多巴胺：亮色块 + 粗描边圆头像 */
+.thumb-pop { background: linear-gradient(135deg,#ffd93d,#ff6b9d,#6bcbff); }
+.thumb-pop::before { inset: 0; border-bottom: 4px solid #241b3a; }
+.thumb-pop .tpl-ava { border-radius: 50%; background: #ff6b6b; border: 3px solid #241b3a; box-shadow: 3px 3px 0 #241b3a; }
+/* 杂志编辑：米色 + 番茄红顶条 + 黑方块 */
+.thumb-magazine { background: #f7f3ec; }
+.thumb-magazine::before { left: 0; right: 0; top: 0; height: 8px; background: #c0392b; }
+.thumb-magazine .tpl-ava { border-radius: 0; background: #1a1a1a; }
+/* 竖版海报：深蓝 + 金色细框 + 竖长条头像 */
+.thumb-poster { background: radial-gradient(120px 70px at 50% 30%,#244563,#0b1723); }
+.thumb-poster::before { inset: 5px 18px; border: 1px solid rgba(216,187,133,.7); }
+.thumb-poster .tpl-ava { left: 50%; transform: translateX(-50%); border-radius: 0; width: 18px; height: 30px; background: transparent; box-shadow: inset 0 0 0 1px #d8bb85; }
+.thumb-poster::after { left: 50%; transform: translateX(-50%); width: 36px; }
+/* 票据存根：米白 + 锯齿虚线 + 白卡头像 */
+.thumb-ticket { background: repeating-linear-gradient(90deg,#efece4 0 4px,transparent 4px 6px); background-color: #f7f5ee; }
+.thumb-ticket::before { inset: 6px 10px; border: 1px dashed #b9b4a8; background: #fffefb; }
+.thumb-ticket .tpl-ava { border-radius: 0; background: #fffefb; box-shadow: inset 0 -2px 0 #e9e6df,0 1px 0 1px #d9d5cc; }
+/* 横版名片：左白右深色 + 横向头像 */
+.thumb-horizontal { background: linear-gradient(90deg,#f4f6f8 0%,#f4f6f8 64%,#17222e 64%); }
+.thumb-horizontal::before { inset: 0; }
+.thumb-horizontal .tpl-ava { border-radius: 2px; width: 30px; height: 20px; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+.thumb-horizontal::after { left: 50px; background: rgba(120,130,145,.4); }
+/* 侧栏竖排：左侧深色竖带 + 右侧内容 */
+.thumb-sidebar { background: linear-gradient(90deg,#2a2118 0%,#2a2118 30%,#f7f3ec 30%); }
+.thumb-sidebar::before { inset: 0; }
+.thumb-sidebar .tpl-ava { border-radius: 0; width: 20px; height: 28px; left: 3px; background: rgba(216,187,133,.55); }
+.thumb-sidebar::after { left: auto; right: 8px; background: rgba(92,61,36,.4); box-shadow: 0 7px 0 rgba(92,61,36,.22); }
+.tpl-item b { font-size: 13px; }
+.tpl-desc { font-size: 11px; color: var(--muted); line-height: 1.45; min-height: 30px; }
+.tpl-check { font-size: 11px; color: var(--primary); font-weight: 700; }

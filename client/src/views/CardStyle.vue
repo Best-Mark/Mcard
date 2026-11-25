@@ -232,12 +232,9 @@ async function done() {
 .bottom-launcher { position: fixed; left: 0; right: 0; bottom: calc(56px + env(safe-area-inset-bottom)); z-index: 60; display: flex; gap: 6px; padding: 8px 12px; background: #fff; border-top: 1px solid var(--line); box-shadow: 0 -4px 16px rgba(0,0,0,.06); }
 .bottom-launcher button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 0; border-radius: 8px; color: var(--muted); font-size: 12px; }
 .bottom-launcher button.on { color: var(--primary); background: color-mix(in srgb, var(--primary) 10%, transparent); }
-.tpl-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.tpl-item { position: relative; border: 1px solid var(--line); border-radius: 10px; padding: 8px; text-align: center; font-size: 12px; }
-.tpl-item.on { border-color: var(--primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 20%, transparent); }
-.tpl-thumb { display: block; height: 42px; border-radius: 6px; margin-bottom: 6px; background: #eef2ff; }
-.tpl-desc { display: block; font-size: 11px; color: var(--muted); }
-.tpl-check { display: block; color: var(--primary); font-weight: 700; margin-top: 4px; }
+/* 缩略图骨架与配色来自共享 template-thumbs.css，这里只把面板内改 3 列 + 缩略图稍矮 */
+.tpl-list { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.tpl-thumb { height: 46px; }
 .color-input { width: 100%; height: 40px; padding: 2px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
 .qr-presets { display: flex; gap: 8px; flex-wrap: wrap; }
 .qr-preset { display: flex; align-items: center; gap: 5px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 12px; }
