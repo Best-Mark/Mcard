@@ -1357,24 +1357,24 @@ async function toggleFavorite() {
 /* ===== 高级感光效：只作用于简洁单卡，颜色跟随主题强调色（--glow-rgb）=====
    教训（参考 MShop）：位移会被感知为「有遮罩在动」，所以主光晕只做 opacity 呼吸、
    无 translate/scale；斜光带亮度极低、扫完淡出停半程；静态质感层不动画。 */
-.cv-sheen { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; border-radius: inherit; }
+.cv-sheen { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1; pointer-events: none; overflow: hidden; border-radius: inherit; }
 .cv-sheen::before {
-  content: ''; position: absolute; inset: -30%;
+  content: ''; position: absolute; top: -30%; left: -30%; right: -30%; bottom: -30%;
   background: radial-gradient(80% 55% at 24% 0%, rgba(var(--glow-rgb, 37,99,235), .14) 0%, rgba(var(--glow-rgb, 37,99,235), .05) 38%, transparent 68%);
   animation: cvGlowBreath 28s ease-in-out infinite alternate;
 }
 .cv-sheen::after {
   content: ''; position: absolute; top: -20%; bottom: -20%; width: 46%; left: -60%;
-  background: linear-gradient(105deg, transparent 0%, rgba(var(--glow-rgb, 37,99,235), .045) 50%, transparent 100%);
+  background: linear-gradient(105deg, transparent 0%, rgba(var(--glow-rgb, 37,99,235), .07) 32%, rgba(255,255,255,.17) 50%, rgba(var(--glow-rgb, 37,99,235), .07) 68%, transparent 100%);
   transform: translateX(-120%);
-  animation: cvSheenSweep 34s ease-in-out infinite;
+  animation: cvSheenSweep 16s ease-in-out infinite;
+  animation-delay: -2.2s; /* 进入名片页时正在扫光，不用等十几秒才看到 */
 }
 @keyframes cvGlowBreath { 0% { opacity: .35; } 100% { opacity: 1; } }
 @keyframes cvSheenSweep {
   0% { transform: translateX(-120%); opacity: 0; }
-  18% { opacity: 1; }
-  46% { transform: translateX(320%); opacity: 1; }
-  60% { opacity: 0; }
+  5% { opacity: 1; }
+  38% { transform: translateX(320%); opacity: 0; }
   100% { transform: translateX(320%); opacity: 0; }
 }
 /* 尊重系统「减少动画」：静态显示一层柔光，不闪不动 */
@@ -1382,11 +1382,11 @@ async function toggleFavorite() {
   .cv-sheen::before { animation: none; opacity: .7; }
   .cv-sheen::after { display: none; }
 }
-/* 质感：顶缘 1px 内高光 + 极淡拉丝纹（静态，随主题色），只加在简洁卡 */
+/* 质感：顶缘 1px 内高光 + 1px/4px 极细主题拉丝（不再粗条纹），与头卡同一套细腻口径 */
 .cv-clean .cv-main > .cv-profile {
   background-image:
     linear-gradient(180deg, rgba(255,255,255,.5), rgba(255,255,255,0) 32%),
-    repeating-linear-gradient(112deg, rgba(var(--glow-rgb, 37,99,235), .018) 0 1px, transparent 1px 5px);
+    repeating-linear-gradient(112deg, rgba(var(--glow-rgb, 37,99,235), .038) 0 1px, transparent 1px 4px);
 }
 .cv-clean .cv-avatar { width: 64px; height: 64px; flex: 0 0 64px; border-radius: var(--cv-logo-radius); font-size: 26px; color: var(--cv-btn-main-color); background: var(--cv-logo-bg-solid, #1d3a55); background: var(--cv-logo-bg); box-shadow: var(--cv-logo-shadow); }
 .cv-clean .cv-name { color: var(--cv-name-color); font-size: var(--cv-name-size); font-weight: var(--cv-name-weight); letter-spacing: var(--cv-name-spacing); font-family: var(--cv-name-font); }

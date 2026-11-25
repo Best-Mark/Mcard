@@ -173,15 +173,15 @@ function logoutNow() { logout(); router.push('/') }
    顶栏居顶由全局 .page > .topbar:first-child 统一处理，这里不再私有覆写 padding。 */
 
 /* ===== 上半部分：丝绸质感头卡（视觉焦点，内缩圆角形态例外） =====
-   丝绸 = 多层柔光底 + 两组同角度的明暗细丝纹；扫光走 transform/opacity（不触发重排），
-   22s 里只扫 6~7s、其余时间停在不可见状态，避免「一直有东西在动」的廉价感。
-   兼容：只用 rgba / transform / opacity，不用 inset、color-mix 等老 WebView 不认的写法。 */
+   丝绸 = 多层柔光底 + 两组同角度、1px 极淡明暗细丝（间距 4/7px，不再是粗条纹）；
+   扫光走 transform/opacity（不触发重排），16s 一轮、扫约 6s；负 delay 让刚进页面就看到一次，
+   不是「加载完才发现没动」。兼容：只用 rgba / transform / opacity，不用 inset、color-mix。 */
 .pf-header { position: relative; margin: 12px 12px 0; padding: 12px 16px 14px; border-radius: 18px; overflow: hidden; color: #fff; background: radial-gradient(120% 140% at 8% 0%, rgba(126,182,255,.42), rgba(126,182,255,0) 48%), radial-gradient(100% 120% at 94% 8%, rgba(34,211,238,.30), rgba(34,211,238,0) 52%), linear-gradient(122deg, #17357c 0%, #2457c5 38%, #2563eb 62%, #0e9bbd 100%); box-shadow: 0 10px 28px rgba(23,53,124,.22); }
-.pf-bg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 0; pointer-events: none; border-radius: 18px; background-image: radial-gradient(160% 120% at 20% 0%, rgba(255,255,255,.13), transparent 52%), repeating-linear-gradient(118deg, rgba(255,255,255,.045) 0 1px, rgba(255,255,255,0) 1px 6px), repeating-linear-gradient(118deg, rgba(4,26,80,.10) 0 2px, rgba(4,26,80,0) 2px 9px), linear-gradient(96deg, rgba(6,20,70,.18) 0%, rgba(6,20,70,0) 38%, rgba(255,255,255,.06) 62%, rgba(255,255,255,0) 100%); }
-.pf-sheen { position: absolute; top: -30%; bottom: -30%; left: 0; z-index: 0; width: 42%; pointer-events: none; opacity: 0; background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.08) 35%, rgba(255,255,255,.18) 50%, rgba(255,255,255,.08) 65%, rgba(255,255,255,0) 100%); transform: translateX(-140%) skewX(-18deg); animation: pf-silk-sweep 22s ease-in-out infinite; will-change: transform, opacity; }
+.pf-bg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 0; pointer-events: none; border-radius: 18px; background-image: radial-gradient(160% 120% at 20% 0%, rgba(255,255,255,.12), transparent 54%), repeating-linear-gradient(118deg, rgba(255,255,255,.028) 0 1px, rgba(255,255,255,0) 1px 4px), repeating-linear-gradient(118deg, rgba(4,26,80,.032) 0 1px, rgba(4,26,80,0) 1px 7px), linear-gradient(96deg, rgba(6,20,70,.16) 0%, rgba(6,20,70,0) 38%, rgba(255,255,255,.05) 62%, rgba(255,255,255,0) 100%); }
+.pf-sheen { position: absolute; top: -30%; bottom: -30%; left: 0; z-index: 0; width: 42%; pointer-events: none; opacity: 0; background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.10) 30%, rgba(255,255,255,.26) 50%, rgba(255,255,255,.10) 70%, rgba(255,255,255,0) 100%); transform: translateX(-140%) skewX(-18deg); animation: pf-silk-sweep 16s ease-in-out infinite; animation-delay: -2.2s; will-change: transform, opacity; }
 @keyframes pf-silk-sweep {
-  0%, 8% { transform: translateX(-140%) skewX(-18deg); opacity: 0; }
-  12% { opacity: .9; }
+  0% { transform: translateX(-140%) skewX(-18deg); opacity: 0; }
+  5% { opacity: 1; }
   38% { transform: translateX(360%) skewX(-18deg); opacity: 0; }
   100% { transform: translateX(360%) skewX(-18deg); opacity: 0; }
 }
