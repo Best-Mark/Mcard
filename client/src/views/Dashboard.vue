@@ -220,27 +220,14 @@ async function doShare() {
 .dash-menu-btn span { font-size: 12px; }
 .dash-menu-btn .menu-glyph { width: 15px; height: 13px; }
 .dash-loading { margin-top: 20px; }
-/* 名片预览容器：里面是真实的 CardView 模板，编辑按钮浮在封面右上 */
+/* 名片预览容器：里面是真实的 CardView 模板，编辑按钮浮在封面「左上」。
+   ⚠️ 不要同时给 .cv-edit-cover 设 left 和 right——absolute 左右都定值会被拉成通栏，
+   与 CardView 自带的右上角 MCard 角标挤成一团（2026-11-25 实修）。 */
 .dash-preview-wrap { position: relative; }
-.dash-preview-wrap .cv-edit-cover { position: absolute; right: 16px; top: 16px; z-index: 3; }
-.dash-preview-wrap .cv-page.cv-embed > .cv-cover { height: 148px; }
-.cv-cover { height: 148px; position: relative; background: var(--dash-cover); border-radius: 0 0 28px 28px; overflow: hidden; }
-.cv-cover::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: linear-gradient(90deg, transparent, rgba(255,255,255,.7), transparent); opacity: .8; }
-.cv-brand { position: absolute; right: 18px; top: 20px; color: #fff; font-weight: 800; font-size: 15px; letter-spacing: .5px; max-width: 60%; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cv-brand em { font-style: normal; opacity: .75; }
-.cv-edit-cover { position: absolute; left: 16px; top: 18px; color: #fff; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.25); padding: 6px 12px; border-radius: 999px; font-size: 12px; }
-.cv-cover-status { position: absolute; left: 16px; bottom: 16px; color: #fff; background: rgba(0,0,0,.28); padding: 4px 10px; border-radius: 999px; font-size: 11px; }
-.cv-main { margin-top: -52px; position: relative; }
-.cv-profile { position: relative; display: flex; gap: 16px; align-items: center; padding: 22px 18px; border-radius: 16px; box-shadow: 0 10px 30px rgba(15,23,42,.10); }
-.cv-avatar { width: 78px; height: 78px; flex: 0 0 78px; border-radius: 14px; overflow: hidden; background: var(--t-accent, var(--primary)); color: #fff; display: grid; place-items: center; font-size: 32px; font-weight: 800; border: 2px solid rgba(255,255,255,.9); box-shadow: 0 6px 18px rgba(0,0,0,.14); }
-.cv-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.cv-ident { min-width: 0; }
-.cv-name { font-size: 25px; font-weight: 800; letter-spacing: -.3px; line-height: 1.2; }
-.cv-en { font-size: 12px; font-weight: 500; opacity: .55; margin-left: 8px; letter-spacing: .3px; }
-.cv-org { font-size: 14px; color: var(--t-accent, var(--primary)); font-weight: 700; margin-top: 4px; }
-.cv-title { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
-.cv-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.cv-tags span { font-size: 11px; padding: 4px 10px; border-radius: 4px; background: #eef2ff; background: color-mix(in srgb, var(--t-accent, var(--primary)) 10%, transparent); color: var(--t-accent, var(--primary)); border: 1px solid #c7d2fe; border-color: color-mix(in srgb, var(--t-accent, var(--primary)) 30%, transparent); font-weight: 600; }
+.dash-preview-wrap .cv-edit-cover { position: absolute; left: 16px; top: 18px; z-index: 3; }
+.cv-edit-cover { color: #fff; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.25); padding: 6px 12px; border-radius: 999px; font-size: 12px; }
+/* 预览卡由 CardView 自己渲染封面+身份区；下方内容走正常间距，不再用旧版负边距上提造成压叠 */
+.cv-main { margin-top: 12px; position: relative; }
 
 .cv-block { position: relative; margin-top: 12px; }
 .cv-block h3 { font-size: 15px; margin: 0 0 10px; }
@@ -268,67 +255,16 @@ async function doShare() {
 .cv-qr-text h3 { font-size: 14px; margin: 0 0 4px; font-weight: 600; }
 .cv-qr-text p { font-size: 12px; margin: 0; color: var(--muted); }
 .cv-footer { text-align: center; font-size: 11px; color: var(--muted); padding: 24px 0 8px; }
-/* 工作台配色统一为参考商务名片（深蓝→亮蓝→青蓝），不随名片模板/主题改变 */
-.dash-tpl-contact .cv-cover, .dash-tpl-classic .cv-cover, .dash-tpl-minimal .cv-cover,
-.dash-tpl-elite .cv-cover, .dash-tpl-vivid .cv-cover, .dash-tpl-seal .cv-cover { background: var(--dash-cover); }
-.dash-page .cv-profile { background: #fff; border: 1px solid #e8eef8; border-radius: 24px; box-shadow: 0 4px 16px rgba(15,23,42,.05); }
-.dash-page .cv-name { color: #172033; }
-.dash-page .cv-org { color: #2f6feb; }
-.dash-page .cv-tags span { border-color: #c7d2fe; background: #eff6ff; color: #1d4ed8; border-radius: 8px; }
+/* 工作台自身的内容卡样式；名片封面/身份卡由 CardView 真实模板自控，不在这里重复定义 */
 .dash-page .card { border-radius: 20px; border-color: #e8eef8; box-shadow: 0 4px 16px rgba(15,23,42,.05); }
 
 /* 深蓝鎏金 navygold：深蓝放射底 + 白卡金线 + 淡水印 + 纸色业务标签 + 表格化联系方式 */
 .dash-tpl-navygold { color: var(--ng-ink); background: var(--ng-page-bg); --dash-cover: linear-gradient(135deg, var(--ng-navy) 0%, var(--ng-deep) 100%); }
 .dash-tpl-navygold .dash-top { background: linear-gradient(90deg, var(--ng-navy), var(--ng-deep)); border-bottom: 2px solid var(--ng-gold); }
 .dash-tpl-navygold .dash-icon { background: rgba(216,187,133,.18); }
-.dash-tpl-navygold .cv-cover { border-radius: 0 0 22px 22px; background: var(--dash-cover); }
-.dash-tpl-navygold .cv-cover::after { height: 4px; background: linear-gradient(90deg, var(--ng-navy-2), var(--ng-gold-2) 70%, var(--ng-gold)); }
 .dash-tpl-navygold .cv-edit-cover { color: var(--ng-gold-2); border-color: rgba(216,187,133,.5); }
 .dash-tpl-navygold .card { border-color: var(--ng-line); border-radius: 16px; box-shadow: 0 10px 30px -18px rgba(0,0,0,.55); }
-.dash-tpl-navygold .cv-profile {
-  position: relative; overflow: hidden; border-radius: 22px; padding: 30px 24px 22px;
-  border: 1px solid rgba(185,147,85,.28);
-  box-shadow: 0 26px 60px -22px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.06);
-}
-.dash-tpl-navygold .cv-profile::before {
-  content: ''; position: absolute; inset: 0 0 auto 0; height: 6px;
-  background: linear-gradient(90deg, var(--ng-navy), var(--ng-navy-2) 40%, var(--ng-gold-2) 78%, var(--ng-gold));
-}
 .dash-tpl-navygold .cv-main { max-width: 430px; }
-.dash-tpl-navygold .cv-profile::after {
-  content: attr(data-wm); position: absolute; right: -26px; top: 54px;
-  font-size: 80px; font-weight: 900; color: var(--ng-ink); opacity: .04;
-  letter-spacing: -4px; line-height: 1; pointer-events: none;
-}
-.dash-tpl-navygold .cv-profile > * { position: relative; z-index: 2; }
-.dash-tpl-navygold .cv-avatar {
-  width: 64px; height: 64px; flex-basis: 64px; border-radius: 14px; font-size: 26px;
-  background: linear-gradient(145deg, var(--ng-navy), #0e2233);
-  box-shadow: inset 0 0 0 2px rgba(216,187,133,.5), 0 8px 18px -8px rgba(18,32,46,.6);
-}
-.dash-tpl-navygold .cv-name { color: var(--ng-ink); font-size: 27px; font-weight: 900; letter-spacing: .04em; }
-.dash-tpl-navygold .cv-en { color: var(--ng-ink-2); }
-.dash-tpl-navygold .cv-title { color: var(--ng-ink-2); font-size: 12.5px; letter-spacing: .06em; }
-.dash-tpl-navygold .cv-org {
-  color: var(--ng-navy); border-top: 1px dashed var(--ng-line); padding-top: 12px; margin-top: 12px;
-  font-size: 13.5px; font-weight: 700; letter-spacing: .03em;
-}
-.dash-tpl-navygold .cv-tags span {
-  border-radius: 99px; background: var(--ng-paper); color: #6b5a3c;
-  border: 0; box-shadow: inset 0 0 0 1px rgba(185,147,85,.28);
-}
-.dash-tpl-navygold .cv-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0; overflow: hidden; background: transparent; border: 0; box-shadow: none; }
-.dash-tpl-navygold .cv-actions button {
-  display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 8px;
-  height: 50px; border-radius: 13px; background: #f7f5f0; color: var(--ng-navy);
-  font-size: 14.5px; font-weight: 700; letter-spacing: .02em; box-shadow: inset 0 0 0 1px #e6e0d4;
-}
-.dash-tpl-navygold .cv-actions button:first-child {
-  background: linear-gradient(135deg, var(--ng-navy), #0f2739); color: #fff;
-  box-shadow: 0 10px 22px -12px rgba(18,32,46,.85);
-}
-.dash-tpl-navygold .cv-actions button:last-child:nth-child(odd) { grid-column: 1 / -1; }
-.dash-tpl-navygold .cv-actions i { width: auto; height: auto; border-radius: 0; background: transparent; color: inherit; font-size: 17px; }
 .dash-tpl-navygold .contact-row { border-top: 1px solid var(--ng-line); padding: 13px 0; }
 .dash-tpl-navygold .contact-row span { width: 46px; flex-basis: 46px; color: #9aa3ad; letter-spacing: .16em; }
 .dash-tpl-navygold .contact-row b { color: var(--ng-navy); }
