@@ -18,11 +18,62 @@ const notify = require('../services/notify')
 
 const router = express.Router()
 
-function cardLogo(row, asDataUrl = false) {
-  if (!row?.logo || !/^\/uploads\/[A-Za-z0-9_.-]+$/.test(row.logo)) return ''
-  const file = path.join(config.UPLOAD_DIR, path.basename(row.logo))
+// 二维码中心图三级回落（唯一真相源）：名片 LOGO(cards.logo) > 名片头像(cards.avatar) > 默认 brand 文字。
+// ⚠️ SVG 以 <img> 加载时浏览器禁止引用任何外部资源，本地文件与远程头像都必须内联成 dataURL；
+// 否则会出现「LOGO 配了却显示默认 M」。远程读取带超时/大小上限/类型白名单，失败静默回落下一级。
+const QR_CENTER_MAX_BYTES = 2 * 1024 * 1024
+const QR_CENTER_REMOTE_TTL = 30 * 60 * 1000
+const qrCenterRemoteCache = new Map()
+
+function qrLocalDataUrl(url) {
+  const m = typeof url === 'string' && url.match(/^\/(?:uploads|media)\/([A-Za-z0-9_.-]{4,120})$/)
+  if (!m) return ''
+  const file = path.join(config.UPLOAD_DIR, m[1])
   if (!fs.existsSync(file)) return ''
-  return asDataUrl ? `data:image/png;base64,${fs.readFileSync(file).toString('base64')}` : file
+  try {
+    const buf = fs.readFileSync(file)
+    if (!buf.length || buf.length > QR_CENTER_MAX_BYTES) return ''
+    const ext = path.extname(m[1]).toLowerCase()
+    const mime = ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg'
+      : ext === '.webp' ? 'image/webp' : ext === '.gif' ? 'image/gif' : 'image/png'
+    return `data:${mime};base64,${buf.toString('base64')}`
+  } catch (e) { console.warn('[qr-center] 本地中心图读取失败:', e.message); return '' }
+}
+
+async function qrRemoteDataUrl(url) {
+  if (!/^https?:\/\//i.test(String(url || ''))) return ''
+  const cached = qrCenterRemoteCache.get(url)
+  if (cached && Date.now() - cached.t < QR_CENTER_REMOTE_TTL) return cached.v
+  let timer
+  try {
+    const ctl = new AbortController()
+    timer = setTimeout(() => ctl.abort(), 4000)
+    const resp = await fetch(url, { signal: ctl.signal, redirect: 'follow' })
+    if (!resp || !resp.ok) return ''
+    const type = String(resp.headers.get('content-type') || '').split(';')[0].trim().toLowerCase()
+    if (!/^image\/(png|jpe?g|webp|gif)$/.test(type)) return ''
+    const buf = Buffer.from(await resp.arrayBuffer())
+    if (!buf.length || buf.length > QR_CENTER_MAX_BYTES) return ''
+    const mime = type === 'image/jpg' ? 'image/jpeg' : type
+    const data = `data:${mime};base64,${buf.toString('base64')}`
+    qrCenterRemoteCache.set(url, { t: Date.now(), v: data })
+    if (qrCenterRemoteCache.size > 100) qrCenterRemoteCache.delete(qrCenterRemoteCache.keys().next().value)
+    return data
+  } catch (e) {
+    console.warn('[qr-center] 远程头像读取失败，回落下一级:', e.message)
+    return ''
+  } finally { if (timer) clearTimeout(timer) }
+}
+
+async function qrCenterImage(row) {
+  for (const url of [row?.logo, row?.avatar]) {
+    if (!url) continue
+    const local = qrLocalDataUrl(url)
+    if (local) return local
+    const remote = await qrRemoteDataUrl(url)
+    if (remote) return remote
+  }
+  return ''
 }
 
 // 名片头像 avatar 归名片层（cards 表），与账户头像 users.avatar 独立；编辑页在这里维护。
@@ -238,8 +289,8 @@ router.get('/public/:slug', wrap((req, res) => {
   ok(res, publicView(row, originOf(req)))
 }))
 
-router.get('/public/:slug/qr.svg', wrap((req, res) => {
-  const row = db.prepare('SELECT slug, qr_fg, qr_bg, qr_logo, qr_style, logo FROM cards WHERE slug = ?').get(req.params.slug)
+router.get('/public/:slug/qr.svg', wrap(async (req, res) => {
+  const row = db.prepare('SELECT slug, qr_fg, qr_bg, qr_logo, qr_style, logo, avatar FROM cards WHERE slug = ?').get(req.params.slug)
   if (!row) return fail(res, 404, '名片不存在')
   const size = Math.min(2000, Math.max(64, Number(req.query.size) || 360))
   const brand = String(req.query.brand || 'M').slice(0, 2)
@@ -247,7 +298,7 @@ router.get('/public/:slug/qr.svg', wrap((req, res) => {
   const fg = /^#[0-9a-fA-F]{6}$/.test(req.query.fg || '') ? req.query.fg : row.qr_fg
   const bg = /^#[0-9a-fA-F]{6}$/.test(req.query.bg || '') ? req.query.bg : row.qr_bg
   const logoOn = 'logo' in req.query ? req.query.logo !== '0' : !!row.qr_logo
-  const logoImage = logoOn ? cardLogo(row, true) : ''
+  const logoImage = logoOn ? await qrCenterImage(row) : ''
   let style = normalizeStyle(parseJson(row.qr_style, {}))
   if (req.query.style) { try { style = normalizeStyle(JSON.parse(String(req.query.style).slice(0, 4000))) } catch {} }
   res.type('image/svg+xml').set('Cache-Control', 'public, max-age=3600')
@@ -255,10 +306,10 @@ router.get('/public/:slug/qr.svg', wrap((req, res) => {
 }))
 
 router.get('/public/:slug/qr.png', wrap(async (req, res) => {
-  const row = db.prepare('SELECT slug, qr_fg, qr_bg, qr_logo, qr_style, logo FROM cards WHERE slug = ?').get(req.params.slug)
+  const row = db.prepare('SELECT slug, qr_fg, qr_bg, qr_logo, qr_style, logo, avatar FROM cards WHERE slug = ?').get(req.params.slug)
   if (!row) return fail(res, 404, '名片不存在')
   const size = Math.min(2000, Math.max(128, Number(req.query.size) || 720))
-  const logoImage = row.qr_logo ? cardLogo(row) : ''
+  const logoImage = row.qr_logo ? await qrCenterImage(row) : ''
   const style = normalizeStyle(parseJson(row.qr_style, {}))
   const buf = await qr.png(requestUrl(req, `/c/${row.slug}`), { size, fg: row.qr_fg, bg: row.qr_bg, logoImage, logo: !!row.qr_logo, brand: 'M', style })
   res.type('png').set('Cache-Control', 'public, max-age=3600').send(buf)
