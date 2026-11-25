@@ -11,7 +11,7 @@
     <div class="pf-header">
       <div class="pf-bg" aria-hidden="true"></div>
       <span class="pf-sheen" aria-hidden="true"></span>
-      <button class="pf-gear" aria-label="设置" @click="toggleDrawer">⚙</button>
+      <button class="pf-gear" aria-label="设置" @click="toggleDrawer"><AppIcon name="settings" :size="18" /></button>
       <button v-if="card" class="pf-qr" aria-label="我的名片二维码" @click="goQr"><AppIcon name="qrcode" :size="19" /></button>
 
       <!-- 个人中心只显示账户层信息（users）：头像=账户头像、昵称=账户昵称。
@@ -50,10 +50,10 @@
 
     <!-- 快捷入口：MShop 订单宫格观感（图标底块 + 文字），数据用 MCard 自有入口 -->
     <div class="pf-quick">
-      <router-link to="/me/contacts" class="pf-quick-item"><i class="pf-qi-ico">★</i><span>名片夹</span></router-link>
-      <router-link to="/me/stats" class="pf-quick-item"><i class="pf-qi-ico">📊</i><span>浏览统计</span></router-link>
-      <router-link to="/me/plans" class="pf-quick-item"><i class="pf-qi-ico">💎</i><span>套餐续期</span></router-link>
-      <router-link to="/me/print" class="pf-quick-item"><i class="pf-qi-ico">🖨</i><span>实体版式</span></router-link>
+      <router-link to="/me/contacts" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="contacts" :size="20" /></i><span>名片夹</span></router-link>
+      <router-link to="/me/stats" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="chart" :size="20" /></i><span>浏览统计</span></router-link>
+      <router-link to="/me/plans" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="gem" :size="20" /></i><span>套餐续期</span></router-link>
+      <router-link to="/me/print" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="printer" :size="20" /></i><span>实体版式</span></router-link>
     </div>
 
     <!-- 下半部分：App 分组 cell 列表（贴边方角，图标+标题+副标题+角标+箭头） -->
@@ -71,12 +71,12 @@
     <div class="pf-group">
       <div class="pf-group-title">账号与服务</div>
       <router-link to="/me/notifications" class="pf-cell" :class="{ 'has-badge': unread > 0 }">
-        <i class="pf-cell-ico">🔔</i><span class="pf-cell-t">消息通知</span>
+        <i class="pf-cell-ico"><AppIcon name="bell" :size="20" /></i><span class="pf-cell-t">消息通知</span>
         <span v-if="unread > 0" class="pf-cell-badge">{{ unread > 99 ? '99+' : unread }}</span>
         <span class="pf-cell-arrow">›</span>
       </router-link>
       <router-link to="/me/batch-scan" class="pf-cell">
-        <i class="pf-cell-ico">📷</i><span class="pf-cell-t">展会连扫收名片</span><span class="pf-cell-arrow">›</span>
+        <i class="pf-cell-ico"><AppIcon name="camera" :size="20" /></i><span class="pf-cell-t">展会连扫收名片</span><span class="pf-cell-arrow">›</span>
       </router-link>
     </div>
 
@@ -229,7 +229,7 @@ function logoutNow() { logout(); router.push('/') }
 .pf-cell { display: flex; align-items: center; gap: 12px; width: 100%; padding: 13px 16px; border-bottom: 1px solid var(--line); font-size: 14px; color: var(--text); text-align: left; }
 .pf-cell:last-child { border-bottom: 0; }
 .pf-cell:active { background: #f1f5f9; }
-.pf-cell-ico { width: 22px; text-align: center; font-style: normal; font-size: 17px; color: var(--primary); flex-shrink: 0; }
+.pf-cell-ico { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; text-align: center; font-style: normal; font-size: 17px; color: var(--primary); flex-shrink: 0; }
 .pf-cell-ico-qr { display: inline-flex; align-items: center; justify-content: center; }
 .pf-cell-t { flex: 1; min-width: 0; }
 .pf-cell-extra { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40%; }

@@ -58,5 +58,7 @@ export const FUNC_ICONS = {
   user: { path: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z', color: '' },
   chart: { path: 'M3 3v18h18M18 17V9M13 17V5M8 17v-3', color: '' },
   gem: { path: 'M6 3h12l4 6-10 12L2 9l4-6zM2 9h20M12 21L7 9l5-6 5 6-5 12z', color: '' },
-  logout: { path: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9', color: '' }
+  logout: { path: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9', color: '' },
+  printer: { path: 'M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z', color: '' },
+  settings: { path: 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6', color: '' }
 }
