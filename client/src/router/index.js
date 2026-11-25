@@ -16,6 +16,8 @@ const WechatQrResult = () => import('../views/WechatQrResult.vue')
 const Dashboard = () => import('../views/Dashboard.vue')
 const Profile = () => import('../views/Profile.vue')
 const CardEdit = () => import('../views/CardEdit.vue')
+const CardStyle = () => import('../views/CardStyle.vue')
+const CardMarket = () => import('../views/CardMarket.vue')
 const Plans = () => import('../views/Plans.vue')
 const PayResult = () => import('../views/PayResult.vue')
 const Contacts = () => import('../views/Contacts.vue')
@@ -40,6 +42,8 @@ const routes = [
   { path: '/me', name: 'dashboard', component: Dashboard, meta: { auth: true } },
   { path: '/me/profile', name: 'profile', component: Profile, meta: { auth: true } },
   { path: '/me/card', name: 'card-edit', component: CardEdit, meta: { auth: true } },
+  { path: '/me/card/style', name: 'card-style', component: CardStyle, meta: { auth: true } },
+  { path: '/me/card/market', name: 'card-market', component: CardMarket, meta: { auth: true } },
   { path: '/me/plans', name: 'plans', component: Plans, meta: { auth: true } },
   { path: '/me/pay/:id', name: 'pay', component: PayResult, meta: { auth: true } },
   { path: '/me/print', name: 'print', component: PrintDesign, meta: { auth: true } },

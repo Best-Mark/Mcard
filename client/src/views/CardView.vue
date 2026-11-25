@@ -151,8 +151,8 @@
       <div v-if="full" class="cv-dock">
         <template v-if="owner">
           <button class="btn btn-primary" @click="router.push('/me/card')">编辑名片</button>
-          <button class="btn btn-ghost" @click="router.push({ path: '/me/card', query: { focus: 'appearance' } })">配色风格</button>
-          <button class="btn btn-ghost" @click="router.push({ path: '/me/card', query: { focus: 'market' } })">名片集市</button>
+          <button class="btn btn-ghost" @click="router.push('/me/card/style')">配色风格</button>
+          <button class="btn btn-ghost" @click="router.push('/me/card/market')">名片集市</button>
           <button class="btn btn-ghost" @click="doShare">分享</button>
         </template>
         <template v-else>

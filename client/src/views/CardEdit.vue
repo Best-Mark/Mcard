@@ -98,31 +98,7 @@
             <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
           </div>
 
-          <!-- ⑥ 名片集市 -->
-          <div v-show="active === 'market'" class="card card-pad">
-            <div class="section-title" style="margin-top:0">名片集市 <span class="small muted">· 让客户主动找到你，获取更多业务流量</span></div>
-            <div class="market-value">
-              <b>🚀 上架 = 多一个 7×24 小时的获客入口</b>
-              <p>开启后，附近及同行业的人可按「距离 / 行业 / 关键词」搜到你，点开名片即可存入通讯录。只展示姓名、职位、公司、行业、城市与简介，联系方式不会公开；随时可关闭下架。</p>
-              <div class="market-checks">
-                <span :class="{ ok: !!form.industry }">{{ form.industry ? '✓' : '○' }} 填行业（被同行精确搜到）</span>
-                <span :class="{ ok: !!marketRegionText }">{{ marketRegionText ? '✓' : '○' }} 填地区（在「联系方式」里，进入地区筛选）</span>
-                <span :class="{ ok: form.latitude != null }">{{ form.latitude != null ? '✓' : '○' }} 有坐标（按距离优先曝光）</span>
-              </div>
-            </div>
-            <div class="field"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" v-model="form.market_opt_in" /> 加入名片集市（主动上架）</label></div>
-            <p v-if="form.market_opt_in" class="small" style="color:var(--primary);margin:-4px 0 12px">保存后即可在集市被搜索到，<router-link to="/market">去看看集市 →</router-link></p>
-            <div class="grid2">
-              <div class="field"><label>所属行业</label>
-                <select v-model="form.industry" class="input">
-                  <option value="">未选择</option>
-                  <option v-for="ind in marketMeta.industries" :key="ind.key" :value="ind.key">{{ ind.label }}</option>
-                </select>
-              </div>
-            </div>
-            <p class="small muted" style="margin:2px 0 10px">上架展示的「地区 / 坐标」来自「联系方式」里填写的地址与定位，这里无需重复设置。</p>
-            <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
-          </div>
+          <!-- 名片集市已独立为 /me/card/market 设计页（2026-11-25 用户定稿），不再放资料表单 -->
 
           <!-- 更多信息 -->
           <div v-show="active === 'links'" class="card card-pad" id="focus-links">
@@ -165,76 +141,6 @@
             <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
           </div>
 
-          <!-- ⑦ 外观（模板自带配色） -->
-          <div v-show="active === 'appearance'" class="card card-pad">
-            <div class="section-title" style="margin-top:0">展示模板</div>
-            <p class="small muted" style="margin-bottom:10px">选一套模板即应用整套配色（含二维码颜色），无需逐项调整；想微调可在下方「高级配色」里改。</p>
-            <div class="tpl-list">
-              <button v-for="tpl in templates" :key="tpl.key" class="tpl-item" :class="{ on: form.template === tpl.key }" @click="chooseTemplate(tpl.key)">
-                <span class="tpl-thumb" :class="'thumb-' + tpl.key">
-                  <i class="tpl-ava"></i>
-                </span>
-                <b>{{ tpl.label }}</b>
-                <span class="tpl-desc">{{ tpl.desc }}</span>
-                <span v-if="form.template === tpl.key" class="tpl-check">✓ 使用中</span>
-              </button>
-            </div>
-            <div v-if="!templates.length" class="small muted">模板列表加载中，请稍候…</div>
-          </div>
-
-          <div v-show="active === 'appearance'" class="card card-pad" style="margin-top:14px">
-            <button class="adv-toggle" @click="showAdvanced = !showAdvanced">
-              <span>⚙️ 高级配色（选模板已自动配好，一般无需修改）</span>
-              <span class="adv-arrow">{{ showAdvanced ? '▴' : '▾' }}</span>
-            </button>
-            <div v-if="showAdvanced">
-            <p class="small muted" style="margin:6px 0 12px">当前配色来自模板「{{ currentTplLabel }}」，下面可单独微调强调色与二维码。二维码请保持足够对比度（深码 + 浅底），否则可能扫不出来。</p>
-            <div class="grid2">
-              <div class="field"><label>强调色</label><input v-model="form.accent" type="color" class="color-input" /></div>
-              <div class="field"><label>二维码颜色</label><input v-model="form.qr_fg" type="color" class="color-input" /></div>
-              <div class="field"><label>二维码背景</label><input v-model="form.qr_bg" type="color" class="color-input" /></div>
-              <div class="field"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" v-model="form.qr_logo" /> 二维码中心 Logo</label></div>
-            </div>
-
-            <div class="qr-beautify">
-              <div class="section-title" style="margin:16px 0 8px;font-size:14px">🎨 二维码美化（草料风格）</div>
-              <div class="field"><label>一键预设</label>
-                <div class="qr-presets">
-                  <button v-for="p in QR_PRESETS" :key="p.key" class="qr-preset" :class="{ on: qrPresetActive(p) }" @click="applyQrPreset(p)">
-                    <i :style="{ background: p.swatch }"></i>{{ p.label }}
-                  </button>
-                </div>
-              </div>
-              <div class="grid2">
-                <div class="field"><label>码点形状</label>
-                  <select v-model="form.qr_style.dot" class="input"><option value="square">方形</option><option value="dots">圆点</option><option value="rounded">圆角</option></select>
-                </div>
-                <div class="field"><label>定位角样式</label>
-                  <select v-model="form.qr_style.eye" class="input"><option value="square">方形</option><option value="rounded">圆角</option><option value="circle">圆形</option></select>
-                </div>
-                <div class="field"><label>渐变终点色（留空=纯色）</label>
-                  <div style="display:flex;gap:8px;align-items:center">
-                    <input v-model="form.qr_style.gradTo" type="color" class="color-input" />
-                    <button class="btn btn-sm btn-ghost" @click="form.qr_style.gradTo = ''">清除</button>
-                  </div>
-                </div>
-                <div class="field"><label>中心 Logo 底板</label>
-                  <select v-model="form.qr_style.logoShape" class="input"><option value="rounded">圆角方</option><option value="circle">圆形</option><option value="none">无底板</option></select>
-                </div>
-              </div>
-              <div class="field"><label>背景图（可选，从素材库选）</label>
-                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                  <span class="small muted">{{ form.qr_style.bgImage ? '已设置背景图' : '无背景图（纯色）' }}</span>
-                  <AssetPicker v-model="form.qr_style.bgImage" label="选背景图" />
-                  <button v-if="form.qr_style.bgImage" class="btn btn-sm btn-ghost" @click="form.qr_style.bgImage = ''">移除背景</button>
-                </div>
-                <p class="small muted" style="margin-top:4px">背景图会自动淡化，不影响扫码。二维码颜色与背景请保持对比度。</p>
-              </div>
-              <p class="small muted">实时预览见右侧；保存本节后公开名片与分享二维码同步生效。</p>
-            </div>
-            </div>
-            <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
-          </div>
 
           <div class="done-bar">
             <span class="small muted">{{ autoSaveText }}</span>
@@ -329,22 +235,7 @@ const blank = {
   qr_fg: DEFAULT_PAL.qrFg, qr_bg: DEFAULT_PAL.qrBg, qr_logo: true,
   qr_style: { dot: 'square', eye: 'square', gradTo: '', logoShape: 'rounded', bgImage: '' }
 }
-const showAdvanced = ref(false)
-const currentTplLabel = computed(() => templates.value.find(t => t.key === form.value?.template)?.label || form.value?.template || '默认')
-// 预设（草料风格）：一键切换码点/码眼/渐变组合
-const QR_PRESETS = [
-  { key: 'classic', label: '经典', swatch: '#0f172a', dot: 'square', eye: 'square', gradTo: '', logoShape: 'rounded' },
-  { key: 'dots', label: '圆点', swatch: '#2563eb', dot: 'dots', eye: 'rounded', gradTo: '', logoShape: 'circle' },
-  { key: 'tech', label: '科技渐变', swatch: 'linear-gradient(135deg,#2563eb,#06b6d4)', dot: 'rounded', eye: 'rounded', gradTo: '#06b6d4', logoShape: 'circle' },
-  { key: 'elegant', label: '典雅', swatch: '#b45309', dot: 'rounded', eye: 'circle', gradTo: '', logoShape: 'rounded' }
-]
-function qrPresetActive(p) {
-  const s = form.value.qr_style || {}
-  return s.dot === p.dot && s.eye === p.eye && (s.gradTo || '') === p.gradTo && s.logoShape === p.logoShape
-}
-function applyQrPreset(p) {
-  form.value.qr_style = { ...(form.value.qr_style || {}), dot: p.dot, eye: p.eye, gradTo: p.gradTo, logoShape: p.logoShape }
-}
+// 外观（模板/强调色/二维码）与集市已独立为 /me/card/style、/me/card/market 设计页，本页只保留字段默认值供预览。
 const form = ref({ ...blank })
 const active = ref('identity')
 const showPreview = ref(false)
@@ -358,7 +249,6 @@ const sections = computed(() => [
   { key: 'materials', label: '公司相册', icon: '📚', done: !!materials.value.length },
   { key: 'links', label: '更多信息', icon: '🔗', done: !!(form.value.website || form.value.shop_url || form.value.links?.length) }
 ])
-const templates = ref([])
 const marketMeta = ref({ industries: [], cities: [] })
 const materials = ref([])
 const materialTypes = ref([])
@@ -370,7 +260,6 @@ const positionSource = ref('')   // wechat/gps/ip/default/manual，来自四级�
 const positionQuality = ref('')  // precise/approximate/coarse
 const regionPath = computed(() => [form.value.province, form.value.city, form.value.district, form.value.street].filter(Boolean).join(' / '))
 // 集市地区只读复用「联系方式」的省市区（同一份 cards 列，不重复填）
-const marketRegionText = computed(() => [form.value.province, form.value.city, form.value.district].filter(Boolean).join(' / '))
 const qualityClass = computed(() => ({ precise: 'ok', approximate: 'warn', coarse: 'off' }[positionQuality.value] || 'off'))
 const sourceLabel = computed(() => ({
   wechat: '微信定位', gps: 'GPS 定位', ip: 'IP 定位', default: '城市兜底', manual: '手动选点'
@@ -410,7 +299,6 @@ async function loadCard() {
 }
 
 onMounted(async () => {
-  loadTemplates()
   loadMarketMeta()
   loadCommonMeta()
   loadMaterials()
@@ -423,17 +311,10 @@ onMounted(async () => {
 // 必须在 query 变化时也切换，否则点了没反应。
 function applyFocus() {
   const focus = String(route.query.focus || '')
-  if (['identity', 'bio', 'contact', 'links', 'materials', 'market', 'appearance'].includes(focus)) active.value = focus
+  // 外观/集市已独立成 /me/card/style、/me/card/market 页面，本页不再接受这两个 focus
+  if (['identity', 'bio', 'contact', 'links', 'materials'].includes(focus)) active.value = focus
 }
 watch(() => route.query.focus, () => applyFocus())
-
-async function loadTemplates() {
-  try {
-    // 时间戳破缓存：模板清单会随发版增加，避免浏览器/nginx 缓存导致新模板看不到
-    const { data } = await api.get('/api/cards/public/templates?t=' + Date.now())
-    templates.value = data.data?.templates || []
-  } catch { /* 模板清单拉取失败时用兜底，保证选择器可用 */ }
-}
 
 async function loadMarketMeta() {
   try {
@@ -542,17 +423,6 @@ async function onMapPicked(p) {
   showToast('坐标已填入，记得点保存', 'success')
 }
 
-// 选模板 = 一键应用整套推荐配色（主题/强调色/二维码色），用户无需逐项调
-function chooseTemplate(key) {
-  const pal = paletteOf(key)
-  form.value.template = key
-  form.value.theme = pal.theme
-  form.value.accent = (THEMES[pal.theme] || THEMES.ocean).accent
-  form.value.qr_fg = pal.qrFg
-  form.value.qr_bg = pal.qrBg
-  showToast(`已应用「${currentTplLabel.value}」整套配色`, 'success')
-}
-
 async function upload(e, field) {
   const file = e.target.files?.[0]
   if (!file) return
@@ -573,10 +443,9 @@ const SECTION_FIELDS = {
   identity: ['name', 'name_en', 'title', 'company', 'department', 'logo'],
   bio: ['bio', 'company_intro', 'tags'],
   contact: ['mobile', 'phone', 'email', 'wechat', 'alipay', 'whatsapp', 'province', 'city', 'district', 'street', 'address', 'address_detail'],
-  links: ['website', 'shop_url', 'links'],
-  // 地区字段（province/city/district）归属「联系方式」，集市只读复用，不在此提交（参数唯一真相源）
-  market: ['market_opt_in', 'industry', 'latitude', 'longitude'],
-  appearance: ['template', 'theme', 'accent', 'qr_fg', 'qr_bg', 'qr_logo', 'qr_style']
+  links: ['website', 'shop_url', 'links']
+  // ⚠️ 外观（template/theme/accent/qr_*）与集市（market_opt_in/industry/latitude/longitude）已独立到
+  // /me/card/style、/me/card/market 保存；本页不提交这些字段（参数唯一真相源）。地区字段归联系方式。
 }
 const savedSections = ref({})
 const dirtySections = ref({})

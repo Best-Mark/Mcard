@@ -8,7 +8,7 @@
         <div class="pc-hero-actions">
           <button class="btn btn-primary" @click="$router.push('/me/card')">✎ 完善我的名片</button>
           <button class="btn btn-ghost" @click="$router.push('/market')">⌕ 去集市发现伙伴</button>
-          <button class="btn btn-ghost" @click="$router.push('/me/card?focus=market')">🚀 {{ card?.market_opt_in ? '管理集市上架' : '上架集市获客' }}</button>
+          <button class="btn btn-ghost" @click="$router.push('/me/card/market')">🚀 {{ card?.market_opt_in ? '管理集市上架' : '上架集市获客' }}</button>
         </div>
       </div>
       <div v-if="card" class="pc-hero-card" @click="$router.push('/c/' + card.slug)">
@@ -57,7 +57,7 @@
           <h4>快捷操作</h4>
           <div class="pc-quick">
             <button @click="$router.push('/me/card')"><i>✎</i>编辑资料</button>
-            <button @click="$router.push('/me/card?focus=appearance')"><i>🎨</i>模板配色</button>
+            <button @click="$router.push('/me/card/style')"><i>🎨</i>配色风格</button>
             <button @click="$router.push('/me/card?focus=materials')"><i>📚</i>相册</button>
             <button @click="$router.push('/me/print')"><i>🖨</i>实体版式</button>
             <button @click="$router.push('/me/contacts')"><i>▤</i>名片夹</button>
