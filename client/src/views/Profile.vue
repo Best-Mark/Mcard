@@ -1,73 +1,105 @@
 <template>
-  <div class="page">
+  <div class="page profile-page">
     <header class="topbar">
       <router-link to="/me" class="brand">M<em>Card</em></router-link>
       <div class="spacer"></div>
       <button class="nav-menu-btn" aria-label="菜单" @click="toggleDrawer"><i class="menu-glyph"></i></button>
     </header>
 
-    <div class="container" style="margin-top:18px">
-      <div class="card card-pad me-head">
-        <label class="me-ava" title="点击更换账号头像">
+    <!-- 个人中心上半部分：参照 MShop 的深渐变头卡观感（内缩圆角作为视觉焦点例外，
+         下方分组列表仍严格遵守用户端「卡片左右贴边、方角」约定）。套餐/日期用 MCard 自有数据。 -->
+    <div class="pf-header">
+      <div class="pf-bg" aria-hidden="true"></div>
+      <button class="pf-gear" aria-label="设置" @click="toggleDrawer">⚙</button>
+
+      <div class="pf-user">
+        <label class="pf-ava" title="点击更换账号头像">
           <img v-if="avatar" :src="avatar" alt="账号头像" />
-          <span v-else>{{ (auth.user?.phone || '名').slice(0, 1) }}</span>
-          <i class="me-ava-cam"><AppIcon name="camera" :size="13" /></i>
+          <span v-else>{{ (auth.user?.phone || card?.name || '名').slice(0, 1) }}</span>
+          <i class="pf-ava-cam"><AppIcon name="camera" :size="12" /></i>
           <input type="file" accept="image/*" :disabled="avatarSaving" @change="onAvatarFile" />
         </label>
-        <div class="me-ident">
-          <b>{{ auth.user?.phone || '我的账户' }}</b>
-          <span v-if="card">{{ card.name || '未设置姓名' }} · {{ card.company || '未设置公司' }}</span>
-          <span v-else>还没有创建名片</span>
+        <div class="pf-ident">
+          <div class="pf-name">
+            {{ card?.name || auth.user?.phone || '我的账户' }}
+            <span v-if="card" class="pf-status" :class="card.active ? 'ok' : 'warn'">{{ card.active ? '已开通' : '未开通' }}</span>
+          </div>
+          <div class="pf-slogan">{{ card?.title || card?.company || '一张永不失效的二维码，让客户一键存下你' }}</div>
         </div>
-        <span v-if="card" class="badge" :class="card.active ? 'ok' : 'warn'">{{ card.active ? '已开通' : '未开通' }}</span>
+        <button v-if="card" class="pf-qr" aria-label="我的名片二维码" @click="goQr">▦</button>
       </div>
 
-      <div class="card card-pad avatar-manage">
-        <div>
-          <b>👤 账号头像</b>
-          <p class="small muted">属于账号资料，展示在你的名片与通讯录；与名片 LOGO 分开管理。</p>
+      <!-- 套餐有效期玻璃条：到期日期来自 card.expiresAt（兼容 expires_at） -->
+      <div class="pf-plan">
+        <div class="pf-plan-left">
+          <span class="pf-plan-label">套餐有效期</span>
+          <b class="pf-plan-date">{{ planInfo.dateText }}</b>
+          <span class="pf-plan-sub">{{ planInfo.subText }}</span>
         </div>
-        <div class="avatar-actions">
-          <label class="btn btn-sm btn-ghost upload-btn" :class="{ disabled: avatarSaving }">{{ avatarSaving ? '上传中…' : '上传头像' }}
-            <input type="file" accept="image/*" :disabled="avatarSaving" @change="onAvatarFile" />
-          </label>
-          <AssetPicker :model-value="avatar" label="从素材库选" @update:model-value="saveAvatar" />
-        </div>
+        <button class="pf-plan-btn" @click="router.push('/me/plans')">{{ planInfo.expired ? '立即续期' : '续期 ›' }}</button>
       </div>
-
-      <div v-if="loadError" class="card card-pad" style="margin-top:14px;border-color:#fecaca;background:#fef2f2">
-        <b style="color:#b91c1c">名片信息加载失败</b>
-        <p class="small muted" style="margin:6px 0 12px">{{ loadError }}</p>
-        <button class="btn btn-sm btn-primary" :disabled="loading" @click="load">重新加载</button>
-      </div>
-      <div v-else-if="loading" class="card card-pad center" style="margin-top:14px">加载中…</div>
-
-      <div class="section-title">快捷入口</div>
-      <div class="me-grid">
-        <router-link to="/me/contacts" class="me-cell"><i>★</i><span>我的名片夹</span></router-link>
-        <router-link to="/me/stats" class="me-cell"><i>📊</i><span>浏览统计</span></router-link>
-        <router-link to="/me/plans" class="me-cell"><i>💎</i><span>套餐 / 续期</span></router-link>
-        <router-link to="/me/print" class="me-cell"><i>🖨</i><span>实体版式</span></router-link>
-      </div>
-
-      <div class="section-title">我的名片</div>
-      <div v-if="card" class="card card-pad me-link">
-        <div><b>/c/{{ card.slug }}</b><span class="small muted">二维码永久不变，改资料不用换码</span></div>
-        <button class="btn btn-sm btn-ghost" @click="copyLink">复制链接</button>
-      </div>
-      <div v-else class="card card-pad center small muted">还没有名片，可在「名片」栏创建。</div>
-
-      <button class="btn btn-block btn-ghost me-logout" @click="logoutNow">退出登录</button>
     </div>
+
+    <div v-if="loadError" class="card card-pad pf-error">
+      <b>名片信息加载失败</b>
+      <p class="small muted">{{ loadError }}</p>
+      <button class="btn btn-sm btn-primary" :disabled="loading" @click="load">重新加载</button>
+    </div>
+    <div v-else-if="loading" class="card card-pad center">加载中…</div>
+
+    <!-- 快捷入口：MShop 订单宫格观感（图标底块 + 文字），数据用 MCard 自有入口 -->
+    <div class="pf-quick">
+      <router-link to="/me/contacts" class="pf-quick-item"><i class="pf-qi-ico">★</i><span>名片夹</span></router-link>
+      <router-link to="/me/stats" class="pf-quick-item"><i class="pf-qi-ico">📊</i><span>浏览统计</span></router-link>
+      <router-link to="/me/plans" class="pf-quick-item"><i class="pf-qi-ico">💎</i><span>套餐续期</span></router-link>
+      <router-link to="/me/print" class="pf-quick-item"><i class="pf-qi-ico">🖨</i><span>实体版式</span></router-link>
+    </div>
+
+    <!-- 下半部分：App 分组 cell 列表（贴边方角，图标+标题+副标题+角标+箭头） -->
+    <div class="pf-group">
+      <div class="pf-group-title">我的名片</div>
+      <router-link v-if="card" :to="`/c/${card.slug}`" class="pf-cell">
+        <i class="pf-cell-ico">▤</i><span class="pf-cell-t">公开名片页</span>
+        <span class="pf-cell-extra">/c/{{ card.slug }}</span><span class="pf-cell-arrow">›</span>
+      </router-link>
+      <button v-if="card" class="pf-cell" @click="goQr">
+        <i class="pf-cell-ico">▦</i><span class="pf-cell-t">名片二维码</span>
+        <span class="pf-cell-extra">客户扫码即存</span><span class="pf-cell-arrow">›</span>
+      </button>
+      <button v-if="card" class="pf-cell" @click="copyLink">
+        <i class="pf-cell-ico">⧉</i><span class="pf-cell-t">复制名片链接</span>
+        <span class="pf-cell-extra">永久不变</span><span class="pf-cell-arrow">›</span>
+      </button>
+      <div v-else class="pf-cell pf-cell-muted">还没有名片，可在「名片」栏创建</div>
+    </div>
+
+    <div class="pf-group">
+      <div class="pf-group-title">账号与服务</div>
+      <router-link to="/me/card" class="pf-cell">
+        <i class="pf-cell-ico">✎</i><span class="pf-cell-t">编辑资料</span><span class="pf-cell-arrow">›</span>
+      </router-link>
+      <router-link to="/me/card/style" class="pf-cell">
+        <i class="pf-cell-ico">🎨</i><span class="pf-cell-t">配色风格</span><span class="pf-cell-arrow">›</span>
+      </router-link>
+      <router-link to="/me/notifications" class="pf-cell" :class="{ 'has-badge': unread > 0 }">
+        <i class="pf-cell-ico">🔔</i><span class="pf-cell-t">消息通知</span>
+        <span v-if="unread > 0" class="pf-cell-badge">{{ unread > 99 ? '99+' : unread }}</span>
+        <span class="pf-cell-arrow">›</span>
+      </router-link>
+      <router-link to="/me/batch-scan" class="pf-cell">
+        <i class="pf-cell-ico">📷</i><span class="pf-cell-t">展会连扫收名片</span><span class="pf-cell-arrow">›</span>
+      </router-link>
+    </div>
+
+    <button class="pf-logout" @click="logoutNow">退出登录</button>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
 import { auth, logout, toggleDrawer, showToast } from '../store'
-import AssetPicker from '../components/AssetPicker.vue'
 import AppIcon from '../components/AppIcon.vue'
 
 const router = useRouter()
@@ -76,7 +108,29 @@ const avatar = ref('')
 const avatarSaving = ref(false)
 const loading = ref(true)
 const loadError = ref('')
+const unread = ref(0)
 let loadStarted = false
+
+// 套餐有效期：expires_at 兼容旧字段；duration_days=0/无到期视为永久
+const planInfo = computed(() => {
+  const raw = card.value?.expiresAt || card.value?.expires_at
+  if (!raw) return { dateText: '永久有效', subText: '当前套餐长期可用', expired: false }
+  const d = new Date(String(raw).replace(' ', 'T') + (/Z|[+-]\d\d:\d\d$/.test(String(raw)) ? '' : 'Z'))
+  if (isNaN(d.getTime())) return { dateText: '永久有效', subText: '当前套餐长期可用', expired: false }
+  const dateText = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const days = Math.ceil((d.getTime() - Date.now()) / 86400000)
+  if (days < 0) return { dateText, subText: '套餐已到期，续期后恢复全部功能', expired: true }
+  if (days === 0) return { dateText, subText: '今天到期，建议尽快续期', expired: false }
+  return { dateText, subText: `剩余 ${days} 天`, expired: false }
+})
+
+async function loadUnread() {
+  if (!localStorage.getItem('mcard_token')) return
+  try {
+    const { data } = await api.get('/api/notifications/unread')
+    unread.value = data?.data?.unread || 0
+  } catch { /* 角标失败静默不打扰 */ }
+}
 
 async function load() {
   if (loadStarted && loading.value) return
@@ -87,6 +141,7 @@ async function load() {
     const [c, a] = await Promise.all([api.get('/api/cards/mine'), api.get('/api/auth/avatar')])
     card.value = c?.data?.data || null
     avatar.value = a?.data?.data?.avatar || ''
+    loadUnread()
   } catch (e) { loadError.value = e.message || '网络异常' }
   finally { loading.value = false }
 }
@@ -114,7 +169,10 @@ async function saveAvatar(url) {
   avatar.value = data?.data?.avatar || url
   if (card.value) card.value.avatar = avatar.value
 }
-
+function goQr() {
+  if (!card.value?.slug) return showToast('还没有名片', 'error')
+  router.push(`/c/${card.value.slug}?save=1`)
+}
 async function copyLink() {
   if (!card.value?.slug) return showToast('还没有名片', 'error')
   try {
@@ -126,27 +184,54 @@ function logoutNow() { logout(); router.push('/') }
 </script>
 
 <style scoped>
-.me-head { display: flex; align-items: center; gap: 12px; }
-.me-ava { position: relative; width: 56px; height: 56px; flex: 0 0 56px; border-radius: 16px; background: linear-gradient(135deg, #17357c, #2563eb); color: #fff; display: grid; place-items: center; font-size: 22px; font-weight: 800; overflow: hidden; cursor: pointer; }
-.me-ava img { width: 100%; height: 100%; object-fit: cover; }
-.me-ava input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-.me-ava-cam { position: absolute; right: 0; bottom: 0; width: 18px; height: 18px; border-radius: 50%; background: #fff; color: #2563eb; font-size: 10px; font-style: normal; display: grid; place-items: center; }
-.avatar-manage { margin-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.avatar-manage b { font-size: 14px; }
-.avatar-manage p { margin: 5px 0 0; }
-.avatar-actions { display: flex; align-items: center; gap: 8px; }
-.upload-btn { position: relative; overflow: hidden; }
-.upload-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-.upload-btn.disabled { opacity: .6; pointer-events: none; }
-.me-ident { flex: 1; min-width: 0; }
-.me-ident b { display: block; font-size: 15px; }
-.me-ident span { display: block; font-size: 12px; color: var(--muted); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.me-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-.me-cell { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 16px 4px; border-radius: 14px; background: #fff; border: 1px solid var(--line); font-size: 12px; text-align: center; }
-.me-cell i { width: 40px; height: 40px; border-radius: 12px; background: #eff6ff; color: var(--primary); display: grid; place-items: center; font-style: normal; font-size: 19px; }
-.me-link { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.me-link b { display: block; font-size: 14px; }
-.me-link span { display: block; margin-top: 4px; }
-.me-logout { margin-top: 18px; color: var(--danger); }
-@media (max-width: 520px) { .me-grid { grid-template-columns: repeat(2, 1fr); } }
+/* 头卡头像点击直接上传；素材库选图入口在编辑资料页（CardEdit），功能不丢 */
+.profile-page { padding-top: 0; }
+
+/* ===== 上半部分：深渐变头卡（MShop 观感，视觉焦点，内缩圆角形态例外） ===== */
+.pf-header { position: relative; margin: 12px 12px 0; padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 14px; border-radius: 18px; overflow: hidden; color: #fff; background: linear-gradient(135deg, #17357c, #2563eb 60%, #06b6d4); box-shadow: 0 10px 28px rgba(23,53,124,.22); }
+.pf-bg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; background-image: radial-gradient(rgba(255,255,255,.05) .8px, transparent 1.1px), repeating-linear-gradient(115deg, rgba(255,255,255,.02) 0 1px, transparent 1px 4px), radial-gradient(160% 120% at 20% 0%, rgba(255,255,255,.12), transparent 52%); border-radius: 18px; }
+.pf-header > *:not(.pf-bg) { position: relative; z-index: 1; }
+.pf-gear { position: absolute; right: 14px; top: calc(14px + env(safe-area-inset-top, 0px)); z-index: 2; width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,.16); color: #fff; display: grid; place-items: center; }
+.pf-user { display: flex; align-items: center; gap: 12px; }
+.pf-ava { position: relative; width: 54px; height: 54px; flex: 0 0 54px; border-radius: 50%; background: rgba(255,255,255,.2); border: 2.5px solid rgba(255,255,255,.55); display: grid; place-items: center; font-size: 21px; font-weight: 800; overflow: hidden; cursor: pointer; }
+.pf-ava img { width: 100%; height: 100%; object-fit: cover; }
+.pf-ava input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.pf-ava-cam { position: absolute; right: -1px; bottom: -1px; width: 18px; height: 18px; border-radius: 50%; background: #fff; color: #2563eb; display: grid; place-items: center; }
+.pf-ident { flex: 1; min-width: 0; padding-right: 34px; }
+.pf-name { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pf-status { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; flex-shrink: 0; }
+.pf-status.ok { background: rgba(255,255,255,.2); color: #fff; }
+.pf-status.warn { background: #f59e0b; color: #fff; }
+.pf-slogan { font-size: 12px; color: rgba(255,255,255,.75); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pf-qr { position: absolute; right: 16px; top: calc(58px + env(safe-area-inset-top, 0px)); width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,.16); color: #fff; font-size: 19px; display: grid; place-items: center; }
+.pf-plan { margin-top: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-radius: 12px; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.16); }
+.pf-plan-left { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pf-plan-label { font-size: 11px; color: rgba(255,255,255,.68); }
+.pf-plan-date { font-size: 19px; font-weight: 800; color: #f4d78a; letter-spacing: .3px; }
+.pf-plan-sub { font-size: 11px; color: rgba(255,255,255,.72); }
+.pf-plan-btn { font-size: 12px; font-weight: 700; color: #17357c; padding: 7px 14px; border-radius: 999px; background: linear-gradient(90deg, #f9edc0, #e7c877); white-space: nowrap; }
+
+/* ===== 快捷入口：宫格观感 ===== */
+.pf-quick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 14px 12px 0; }
+.pf-quick-item { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 13px 4px; border-radius: 14px; background: var(--card, #fff); border: 1px solid var(--line); font-size: 12px; color: var(--text); }
+.pf-qi-ico { width: 38px; height: 38px; border-radius: 12px; background: #eff6ff; color: var(--primary); display: grid; place-items: center; font-style: normal; font-size: 18px; }
+.pf-quick-item:active { transform: scale(.96); }
+@media (max-width: 520px) { .pf-quick { grid-template-columns: repeat(2, 1fr); } }
+
+/* ===== 下半部分：App 分组 cell（按用户端约定卡片左右贴边、方角） ===== */
+.pf-group { margin: 14px 0 0; background: var(--card, #fff); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.pf-group-title { padding: 12px 16px 6px; font-size: 11px; letter-spacing: .16em; color: var(--muted); font-weight: 700; }
+.pf-cell { display: flex; align-items: center; gap: 12px; width: 100%; padding: 13px 16px; border-bottom: 1px solid var(--line); font-size: 14px; color: var(--text); text-align: left; }
+.pf-cell:last-child { border-bottom: 0; }
+.pf-cell:active { background: #f1f5f9; }
+.pf-cell-ico { width: 22px; text-align: center; font-style: normal; font-size: 17px; color: var(--primary); flex-shrink: 0; }
+.pf-cell-t { flex: 1; min-width: 0; }
+.pf-cell-extra { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40%; }
+.pf-cell-arrow { font-size: 18px; color: var(--muted); flex-shrink: 0; }
+.pf-cell-badge { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: #ef4444; color: #fff; font-size: 11px; line-height: 18px; text-align: center; flex-shrink: 0; }
+.pf-cell.has-badge .pf-cell-arrow { display: none; }
+.pf-cell-muted { color: var(--muted); font-size: 13px; }
+.pf-logout { display: block; width: calc(100% - 24px); margin: 18px 12px 0; padding: 13px; border-radius: 10px; background: var(--card, #fff); border: 1px solid var(--line); color: var(--danger); font-size: 14px; font-weight: 600; }
+.pf-logout:active { background: #fef2f2; }
+.pf-error { margin-top: 14px; border-color: #fecaca; background: #fef2f2; }
 </style>
