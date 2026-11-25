@@ -20,12 +20,6 @@
           </div>
         </div>
 
-        <div class="cp-actions" data-sec="contact">
-          <button v-for="a in actions" :key="a.key" type="button">
-            <i><AppIcon :name="a.icon" :size="18" /></i><span>{{ a.label }}</span>
-          </button>
-        </div>
-
         <div v-if="card.market_opt_in || card.industry" class="cp-block" data-sec="market">
           <h3>名片集市 <span>· 上架状态即时生效</span></h3>
           <div class="cp-market-row"><span>上架</span><b :class="{ 'cp-on': card.market_opt_in }">{{ card.market_opt_in ? '✓ 已上架 · 可被附近客户搜到' : '○ 未上架' }}</b></div>
@@ -149,16 +143,6 @@ const contactFields = computed(() => {
     { key: 'whatsapp', label: 'WhatsApp', value: c.whatsapp }
   ].filter(f => f.value)
 })
-const actions = computed(() => {
-  const c = props.card || {}
-  const arr = []
-  if (c.mobile || c.phone) arr.push({ key: 'tel', icon: 'phone', label: '打电话' })
-  if (c.mobile) arr.push({ key: 'sms', icon: 'sms', label: '发短信' })
-  if (c.email) arr.push({ key: 'mail', icon: 'mail', label: '写邮件' })
-  if (c.wechat || c.whatsapp) arr.push({ key: 'wechat', icon: 'wechat', label: '微信' })
-  if (c.alipay) arr.push({ key: 'alipay', icon: 'alipay', label: '支付宝' })
-  return arr
-})
 const siteLinks = computed(() => {
   const c = props.card || {}
   const arr = []
@@ -199,9 +183,6 @@ watch(() => props.section, async () => {
 .cp-title { color: var(--t-accent); font-size: 11px; font-weight: 600; margin-top: 3px; line-height: 1.4; }
 .cp-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .cp-tags span { font-size: 10px; padding: 2px 7px; border-radius: 999px; background: rgba(0,0,0,.05); background: color-mix(in srgb, var(--t-accent) 12%, transparent); color: var(--t-accent); font-weight: 600; }
-.cp-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(48px, 1fr)); gap: 2px; margin-top: 10px; padding: 8px 4px; background: var(--t-surface); border-radius: 12px; border: 1px solid var(--line); }
-.cp-actions button { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 10px; color: var(--t-muted); }
-.cp-actions i { font-style: normal; width: 30px; height: 30px; border-radius: 50%; background: rgba(0,0,0,.05); background: color-mix(in srgb, var(--t-accent) 12%, transparent); color: var(--t-accent); display: grid; place-items: center; }
 .cp-block { margin-top: 10px; padding: 12px; background: var(--t-surface); border-radius: 12px; border: 1px solid var(--line); }
 .cp-block h3 { font-size: 13px; margin: 0 0 8px; padding-left: 8px; border-left: 3px solid var(--t-accent); line-height: 1.3; }
 .cp-block h3 span { font-size: 10px; font-weight: 400; color: var(--t-muted); }
