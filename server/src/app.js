@@ -67,7 +67,12 @@ function sendSpa(req, res) {
       // 缩略图 LOGO → 头像 → 封面（cover 仅作最后兜底，svg/webp 由微信侧自行忽略）。
       const title = `${card.name || '名片'}的名片`
       const desc = String(card.bio || card.company_intro || `${card.name || ''} ${card.title || ''} ${card.company || ''}`).slice(0, 150)
-      const image = card.logo || card.avatar || card.cover || ''
+      const origin = originOf(req)
+      // og:image 必须是绝对 URL（相对路径微信抓不到）；webp 保留（og 抓取容忍度高于 JS-SDK），
+      // 但任何情况下都用二维码 PNG 兜底，保证 og 有图，避免 JS-SDK 失败时转发退化成纯链接。
+      const logoImg = card.logo || card.avatar || card.cover || ''
+      const absOf = u => !u ? '' : /^https?:\/\//i.test(u) ? u : u.startsWith('/') ? `${origin}${u}` : ''
+      const image = absOf(logoImg) || `${origin}/api/cards/public/${m[1]}/qr.png?size=300`
       const meta = [
         `<title>${esc(title)}</title>`,
         `<meta name="description" content="${esc(desc)}">`,
@@ -75,7 +80,7 @@ function sendSpa(req, res) {
         `<meta property="og:title" content="${esc(title)}">`,
         `<meta property="og:description" content="${esc(desc)}">`,
         image ? `<meta property="og:image" content="${esc(image)}">` : '',
-        `<meta property="og:url" content="${esc(`${originOf(req)}/c/${card.slug || m[1]}`)}">`
+        `<meta property="og:url" content="${esc(`${origin}/c/${card.slug || m[1]}`)}">`
       ].filter(Boolean).join('\n    ')
       html = html.replace(/<title>[\s\S]*?<\/title>/, meta)
     }

@@ -29,10 +29,19 @@ export function cleanShareLink(raw) {
 }
 
 // 缩略图只认 JPG / PNG / GIF：微信解析不出 svg / webp 的缩略图，硬传会变成灰块甚至整卡退化成网址。
-// 无效图宁可不传，让微信自己抓页面首图；og:image 也不覆盖（保留服务端对 /c/:slug 注入的名片图）。
+// ⚠️ 但 imgUrl 传空串同样会让整卡退化成纯链接（微信不会去抓页面首图）——这正是「分享出去只有裸链接」的根因。
+// 项目上传链路统一把头像/LOGO 转成 .webp，会被这里过滤掉，分享素材池默认又是空的，
+// 于是一台新名片的分享图恒为空。所以调用方必须给一张必定合格的 PNG 兜底（名片二维码），见 cardQrThumb。
 function cardImage(u) {
   const abs = absoluteMediaUrl(u)
   return /\.(jpe?g|png|gif)(\?|$)/i.test(abs) ? abs : ''
+}
+
+// share-thumb 唯一真相源：服务端 qr.png 是真实 PNG，微信 100% 识别。
+// 没有可用 LOGO/头像（webp 被过滤、池为空）时用它兜底，保证分享是「图+标题+简介」的卡片而非裸链接。
+function cardQrThumb(card, link) {
+  const slug = card?.slug || (String(link || '').match(/\/c\/([a-z0-9-]+)/i) || [])[1] || ''
+  return slug ? `${window.location.origin}/api/cards/public/${slug}/qr.png?size=300` : ''
 }
 
 function setMeta(attr, key, val) {
@@ -62,6 +71,8 @@ export function setShareMeta({ title, desc, img } = {}) {
 }
 
 let configuredKey = ''
+// 已 config 成功的 wx 实例：缓存只用来跳过重复签名请求，不用来跳过「重设分享数据」。
+let configuredWx = null
 // 本路由内是否已由页面显式配置过卡片：全局兜底看到标记就跳过，避免覆盖名片页刚设好的卡片。
 let customShareSet = false
 
@@ -85,29 +96,40 @@ export async function setupWechatShare(api, opts = {}, { fromDefault = false } =
   const link = cleanShareLink(opts.link)
   setShareMeta({ title, desc, img: imgUrl })
   if (!isWeChat()) return false
-  const key = `${window.location.href.split('#')[0]}|${link}|${title || ''}`
-  if (configuredKey === key && window.wx?.config) return true
+  const key = `${window.location.href.split('#')[0]}|${link}|${title || ''}|${imgUrl}`
+  const card = {
+    title: title || document.title || 'MCard 电子名片',
+    desc: desc || '',
+    link,
+    imgUrl: cardImage(imgUrl) || ''
+  }
+  // 同步调用栈内设置：部分 iOS 内核只认 wx.ready 调用栈内的设置，await 之后就失效
+  const apply = wx => {
+    if (!wx?.config) return
+    wx.updateAppMessageShareData?.(card)
+    wx.updateTimelineShareData?.({ title: card.title, link: card.link, imgUrl: card.imgUrl })
+    // 老接口也设一遍：新接口在部分机型「回调 ok、转发出去仍是网址」，老接口反而生效
+    wx.onMenuShareAppMessage?.(card)
+    wx.onMenuShareTimeline?.({ title: card.title, link: card.link, imgUrl: card.imgUrl })
+  }
   try {
+    // 缓存命中：签名已完成，不再重复请求，但仍要重设一次分享数据
+    // （工作台会为同一 path 调多次 setCardShare，早先的 return true 会让卡片停在旧值/空值）
+    if (configuredKey === key && configuredWx?.config) {
+      apply(configuredWx)
+      setTimeout(() => apply(configuredWx), 300)
+      return true
+    }
     const { wx, ok } = await configWx(api)
     if (!ok || !wx?.config) return false
-    const card = {
-      title: title || document.title || 'MCard 电子名片',
-      desc: desc || '',
-      link,
-      imgUrl: cardImage(imgUrl)
-    }
-    // 同步调用栈内设置：部分 iOS 内核只认 wx.ready 调用栈内的设置，await 之后就失效
-    const apply = () => {
-      wx.updateAppMessageShareData?.(card)
-      wx.updateTimelineShareData?.({ title: card.title, link: card.link, imgUrl: card.imgUrl })
-      // 老接口也设一遍：新接口在部分机型「回调 ok、转发出去仍是网址」，老接口反而生效
-      wx.onMenuShareAppMessage?.(card)
-      wx.onMenuShareTimeline?.({ title: card.title, link: card.link, imgUrl: card.imgUrl })
-    }
-    apply()
-    // 容错：首次落在微信权限离线校验窗口时，300ms 后重设一次分享数据
-    setTimeout(apply, 300)
+    apply(wx)
+    // 容错：微信权限离线校验窗口（首次 config 后异步校验 jsApiList），分档重设直到生效。
+    // 单靠 300ms 一次不够——真机上首帧常落在校验窗口内，转发出去就是裸链接。
+    setTimeout(() => apply(wx), 300)
+    setTimeout(() => apply(wx), 900)
+    setTimeout(() => apply(wx), 1800)
     configuredKey = key
+    configuredWx = wx
     return true
   } catch { return false }
 }
@@ -122,11 +144,14 @@ export const setWechatShare = setupWechatShare
  * 工作台必须自己配置，不能只靠异步嵌入的 CardView——否则加载慢时转发走全局兜底。
  */
 export function setCardShare(api, card, link) {
+  const target = link || card?.url || ''
   return setupWechatShare(api, {
     title: `${card?.name || '名片'}的名片`,
     desc: String(card?.bio || card?.company_intro || '').slice(0, 120),
-    link: link || card?.url || '',
-    imgCandidates: [card?.logo, card?.avatar].map(absoluteMediaUrl)
+    link: target,
+    // LOGO → 头像 → 二维码 PNG 兜底：前两个是 webp 会被 cardImage 过滤，
+    // 最后这项必为合格 PNG，确保 imgUrl 非空、分享不退化成裸链接。
+    imgCandidates: [card?.logo, card?.avatar].map(absoluteMediaUrl).concat(cardQrThumb(card, target))
   })
 }
 
