@@ -3,7 +3,8 @@
   <div v-if="!logged" class="login-page">
     <div class="login-bg"><ParticleField color="#8fd0ff" line="rgba(143,208,255,.26)" :density="1.3" /></div>
     <div class="login-card card">
-      <div class="login-logo">M</div>
+      <img v-if="siteConfig.site_logo" class="login-logo login-logo-img" :src="siteConfig.site_logo" alt="站点 LOGO" />
+      <div v-else class="login-logo">M</div>
       <div class="brand">M<em>Card</em> <small>管理后台</small></div>
       <h2>欢迎回来</h2>
       <p class="small muted">使用管理员账号登录运营控制台</p>
@@ -20,7 +21,8 @@
     <div v-if="sideOpen" class="side-overlay" @click="sideOpen = false"></div>
     <aside class="side" :class="{ open: sideOpen }">
       <div class="side-brand">
-        <span class="side-logo">M</span>
+        <img v-if="siteConfig.site_logo" class="side-logo side-logo-img" :src="siteConfig.site_logo" alt="站点 LOGO" />
+        <span v-else class="side-logo">M</span>
         <div>M<em>Card</em><small>管理控制台 · v{{ updateInfo.current || '—' }}{{ updateInfo.commit ? ' #' + updateInfo.commit : '' }}</small></div>
       </div>
       <div class="side-label">工作台</div>
@@ -519,7 +521,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import api from '../api'
 import ParticleField from '../components/ParticleField.vue'
-import { adminAuth, setAdminAuth, adminLogout, showToast } from '../store'
+import { adminAuth, setAdminAuth, adminLogout, showToast, siteConfig } from '../store'
 
 const ICONS = {
   overview: ['M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z'],
@@ -1121,6 +1123,7 @@ async function saveUpdateConfig() {
 .login-bg { position: absolute; inset: 0; opacity: .8; }
 .login-card { position: relative; width: min(100%, 410px); padding: 32px; box-shadow: 0 24px 70px rgba(0,0,0,.35); border: 0; }
 .login-logo { width: 48px; height: 48px; border-radius: 14px; background: linear-gradient(135deg, #60a5fa, #4338ca); color: #fff; display: grid; place-items: center; font-size: 26px; font-weight: 800; box-shadow: 0 8px 20px rgba(59,130,246,.35); }
+.login-logo-img { object-fit: contain; padding: 4px; background: #fff; box-shadow: 0 8px 20px rgba(0,0,0,.25); }
 .brand { font-size: 20px; font-weight: 800; margin-top: 14px; }
 .brand em { color: var(--primary); font-style: normal; }
 .brand small { font-size: 12px; font-weight: 500; color: var(--muted); }
@@ -1133,6 +1136,7 @@ async function saveUpdateConfig() {
 .side { width: 224px; flex: 0 0 224px; background: linear-gradient(180deg, #0f172a, #111c33); color: #cbd5e1; padding: 18px 12px; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; z-index: 60; }
 .side-brand { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 800; color: #fff; padding: 4px 8px 22px; }
 .side-logo { width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(135deg, #60a5fa, #4338ca); display: grid; place-items: center; font-size: 19px; }
+.side-logo-img { object-fit: contain; padding: 3px; background: #fff; color: #0f172a; }
 .side-brand em { color: #60a5fa; font-style: normal; }
 .side-brand small { display: block; font-size: 10px; color: #64748b; font-weight: 400; }
 .side-label { font-size: 10px; letter-spacing: 1px; color: #475569; padding: 12px 12px 6px; text-transform: uppercase; }

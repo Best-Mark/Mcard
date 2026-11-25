@@ -1,5 +1,6 @@
 import { isWeChat, configWx } from './wx-sdk'
 import { sharePools, pick } from '../config/shareConfig'
+import { siteConfig } from '../store'
 
 // 微信 JS-SDK 分享卡片：让转发到微信好友/朋友圈显示成一张像样的卡片（标题+描述+缩略图）。
 // 签名与 config 统一走 wx-sdk.js（一次 config 配齐分享+定位+扫码接口，避免 jsApiList 互相覆盖）。
@@ -149,9 +150,10 @@ export function setCardShare(api, card, link) {
     title: `${card?.name || '名片'}的名片`,
     desc: String(card?.bio || card?.company_intro || '').slice(0, 120),
     link: target,
-    // LOGO → 头像 → 二维码 PNG 兜底：前两个是 webp 会被 cardImage 过滤，
-    // 最后这项必为合格 PNG，确保 imgUrl 非空、分享不退化成裸链接。
-    imgCandidates: [card?.logo, card?.avatar].map(absoluteMediaUrl).concat(cardQrThumb(card, target))
+    // 名片 LOGO → 名片头像 → 站点 LOGO → 二维码 PNG 兜底：
+    // 前几个可能是 webp 会被 cardImage 过滤，站点 LOGO 未配置也为空，最后这项必为合格 PNG，
+    // 确保 imgUrl 非空、分享不退化成裸链接。站点 LOGO 是后台「站点基础」配置的唯一真相源。
+    imgCandidates: [card?.logo, card?.avatar, absoluteMediaUrl(siteConfig.site_logo), cardQrThumb(card, target)]
   })
 }
 

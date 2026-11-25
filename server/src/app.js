@@ -68,11 +68,12 @@ function sendSpa(req, res) {
       const title = `${card.name || '名片'}的名片`
       const desc = String(card.bio || card.company_intro || `${card.name || ''} ${card.title || ''} ${card.company || ''}`).slice(0, 150)
       const origin = originOf(req)
-      // og:image 必须是绝对 URL（相对路径微信抓不到）；webp 保留（og 抓取容忍度高于 JS-SDK），
-      // 但任何情况下都用二维码 PNG 兜底，保证 og 有图，避免 JS-SDK 失败时转发退化成纯链接。
+      // og:image 必须是绝对 URL（相对路径微信抓不到）；webp 保留（og 抓取容忍度高于 JS-SDK）。
+      // 兜底链与前端分享同口径：名片 LOGO → 头像 → 站点 LOGO → 二维码 PNG。
+      // 站点 LOGO 唯一真相源 = site_config.site_logo（后台「站点基础」可配）。
       const logoImg = card.logo || card.avatar || card.cover || ''
       const absOf = u => !u ? '' : /^https?:\/\//i.test(u) ? u : u.startsWith('/') ? `${origin}${u}` : ''
-      const image = absOf(logoImg) || `${origin}/api/cards/public/${m[1]}/qr.png?size=300`
+      const image = absOf(logoImg) || absOf(settings.get('site_logo', '')) || `${origin}/api/cards/public/${m[1]}/qr.png?size=300`
       const meta = [
         `<title>${esc(title)}</title>`,
         `<meta name="description" content="${esc(desc)}">`,

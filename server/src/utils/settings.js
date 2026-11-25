@@ -7,7 +7,7 @@ const config = require('../config')
 // 公开键：匿名接口 /api/public/config 仅下发这些
 // share_* 是分享素材池（标题/描述/图片，每行一条），匿名可读——对齐 MShop 的 share_config 白名单口径
 const SHARE_KEYS = ['share_title', 'share_desc', 'share_image']
-const PUBLIC_KEYS = ['site_name', 'site_desc', 'contact', 'notice', 'qr_brand', ...SHARE_KEYS]
+const PUBLIC_KEYS = ['site_name', 'site_logo', 'site_desc', 'contact', 'notice', 'qr_brand', ...SHARE_KEYS]
 // 公开派生键：由后端算好后下发，前端据此决定是否显示微信快捷登录入口（不下发任何 key/secret）
 const PUBLIC_DERIVED_KEYS = ['wechat_login_enabled']
 
@@ -17,6 +17,7 @@ const GROUPS = {
     label: '站点基础',
     fields: [
       { key: 'site_name', label: '站点名称', type: 'text' },
+      { key: 'site_logo', label: '站点 LOGO 图片地址（绝对 URL 或 /uploads/ 路径，留空显示默认 M）', type: 'text' },
       { key: 'site_desc', label: '站点简介', type: 'text' },
       { key: 'contact', label: '联系方式', type: 'text' },
       { key: 'notice', label: '公告', type: 'textarea' },
@@ -302,6 +303,7 @@ function seedDefaults() {
   const db = require('../db')
   const stmt = db.prepare('INSERT OR IGNORE INTO site_config (key, value, updated_at) VALUES (?,?,datetime(\'now\'))')
   const seeds = {
+    site_logo: '',
     pay_mode: config.PAY_MODE || 'mock',
     wechat_mch_id: config.WECHAT_MCH_ID || '',
     wechat_app_id: config.WECHAT_APP_ID || '',
