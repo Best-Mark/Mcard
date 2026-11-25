@@ -78,23 +78,17 @@
               <div class="field"><label>WhatsApp</label><input v-model="form.whatsapp" class="input" /></div>
             </div>
             <div class="field">
-              <label>所在地区 <span class="muted small">（省 / 市 / 区 / 街道，可选到任意一级）</span></label>
+              <label>所在地区 <span class="muted small">（省 / 市 / 区 / 街道，可选到任意一级；定位用于导航与集市距离）</span></label>
               <div class="locate-row">
                 <span class="small region-path">{{ regionPath || '未选择' }}</span>
+                <span v-if="positionSource" class="badge small" :class="qualityClass">{{ sourceLabel }}</span>
                 <button class="btn btn-sm btn-ghost" :disabled="loading" @click="regionOpen = true">⌖ 选择地区</button>
                 <button class="btn btn-sm btn-ghost" :disabled="geoBusy || loading" @click="autoLocateAddress">{{ geoBusy ? '定位中…' : '◎ 自动定位' }}</button>
+                <button class="btn btn-sm btn-ghost" @click="mapOpen = true">🗺 地图选点</button>
               </div>
             </div>
             <div class="field"><label>地址（用于一键导航）</label><input v-model="form.address" class="input" placeholder="街道门牌，越详细导航越准" /></div>
             <div class="field"><label>门牌 / 楼层补充</label><input v-model="form.address_detail" class="input" /></div>
-            <div class="field">
-              <label>位置定位 <span class="muted small">（用于精准导航；集市按距离排序）</span></label>
-              <div class="locate-row">
-                <span v-if="positionSource" class="badge small" :class="qualityClass">{{ sourceLabel }}</span>
-                <button class="btn btn-sm btn-ghost" @click="mapOpen = true">🗺 地图选点</button>
-                <button class="btn btn-sm btn-ghost" :disabled="locating" @click="locateMe">{{ locating ? '定位中…' : '⌖ 精确定位' }}</button>
-              </div>
-            </div>
             <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
           </div>
 
@@ -248,7 +242,6 @@ const marketMeta = ref({ industries: [], cities: [] })
 const materials = ref([])
 const materialTypes = ref([])
 const materialTypeOptions = computed(() => materialTypes.value.map(t => ({ value: t.key, label: t.label })))
-const locating = ref(false)
 const geoBusy = ref(false)
 const mapOpen = ref(false)
 const regionOpen = ref(false)
@@ -332,32 +325,6 @@ async function loadMaterials() {
     materials.value = (data.data?.list || []).map(m => ({ type: m.type, title: m.title, url: m.url }))
     savedSections.value = { ...savedSections.value, materials: Date.now() }
   } catch { /* 资料夹加载失败不阻断其它资料编辑 */ }
-}
-
-// 四级定位主入口（微信/GPS → IP → 城市兜底），成功后逆地理回填省市区
-async function locateMe() {
-  if (locating.value) return
-  locating.value = true
-  try {
-    const pos = await refreshPosition(form.value.city || undefined)
-    form.value.latitude = pos.lat
-    form.value.longitude = pos.lng
-    positionSource.value = pos.source || ''
-    positionQuality.value = pos.quality || ''
-    if (!form.value.city && pos.city) form.value.city = pos.city
-    if (pos.source !== 'default' && !form.value.district) {
-      const addr = await reverseGeocode(pos.lat, pos.lng)
-      if (addr) {
-        if (!form.value.province) form.value.province = addr.province || ''
-        if (!form.value.city) form.value.city = addr.city || ''
-        if (!form.value.district) form.value.district = addr.district || ''
-        if (!form.value.street) form.value.street = addr.street || ''
-      }
-    }
-    showToast(pos.source === 'default' ? '已用城市中心坐标兜底，可再精确选点' : '定位成功，记得点保存', pos.source === 'default' ? 'error' : 'success')
-  } catch (e) {
-    showToast(e.message || '定位失败，请手动选点', 'error')
-  } finally { locating.value = false }
 }
 
 // 联系方式区「自动定位」：定位后把省市区写进资料
