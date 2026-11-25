@@ -1267,6 +1267,11 @@ async function toggleFavorite() {
 .cv-clean .cv-links a, .cv-clean .cv-gallery-cell { border-color: var(--cv-line); background: var(--cv-panel-bg); }
 .cv-clean .cv-links b, .cv-clean .cv-region-line, .cv-clean .cv-contact-row b { color: var(--cv-link-color); }
 .cv-clean .cv-map-launch, .cv-clean .cv-maps a { background: var(--cv-mini-bg); color: var(--cv-mini-color); box-shadow: var(--cv-mini-shadow); }
+/* 简洁模板底部 dock 也跟模板配色（acid 荧光绿/neon 霓虹/pop 多巴胺…），不再用通用深灰+主题绿 */
+.cv-clean .cv-dock { background: var(--cv-panel-bg); border-top: 1px solid var(--cv-line); color: var(--cv-ink); }
+.cv-clean .cv-dock .btn { border-radius: var(--cv-btn-radius, 8px); }
+.cv-clean .cv-dock .btn-primary { background: var(--cv-btn-main-bg, var(--t-accent)); color: var(--cv-btn-main-color, #fff); box-shadow: var(--cv-btn-main-shadow, none); }
+.cv-clean .cv-dock .btn-ghost { background: var(--cv-btn-ghost-bg, transparent); color: var(--cv-btn-ghost-color, var(--cv-ink)); box-shadow: var(--cv-btn-ghost-shadow, inset 0 0 0 1px var(--cv-line)); }
 .cv-clean .cv-create-own { border-top: 1px solid var(--cv-line); }
 .cv-clean .cv-create-copy b { color: var(--cv-link-color); }
 .cv-clean .cv-footer { background: var(--cv-panel-bg); border-radius: 0 0 var(--cv-card-radius) var(--cv-card-radius); padding: 16px var(--cv-card-x) 20px; color: var(--cv-foot-color); letter-spacing: .1em; }
