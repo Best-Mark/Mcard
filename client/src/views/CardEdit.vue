@@ -37,17 +37,13 @@
             <div class="identity-block">
               <div class="block-title">🏢 公司 / 品牌 LOGO</div>
               <div class="field">
-                <!-- LOGO 独立上传（2026-11-26 用户定，不走素材库）：点缩略图展开上传面板，保留自动去背景 -->
+                <!-- LOGO 独立上传（2026-11-26 用户定，不走素材库）：点缩略图从底部弹出上传面板，保留自动去背景 -->
                 <div class="logo-row">
-                  <button type="button" class="logo-thumb-btn" title="点击上传替换 LOGO" aria-label="更换公司 LOGO" @click="logoOpen = !logoOpen">
+                  <button type="button" class="logo-thumb-btn" title="点击上传替换 LOGO" aria-label="更换公司 LOGO" @click="logoOpen = true">
                     <img v-if="form.logo" :src="form.logo" alt="当前 LOGO" />
                     <span v-else class="logo-thumb-empty">+</span>
                   </button>
                   <span class="small muted logo-hint">{{ form.logo ? '当前 LOGO · 点击图片可替换' : '点击图片上传 LOGO（自动去背景）' }}</span>
-                </div>
-                <div v-if="logoOpen" class="logo-editor">
-                  <div class="logo-editor-head"><b>上传 LOGO</b><button type="button" class="logo-editor-close" aria-label="收起" @click="logoOpen = false">✕</button></div>
-                  <LogoUploader :model-value="form.logo" @update:model-value="onLogoApplied" />
                 </div>
               </div>
             </div>
@@ -124,7 +120,7 @@
           <!-- 公司相册：独立上传（2026-11-26 用户定，不走素材库）；访客点开进全屏看图 -->
           <div v-show="active === 'materials'" class="card card-pad" id="focus-materials">
             <div class="section-title" style="margin-top:0">公司相册</div>
-            <p class="small muted" style="margin-bottom:12px">直接上传图片，访客在名片上点开进全屏浏览、可返回。最多 {{ GALLERY_MAX }} 张。</p>
+            <p class="small muted" style="margin-bottom:12px">直接上传图片，自动压缩转 WebP（最长边 1600px，GIF 保留动画），访客点开进全屏浏览。最多 {{ GALLERY_MAX }} 张。</p>
             <label class="gallery-upload" :class="{ disabled: galleryUploading || galleryUrls.length >= GALLERY_MAX }">
               <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple :disabled="galleryUploading || galleryUrls.length >= GALLERY_MAX" @change="onGalleryUpload" />
               {{ galleryUploading ? '上传中…' : (galleryUrls.length >= GALLERY_MAX ? '已达上限' : '+ 上传图片') }}
@@ -171,6 +167,18 @@
         @confirm="onRegionPicked"
         @close="regionOpen = false"
       />
+    </BottomSheet>
+
+    <!-- LOGO 上传：底部弹层（移动端友好），服务端自动识别背景生成透明 PNG -->
+    <BottomSheet :show="logoOpen" @update:show="logoOpen = $event">
+      <div class="logo-sheet">
+        <div class="logo-sheet-head">
+          <b>上传公司 LOGO</b>
+          <button type="button" class="logo-sheet-close" aria-label="关闭" @click="logoOpen = false">✕</button>
+        </div>
+        <p class="small muted logo-sheet-tip">选图后自动识别背景并转成透明底 PNG，可调去底强度；动作图/GIF 保持原样。</p>
+        <LogoUploader :model-value="form.logo" @update:model-value="onLogoApplied" />
+      </div>
     </BottomSheet>
 
     <!-- 窄屏预览：手机上点顶部「预览」全屏看实时名片，与 PC 右侧预览共用组件 -->
@@ -626,10 +634,10 @@ async function finish() {
 .logo-thumb-btn img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .logo-thumb-empty { display: grid; place-items: center; width: 100%; height: 100%; color: var(--muted, #94a3b8); font-size: 22px; }
 .logo-hint { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.logo-editor { margin-top: 10px; padding: 12px; border: 1px solid var(--line, #e8edf4); border-radius: 10px; background: var(--bg-page, #f8fafc); }
-.logo-editor-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.logo-editor-head b { font-size: 13px; }
-.logo-editor-close { border: 0; background: transparent; color: var(--muted, #64748b); font-size: 15px; cursor: pointer; }
+.logo-sheet { max-height: 84vh; overflow-y: auto; padding: 6px 18px 18px; }
+.logo-sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 0 6px; font-size: 15px; }
+.logo-sheet-close { border: 0; background: transparent; color: var(--muted, #64748b); font-size: 17px; cursor: pointer; }
+.logo-sheet-tip { margin: 0 0 10px; line-height: 1.6; }
 .locate-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .locate-row .mono { color: var(--muted); }
 .market-value { padding: 12px 14px; margin-bottom: 14px; border-radius: 12px; background: linear-gradient(135deg, #ecfeff, #eff6ff); border: 1px solid #c7d2fe; }

@@ -113,19 +113,42 @@
       </div>
     </div>
 
-    <!-- 全屏看图：点相册缩略图进入，顶部「返回」回名片，左右切换；对齐小程序 uni.previewImage 观感 -->
+    <!-- 全屏看图：左右滑动切换、下滑关闭、双击缩放、底部缩略图条；操作全在这一层，不铺在名片内容区 -->
     <div v-if="galleryIndex >= 0" class="gallery-fullscreen" role="dialog" aria-label="相册大图浏览">
       <div class="gf-top">
-        <button class="gf-back" aria-label="返回名片" @click="galleryIndex = -1">‹ 返回</button>
+        <button class="gf-back" aria-label="返回名片" @click="closeGallery">‹ 返回</button>
         <span class="gf-count">{{ galleryIndex + 1 }} / {{ imageMaterials.length }}</span>
         <span class="gf-title">{{ imageMaterials[galleryIndex]?.title || '相册' }}</span>
+        <button class="gf-save" type="button" @click="saveGalleryImage">保存</button>
       </div>
-      <div class="gf-stage" @click.self="galleryIndex = -1">
-        <img :src="fullUrl(imageMaterials[galleryIndex]?.url)" :alt="imageMaterials[galleryIndex]?.title" />
+      <div class="gf-stage" @touchstart.passive="onGfTouchStart" @touchend.passive="onGfTouchEnd" @click.self="closeGallery">
+        <img
+          v-if="!gfFailed"
+          :key="gfRetryKey + '-' + galleryIndex"
+          :class="{ 'is-zoomed': gfZoom }"
+          :src="fullUrl(imageMaterials[galleryIndex]?.url)"
+          :alt="imageMaterials[galleryIndex]?.title"
+          @error="gfFailed = true"
+        />
+        <div v-else class="gf-error">
+          <span>图片加载失败</span>
+          <button type="button" @click="retryGalleryImage">重试</button>
+        </div>
+      </div>
+      <div v-if="imageMaterials.length > 1" ref="gfThumbs" class="gf-thumbs">
+        <button
+          v-for="(m, i) in imageMaterials" :key="m.id || (m.url + '-' + i)"
+          class="gf-thumb" :class="{ on: i === galleryIndex }"
+          type="button" :data-idx="i" :aria-label="'查看第 ' + (i + 1) + ' 张'"
+          @click="jumpGallery(i)"
+        >
+          <img :src="fullUrl(m.url)" :alt="m.title || ('第 ' + (i + 1) + ' 张')" loading="lazy" />
+        </button>
       </div>
       <div class="gf-nav">
-        <button :disabled="galleryIndex <= 0" @click="galleryIndex--">‹ 上一张</button>
-        <button :disabled="galleryIndex >= imageMaterials.length - 1" @click="galleryIndex++">下一张 ›</button>
+        <button :disabled="galleryIndex <= 0" @click="stepGallery(-1)">‹ 上一张</button>
+        <span class="gf-hint">左右滑动切换 · 双击缩放 · 下滑关闭</span>
+        <button :disabled="galleryIndex >= imageMaterials.length - 1" @click="stepGallery(1)">下一张 ›</button>
       </div>
     </div>
 
@@ -170,7 +193,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 // embed：嵌入模式（只渲染封面+身份区，其余由宿主页呈现）；owner：持有者预览（/me 我的名片）。
@@ -255,6 +278,91 @@ async function openMaterial(m) {
 async function countMaterialView(m) {
   try { await api.post(`/api/cards/public/materials/${m.id}/view`) } catch { /* 计数失败不影响查看 */ }
 }
+
+// 看图操作层：手势/按钮/键盘三条入口共用同一组状态，切换时统一复位（加载失败、缩放、双击计时）。
+const gfZoom = ref(false)
+const gfFailed = ref(false)
+const gfRetryKey = ref(0)
+const gfThumbs = ref(null)
+let gfTouch = null
+let gfLastTap = 0
+let gfKeyHandler = null
+function closeGallery() { galleryIndex.value = -1 }
+function stepGallery(step) {
+  const next = galleryIndex.value + step
+  if (next < 0 || next >= imageMaterials.value.length) return
+  galleryIndex.value = next
+}
+function jumpGallery(i) {
+  if (i >= 0 && i < imageMaterials.value.length) galleryIndex.value = i
+}
+function retryGalleryImage() { gfFailed.value = false; gfRetryKey.value++ }
+async function saveGalleryImage() {
+  const m = imageMaterials.value[galleryIndex.value]
+  if (!m) return
+  const r = await saveImageUrl(fullUrl(m.url), `相册-${galleryIndex.value + 1}`)
+  if (r?.kind === 'downloaded') showToast('已开始下载', 'success')
+  else if (r?.kind === 'longpress') showToast(isWeChat() ? '长按图片保存到手机' : '长按图片保存', 'success')
+  else showToast('已在新窗口打开，长按可保存', 'success')
+}
+function onGfTouchStart(e) {
+  const pt = e.touches?.[0]
+  if (!pt) return
+  gfTouch = { x: pt.clientX, y: pt.clientY, at: Date.now() }
+}
+function onGfTouchEnd(e) {
+  if (!gfTouch) return
+  const pt = e.changedTouches?.[0]
+  if (!pt) { gfTouch = null; return }
+  const dx = pt.clientX - gfTouch.x
+  const dy = pt.clientY - gfTouch.y
+  const quick = Date.now() - gfTouch.at < 400
+  gfTouch = null
+  // 轻点：300ms 内第二次即双击缩放；单击只记录时间，不误触关闭
+  if (Math.abs(dx) < 14 && Math.abs(dy) < 14) {
+    if (quick && Date.now() - gfLastTap < 320) { gfLastTap = 0; gfZoom.value = !gfZoom.value }
+    else gfLastTap = Date.now()
+    return
+  }
+  if (gfZoom.value) return
+  if (Math.abs(dy) > 90 && Math.abs(dy) > Math.abs(dx) * 1.2) { closeGallery(); return }
+  if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.2) stepGallery(dx < 0 ? 1 : -1)
+}
+function preloadNeighbors() {
+  const i = galleryIndex.value
+  for (const n of [i - 1, i + 1]) {
+    const u = imageMaterials.value[n]?.url
+    if (u) { const img = new Image(); img.src = fullUrl(u) }
+  }
+}
+function centerGalleryThumb() {
+  const el = gfThumbs.value?.querySelector(`[data-idx="${galleryIndex.value}"]`)
+  if (!el || !el.scrollIntoView) return
+  try { el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }) }
+  catch { el.scrollIntoView() }
+}
+function onGalleryKey(e) {
+  if (e.key === 'Escape') closeGallery()
+  else if (e.key === 'ArrowLeft') stepGallery(-1)
+  else if (e.key === 'ArrowRight') stepGallery(1)
+}
+watch(galleryIndex, v => {
+  gfZoom.value = false
+  gfFailed.value = false
+  gfLastTap = 0
+  gfTouch = null
+  if (v >= 0) {
+    preloadNeighbors()
+    nextTick(centerGalleryThumb)
+    if (!gfKeyHandler) { gfKeyHandler = onGalleryKey; window.addEventListener('keydown', gfKeyHandler) }
+  } else if (gfKeyHandler) {
+    window.removeEventListener('keydown', gfKeyHandler)
+    gfKeyHandler = null
+  }
+})
+onBeforeUnmount(() => {
+  if (gfKeyHandler) window.removeEventListener('keydown', gfKeyHandler)
+})
 
 const t = computed(() => themeOf({ theme: currentTheme.value, accent: card.value?.accent }))
 // 动态光效用主题强调色而非写死白色：把 #rrggbb 转 rgb 分量，CSS 里 rgba(var(--glow-rgb), .x)
