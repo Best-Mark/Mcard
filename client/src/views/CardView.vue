@@ -14,7 +14,7 @@
   <div class="cv-page" :class="['cv-tpl-' + template, { 'cv-clean': isCleanTpl, 'cv-embed': embed, 'cv-owner': owner }]" :style="vars">
     <div class="cv-cover">
       <button v-if="owner" class="cv-back cv-owner-edit" @click="router.push('/me/card')" aria-label="编辑名片">✎</button>
-      <button v-else-if="full" class="cv-back" @click="router.back ? router.back() : router.push('/')" aria-label="返回">‹</button>
+      <button v-else-if="full" class="cv-back" @click="goBack" aria-label="返回">‹</button>
       <div class="cv-brand">M<em>Card</em></div>
     </div>
 
@@ -268,6 +268,13 @@ import BottomSheet from '../components/BottomSheet.vue'
 import AppIcon from '../components/AppIcon.vue'
 
 const route = useRoute(); const router = useRouter()
+// 返回要「回到来源」而不是盲调 history.back：从集市点进来的名片必须回集市；
+// 直接打开/分享链接没有上一页时回首页，避免点了没反应被当成没有返回入口。
+function goBack() {
+  if (String(route.query.src || '') === 'market') return router.push('/market')
+  if (window.history.state?.back) return router.back()
+  router.replace('/')
+}
 const embed = props.embed
 const owner = props.owner
 // 是否渲染公开页整页内容：owner 模式与公开页完全一致，只有 embed 才裁成头部
@@ -633,7 +640,8 @@ async function toggleFavorite() {
 }
 .cv-cover > * { position: relative; z-index: 1; }
 @media (prefers-reduced-motion: reduce) { .cv-cover::before { animation: none; opacity: .7; } }
-.cv-back { position: absolute; left: 16px; top: calc(14px + var(--safe-top)); font-size: 30px; color: #fff; line-height: 1; }
+/* 返回键：主题毛玻璃圆钮（不是裸字符），任何模板都清晰可见、与名片同色系 */
+.cv-back { position: absolute; left: 14px; top: calc(12px + var(--safe-top)); width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; font-size: 26px; line-height: 1; color: #fff; background: rgba(var(--glow-rgb, 37,99,235), .30); border: 1px solid rgba(255,255,255,.30); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); box-shadow: inset 0 1px 0 rgba(255,255,255,.18); }
 /* 持有者预览的编辑入口：与返回按钮同位，稍缩字号避免与品牌字重叠 */
 .cv-owner-edit { font-size: 22px; width: 34px; text-align: center; z-index: 2; }
 .cv-brand { position: absolute; right: 16px; top: calc(18px + var(--safe-top)); color: #fff; font-weight: 800; opacity: .9; }
@@ -1325,8 +1333,9 @@ async function toggleFavorite() {
 .cv-tpl-sidebar .cv-contact-row { flex-direction: row-reverse; }
 .cv-tpl-sidebar .cv-contact-label { text-align: right; }
 .cv-tpl-sidebar .cv-contact-value, .cv-tpl-sidebar .cv-block { text-align: right; }
-.cv-clean .cv-cover { height: 0; border-radius: 0; background: transparent; }
-.cv-clean .cv-back { top: calc(10px + var(--safe-top)); left: 16px; color: var(--cv-back-color); background: var(--cv-back-bg); border-radius: 50%; width: 34px; height: 34px; display: grid; place-items: center; font-size: 24px; backdrop-filter: blur(6px); }
+/* 无封面模板：封面高度为 0，必须放开 overflow，否则 absolute 的返回键/品牌字被裁掉（截图实锤「没有返回的地方」） */
+.cv-clean .cv-cover { height: 0; border-radius: 0; background: transparent; overflow: visible; }
+.cv-clean .cv-back { top: calc(10px + var(--safe-top)); left: 14px; color: var(--cv-back-color); background: var(--cv-back-bg); border-color: rgba(var(--glow-rgb, 255,255,255), .34); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 .cv-clean .cv-brand { top: calc(18px + var(--safe-top)); color: var(--cv-brand-color); }
 .cv-clean .cv-main { max-width: 430px; margin: 30px auto 0; }
 .cv-clean .cv-main > .card, .cv-clean .cv-main > .cv-profile { border-radius: 0; border: 0; box-shadow: none; background: transparent; margin-top: 0; }
