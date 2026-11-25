@@ -2,13 +2,15 @@
 // 两端只负责「怎么跳转」，菜单项本身（文案/图标/分组/目标）在此一处定义。
 // kind: route=站内跳转；public=打开自己公开名片（query 可为 ?save=1 = 弹名片二维码大图）；share=分享名片；logout=退出登录。
 // path 可带 ?focus=xxx，由 CardEdit.vue 的 applyFocus 响应（模板与配色等子页）。
+// icon 一律填 client/src/utils/icons.js 的 FUNC_ICONS 名称：整套 Lucide 描边风格，
+// 禁止在这里写 emoji 或特殊字符（彩色 emoji 会破坏导航统一观感，且不同系统渲染不一致）。
 
 export const BOTTOM_TABS = [
-  { path: '/me', label: '名片', ico: '▤', exact: true },
-  { path: '/me/contacts', label: '名片夹', ico: '▤', exact: false },
-  { path: '/market', label: '集市', ico: '⌕', exact: true, feature: true },
-  { path: '/me/notifications', label: '消息', ico: '🔔', exact: false },
-  { path: '/me/profile', label: '我的', ico: '◉', exact: false }
+  { path: '/me', label: '名片', icon: 'card', exact: true },
+  { path: '/me/contacts', label: '名片夹', icon: 'contacts', exact: false },
+  { path: '/market', label: '集市', icon: 'compass', exact: true, feature: true },
+  { path: '/me/notifications', label: '消息', icon: 'bell', exact: false },
+  { path: '/me/profile', label: '我的', icon: 'user', exact: false }
 ]
 // 统计从底部移除，仍保留在抽屉「我的」组（入口不丢）；集市保持正中凸起位。
 
@@ -20,15 +22,15 @@ export const DRAWER_GROUPS = [
   {
     title: '快捷',
     items: [
-      { label: '分享名片', ico: '↗', kind: 'share' },
-      { label: '浏览统计 / 订单', ico: '📊', kind: 'route', path: '/me/stats' },
-      { label: '套餐 / 续期', ico: '💎', kind: 'route', path: '/me/plans' }
+      { label: '分享名片', icon: 'share', kind: 'share' },
+      { label: '浏览统计 / 订单', icon: 'chart', kind: 'route', path: '/me/stats' },
+      { label: '套餐 / 续期', icon: 'gem', kind: 'route', path: '/me/plans' }
     ]
   },
   {
     title: '账户',
     items: [
-      { label: '退出登录', ico: '⏻', kind: 'logout', danger: true }
+      { label: '退出登录', icon: 'logout', kind: 'logout', danger: true }
     ]
   }
 ]

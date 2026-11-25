@@ -15,7 +15,7 @@
         <section v-for="g in visibleGroups" :key="g.title" class="m-group">
           <div class="m-group-title">{{ g.title }}</div>
           <button v-for="it in g.items" :key="it.label" :class="{ danger: it.danger }" @click="onNav(it)">
-            <i>{{ it.ico }}</i>{{ it.label }}
+            <i><AppIcon :name="it.icon" :size="18" /></i>{{ it.label }}
             <span v-if="it.badge === 'unread' && unread" class="m-badge">{{ unread }}</span>
           </button>
         </section>
@@ -25,7 +25,7 @@
 
     <nav class="m-tabs">
       <button v-for="t in tabs" :key="t.path" :class="{ on: isActive(t), feature: t.feature }" @click="go(t.path)">
-        <i>{{ t.ico }}<em v-if="t.path === '/me/notifications' && unread" class="m-tab-badge">{{ unread > 99 ? '99+' : unread }}</em></i><span>{{ t.label }}</span>
+        <i><AppIcon :name="t.icon" :size="20" /><em v-if="t.path === '/me/notifications' && unread" class="m-tab-badge">{{ unread > 99 ? '99+' : unread }}</em></i><span>{{ t.label }}</span>
       </button>
     </nav>
   </div>
@@ -35,6 +35,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
+import AppIcon from '../components/AppIcon.vue'
 import { auth, ui, closeDrawer, logout, showToast } from '../store'
 import { shareOrCopy } from '../utils/share'
 import { isWeChat } from '../utils/save-image'
@@ -148,7 +149,7 @@ onBeforeUnmount(() => {
 .m-group-title { padding: 4px 18px 8px; font-size: 11px; letter-spacing: .16em; color: var(--muted); font-weight: 700; }
 .m-group button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 18px; font-size: 14px; text-align: left; color: var(--text); }
 .m-group button:active { background: #f1f5f9; }
-.m-group button i { width: 22px; text-align: center; font-style: normal; color: var(--primary); }
+.m-group button i { width: 22px; height: 22px; flex: 0 0 22px; display: inline-flex; align-items: center; justify-content: center; text-align: center; font-style: normal; color: var(--primary); }
 .m-group button.danger { color: var(--danger); }
 .m-group button.danger i { color: var(--danger); }
 .m-badge { margin-left: auto; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: #ef4444; color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
@@ -158,7 +159,7 @@ onBeforeUnmount(() => {
   padding-bottom: env(safe-area-inset-bottom); background: #fff; border-top: 1px solid var(--line); box-shadow: 0 -4px 18px rgba(15,23,42,.06);
 }
 .m-tabs button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0 7px; font-size: 11px; color: var(--muted); }
-.m-tabs button i { position: relative; font-style: normal; font-size: 18px; line-height: 1.2; }
+.m-tabs button i { position: relative; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-style: normal; font-size: 18px; line-height: 1.2; }
 .m-tab-badge { position: absolute; top: -6px; right: -12px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: #ef4444; color: #fff; font-size: 10px; font-style: normal; line-height: 16px; text-align: center; }
 .m-tabs button.on { color: var(--primary); font-weight: 700; }
 /* 名片集市为重点入口：中间凸起圆钮，不随页面主题变化 */

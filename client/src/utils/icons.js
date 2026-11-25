@@ -49,5 +49,14 @@ export const FUNC_ICONS = {
   close: { path: 'M18 6L6 18M6 6l12 12', color: '' },
   camera: { path: 'M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z', color: '' },
   // 微信「我 → 我的二维码」同款：三个定位方框 + 右下角点阵，语义就是二维码，不做品牌色
-  qrcode: { path: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM18 14h3v3h-3zM14 18h3v3h-3zM18 18h3v3h-3z', color: '' }
+  qrcode: { path: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM18 14h3v3h-3zM14 18h3v3h-3zM18 18h3v3h-3z', color: '' },
+  // 以下为导航栏统一风格（Lucide 描边，与上面功能图标同一套 1.9 线宽），不再混用 emoji / 特殊字符
+  card: { path: 'M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM10 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM6.5 17c.6-1.2 1.7-1.8 3-1.8s2.4.6 3 1.8M14 9h5M14 13h5', color: '' },
+  contacts: { path: 'M8 3h11a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM4 8v10a2 2 0 0 0 2 2h11M11 8h5M11 12h5M11 16h3', color: '' },
+  compass: { path: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z', color: '' },
+  bell: { path: 'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0', color: '' },
+  user: { path: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z', color: '' },
+  chart: { path: 'M3 3v18h18M18 17V9M13 17V5M8 17v-3', color: '' },
+  gem: { path: 'M6 3h12l4 6-10 12L2 9l4-6zM2 9h20M12 21L7 9l5-6 5 6-5 12z', color: '' },
+  logout: { path: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9', color: '' }
 }
