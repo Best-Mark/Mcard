@@ -247,12 +247,12 @@ function writeSyncState(patch) {
 
 // 回填数据库里以 /uploads/ 开头的图片 URL 为 OSS URL。
 // 按文件名匹配：本地 /uploads/foo.png → OSS URL（client.getUrl 生成）。
-// 只更新确实存在的文件名，避免误改外部链接；card_materials/user_assets 的 url 也可能是外链，同样只改 /uploads/ 前缀。
+// 只更新确实存在的文件名，避免误改外部链接；card_materials 的 url 也可能是外链，同样只改 /uploads/ 前缀。
+// user_assets（历史素材库）已停用，不再参与回填。
 const DB_IMAGE_FIELDS = {
   cards: ['avatar', 'cover', 'logo', 'wechat_qr', 'alipay_qr', 'wechat_pay_qr', 'alipay_pay_qr'],
   users: ['avatar'],
-  card_materials: ['url'],
-  user_assets: ['url']
+  card_materials: ['url']
 }
 function backfillDbUrls(urlOf) {
   let updated = 0

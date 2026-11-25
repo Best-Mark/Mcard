@@ -3,12 +3,17 @@
     <view class="body">
       <view class="card">
         <view class="section">👤 账号头像</view>
-        <view class="avatar-row" @tap="chooseAvatar">
+        <view class="avatar-row">
           <image v-if="avatar" class="avatar" :src="avatar" mode="aspectFill" />
           <view v-else class="avatar ph">{{ (user.phone || '名').slice(0, 1) }}</view>
-          <view class="muted small">点击更换账号头像（自动压缩转 WebP，≤5MB）<br />属于账号资料，与名片 LOGO 分开管理</view>
+          <view class="muted small">属于账号资料，与名片 LOGO 分开管理；支持微信头像或自定义图片</view>
         </view>
-        <button class="btn tiny primary" :disabled="busy" style="margin-top:16rpx" @tap="chooseAvatar">{{ busy ? '上传中…' : '上传头像' }}</button>
+        <!-- 账户头像两条独立通道：微信头像 / 自定义上传（不走素材库） -->
+        <button v-if="wxAvatar" class="btn tiny" :disabled="busy || avatar === wxAvatar" style="margin-top:16rpx" @tap="useWxAvatar">使用已绑定微信头像</button>
+        <!-- #ifdef MP-WEIXIN -->
+        <button class="btn tiny" open-type="chooseAvatar" :disabled="busy" style="margin-top:12rpx" @chooseavatar="onChooseWxAvatar">选择微信头像</button>
+        <!-- #endif -->
+        <button class="btn tiny primary" :disabled="busy" style="margin-top:12rpx" @tap="chooseAvatar">{{ busy ? '上传中…' : '上传自定义头像' }}</button>
       </view>
       <view class="card">
         <view class="section">账号信息</view>
@@ -30,6 +35,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { api, baseUrl, toast } from '../../utils/request'
 
 const avatar = ref('')
+const wxAvatar = ref('')
 const busy = ref(false)
 const saving = ref(false)
 const nickname = ref('')
@@ -37,7 +43,26 @@ const user = ref(uni.getStorageSync('mcard_user') || {})
 
 async function load() {
   nickname.value = user.value.nickname || ''
-  try { avatar.value = (await api.get('/api/auth/avatar', true))?.avatar || '' } catch {}
+  try {
+    const info = await api.get('/api/auth/avatar', true)
+    avatar.value = info?.avatar || ''
+    wxAvatar.value = info?.wxAvatar || ''
+  } catch {}
+}
+async function useWxAvatar() {
+  if (busy.value || !wxAvatar.value) return
+  busy.value = true
+  try {
+    const d = await api.put('/api/auth/avatar', { useWxAvatar: true }, true)
+    avatar.value = d?.avatar || wxAvatar.value
+    toast('已切换为微信头像', 'success')
+  } catch (e) { toast(e.message || '切换失败') }
+  finally { busy.value = false }
+}
+function onChooseWxAvatar(e) {
+  if (busy.value) return
+  const filePath = e?.detail?.avatarUrl || ''
+  if (filePath) uploadAvatar(filePath)
 }
 async function saveNickname() {
   if (saving.value) return
@@ -58,9 +83,16 @@ onShow(load)
 
 function chooseAvatar() {
   if (busy.value) return
-  uni.chooseImage({ count: 1, sizeType: ['compressed'], success: res => uploadAvatar(res.tempFilePaths[0]) })
+  busy.value = true
+  uni.chooseImage({
+    count: 1,
+    sizeType: ['compressed'],
+    success: res => uploadAvatar(res.tempFilePaths?.[0]),
+    fail: err => { toast(err.errMsg || '选择图片失败'); busy.value = false }
+  })
 }
 function uploadAvatar(filePath) {
+  if (!filePath) { busy.value = false; return }
   busy.value = true
   const token = uni.getStorageSync('mcard_token')
   uni.uploadFile({

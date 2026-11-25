@@ -343,33 +343,6 @@ export function traceVisit(slug, source = '', city = '') {
   return request(`/api/cards/public/${slug}/trace`, { method: 'POST', data: { source, city } }).catch(() => null)
 }
 
-// ---------- 图片素材库 ----------
-export function getAssets() {
-  return request('/api/assets', { auth: true }).then(d => d?.list || []).catch(() => [])
-}
-export function uploadAsset(filePath) {
-  return new Promise((resolve, reject) => {
-    if (!API_BASE) return reject(new Error('API 域名未配置'))
-    const token = uni.getStorageSync('mcard_token')
-    uni.uploadFile({
-      url: API_BASE + '/api/assets/upload',
-      filePath,
-      name: 'file',
-      header: token ? { Authorization: `Bearer ${token}` } : {},
-      success: res => {
-        let d = {}
-        try { d = JSON.parse(res.data) } catch {}
-        if (res.statusCode >= 200 && res.statusCode < 300 && d.code === 0) return resolve(d.data)
-        reject(new Error(d.msg || '上传失败'))
-      },
-      fail: err => reject(new Error(err.errMsg || '网络异常'))
-    })
-  })
-}
-export function deleteAsset(id) {
-  return request('/api/assets/' + id, { method: 'DELETE', auth: true })
-}
-
 // ---------- 分享素材池（对齐 MShop 的分享池兜底，唯一真相源在服务端 settings.js）----------
 // ⚠️ 小程序新增纯 require js 文件在部分开发者工具热重载时会白屏，故池逻辑并入本既有文件，不新建模块。
 // 池内容来自匿名接口 /api/public/config 下发的 share_title / share_desc / share_image；

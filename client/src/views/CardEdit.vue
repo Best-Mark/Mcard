@@ -37,14 +37,17 @@
             <div class="identity-block">
               <div class="block-title">🏢 公司 / 品牌 LOGO</div>
               <div class="field">
-                <!-- 点缩略图直接开素材库；「从素材库选」按钮保持同行，窄屏时提示文字先省略 -->
+                <!-- LOGO 独立上传（2026-11-26 用户定，不走素材库）：点缩略图展开上传面板，保留自动去背景 -->
                 <div class="logo-row">
-                  <button type="button" class="logo-thumb-btn" title="点击从素材库替换 LOGO" aria-label="更换公司 LOGO" @click="openLogoPicker">
+                  <button type="button" class="logo-thumb-btn" title="点击上传替换 LOGO" aria-label="更换公司 LOGO" @click="logoOpen = !logoOpen">
                     <img v-if="form.logo" :src="form.logo" alt="当前 LOGO" />
                     <span v-else class="logo-thumb-empty">+</span>
                   </button>
-                  <span class="small muted logo-hint">{{ form.logo ? '当前 LOGO · 点击图片可替换' : '点击图片从素材库选择 LOGO' }}</span>
-                  <AssetPicker ref="logoPicker" v-model="form.logo" label="从素材库选" />
+                  <span class="small muted logo-hint">{{ form.logo ? '当前 LOGO · 点击图片可替换' : '点击图片上传 LOGO（自动去背景）' }}</span>
+                </div>
+                <div v-if="logoOpen" class="logo-editor">
+                  <div class="logo-editor-head"><b>上传 LOGO</b><button type="button" class="logo-editor-close" aria-label="收起" @click="logoOpen = false">✕</button></div>
+                  <LogoUploader :model-value="form.logo" @update:model-value="onLogoApplied" />
                 </div>
               </div>
             </div>
@@ -206,7 +209,7 @@ import api from '../api'
 import { showToast, toggleDrawer } from '../store'
 import { THEMES, paletteOf } from '../utils/themes'
 import { refreshPosition, setManualPosition, reverseGeocode, geocode } from '../utils/geo'
-import AssetPicker from '../components/AssetPicker.vue'
+import LogoUploader from '../components/LogoUploader.vue'
 import BottomSheet from '../components/BottomSheet.vue'
 import BottomSelect from '../components/BottomSelect.vue'
 import CardPreview from '../components/CardPreview.vue'
@@ -216,8 +219,13 @@ const RegionPicker = defineAsyncComponent(() => import('../components/RegionPick
 
 const router = useRouter()
 const route = useRoute()
-const logoPicker = ref(null)
-function openLogoPicker() { logoPicker.value?.open() }
+// LOGO 独立上传面板：点缩略图展开，应用后收起；去背景由 LogoUploader 负责
+const logoOpen = ref(false)
+function onLogoApplied(url) {
+  if (!url) return
+  form.value.logo = url
+  logoOpen.value = false
+}
 const DEFAULT_TPL = 'contact'
 const DEFAULT_PAL = paletteOf(DEFAULT_TPL)
 const blank = {
@@ -618,6 +626,10 @@ async function finish() {
 .logo-thumb-btn img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .logo-thumb-empty { display: grid; place-items: center; width: 100%; height: 100%; color: var(--muted, #94a3b8); font-size: 22px; }
 .logo-hint { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.logo-editor { margin-top: 10px; padding: 12px; border: 1px solid var(--line, #e8edf4); border-radius: 10px; background: var(--bg-page, #f8fafc); }
+.logo-editor-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.logo-editor-head b { font-size: 13px; }
+.logo-editor-close { border: 0; background: transparent; color: var(--muted, #64748b); font-size: 15px; cursor: pointer; }
 .locate-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .locate-row .mono { color: var(--muted); }
 .market-value { padding: 12px 14px; margin-bottom: 14px; border-radius: 12px; background: linear-gradient(135deg, #ecfeff, #eff6ff); border: 1px solid #c7d2fe; }
@@ -635,7 +647,7 @@ async function finish() {
 .region-sheet-head { padding: 16px 18px 6px; }
 .region-sheet-body { padding: 0 18px 18px; max-height: 70vh; overflow-y: auto; }
 .link-row { display: grid; grid-template-columns: 1fr 1.5fr auto; gap: 8px; margin-bottom: 8px; }
-/* 公司相册：素材库选图后的缩略图网格，移除按钮右上角常驻 */
+/* 公司相册：独立上传后的缩略图网格，移除按钮右上角常驻 */
 .gallery-upload { display: inline-flex; align-items: center; justify-content: center; padding: 10px 18px; border-radius: 9px; background: var(--primary, #2563eb); color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
 .gallery-upload.disabled { opacity: .55; cursor: not-allowed; }
 .gallery-upload input { display: none; }

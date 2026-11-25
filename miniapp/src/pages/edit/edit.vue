@@ -138,7 +138,7 @@
             <picker :range="eyeLabels" :value="eyeIdx" @change="e => form.qr_style.eye = eyeValues[e.detail.value]"><view class="picker">{{ eyeLabels[eyeIdx] }} ▾</view></picker>
           </view>
           <view class="field"><text class="label">渐变终点色（留空=纯色）</text><input v-model="form.qr_style.gradTo" class="input" placeholder="#06b6d4，留空纯色" /></view>
-          <button class="btn tiny" @tap="openAssets('qr_style.bgImage')">从素材库选背景图</button>
+          <button class="btn tiny" :disabled="qrBgBusy" @tap="chooseQrBg">{{ qrBgBusy ? '上传中…' : '上传二维码背景图' }}</button>
           <view v-if="form.qr_style.bgImage" class="muted small" style="margin-top:8rpx">已设置背景图 · <text @tap="form.qr_style.bgImage = ''">移除</text></view>
         </view>
         </view>
@@ -279,22 +279,27 @@ onLoad(async options => {
   }
   uni.$on('map-picked', onMapPicked)
 })
-const assetTarget = ref('')
-function openAssets(field) {
-  assetTarget.value = field
-  uni.$off('asset-picked')
-  uni.$once('asset-picked', url => {
-    const path = assetTarget.value
-    if (!path) return
-    if (path.includes('.')) {
-      const [a, b] = path.split('.')
-      if (!form.value[a]) form.value[a] = {}
-      form.value[a][b] = url
-    } else form.value[path] = url
+// 二维码背景图：独立上传（不走素材库），成对防重入（disabled + busy 守卫）
+const qrBgBusy = ref(false)
+function chooseQrBg() {
+  if (qrBgBusy.value) return
+  qrBgBusy.value = true
+  uni.chooseImage({
+    count: 1,
+    sizeType: ['compressed'],
+    success: async res => {
+      try {
+        const url = res.tempFilePaths?.[0]
+        if (!url) throw new Error('未选择图片')
+        form.value.qr_style.bgImage = await uploadImage(url)
+        toast('背景图已设置，保存资料后生效', 'success')
+      } catch (e) { toast(e.message || '上传失败') }
+      finally { qrBgBusy.value = false }
+    },
+    fail: err => { toast(err.errMsg || '选择图片失败'); qrBgBusy.value = false }
   })
-  uni.navigateTo({ url: '/pages/assets/assets' })
 }
-onUnmounted(() => { uni.$off('map-picked', onMapPicked); uni.$off('asset-picked') })
+onUnmounted(() => { uni.$off('map-picked', onMapPicked) })
 
 async function loadTemplates() {
   if (templatesCache.length) templates.value = templatesCache

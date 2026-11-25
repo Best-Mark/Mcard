@@ -26,8 +26,24 @@
           <div class="pf-slogan">账户中心 · 管理你的登录资料</div>
         </button>
       </div>
-      <!-- 隐藏的素材库实例：头像点击时 open() 唤起，单选即保存（avatarPick） -->
-      <AssetPicker ref="avatarPicker" v-model="avatarPick" label="从素材库选头像" class="pf-avatar-picker" />
+      <!-- 账户头像：微信头像 / 自定义上传（2026-11-26 用户定，不走素材库） -->
+      <BottomSheet :show="avatarMenuOpen" @update:show="avatarMenuOpen = $event">
+        <div class="avatar-sheet">
+          <div class="avatar-sheet-head">
+            <b>更换账户头像</b>
+            <button type="button" class="avatar-sheet-close" aria-label="关闭" @click="avatarMenuOpen = false">✕</button>
+          </div>
+          <button type="button" class="avatar-sheet-item" :disabled="avatarSaving || !wxAvatar" @click="useWxAvatar">
+            使用微信头像
+            <span v-if="!wxAvatar" class="avatar-sheet-sub">（未获取到微信头像，请重新微信登录）</span>
+          </button>
+          <label class="avatar-sheet-item" :class="{ disabled: avatarSaving }">
+            自定义上传图片
+            <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" :disabled="avatarSaving" @change="onAvatarFile" />
+          </label>
+          <button type="button" class="avatar-sheet-cancel" @click="avatarMenuOpen = false">取消</button>
+        </div>
+      </BottomSheet>
 
       <!-- 套餐有效期玻璃条：到期日期来自 card.expiresAt（兼容 expires_at） -->
       <div class="pf-plan">
@@ -99,16 +115,17 @@ import { useRouter } from 'vue-router'
 import api from '../api'
 import { auth, logout, toggleDrawer, showToast } from '../store'
 import AppIcon from '../components/AppIcon.vue'
-import AssetPicker from '../components/AssetPicker.vue'
+import BottomSheet from '../components/BottomSheet.vue'
 import { isWeChat } from '../utils/save-image'
 
 const inWechat = isWeChat()
 const router = useRouter()
 const card = ref(null)
 const avatar = ref('')
+const wxAvatar = ref('')
 const avatarSaving = ref(false)
-const avatarPicker = ref(null)
-function openAvatarPicker() { avatarPicker.value?.open() }
+const avatarMenuOpen = ref(false)
+function openAvatarPicker() { avatarMenuOpen.value = true }
 const loading = ref(true)
 const loadError = ref('')
 const unread = ref(0)
@@ -144,30 +161,45 @@ async function load() {
     const [c, a] = await Promise.all([api.get('/api/cards/mine'), api.get('/api/auth/avatar')])
     card.value = c?.data?.data || null
     avatar.value = a?.data?.data?.avatar || ''
+    wxAvatar.value = a?.data?.data?.wxAvatar || ''
     loadUnread()
   } catch (e) { loadError.value = e.message || '网络异常' }
   finally { loading.value = false }
 }
 onMounted(load)
 
-// 头像唯一来源 = 图片素材库（项目不再有独立本地上传）；选中即保存到服务端。
-const avatarPick = computed({
-  get: () => avatar.value,
-  set: async url => {
-    if (!url || url === avatar.value || avatarSaving.value) return
-    avatarSaving.value = true
-    try {
-      await saveAvatar(url)
-      showToast('头像已更新', 'success')
-    } catch (e) { showToast(e.message || '头像更新失败', 'error') }
-    finally { avatarSaving.value = false }
-  }
-})
-async function saveAvatar(url) {
-  if (!url) return
-  const { data } = await api.put('/api/auth/avatar', { avatar: url })
-  avatar.value = data?.data?.avatar || url
-  // 不再回写 card.value.avatar：账户头像与名片头像严格分开
+// 账户头像两条独立通道（不走素材库）：切回微信头像 / 自定义上传。
+// 微信头像原值只存服务端 users.wx_avatar，前端只发起 useWxAvatar 指令，不信任传入 URL。
+async function useWxAvatar() {
+  if (avatarSaving.value || !wxAvatar.value) return
+  avatarMenuOpen.value = false
+  avatarSaving.value = true
+  try {
+    const { data } = await api.put('/api/auth/avatar', { useWxAvatar: true })
+    avatar.value = data?.data?.avatar || ''
+    showToast('已切换为微信头像', 'success')
+  } catch (e) { showToast(e.message || '切换失败', 'error') }
+  finally { avatarSaving.value = false }
+}
+async function onAvatarFile(e) {
+  if (avatarSaving.value) return
+  const file = e.target.files?.[0]
+  e.target.value = ''
+  if (!file) return
+  avatarMenuOpen.value = false
+  avatarSaving.value = true
+  try {
+    const fd = new FormData()
+    fd.append('file', file)
+    const { data: up } = await api.post('/api/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+    const url = up?.data?.url
+    if (!url) throw new Error('上传未返回图片地址')
+    const { data } = await api.put('/api/auth/avatar', { avatar: url })
+    avatar.value = data?.data?.avatar || url
+    // 账户头像与名片头像严格分开，不回写 card.value.avatar
+    showToast('头像已更新', 'success')
+  } catch (e) { showToast(e.message || '头像更新失败', 'error') }
+  finally { avatarSaving.value = false }
 }
 function goQr() {
   if (!card.value?.slug) return showToast('还没有名片', 'error')
@@ -212,8 +244,15 @@ function logoutNow() { logout(); router.push('/') }
 /* 右侧给「二维码 + 设置」两个圆形按钮留位，避免姓名/副标题被压到按钮底下 */
 .pf-ident { flex: 1; min-width: 0; padding-right: 72px; background: transparent; border: 0; color: inherit; text-align: left; cursor: pointer; font: inherit; }
 .pf-ident:active { opacity: .75; }
-/* 隐藏素材库的触发按钮，只保留它的弹层（头像点击用 open() 唤起） */
-.pf-avatar-picker :deep(.ap-trigger) { display: none; }
+/* 账户头像弹层：微信头像 / 自定义上传 */
+.avatar-sheet { padding: 8px 18px 18px; }
+.avatar-sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 0 12px; font-size: 15px; }
+.avatar-sheet-close { border: 0; background: transparent; color: var(--muted, #64748b); font-size: 17px; cursor: pointer; }
+.avatar-sheet-item { position: relative; display: block; width: 100%; padding: 14px 12px; margin-bottom: 8px; border: 1px solid var(--line, #e8edf4); border-radius: 10px; background: var(--bg-page, #f8fafc); color: var(--text, #0f172a); font-size: 14px; text-align: left; cursor: pointer; }
+.avatar-sheet-item:disabled, .avatar-sheet-item.disabled { opacity: .55; cursor: not-allowed; }
+.avatar-sheet-item input { position: absolute; top: 0; left: 0; right: 0; bottom: 0; opacity: 0; cursor: pointer; }
+.avatar-sheet-sub { display: block; margin-top: 4px; color: var(--muted, #64748b); font-size: 11px; }
+.avatar-sheet-cancel { width: 100%; padding: 12px; border: 0; border-radius: 10px; background: #eef2f7; color: var(--text, #0f172a); font-size: 14px; cursor: pointer; }
 .pf-name { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pf-status { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; flex-shrink: 0; }
 .pf-status.ok { background: rgba(255,255,255,.2); color: #fff; }

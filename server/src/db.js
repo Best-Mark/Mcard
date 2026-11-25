@@ -121,7 +121,9 @@ for (const [col, def] of [
   ['wx_openid', "TEXT NOT NULL DEFAULT ''"],
   ['wx_unionid', "TEXT NOT NULL DEFAULT ''"],
   ['avatar', "TEXT NOT NULL DEFAULT ''"],
-  ['auth_source', "TEXT NOT NULL DEFAULT 'password'"]
+  ['auth_source', "TEXT NOT NULL DEFAULT 'password'"],
+  // 微信头像原值单独留存：用户自定义上传头像后仍可随时切回微信头像（不被覆盖）
+  ['wx_avatar', "TEXT NOT NULL DEFAULT ''"]
 ]) addColumnIfMissing('users', col, def)
 db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_wx_openid ON users(wx_openid) WHERE wx_openid <> '';`)
 db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_wx_unionid ON users(wx_unionid) WHERE wx_unionid <> '';`)
@@ -241,7 +243,8 @@ CREATE TABLE IF NOT EXISTS regions (
 );
 CREATE INDEX IF NOT EXISTS idx_regions_parent ON regions(parent_code, level);
 
--- 用户图片素材库：上传过的图片统一入库，编辑名片时可随时从中挑选替换（用户级，跨字段复用）
+-- 历史遗留的图片素材库表：2026-11-26 起所有图片入口改为独立上传，素材库功能已下线。
+-- 表保留仅为存量库兼容（不删数据、不重建），新代码不得再读写它。
 CREATE TABLE IF NOT EXISTS user_assets (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
