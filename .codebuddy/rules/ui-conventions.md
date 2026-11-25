@@ -23,10 +23,21 @@
 - 公开页：dock = 打电话 / 复制号码 / 存入通讯录 / 分享，封面左上返回 `‹`。
 - 不再有临时换肤圆点；配色由独立页 `/me/card/style` 正式保存。
 
-## 4. 底部弹层层级（踩坑固化）
+## 4. 跨系统兼容（用户 2026-11-25 强调：不能顾此失彼）
+
+构建基线：`client/vite.config.js` 的 `target:'es2018'` + `cssTarget:'chrome61'` 已让 Vite 转译新 JS 语法；但以下 CSS 不会被 cssTarget 降级，手写时必须自带兜底：
+
+- **禁止 `inset:0`**（老微信 X5 / iOS WebView 不认，遮罩不铺满）→ 用 `top:0;right:0;bottom:0;left:0` 四边声明。
+- **`color-mix()`** 只用于高亮/描边，前面必须先写一行纯色 fallback（如 `background:#eef4ff; background:color-mix(...)`），不支持时保留纯色。
+- **`env(safe-area-inset-bottom)`** 必须写成 `padding-bottom: 10px; padding-bottom: calc(10px + env(...))` 两级，老内核不认 env 时保留第一级。
+- **`overscroll-behavior:contain`** 不支持只是少一层滚动隔离，无害，可保留。
+- 宽屏（PC 桌面壳 `@media(min-width:900px)`）下 fixed 底部条限宽 560px 居中，避免通栏横条。
+- 小程序 `miniapp/` 保持 uni-app 原生、不用 web-view；H5 新写法不得破坏 PC 桌面壳与小程序原生三端。
+
+## 5. 底部弹层层级（踩坑固化）
 
 全局 tabbar（`MemberNav`）z-index 110。任何底部弹层必须：遮罩 120、弹层 121、常驻功能条 105（或统一用 `BottomSheet` 的 9999）；弹层加 `visibility:hidden` + `overscroll-behavior:contain` + 打开时锁 body 滚动，否则会出现「弹层被 tabbar 盖住点不到」「上拖带动背后页面」。
 
-## 5. 独立设计页不叠 tabbar
+## 6. 独立设计页不叠 tabbar
 
 `/me/card/style`、`/me/card/market` 自带底部功能条，`App.vue` 的 `hideMemberNav` 按路由隐藏全局 `MemberNav`；保存退出回 `/me` 后恢复。

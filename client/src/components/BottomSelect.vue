@@ -50,6 +50,7 @@ function pick(v) {
 .bsel-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--line); }
 .bsel-list { max-height: 56vh; overflow-y: auto; overscroll-behavior: contain; padding: 6px 0 10px; }
 .bsel-option { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 13px 18px; font-size: 14px; border-bottom: 1px solid var(--line); }
-.bsel-option.on { color: var(--primary, #2563eb); font-weight: 700; background: color-mix(in srgb, var(--primary, #2563eb) 6%, transparent); }
+/* 先给老 WebView 认识的纯色底，再用 color-mix 覆盖成淡主题色（不支持则保留前者） */
+.bsel-option.on { color: var(--primary, #2563eb); font-weight: 700; background: #f0f6ff; background: color-mix(in srgb, var(--primary, #2563eb) 6%, transparent); }
 .bsel-check { color: var(--primary, #2563eb); font-weight: 800; }
 </style>

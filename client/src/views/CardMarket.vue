@@ -169,14 +169,15 @@ async function done() {
 .topbar .back { font-size: 30px; line-height: 1; color: var(--text); }
 .topbar .title { font-weight: 700; font-size: 15px; }
 .topbar .spacer { flex: 1; }
-.badge.on { background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--primary); }
+.badge.on { background: #eef4ff; background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--primary); }
 .preview-panel { margin-top: 12px; }
 .preview-card { padding: 12px; }
 .preview-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 
 /* 层级与实体名片设计一致：tabbar=110，launcher=105，遮罩=120，弹层=121；
    低于 tabbar 会让弹层底部字段点不到，visibility 隐藏避免拦截背后滚动。 */
-.sheet-mask { position: fixed; inset: 0; background: rgba(15,23,42,.45); z-index: 120; opacity: 0; pointer-events: none; transition: opacity .2s; }
+/* 四边定位兼容老 WebView */
+.sheet-mask { position: fixed; top: 0; right: 0; bottom: 0; left: 0; background: rgba(15,23,42,.45); z-index: 120; opacity: 0; pointer-events: none; transition: opacity .2s; }
 .sheet-mask.show { opacity: 1; pointer-events: auto; }
 .edit-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 121; background: #fff; border-radius: 16px 16px 0 0; transform: translateY(105%); transition: transform .24s ease; visibility: hidden; max-height: 78vh; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
 .edit-sheet.show { transform: translateY(0); visibility: visible; }
@@ -185,7 +186,7 @@ async function done() {
 .sheet-grab span { width: 36px; height: 4px; border-radius: 2px; background: var(--line); }
 .control-tabs { display: flex; gap: 4px; padding: 6px 12px; overflow-x: auto; border-bottom: 1px solid var(--line); }
 .control-tab { position: relative; flex: 0 0 auto; display: flex; align-items: center; gap: 5px; padding: 8px 12px; border-radius: 8px; color: var(--muted); font-size: 13px; }
-.control-tab.on { background: color-mix(in srgb, var(--primary) 10%, transparent); color: var(--primary); font-weight: 700; }
+.control-tab.on { background: #eef4ff; background: color-mix(in srgb, var(--primary) 10%, transparent); color: var(--primary); font-weight: 700; }
 .tab-ico { width: 14px; height: 14px; border-radius: 4px; background: currentColor; opacity: .75; flex: 0 0 14px; }
 .ico-status { border-radius: 50%; }
 .ico-industry { border-radius: 3px; }
@@ -196,7 +197,8 @@ async function done() {
 /* tabbar 在本页已隐藏，功能条贴底 */
 .bottom-launcher { position: fixed; left: 0; right: 0; bottom: 0; z-index: 105; display: flex; gap: 6px; padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid var(--line); box-shadow: 0 -4px 16px rgba(0,0,0,.06); }
 .bottom-launcher button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 0; border-radius: 8px; color: var(--muted); font-size: 12px; }
-.bottom-launcher button.on { color: var(--primary); background: color-mix(in srgb, var(--primary) 10%, transparent); }
+.bottom-launcher button.on { color: var(--primary); background: #eef4ff; background: color-mix(in srgb, var(--primary) 10%, transparent); }
+@media (min-width: 900px) { .bottom-launcher { max-width: 560px; left: 50%; right: auto; transform: translateX(-50%); border-radius: 14px 14px 0 0; } }
 .market-value { background: var(--bg-page); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
 .market-value p { margin: 4px 0 0; }
 .market-checks { display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px; color: var(--muted); }

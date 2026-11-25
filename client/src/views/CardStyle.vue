@@ -247,7 +247,8 @@ async function done() {
 
 /* 与实体名片设计同款层级：tabbar=110，launcher=105，遮罩=120，弹层=121。
    ⚠️ 层级低于 tabbar 会导致弹层里底部字段被 tabbar 盖住点不到；visibility 必须隐藏，否则拦截背后滚动。 */
-.sheet-mask { position: fixed; inset: 0; background: rgba(15,23,42,.45); z-index: 120; opacity: 0; pointer-events: none; transition: opacity .2s; }
+/* 四边定位兼容老 WebView（inset:0 在部分 X5/iOS 内核不生效） */
+.sheet-mask { position: fixed; top: 0; right: 0; bottom: 0; left: 0; background: rgba(15,23,42,.45); z-index: 120; opacity: 0; pointer-events: none; transition: opacity .2s; }
 .sheet-mask.show { opacity: 1; pointer-events: auto; }
 .edit-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 121; background: #fff; border-radius: 16px 16px 0 0; transform: translateY(105%); transition: transform .24s ease; visibility: hidden; max-height: 78vh; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
 .edit-sheet.show { transform: translateY(0); visibility: visible; }
@@ -256,7 +257,7 @@ async function done() {
 .sheet-grab span { width: 36px; height: 4px; border-radius: 2px; background: var(--line); }
 .control-tabs { display: flex; gap: 4px; padding: 6px 12px; overflow-x: auto; border-bottom: 1px solid var(--line); }
 .control-tab { position: relative; flex: 0 0 auto; display: flex; align-items: center; gap: 5px; padding: 8px 12px; border-radius: 8px; color: var(--muted); font-size: 13px; }
-.control-tab.on { background: color-mix(in srgb, var(--primary) 10%, transparent); color: var(--primary); font-weight: 700; }
+.control-tab.on { background: #eef4ff; background: color-mix(in srgb, var(--primary) 10%, transparent); color: var(--primary); font-weight: 700; }
 .tab-ico { width: 14px; height: 14px; border-radius: 4px; background: currentColor; opacity: .75; flex: 0 0 14px; }
 .ico-template { border-radius: 3px; }
 .ico-color { border-radius: 50%; }
@@ -266,7 +267,9 @@ async function done() {
 /* tabbar 在本页已隐藏（App.vue hideMemberNav），功能条贴底；z105 仍低于弹层 120/121 */
 .bottom-launcher { position: fixed; left: 0; right: 0; bottom: 0; z-index: 105; display: flex; gap: 6px; padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid var(--line); box-shadow: 0 -4px 16px rgba(0,0,0,.06); }
 .bottom-launcher button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 0; border-radius: 8px; color: var(--muted); font-size: 12px; }
-.bottom-launcher button.on { color: var(--primary); background: color-mix(in srgb, var(--primary) 10%, transparent); }
+.bottom-launcher button.on { color: var(--primary); background: #eef4ff; background: color-mix(in srgb, var(--primary) 10%, transparent); }
+/* 宽屏（PC 桌面壳）限宽居中，与 sheet 对齐，避免通栏横条 */
+@media (min-width: 900px) { .bottom-launcher { max-width: 560px; left: 50%; right: auto; transform: translateX(-50%); border-radius: 14px 14px 0 0; } }
 /* 缩略图骨架与配色来自共享 template-thumbs.css，这里只把面板内改 3 列 + 缩略图稍矮 */
 .tpl-list { grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .tpl-thumb { height: 46px; }
@@ -275,7 +278,7 @@ async function done() {
 .swatch-grid.compact { grid-template-columns: repeat(6, 1fr); gap: 6px; }
 .swatch-item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 2px; border: 1px solid var(--line); border-radius: 8px; font-size: 11px; color: var(--muted); }
 .swatch-item i { width: 100%; height: 26px; border-radius: 6px; display: block; }
-.swatch-item.on { border-color: var(--primary); color: var(--primary); font-weight: 700; box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 18%, transparent); }
+.swatch-item.on { border-color: var(--primary); color: var(--primary); font-weight: 700; box-shadow: 0 0 0 2px #c7dbff; box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 18%, transparent); }
 .sheet-confirm { position: sticky; bottom: 0; padding: 10px 0 2px; background: #fff; margin-top: 6px; }
 .qr-presets { display: flex; gap: 8px; flex-wrap: wrap; }
 .qr-preset { display: flex; align-items: center; gap: 5px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 12px; }
