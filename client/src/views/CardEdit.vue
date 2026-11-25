@@ -118,18 +118,22 @@
             <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
           </div>
 
-          <!-- 公司相册：直接复用图片素材库多选，访客在名片上点开即进全屏看图 -->
+          <!-- 公司相册：独立上传（2026-11-26 用户定，不走素材库）；访客点开进全屏看图 -->
           <div v-show="active === 'materials'" class="card card-pad" id="focus-materials">
             <div class="section-title" style="margin-top:0">公司相册</div>
-            <p class="small muted" style="margin-bottom:12px">从图片素材库勾选即可，访客在名片上点开进全屏浏览、可返回。无需逐条填标题和网址。</p>
-            <AssetPicker v-model="galleryUrls" multiple :max="20" label="从素材库选图" />
+            <p class="small muted" style="margin-bottom:12px">直接上传图片，访客在名片上点开进全屏浏览、可返回。最多 {{ GALLERY_MAX }} 张。</p>
+            <label class="gallery-upload" :class="{ disabled: galleryUploading || galleryUrls.length >= GALLERY_MAX }">
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple :disabled="galleryUploading || galleryUrls.length >= GALLERY_MAX" @change="onGalleryUpload" />
+              {{ galleryUploading ? '上传中…' : (galleryUrls.length >= GALLERY_MAX ? '已达上限' : '+ 上传图片') }}
+            </label>
+            <div class="gallery-count small muted">已上传 {{ galleryUrls.length }} / {{ GALLERY_MAX }} 张</div>
             <div v-if="galleryUrls.length" class="gallery-edit-grid">
               <div v-for="(url, i) in galleryUrls" :key="url" class="gallery-edit-cell">
                 <img :src="url" :alt="'相册图片 ' + (i + 1)" loading="lazy" />
                 <button class="gallery-edit-del" aria-label="移除此图" @click="removeGalleryImage(url)">✕</button>
               </div>
             </div>
-            <div v-else class="small muted" style="padding:12px 0">还没有选图，点上方「从素材库选图」。</div>
+            <div v-else class="small muted" style="padding:12px 0">还没有图片，点上方「上传图片」。</div>
             <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
           </div>
 
@@ -242,8 +246,10 @@ const sections = computed(() => [
 const marketMeta = ref({ industries: [], cities: [] })
 const materials = ref([])
 const materialTypes = ref([])
-// 公司相册 = 素材库图片 URL 数组；内部仍映射成 card_materials 的 {type:'file',title,url} 结构，
-// 保持后端 /mine/materials 契约不变，但用户只需选图，不再逐条填类型/标题/网址。
+// 公司相册 = 图片 URL 数组；独立上传（不走素材库），内部仍映射成 card_materials 的 {type:'file',title,url}，
+// 保持后端 /mine/materials 契约不变。上限唯一真相源 = GALLERY_MAX（用户口径：相册自己带上限）。
+const GALLERY_MAX = 20
+const galleryUploading = ref(false)
 const galleryUrls = computed({
   get: () => materials.value.filter(m => m.url).map(m => m.url),
   set: urls => {
@@ -254,6 +260,31 @@ const galleryUrls = computed({
   }
 })
 function removeGalleryImage(url) { galleryUrls.value = galleryUrls.value.filter(u => u !== url) }
+// 相册上传：多选、逐张串行上传（严格按选择顺序追加）；成对防重入（disabled + busy 守卫），
+// 达上限停止；单张失败提示但不中断整批，已成功的照常入相册。
+async function onGalleryUpload(e) {
+  if (galleryUploading.value) return
+  const files = Array.from(e.target.files || [])
+  e.target.value = ''
+  if (!files.length) return
+  const room = GALLERY_MAX - galleryUrls.value.length
+  if (room <= 0) { showToast(`相册最多 ${GALLERY_MAX} 张`, 'error'); return }
+  const picked = files.slice(0, room)
+  if (files.length > room) showToast(`最多 ${GALLERY_MAX} 张，本次只上传 ${room} 张`, 'error')
+  galleryUploading.value = true
+  try {
+    const added = []
+    for (const file of picked) {
+      const fd = new FormData()
+      fd.append('file', file)
+      try {
+        const { data } = await api.post('/api/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+        if (data?.data?.url) added.push(data.data.url)
+      } catch (err) { showToast(`${file.name} 上传失败：${err.message || '网络异常'}`, 'error') }
+    }
+    if (added.length) galleryUrls.value = [...galleryUrls.value, ...added]
+  } finally { galleryUploading.value = false }
+}
 const geoBusy = ref(false)
 const mapOpen = ref(false)
 const regionOpen = ref(false)
@@ -605,6 +636,10 @@ async function finish() {
 .region-sheet-body { padding: 0 18px 18px; max-height: 70vh; overflow-y: auto; }
 .link-row { display: grid; grid-template-columns: 1fr 1.5fr auto; gap: 8px; margin-bottom: 8px; }
 /* 公司相册：素材库选图后的缩略图网格，移除按钮右上角常驻 */
+.gallery-upload { display: inline-flex; align-items: center; justify-content: center; padding: 10px 18px; border-radius: 9px; background: var(--primary, #2563eb); color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
+.gallery-upload.disabled { opacity: .55; cursor: not-allowed; }
+.gallery-upload input { display: none; }
+.gallery-count { margin-top: 6px; }
 .gallery-edit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; margin-top: 12px; }
 .gallery-edit-cell { position: relative; aspect-ratio: 1; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--bg-page, #f4f6fb); }
 .gallery-edit-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
