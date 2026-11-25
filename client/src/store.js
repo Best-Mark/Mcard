@@ -56,5 +56,18 @@ export async function loadSiteConfig(api) {
   try {
     const { data } = await api.get('/api/public/config')
     Object.assign(siteConfig, data.data || {})
-  } catch { /* 使用默认值 */ }
+    return true
+  } catch { return false /* 使用默认值 */ }
+}
+// 微信静默登录需要在路由守卫里等到权威配置；与 main.js 挂载加载共用同一份 in-flight Promise，
+// 失败则清空缓存由下一次导航重试（自愈），绝不把「加载失败」永久固化为「未开启」。
+let siteConfigPromise = null
+export function ensureSiteConfig(api) {
+  if (!siteConfigPromise) {
+    siteConfigPromise = loadSiteConfig(api).then(ok => {
+      if (!ok) siteConfigPromise = null
+      return ok
+    })
+  }
+  return siteConfigPromise
 }

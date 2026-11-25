@@ -12,7 +12,7 @@
       </div>
 
       <div class="m-drawer-body">
-        <section v-for="g in DRAWER_GROUPS" :key="g.title" class="m-group">
+        <section v-for="g in visibleGroups" :key="g.title" class="m-group">
           <div class="m-group-title">{{ g.title }}</div>
           <button v-for="it in g.items" :key="it.label" :class="{ danger: it.danger }" @click="onNav(it)">
             <i>{{ it.ico }}</i>{{ it.label }}
@@ -48,6 +48,12 @@ const router = useRouter()
 const show = computed(() => !isPC.value && ((route.path.startsWith('/me') && !route.path.startsWith('/me/pay')) || route.path === '/market'))
 // 集市放在正中并做凸起强调：当前阶段以发现对口伙伴为重点（数据源唯一真相在 config/nav.js）
 const tabs = BOTTOM_TABS
+// 微信内打开即静默登录，退出没有意义（下一次进页面又自动登录），抽屉里也不摆退出入口。
+// 菜单真相源仍在 config/nav.js，这里只按环境过滤展示，不复制一份菜单定义。
+const inWechat = isWeChat()
+const visibleGroups = computed(() => DRAWER_GROUPS
+  .map(g => ({ ...g, items: g.items.filter(it => !(it.kind === 'logout' && inWechat)) }))
+  .filter(g => g.items.length))
 const slug = ref('')
 const myCard = ref(null)
 const unread = ref(0)

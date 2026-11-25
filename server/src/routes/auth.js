@@ -180,6 +180,31 @@ router.get('/wechat/qr-status', wrap((req, res) => {
   ok(res, { status: ['scanned', 'confirmed'].includes(s.status) ? 'scanned' : 'pending' })
 }))
 
+// ---------- 微信内「打开页面即登录」：snsapi_base 静默授权 ----------
+// snsapi_base 不弹授权页、只换 openid（拿不到昵称头像）；显式一键登录仍走 snsapi_userinfo。
+// state 沿用同一套 DB 持久化 + 原子消费（跨 pm2 重启不丢、一次性防重放），并编入回跳路径。
+const b64url = s => Buffer.from(String(s), 'utf8').toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+const unb64url = s => { try { return Buffer.from(String(s).replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8') } catch { return '' } }
+function safeReturnPath(raw) {
+  const s = String(raw || '')
+  // 只接受站内相对路径，拒绝协议相对 //、反斜杠、换行（防开放重定向 / 头注入）
+  if (!s.startsWith('/') || s.startsWith('//') || s.includes('\\') || /[\r\n]/.test(s)) return '/market'
+  return s.slice(0, 200)
+}
+const withQuery = (url, key, val) => `${url}${url.includes('?') ? '&' : '?'}${key}=${encodeURIComponent(val)}`
+
+router.get('/wechat/silent-url', wrap((req, res) => {
+  if (!enabled()) return fail(res, 400, '微信快捷登录未配置或数据源不全')
+  cleanStates()
+  const c = wxa()
+  const target = safeReturnPath(req.query.redirect)
+  const state = `auto_${crypto.randomBytes(8).toString('hex')}_${b64url(target)}`
+  saveState(state)
+  const redirectUri = requestUrl(req, '/api/auth/wechat/callback')
+  const url = `${OAUTH_PAGE}/connect/oauth2/authorize?appid=${encodeURIComponent(c.appId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=snsapi_base&state=${encodeURIComponent(state)}#wechat_redirect`
+  ok(res, { url })
+}))
+
 // 前端点「微信快捷登录」：拿到授权跳转地址（AppSecret 全程留在服务端）
 router.get('/wechat/url', wrap((req, res) => {
   if (!enabled()) return fail(res, 400, '微信快捷登录未配置或数据源不全')
@@ -203,6 +228,9 @@ router.get('/wechat/callback', wrap(async (req, res) => {
   const state = String(req.query.state || '')
   const m = state.match(/^qr_([a-f0-9]{32})_/)
   const qrSid = m ? m[1] : ''
+  // 静默登录 state：auto_<8hex>_<base64url(回跳路径)>。回跳路径二次校验，只认站内相对路径。
+  const autoM = state.match(/^auto_([a-f0-9]{16})_([A-Za-z0-9_-]+)$/)
+  const autoTarget = autoM ? safeReturnPath(unb64url(autoM[2])) : ''
   // 原子消费 DB 中的 state（一次性防重放）。state 随机且 DB 命中即证明本服务发起，
   // 不依赖 cookie —— 手机微信回调不保证带回 cookie，也不该被并发登录覆盖的 cookie 误伤。
   const valid = consumeState(state)
@@ -210,9 +238,15 @@ router.get('/wechat/callback', wrap(async (req, res) => {
     if (qrSid) failQrSession(qrSid, msg) // 授权失败也要让电脑端停止等待
     return res.redirect(`${requestUrl(req, '/wechat/qr-result')}?err=${encodeURIComponent(msg)}`)
   }
-  if (!valid) return qrSid ? qrFail('state') : res.redirect(`${requestUrl(req, '/login')}?err=state`)
+  // 静默登录失败：回原页面并带 wx_err，前端守卫看到后不再自动重试（防授权失败死循环）
+  const failBack = msg => {
+    if (qrSid) return qrFail(msg)
+    if (autoTarget) return res.redirect(withQuery(requestUrl(req, autoTarget), 'wx_err', msg))
+    return res.redirect(`${requestUrl(req, '/login')}?err=${encodeURIComponent(msg)}`)
+  }
+  if (!valid) return failBack('state')
   const code = String(req.query.code || '')
-  if (!code) return qrSid ? qrFail('denied') : res.redirect(`${requestUrl(req, '/login')}?err=denied`)
+  if (!code) return failBack('denied')
   // 会话在授权途中过期：不能再跳「扫码成功」骗手机端，电脑端也会读到 expired
   if (qrSid && !loadQrSession(qrSid)) return qrFail('expired')
 
@@ -220,7 +254,8 @@ router.get('/wechat/callback', wrap(async (req, res) => {
   try {
     const token = await wxFetch(`${API}/sns/oauth2/access_token?appid=${encodeURIComponent(c.appId)}&secret=${encodeURIComponent(c.secret)}&code=${encodeURIComponent(code)}&grant_type=authorization_code`)
     if (!token.openid) throw new Error(token.errmsg || '换取 openid 失败')
-    const info = await wxFetch(`${API}/sns/userinfo?access_token=${encodeURIComponent(token.access_token)}&openid=${encodeURIComponent(token.openid)}&lang=zh_CN`)
+    // snsapi_base 没有 userinfo 权限，调用只会报错；静默登录只用 openid/unionid，绝不覆盖已有昵称头像。
+    const info = autoTarget ? {} : await wxFetch(`${API}/sns/userinfo?access_token=${encodeURIComponent(token.access_token)}&openid=${encodeURIComponent(token.openid)}&lang=zh_CN`)
 
     const openid = String(token.openid).slice(0, 128)
     const unionid = String(token.unionid || info.unionid || '').slice(0, 128)
@@ -230,8 +265,10 @@ router.get('/wechat/callback', wrap(async (req, res) => {
     let user = db.prepare('SELECT * FROM users WHERE wx_openid = ?').get(openid)
     if (!user && unionid) user = db.prepare('SELECT * FROM users WHERE wx_unionid = ? AND wx_unionid IS NOT NULL').get(unionid) // unionid 兜底：同开放平台下换公众号仍认同一人
     if (user) {
-      if (user.status !== 'active') return qrSid ? qrFail('disabled') : res.redirect(`${requestUrl(req, '/login')}?err=disabled`)
-      db.prepare("UPDATE users SET avatar=?, auth_source='wechat', wx_openid=COALESCE(wx_openid,?), updated_at=datetime('now') WHERE id=?").run(avatar, openid, user.id)
+      if (user.status !== 'active') return failBack('disabled')
+      // 静默登录只补微信身份：snsapi_base 拿不到头像，绝不把空串写进 users.avatar（账户层唯一真相源）
+      if (autoTarget) db.prepare("UPDATE users SET auth_source='wechat', wx_openid=COALESCE(wx_openid,?), updated_at=datetime('now') WHERE id=?").run(openid, user.id)
+      else db.prepare("UPDATE users SET avatar=?, auth_source='wechat', wx_openid=COALESCE(wx_openid,?), updated_at=datetime('now') WHERE id=?").run(avatar, openid, user.id)
       user = db.prepare('SELECT id, phone, nickname, role, status, avatar FROM users WHERE id = ?').get(user.id)
       const jwt = sign(user)
       const pub = publicUser(user)
@@ -240,18 +277,21 @@ router.get('/wechat/callback', wrap(async (req, res) => {
         saveQrSession(qrSid, { status: 'done', token: jwt, user: pub })
         return res.redirect(`${requestUrl(req, '/wechat/qr-result')}?ok=1`)
       }
+      if (autoTarget) return res.redirect(`${requestUrl(req, autoTarget)}#token=${encodeURIComponent(jwt)}&user=${encodeURIComponent(JSON.stringify(pub))}`)
       return res.redirect(`${requestUrl(req, '/wechat/callback')}#token=${encodeURIComponent(jwt)}&user=${encodeURIComponent(JSON.stringify(pub))}`)
     }
 
     // 新用户：按配置决定是否必须先绑定手机号（绑定凭据短 TTL 签名，防伪造 openid）
     if (c.bindPhone) {
-      const ticket = signBind({ openid, unionid, nickname, avatar, qrSid })
+      const ticket = signBind({ openid, unionid, nickname: autoTarget ? '微信用户' : nickname, avatar, qrSid })
+      // 静默授权拿不到昵称头像，新用户仍需一次手机号绑定；带 target 让绑完回到原来那页
+      if (autoTarget) return res.redirect(`${requestUrl(req, '/login')}?redirect=${encodeURIComponent(autoTarget)}#bind=${encodeURIComponent(ticket)}`)
       return qrSid
         ? res.redirect(`${requestUrl(req, '/wechat/qr-result')}?bind=${encodeURIComponent(ticket)}&sid=${encodeURIComponent(qrSid)}&nickname=${encodeURIComponent(nickname)}&avatar=${encodeURIComponent(avatar)}`)
         : res.redirect(`${requestUrl(req, '/login')}#bind=${encodeURIComponent(ticket)}&nickname=${encodeURIComponent(nickname)}&avatar=${encodeURIComponent(avatar)}`)
     }
     const r = db.prepare("INSERT INTO users (phone, password_hash, nickname, avatar, wx_openid, wx_unionid, auth_source) VALUES (?,?,?,?,?,?, 'wechat')")
-      .run(null, bcrypt.hashSync(crypto.randomBytes(24).toString('hex'), 10), nickname || '微信用户', avatar, openid, unionid)
+      .run(null, bcrypt.hashSync(crypto.randomBytes(24).toString('hex'), 10), autoTarget ? '微信用户' : (nickname || '微信用户'), avatar, openid, unionid)
     user = db.prepare('SELECT id, phone, nickname, role, status, avatar FROM users WHERE id = ?').get(r.lastInsertRowid)
     const jwt = sign(user)
     const pub = publicUser(user)
@@ -260,10 +300,11 @@ router.get('/wechat/callback', wrap(async (req, res) => {
       saveQrSession(qrSid, { status: 'done', token: jwt, user: pub })
       return res.redirect(`${requestUrl(req, '/wechat/qr-result')}?ok=1`)
     }
+    if (autoTarget) return res.redirect(`${requestUrl(req, autoTarget)}#token=${encodeURIComponent(jwt)}&user=${encodeURIComponent(JSON.stringify(pub))}`)
     return res.redirect(`${requestUrl(req, '/wechat/callback')}#token=${encodeURIComponent(jwt)}&user=${encodeURIComponent(JSON.stringify(pub))}`)
   } catch (e) {
     console.error('[WechatOAuth]', e.message)
-    return qrSid ? qrFail('oauth') : res.redirect(`${requestUrl(req, '/login')}?err=oauth`)
+    return failBack('oauth')
   }
 }))
 

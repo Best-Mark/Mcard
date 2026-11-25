@@ -79,7 +79,8 @@
       </router-link>
     </div>
 
-    <button class="pf-logout" @click="logoutNow">退出登录</button>
+    <!-- 微信内打开即静默登录，退出后下一次进页面又会自动登录，故不摆退出按钮（后台管理员退出在 Admin.vue，不受影响） -->
+    <button v-if="!inWechat" class="pf-logout" @click="logoutNow">退出登录</button>
   </div>
 </template>
 
@@ -90,7 +91,9 @@ import api from '../api'
 import { auth, logout, toggleDrawer, showToast } from '../store'
 import AppIcon from '../components/AppIcon.vue'
 import AssetPicker from '../components/AssetPicker.vue'
+import { isWeChat } from '../utils/save-image'
 
+const inWechat = isWeChat()
 const router = useRouter()
 const card = ref(null)
 const avatar = ref('')

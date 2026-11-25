@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import api from '../api'
-import { setAuth, showToast } from '../store'
+import { setAuth, showToast, siteConfig, ensureSiteConfig } from '../store'
 import { isWeChat } from '../utils/save-image'
 import { scheduleDefaultShare } from '../utils/wx-share'
 import { isPC } from '../utils/device'
@@ -61,10 +61,55 @@ const routes = [
 
 const router = createRouter({ history: createWebHistory(), routes, scrollBehavior: () => ({ top: 0 }) })
 
+// 微信内「打开页面即登录」（snsapi_base 静默授权）回调后 token 走 URL hash 回到原页面。
+// 任意页面都要能消费；显式登录的 /wechat/callback 刻意跳过，由 WechatCallback.vue 独占处理，
+// 避免两边抢同一份 hash（一次性凭证被先到者消费导致对方误报失败）。
+function consumeAuthHash(to) {
+  if (to.path === '/wechat/callback') return
+  const p = new URLSearchParams(location.hash.replace(/^#/, ''))
+  const token = p.get('token') || ''
+  const raw = p.get('user') || ''
+  if (!token || !raw) return
+  let user
+  try { user = JSON.parse(raw) } catch { return }
+  if (!user || !user.id) return
+  setAuth(token, user)
+  history.replaceState(null, '', location.pathname + location.search)
+}
+
+// 不触发自动登录的路径：登录/回调/扫码链路与后台（后台是独立管理员 token 体系）。
+const SILENT_SKIP = ['/login', '/wechat/callback', '/wechat/qr-login', '/wechat/qr-result', '/admin']
+const SILENT_COOLDOWN = 10 * 60 * 1000
+let silentStarted = false
+async function maybeWechatSilentLogin(to) {
+  if (silentStarted || !isWeChat()) return false
+  if (localStorage.getItem('mcard_token')) return false
+  // 服务端回调失败带 wx_err 回来：本轮不再重试，避免授权失败时来回跳死循环
+  if (to.query.wx_err) return false
+  if (new URLSearchParams(location.hash.replace(/^#/, '')).has('token')) return false
+  if (SILENT_SKIP.some(p => to.path === p || to.path.startsWith(p + '/'))) return false
+  const last = Number(localStorage.getItem('wx_silent_attempt_at') || 0)
+  if (last && Date.now() - last < SILENT_COOLDOWN) return false
+  await ensureSiteConfig(api)
+  if (!siteConfig.wechat_login_enabled) return false
+  try {
+    const target = String(to.fullPath || '/').split('#')[0] || '/'
+    const { data } = await api.get('/api/auth/wechat/silent-url', { params: { redirect: target } })
+    const url = data?.data?.url
+    if (!url) return false
+    // 先记账再跳：微信授权页报错返回时靠冷却时间兜底，绝不无限重跳
+    localStorage.setItem('wx_silent_attempt_at', String(Date.now()))
+    silentStarted = true
+    location.replace(url)
+    return true
+  } catch { return false }
+}
+
 // 微信内 → 外部浏览器免二次登录：外部浏览器打开带 wx_ticket 的 URL 时，
 // 用一次性凭证换登录态，成功后立即从 URL 清除 ticket（防泄露/防刷新重放）。
 let ticketHandled = false
 router.beforeEach(async (to, _from, next) => {
+  consumeAuthHash(to)
   // 门户首页仅 PC 形态可见；H5/小程序 web-view 内访问一律回集市
   if (to.path === '/portal' && !isPC.value) return next('/market')
   const ticket = to.query.wx_ticket
@@ -85,6 +130,7 @@ router.beforeEach(async (to, _from, next) => {
       return next({ path: to.path, query, replace: true })
     }
   }
+  if (await maybeWechatSilentLogin(to)) return next(false) // 已整页跳微信授权，当前导航取消
   if (to.meta.auth && !localStorage.getItem('mcard_token')) return next({ path: '/login', query: { redirect: to.fullPath } })
   if (to.meta.admin && !localStorage.getItem('mcard_admin_token')) return next('/admin/login')
   next()
