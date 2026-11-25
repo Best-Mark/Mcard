@@ -44,6 +44,18 @@ router.get('/geocode', wrap(async (req, res) => {
   }
 }))
 
+// POI 关键词搜索（地图选点联想）：公开，key 仅在服务端使用
+router.get('/poi/search', wrap(async (req, res) => {
+  const keyword = String(req.query.keyword || '').trim()
+  if (!keyword) return ok(res, { list: [] })
+  try {
+    const list = await geo.searchPoi(keyword, req.query.city)
+    ok(res, { list })
+  } catch (e) {
+    fail(res, 503, e.message || 'POI 搜索失败')
+  }
+}))
+
 // 行政区划全量树（公开，供省市区级联选择器；数据量小，1 小时缓存）
 router.get('/regions', wrap((_req, res) => {
   res.set('Cache-Control', 'public, max-age=3600')

@@ -207,4 +207,29 @@ async function geocode(address, hintCity) {
   return null
 }
 
-module.exports = { ipLocate, reverseGeocode, geocode, validCoords, stripSuffix, cityCoord }
+// POI 关键词搜索（地图选点联想）：走高德 place/text，key 只在服务端使用，不下发前端。
+// 返回统一 GCJ-02 坐标（与名片存库口径一致），失败返回空数组不抛错（自愈兜底）。
+async function searchPoi(keyword, hintCity) {
+  const text = String(keyword || '').trim().slice(0, 60)
+  if (!text) return []
+  const key = settings.mapConfig().amapKey
+  if (!key) return []
+  try {
+    const city = hintCity ? `&city=${encodeURIComponent(stripSuffix(hintCity))}` : ''
+    const d = await httpGetJson(`https://restapi.amap.com/v3/place/text?key=${encodeURIComponent(key)}&keywords=${encodeURIComponent(text)}${city}&offset=10&extensions=base`, 4000)
+    if (d.status !== '1' || !Array.isArray(d.pois)) return []
+    return d.pois.map(p => {
+      const [lng, lat] = String(p.location || '').split(',').map(Number)
+      if (!validCoords(lat, lng)) return null
+      return {
+        name: String(p.name || '').slice(0, 80),
+        address: String(p.address || '').slice(0, 160),
+        district: String(p.adname || '').slice(0, 40),
+        city: String(p.cityname || '').slice(0, 40),
+        lat, lng
+      }
+    }).filter(Boolean).slice(0, 10)
+  } catch { return [] }
+}
+
+module.exports = { ipLocate, reverseGeocode, geocode, searchPoi, validCoords, stripSuffix, cityCoord }

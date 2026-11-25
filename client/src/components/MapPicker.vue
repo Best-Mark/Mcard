@@ -1,8 +1,31 @@
 <template>
   <div class="mp-wrap">
-    <div class="mp-tools">
-      <input v-model="query" class="input mp-search" placeholder="搜索地址 / 地标（选填）" @keyup.enter="search" />
-      <button class="btn btn-sm" :disabled="searching" @click="search">{{ searching ? '搜索中…' : '搜索' }}</button>
+    <div class="mp-search-row">
+      <div class="mp-input-wrap">
+        <input
+          v-model="query"
+          class="input mp-search"
+          placeholder="搜索地址 / 地标，输入即联想"
+          autocomplete="off"
+          @input="onInput"
+          @keyup.enter="onEnter"
+          @focus="onFocus"
+        />
+        <!-- POI 联想下拉：点到建议直接把地图飞过去，坐标最终仍以「用这里」的地图中心为准 -->
+        <div v-if="suggestOpen && suggestions.length" class="mp-suggest">
+          <button
+            v-for="(p, i) in suggestions"
+            :key="i"
+            class="mp-suggest-item"
+            @mousedown.prevent="pickSuggestion(p)"
+            @touchstart.prevent="pickSuggestion(p)"
+          >
+            <span class="mp-sg-name">{{ p.name }}</span>
+            <span class="mp-sg-addr">{{ [p.district, p.address].filter(Boolean).join(' ') }}</span>
+          </button>
+        </div>
+        <div v-else-if="suggestOpen && searching" class="mp-suggest mp-suggest-loading">搜索中…</div>
+      </div>
       <button class="btn btn-sm btn-primary" :disabled="loading" @click="useHere">用这里</button>
     </div>
     <div ref="mapEl" class="mp-map"></div>
@@ -16,10 +39,13 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import api from '../api'
-import { wgs84ToGcj02, gcj02ToWgs84 } from '../utils/geo-coord'
+import { getCurrentPosition } from '../utils/geo'
 
-// ⚠️ 地图默认中心绝不写死北京：历史 bug——没定位就开地图直接点「用这里」会把北京坐标存进名片，
-// 但地址文本是用户填的其它城市 → 导航把人带到北京。坐标来源优先级：已有坐标 > 按省市区正解 > 中国中心（仅占位）。
+// 地图选点（H5）——参照 smart-bnb 的成熟做法：
+// ① 底图用高德瓦片（国内可达，实测 OSM tile.openstreetmap.org 在国内超时导致空白灰底）；
+// ② 高德瓦片是 GCJ-02，与名片存库口径一致，全链路不再做 WGS84↔GCJ02 转换；
+// ③ 初始中心：已有坐标 > 按已填地区正解 > 当前定位 > 中国中心占位（绝不写死北京）；
+// ④ 地址输入走后端 /api/geo/poi/search（高德 place/text，key 不下发前端）做联想，点击飞到该点。
 const props = defineProps({
   lat: { type: Number, default: null },
   lng: { type: Number, default: null },
@@ -33,47 +59,63 @@ const searching = ref(false)
 const loading = ref(true)
 const error = ref('')
 const centerHint = ref('')
+const suggestions = ref([])
+const suggestOpen = ref(false)
 let map = null
 let L = null
-let touched = false   // 用户是否拖动/搜索过地图
-let startReady = false // 初始中心是否可信（来自已存坐标）
+let touched = false    // 用户是否拖动/搜索/点过 POI（未定位不允许确认）
+let startReady = false // 初始中心是否可信（来自已存坐标或定位/正解）
+let suggestTimer = null
+let suggestSeq = 0     // 联想请求序号，防竞态（旧响应不得覆盖新结果）
 
-// 中国中心仅作占位：未定位到具体城市时给出明确提示，避免误把默认点当成用户位置
-const CHINA_CENTER = { lat: 35.8617, lng: 104.1954 }
+const CHINA_CENTER = { lat: 35.8617, lng: 104.1954, zoom: 4 }
 
 async function resolveStartCenter() {
-  // 1) 已有坐标（库中 GCJ-02）→ 反解为 WGS84 给 OSM
+  // 1) 已有坐标（库里 GCJ-02，高德瓦片同坐标系，直接用）
   if (Number.isFinite(props.lat) && Number.isFinite(props.lng)) {
-    return { ...gcj02ToWgs84(props.lat, props.lng), zoom: 15, hint: '', fromSaved: true }
+    return { lat: props.lat, lng: props.lng, zoom: 15, hint: '已用名片原有位置，可拖动微调', fromSaved: true }
   }
-  // 2) 已填省市区 → 正解（后端返回 GCJ-02）→ 反解为 WGS84
+  // 2) 已填省市区 → 正解（后端返回 GCJ-02）
   const region = String(props.region || '').trim()
   if (region) {
     try {
       const { data } = await api.get('/api/geo/geocode', { params: { address: region }, timeout: 5000 })
       const g = data?.data
       if (g && Number.isFinite(Number(g.lat)) && Number.isFinite(Number(g.lng))) {
-        return { ...gcj02ToWgs84(Number(g.lat), Number(g.lng)), zoom: 14, hint: `已按「${region}」定位，请拖动微调到具体位置`, fromSaved: false }
+        return { lat: Number(g.lat), lng: Number(g.lng), zoom: 14, hint: `已按「${region}」定位，请拖动微调到具体位置`, fromSaved: false }
       }
-    } catch { /* 正解失败走中国中心占位 */ }
+    } catch { /* 正解失败走当前定位 */ }
   }
-  // 3) 都没有 → 中国中心，且强制提示（不写死任何具体城市）
-  return { ...CHINA_CENTER, zoom: 4, hint: '未定位到具体城市：请先搜索地址或拖动地图到你的实际位置，再点「用这里」', fromSaved: false }
+  // 3) 当前定位（geo.js 四级降级，统一 GCJ-02，带超时兜底）
+  try {
+    const pos = await Promise.race([
+      getCurrentPosition({ timeout: 3500 }),
+      new Promise(resolve => setTimeout(() => resolve(null), 4000))
+    ])
+    if (pos && Number.isFinite(pos.lat) && Number.isFinite(pos.lng)) {
+      return { lat: pos.lat, lng: pos.lng, zoom: 14, hint: '已按当前定位，可拖动微调', fromSaved: false }
+    }
+  } catch { /* 定位失败走中国中心占位 */ }
+  // 4) 都没有 → 中国中心占位，强制提示
+  return { ...CHINA_CENTER, hint: '未定位到具体城市：请搜索地址或拖动地图到实际位置，再点「用这里」', fromSaved: false }
 }
 
 async function initMap() {
   loading.value = true; error.value = ''; centerHint.value = ''
   touched = false
+  startReady = false
   const start = await resolveStartCenter()
-  startReady = !!start.fromSaved
+  startReady = !!start.fromSaved || /已按/.test(start.hint || '')
   centerHint.value = start.hint
   try {
     map = L.map(mapEl.value, { zoomControl: true, attributionControl: true }).setView([start.lat, start.lng], start.zoom)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // 高德矢量瓦片（GCJ-02，国内稳定）：style=8 为标准路网图
+    L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+      subdomains: ['1', '2', '3', '4'],
       maxZoom: 18,
-      attribution: '&copy; OpenStreetMap contributors'
+      attribution: '&copy; 高德地图'
     }).addTo(map)
-    map.on('dragend', () => { touched = true; centerHint.value = '' })
+    map.on('dragend', () => { touched = true; centerHint.value = ''; closeSuggest() })
     loading.value = false
   } catch (e) {
     error.value = '地图加载失败，请检查网络'
@@ -83,36 +125,59 @@ async function initMap() {
 
 function useHere() {
   if (!map) return
-  // 只有「已有坐标」或「用户主动拖动/搜索」才算可信定位；中国中心/省市区正解占位不可直接确认
   if (!touched && !startReady) {
     error.value = '请先把地图拖动到你的实际位置（或搜索地址）再点「用这里」，否则会存入错误的默认位置'
     return
   }
   const c = map.getCenter()
-  // Leaflet + OSM 瓦片是 WGS84，必须转 GCJ-02 才能与名片库/小程序定位一致，否则集市距离偏 300~700m
-  const g = wgs84ToGcj02(c.lat, c.lng)
-  emit('confirm', { lat: Number(g.lat.toFixed(6)), lng: Number(g.lng.toFixed(6)) })
+  // 高德瓦片 = GCJ-02，与名片库/小程序定位一致，直接存
+  emit('confirm', { lat: Number(c.lat.toFixed(6)), lng: Number(c.lng.toFixed(6)) })
 }
 
-async function search() {
+// ---------- POI 联想 ----------
+function closeSuggest() { suggestOpen.value = false; suggestions.value = [] }
+
+function onFocus() {
+  if (suggestions.value.length) suggestOpen.value = true
+}
+
+function onInput() {
+  clearTimeout(suggestTimer)
   const q = query.value.trim()
-  if (!q || searching.value) return
-  searching.value = true; error.value = ''
-  try {
-    // Nominatim 公共地理编码，无需 Key；国内访问较慢，失败不阻断手动拖拽
-    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`
-    const res = await fetch(url, { headers: { 'Accept-Language': 'zh-CN' } })
-    const rows = await res.json()
-    if (rows?.length) {
-      touched = true
-      centerHint.value = ''
-      map.flyTo([Number(rows[0].lat), Number(rows[0].lon)], 15, { duration: 1 })
-    } else {
-      error.value = '未找到该地址，请直接拖动地图选点'
+  if (!q) { closeSuggest(); return }
+  error.value = ''
+  const seq = ++suggestSeq
+  suggestTimer = setTimeout(async () => {
+    searching.value = true
+    suggestOpen.value = true
+    try {
+      const { data } = await api.get('/api/geo/poi/search', { params: { keyword: q, city: '' }, timeout: 5000 })
+      if (seq !== suggestSeq) return // 过期响应丢弃
+      suggestions.value = data?.data?.list || []
+      if (!suggestions.value.length) error.value = '未找到相关地点，可直接拖动地图选点'
+    } catch {
+      if (seq !== suggestSeq) return
+      suggestions.value = []
+      error.value = '搜索服务暂不可用，请直接拖动地图选点'
+    } finally {
+      if (seq === suggestSeq) searching.value = false
     }
-  } catch {
-    error.value = '搜索服务暂不可用，请直接拖动地图选点'
-  } finally { searching.value = false }
+  }, 350) // 350ms 防抖，参照 smart-bnb
+}
+
+function onEnter() {
+  clearTimeout(suggestTimer)
+  if (suggestions.value.length) pickSuggestion(suggestions.value[0])
+}
+
+function pickSuggestion(p) {
+  if (!p || !Number.isFinite(p.lat) || !Number.isFinite(p.lng)) return
+  query.value = p.name
+  closeSuggest()
+  touched = true
+  centerHint.value = ''
+  error.value = ''
+  map?.flyTo([p.lat, p.lng], 16, { duration: 0.6 })
 }
 
 onMounted(async () => {
@@ -126,15 +191,25 @@ onMounted(async () => {
     loading.value = false
   }
 })
-onBeforeUnmount(() => { if (map) { map.remove(); map = null } })
+onBeforeUnmount(() => {
+  clearTimeout(suggestTimer)
+  if (map) { map.remove(); map = null }
+})
 </script>
 
 <style scoped>
 .mp-wrap { position: relative; }
-.mp-tools { display: flex; gap: 8px; margin-bottom: 8px; }
-.mp-search { flex: 1; min-width: 0; }
-.mp-map { height: 320px; border-radius: 10px; border: 1px solid var(--line, #e8edf4); background: #e8edf4; }
-.mp-cross { position: absolute; left: 50%; top: calc(50% + 20px); transform: translate(-50%, -50%); font-size: 30px; color: #dc2626; text-shadow: 0 1px 3px #fff; pointer-events: none; font-weight: 700; }
+.mp-search-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.mp-input-wrap { position: relative; flex: 1; min-width: 0; }
+.mp-search { width: 100%; }
+.mp-suggest { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 30; max-height: 240px; overflow-y: auto; background: var(--bg-card, #fff); border: 1px solid var(--line, #e8edf4); border-radius: 10px; box-shadow: 0 8px 24px rgba(15,23,42,.14); }
+.mp-suggest-item { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--line, #eef2f7); }
+.mp-suggest-item:last-child { border-bottom: 0; }
+.mp-sg-name { font-size: 13px; font-weight: 600; color: var(--text, #0f172a); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.mp-sg-addr { font-size: 11px; color: var(--muted, #6b7688); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.mp-suggest-loading { padding: 10px 12px; font-size: 12px; color: var(--muted, #6b7688); }
+.mp-map { height: 320px; border-radius: 10px; border: 1px solid var(--line, #e8edf4); background: #eef2f7; }
+.mp-cross { position: absolute; left: 50%; top: calc(50% + 20px); transform: translate(-50%, -50%); font-size: 30px; color: #dc2626; text-shadow: 0 1px 3px #fff; pointer-events: none; font-weight: 700; z-index: 5; }
 .mp-hint { margin-top: 6px; }
 .mp-center { margin-top: 6px; padding: 6px 9px; border-radius: 8px; background: #eff6ff; color: #2563eb; line-height: 1.5; }
 .mp-error { margin-top: 6px; color: #b45309; }
