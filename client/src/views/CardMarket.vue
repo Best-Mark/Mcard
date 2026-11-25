@@ -165,7 +165,7 @@ async function done() {
 </script>
 
 <style scoped>
-.page { padding-bottom: 12px; }
+.page { padding-bottom: calc(100px + env(safe-area-inset-bottom)); }
 .topbar { height: 50px; display: flex; align-items: center; gap: 10px; padding: 0 12px; background: #fff; border-bottom: 1px solid var(--line); }
 .topbar .back { font-size: 30px; line-height: 1; color: var(--text); }
 .topbar .title { font-weight: 700; font-size: 15px; }
@@ -194,7 +194,8 @@ async function done() {
 .ico-tune { border-radius: 50% 50% 3px 3px; }
 .tab-dot { position: absolute; bottom: 0; left: 50%; width: 4px; height: 4px; border-radius: 50%; background: var(--primary); }
 .control-panel { margin: 0; border-radius: 0; border: 0; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
-.bottom-launcher { position: fixed; left: 0; right: 0; bottom: calc(60px + env(safe-area-inset-bottom)); z-index: 105; display: flex; gap: 6px; padding: 8px 12px; background: #fff; border-top: 1px solid var(--line); box-shadow: 0 -4px 16px rgba(0,0,0,.06); }
+/* tabbar 在本页已隐藏，功能条贴底 */
+.bottom-launcher { position: fixed; left: 0; right: 0; bottom: 0; z-index: 105; display: flex; gap: 6px; padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid var(--line); box-shadow: 0 -4px 16px rgba(0,0,0,.06); }
 .bottom-launcher button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 0; border-radius: 8px; color: var(--muted); font-size: 12px; }
 .bottom-launcher button.on { color: var(--primary); background: color-mix(in srgb, var(--primary) 10%, transparent); }
 .market-value { background: var(--bg-page); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
