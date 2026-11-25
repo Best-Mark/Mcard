@@ -163,18 +163,13 @@
       </div>
     </div>
 
-    <!-- 省市区街道级联选择（底部弹出，不再居中弹窗） -->
+    <!-- 省市区选择：底部弹层 + van-picker 标准滚轮（工具栏取消/确定由滚轮自带） -->
     <BottomSheet :show="regionOpen" @update:show="regionOpen = $event">
-      <div class="map-modal-head region-sheet-head">
-        <b>选择所在地区</b>
-        <button class="btn btn-sm btn-ghost" @click="regionOpen = false">关闭</button>
-      </div>
-      <div class="region-sheet-body">
-        <RegionPicker
-          :province="form.province" :city="form.city" :district="form.district" :street="form.street"
-          @confirm="onRegionPicked"
-        />
-      </div>
+      <RegionPicker
+        :province="form.province" :city="form.city" :district="form.district" :street="form.street"
+        @confirm="onRegionPicked"
+        @close="regionOpen = false"
+      />
     </BottomSheet>
 
     <!-- 窄屏预览：手机上点顶部「预览」全屏看实时名片，与 PC 右侧预览共用组件 -->
