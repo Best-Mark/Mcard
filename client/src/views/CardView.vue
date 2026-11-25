@@ -185,7 +185,7 @@
     <div v-if="qrModal" class="modal-mask" @click.self="qrModal = false">
       <div class="modal center">
         <h3>我的名片</h3>
-        <img :src="qrApi + '/qr.svg?size=640&scan=1'" style="width:240px;height:240px;margin:4px auto 10px;display:block" alt="名片地址二维码" />
+        <img :src="qrApi + '/qr.svg?size=640&scan=1'" style="width:264px;height:264px;margin:4px auto 10px;display:block" alt="名片地址二维码" />
         <p class="cv-qr-url" @click="copy(publicLink, '名片链接')" title="点击复制名片链接">{{ publicLink }}</p>
         <p class="small muted center">客户扫一扫即可打开名片、存入通讯录；链接永久不变</p>
         <!-- 一个入口承载三件事：看二维码、复制链接、公开页（关闭弹层即当前公开页） -->

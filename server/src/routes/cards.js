@@ -290,9 +290,10 @@ router.get('/public/:slug', wrap((req, res) => {
 }))
 
 // 易扫模式（?scan=1）：客户扫码主场景（弹层大图/保存二维码/分享图/引导图）统一走这里。
-// 圆点/圆形定位角/渐变/背景图会显著降低微信「扫一扫」识别率，这里强制收敛成标准方点+方角+纯色，
-// 并把中心 LOGO 缩到 12%；卡片上的装饰性小码不带 scan 参数，保留用户选的美化样式。
-function scanOptions({ fg, bg, logoOn, logoImage, style }) {
+// 圆点/圆形定位角/渐变/背景图会显著降低微信「扫一扫」识别率，这里强制收敛成标准方点+方角+纯色。
+// 【关键】彻底去掉中心 LOGO：LOGO 会强制 H 纠错（码点更密），还遮挡中心数据区——这正是「难扫」主因。
+// 无 LOGO 走 M 纠错，模块更少、码点更大更疏；卡片上的装饰性小码不带 scan 参数，保留用户选的美化样式。
+function scanOptions({ fg, bg }) {
   const lum = hex => {
     const m = /^#([0-9a-f]{6})$/i.exec(String(hex || ''))
     if (!m) return 0
@@ -303,9 +304,8 @@ function scanOptions({ fg, bg, logoOn, logoImage, style }) {
     // 高对比：码色太浅改纯黑，底色太深改纯白（深色主题配浅色码的自定义色也覆盖掉）
     fg: lum(fg) > 110 ? '#0f172a' : (fg || '#0f172a'),
     bg: lum(bg) < 200 ? '#ffffff' : (bg || '#ffffff'),
-    logo: logoOn,
-    logoImage,
-    logoScale: 0.12,
+    logo: false,
+    logoImage: '',
     style: qr.SCAN_STYLE
   }
 }
