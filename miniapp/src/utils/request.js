@@ -139,7 +139,7 @@ export function currentPlatform() {
 }
 
 export function saveQrImage(slug) {
-  const url = `${API_BASE}/api/cards/public/${slug}/qr.png?size=720`
+  const url = `${API_BASE}/api/cards/public/${slug}/qr.png?size=720&scan=1`
   uni.downloadFile({
     url,
     success: res => {

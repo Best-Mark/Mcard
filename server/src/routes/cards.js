@@ -289,6 +289,27 @@ router.get('/public/:slug', wrap((req, res) => {
   ok(res, publicView(row, originOf(req)))
 }))
 
+// 易扫模式（?scan=1）：客户扫码主场景（弹层大图/保存二维码/分享图/引导图）统一走这里。
+// 圆点/圆形定位角/渐变/背景图会显著降低微信「扫一扫」识别率，这里强制收敛成标准方点+方角+纯色，
+// 并把中心 LOGO 缩到 12%；卡片上的装饰性小码不带 scan 参数，保留用户选的美化样式。
+function scanOptions({ fg, bg, logoOn, logoImage, style }) {
+  const lum = hex => {
+    const m = /^#([0-9a-f]{6})$/i.exec(String(hex || ''))
+    if (!m) return 0
+    const n = parseInt(m[1], 16)
+    return 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)
+  }
+  return {
+    // 高对比：码色太浅改纯黑，底色太深改纯白（深色主题配浅色码的自定义色也覆盖掉）
+    fg: lum(fg) > 110 ? '#0f172a' : (fg || '#0f172a'),
+    bg: lum(bg) < 200 ? '#ffffff' : (bg || '#ffffff'),
+    logo: logoOn,
+    logoImage,
+    logoScale: 0.12,
+    style: qr.SCAN_STYLE
+  }
+}
+
 router.get('/public/:slug/qr.svg', wrap(async (req, res) => {
   const row = db.prepare('SELECT slug, qr_fg, qr_bg, qr_logo, qr_style, logo, avatar FROM cards WHERE slug = ?').get(req.params.slug)
   if (!row) return fail(res, 404, '名片不存在')
@@ -301,8 +322,10 @@ router.get('/public/:slug/qr.svg', wrap(async (req, res) => {
   const logoImage = logoOn ? await qrCenterImage(row) : ''
   let style = normalizeStyle(parseJson(row.qr_style, {}))
   if (req.query.style) { try { style = normalizeStyle(JSON.parse(String(req.query.style).slice(0, 4000))) } catch {} }
+  let opts = { size, fg, bg, logo: logoOn, brand, logoImage, style }
+  if (String(req.query.scan || '') === '1') opts = { ...opts, ...scanOptions({ fg, bg, logoOn, logoImage, style }) }
   res.type('image/svg+xml').set('Cache-Control', 'public, max-age=3600')
-    .send(qr.svg(requestUrl(req, `/c/${row.slug}`), { size, fg, bg, logo: logoOn, brand, logoImage, style }))
+    .send(qr.svg(requestUrl(req, `/c/${row.slug}`), opts))
 }))
 
 router.get('/public/:slug/qr.png', wrap(async (req, res) => {
@@ -311,7 +334,9 @@ router.get('/public/:slug/qr.png', wrap(async (req, res) => {
   const size = Math.min(2000, Math.max(128, Number(req.query.size) || 720))
   const logoImage = row.qr_logo ? await qrCenterImage(row) : ''
   const style = normalizeStyle(parseJson(row.qr_style, {}))
-  const buf = await qr.png(requestUrl(req, `/c/${row.slug}`), { size, fg: row.qr_fg, bg: row.qr_bg, logoImage, logo: !!row.qr_logo, brand: 'M', style })
+  let opts = { size, fg: row.qr_fg, bg: row.qr_bg, logoImage, logo: !!row.qr_logo, brand: 'M', style }
+  if (String(req.query.scan || '') === '1') opts = { ...opts, ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg, logoOn: !!row.qr_logo, logoImage, style }) }
+  const buf = await qr.png(requestUrl(req, `/c/${row.slug}`), opts)
   res.type('png').set('Cache-Control', 'public, max-age=3600').send(buf)
 }))
 

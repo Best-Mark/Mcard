@@ -176,7 +176,7 @@
     <div v-if="qrModal" class="modal-mask" @click.self="qrModal = false">
       <div class="modal center">
         <h3>我的名片</h3>
-        <img :src="qrApi + '/qr.svg?size=640'" style="width:240px;height:240px;margin:4px auto 10px;display:block" alt="名片地址二维码" />
+        <img :src="qrApi + '/qr.svg?size=640&scan=1'" style="width:240px;height:240px;margin:4px auto 10px;display:block" alt="名片地址二维码" />
         <p class="cv-qr-url" @click="copy(publicLink, '名片链接')" title="点击复制名片链接">{{ publicLink }}</p>
         <p class="small muted center">客户扫一扫即可打开名片、存入通讯录；链接永久不变</p>
         <!-- 一个入口承载三件事：看二维码、复制链接、公开页（关闭弹层即当前公开页） -->
@@ -222,7 +222,7 @@
         <template v-else>
           <p v-html="saveTip"></p>
         </template>
-        <img v-if="guide !== 'contact'" :src="guideImage || (qrApi + '/qr.svg?size=520')" style="width:200px;height:200px;margin:10px auto;object-fit:contain" alt="二维码" />
+        <img v-if="guide !== 'contact'" :src="guideImage || (qrApi + '/qr.svg?size=520&scan=1')" style="width:200px;height:200px;margin:10px auto;object-fit:contain" alt="二维码" />
         <div class="btn-row">
           <button class="btn btn-ghost" @click="closeGuide">知道了</button>
         </div>
@@ -571,7 +571,7 @@ async function copy(v, label) {
 }
 async function saveQr() {
   guideImage.value = ''
-  const r = await saveImageUrl(`${qrApi.value}/qr.png?size=900`, `${slug.value}-二维码.png`)
+  const r = await saveImageUrl(`${qrApi.value}/qr.png?size=900&scan=1`, `${slug.value}-二维码.png`)
   if (r.kind === 'longpress') { await showGuide('qr'); return }
   showToast(r.kind === 'downloaded' ? '二维码已开始下载' : '已打开二维码，请长按保存', 'success')
 }

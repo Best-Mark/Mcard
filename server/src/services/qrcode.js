@@ -23,6 +23,9 @@ function escapeXml(s) {
 
 // 草料式样式默认值：dot 码点 / eye 码眼 / gradTo 渐变终点 / logoShape Logo 底板 / bgImage 背景图
 const DEFAULT_STYLE = { dot: 'square', eye: 'square', gradTo: '', logoShape: 'rounded', bgImage: '' }
+// 易扫模式（scan=1）：客户扫码主场景专用。圆点/圆角定位角/渐变/背景图都会显著降低微信「扫一扫」识别率，
+// 这里统一收敛成标准方点+方定位角+纯色，牺牲装饰性换「一次扫开」。卡片上的美化小码不受影响。
+const SCAN_STYLE = { dot: 'square', eye: 'square', gradTo: '', logoShape: 'rounded', bgImage: '' }
 function normalizeStyle(s) {
   const o = s && typeof s === 'object' ? s : {}
   const inSet = (v, set, d) => set.includes(v) ? v : d
@@ -80,10 +83,10 @@ function dataPath(bits, n, dot) {
 function svg(text, opts = {}) {
   const {
     size = 360, fg = '#0f172a', bg = '#ffffff', margin = 2, logo = true,
-    brand = 'M', logoImage = '', style: rawStyle
+    brand = 'M', logoImage = '', logoScale = 0.17, style: rawStyle
   } = opts
   const st = normalizeStyle(rawStyle)
-  const key = `svg2|${text}|${size}|${fg}|${bg}|${margin}|${logo}|${brand}|${logoImage}|${JSON.stringify(st)}`
+  const key = `svg2|${text}|${size}|${fg}|${bg}|${margin}|${logo}|${brand}|${logoImage}|${logoScale}|${JSON.stringify(st)}`
   return cached(key, () => {
     const { bits, n } = modulesOf(text, logo ? 'H' : 'M')
     const total = n + margin * 2
@@ -97,7 +100,7 @@ function svg(text, opts = {}) {
       : `<rect width="${total}" height="${total}" fill="${bg}"/>`
     let logoMarkup = ''
     if (logo) {
-      const ls = total * 0.17
+      const ls = total * logoScale
       const p = (total - ls) / 2
       if (st.logoShape === 'none') {
         logoMarkup = logoImage
@@ -126,7 +129,7 @@ ${defs}${bgMarkup}
 async function png(text, opts = {}) {
   const size = opts.size || 720
   const st = normalizeStyle(opts.style)
-  const key = `png2|${text}|${size}|${opts.fg}|${opts.bg}|${opts.logo}|${opts.brand}|${opts.logoImage}|${JSON.stringify(st)}`
+  const key = `png2|${text}|${size}|${opts.fg}|${opts.bg}|${opts.logo}|${opts.brand}|${opts.logoImage}|${opts.logoScale || 0.17}|${JSON.stringify(st)}`
   const hit = cache.get(key)
   if (hit && Date.now() - hit.t < TTL_MS && hit.png) return hit.png
   const markup = svg(text, { ...opts, size: Math.max(size, 720) })
@@ -151,4 +154,4 @@ function modules(text) {
   return { d, n }
 }
 
-module.exports = { svg, png, modules, escapeXml, clearCache, normalizeStyle, DEFAULT_STYLE }
+module.exports = { svg, png, modules, escapeXml, clearCache, normalizeStyle, DEFAULT_STYLE, SCAN_STYLE }

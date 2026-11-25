@@ -123,7 +123,7 @@ export async function buildAndUploadShareImage(api, view) {
       inlineImage(view.avatar || view.logo || ''),
       (async () => {
         try {
-          const res = await fetch(`${window.location.origin}/api/cards/public/${view.slug}/qr.png?size=200`)
+          const res = await fetch(`${window.location.origin}/api/cards/public/${view.slug}/qr.png?size=200&scan=1`)
           if (!res.ok) return ''
           const blob = await res.blob()
           if (!blob.size) return ''

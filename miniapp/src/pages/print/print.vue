@@ -13,7 +13,7 @@
               <view class="pp-title">{{ card.title }} {{ card.company ? '· ' + card.company : '' }}</view>
             </view>
             <view class="pp-body">
-              <image class="pp-qr" :src="baseUrl + '/api/cards/public/' + card.slug + '/qr.png?size=440'" mode="aspectFit" />
+              <image class="pp-qr" :src="baseUrl + '/api/cards/public/' + card.slug + '/qr.png?size=440&scan=1'" mode="aspectFit" />
               <view class="pp-intro">{{ card.bio || card.company_intro || '扫一扫，保存我的电子名片' }}</view>
               <view class="pp-contact">{{ card.mobile || '' }} {{ card.email ? ' · ' + card.email : '' }}</view>
               <view class="pp-tip">扫码存入通讯录 · 资料可改二维码不变</view>
@@ -76,7 +76,7 @@ async function savePoster() {
   if (!card.value) return
   busy.value = true
   const c = card.value
-  const qrPath = await downloadTemp(`${baseUrl}/api/cards/public/${c.slug}/qr.png?size=440`)
+  const qrPath = await downloadTemp(`${baseUrl}/api/cards/public/${c.slug}/qr.png?size=440&scan=1`)
   if (!qrPath) { busy.value = false; return toast('二维码下载失败') }
   const logoPath = c.logo ? await downloadTemp(baseUrl + c.logo) : ''
   const ctx = uni.createCanvasContext('poster')
