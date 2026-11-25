@@ -149,7 +149,13 @@
                 <td><b>{{ p.name }}</b><div class="small muted">{{ p.description }}</div></td>
                 <td>¥{{ (p.price_cents / 100).toFixed(2) }}</td><td>{{ p.duration_days === 0 ? '终身' : p.duration_days + ' 天' }}</td>
                 <td class="small muted">{{ (p.features || []).join(' / ') }}</td><td>{{ p.sort }}</td>
-                <td><span class="badge" :class="p.enabled ? 'ok' : 'off'">{{ p.enabled ? '上架' : '下架' }}</span></td>
+                <!-- 状态 = 上架开关：关掉后服务端 enabled=0，用户端套餐列表不再返回该套餐 -->
+                <td><span class="pkg-switch">
+                  <button type="button" class="switch" :class="{ on: !!p.enabled }" role="switch" :aria-checked="!!p.enabled"
+                          :disabled="busy || pkgToggleBusy !== null" :title="p.enabled ? '点击下架（用户端不再展示）' : '点击上架（用户端可见）'"
+                          @click="togglePkgEnabled(p)"><i></i></button>
+                  <span class="switch-label">{{ p.enabled ? '上架' : '下架' }}</span>
+                </span></td>
                 <td><button class="btn btn-sm btn-ghost" :disabled="busy" @click="openPkg(p)">编辑</button>
                     <button class="btn btn-sm btn-danger" :disabled="busy" @click="delPkg(p)">删除</button></td>
               </tr></tbody></table></div>
@@ -591,6 +597,7 @@ let migrateTimer = null
 const migratePct = computed(() => migrate.value.total ? Math.round(((migrate.value.done + migrate.value.skipped) / migrate.value.total) * 100) : 0)
 const cardQ = ref(''); const cardStatus = ref(''); const orderStatus = ref('')
 const pkgModal = ref(false); const pkgForm = ref({}); const pkgFeatures = ref('')
+const pkgToggleBusy = ref(null) // 套餐上架开关防重入：同一时刻只允许一个请求，禁点期间按钮和逻辑双重拦截
 const updateInfo = ref({}); const checkResult = ref(null); const updCfg = ref({})
 const updBusy = ref(false); const applyOpen = ref(false); const sideOpen = ref(false); const restartBusy = ref(false)
 const progress = ref({ kind: '', step: '', pct: 0, detail: '', done: false, error: '' })
@@ -872,6 +879,18 @@ async function savePkg() {
     else await api.post('/api/admin/packages', payload)
     showToast('套餐已保存', 'success'); pkgModal.value = false; loadTab('packages')
   } catch (e) { showToast(e.message, 'error') } finally { busy.value = false }
+}
+// 只改 enabled 一个字段：PUT /packages/:id 会带库中其余字段回写，不动价格/权益/排序。
+// 已有订单关联的套餐同样可以下架（服务端 delete 才会自动改下架），这里不删数据。
+async function togglePkgEnabled(p) {
+  if (busy.value || pkgToggleBusy.value !== null) return
+  pkgToggleBusy.value = p.id
+  try {
+    const next = p.enabled ? 0 : 1
+    await api.put(`/api/admin/packages/${p.id}`, { enabled: next })
+    p.enabled = next
+    showToast(next ? '套餐已上架，用户端可见' : '套餐已下架，用户端不再展示', 'success')
+  } catch (e) { showToast(e.message, 'error') } finally { pkgToggleBusy.value = null }
 }
 async function delPkg(p) {
   if (busy.value) return
@@ -1260,6 +1279,13 @@ async function saveUpdateConfig() {
 .two-col .table-wrap { margin: 0 -6px; }
 
 /* 表格页 */
+.pkg-switch { display: inline-flex; align-items: center; gap: 8px; }
+.switch { position: relative; width: 38px; height: 20px; flex: 0 0 38px; padding: 2px; border: 0; border-radius: 10px; background: #cbd5e1; cursor: pointer; transition: background .18s ease; }
+.switch i { display: block; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(15,23,42,.3); transition: transform .18s ease; }
+.switch.on { background: #10b981; }
+.switch.on i { transform: translateX(18px); }
+.switch:disabled { opacity: .55; cursor: not-allowed; }
+.switch-label { font-size: 12px; color: var(--muted, #64748b); }
 .filter-row { display: flex; gap: 10px; margin-bottom: 14px; max-width: 720px; }
 .filter-row .input { flex: 1; }
 .filter-row .select { width: 170px; }
