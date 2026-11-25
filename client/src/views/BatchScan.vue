@@ -1,7 +1,6 @@
 <template>
   <div class="page">
     <header class="topbar">
-      <button class="back" @click="router.back ? router.back() : router.push('/me/contacts')">‹</button>
       <span class="title">展会连扫收名片</span>
       <div class="spacer"></div>
       <button class="nav-menu-btn" aria-label="菜单" @click="toggleDrawer"><i class="menu-glyph"></i></button>

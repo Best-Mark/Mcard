@@ -95,7 +95,8 @@ async function doShare() {
 
 <style scoped>
 /* 工作台头部：中性品牌蓝，不随名片模板变化（它是工作台 chrome，不属于名片本身） */
-.dash-top { height: 50px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: linear-gradient(90deg,#143b8f,#2563eb 60%,#06b6d4); color: #fff; }
+/* 沉浸式顶到物理屏幕最上：状态栏区域也绘制品牌蓝，左右统一 16px */
+.dash-top { height: calc(50px + env(safe-area-inset-top, 0px)); display: flex; align-items: center; gap: 8px; padding: env(safe-area-inset-top, 0px) 16px 0; background: linear-gradient(90deg,#143b8f,#2563eb 60%,#06b6d4); color: #fff; }
 .dash-brand { font-weight: 800; font-size: 18px; }
 .dash-brand em { font-style: normal; opacity: .75; }
 .dash-sub { font-size: 12px; opacity: .8; }

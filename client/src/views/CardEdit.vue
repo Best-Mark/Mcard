@@ -1,7 +1,7 @@
 <template>
   <div class="page">
     <header class="topbar">
-      <button class="back-btn" @click="finish">‹ 返回</button>
+      <button class="back-btn" @click="finish" aria-label="返回并保存">‹</button>
       <div class="spacer"></div>
       <button class="nav-menu-btn" aria-label="菜单" @click="toggleDrawer"><i class="menu-glyph"></i></button>
       <button class="btn btn-sm btn-ghost preview-toggle" @click="showPreview = true">预览</button>

@@ -38,15 +38,29 @@ img { display: block; max-width: 100%; }
 .container.wide { width: min(100% - 28px, 1120px); }
 .page { padding: 18px 0 60px; }
 
+/* 统一移动端顶栏：与名片页封面同口径「顶到物理屏幕最上」，状态栏区域也绘制背景。
+   --safe-top 两级 fallback：老 WebView 不认 env() 时为 0，不塌陷。 */
+:root { --topbar-h: 56px; --safe-top: env(safe-area-inset-top, 0px); }
 .topbar {
-  position: sticky; top: 0; z-index: 50; height: 56px; display: flex; align-items: center;
-  gap: 12px; padding: 0 16px; background: rgba(255,255,255,.88); backdrop-filter: blur(14px);
+  position: sticky; top: 0; z-index: 50; display: flex; align-items: center;
+  gap: 12px; height: calc(var(--topbar-h) + env(safe-area-inset-top, 0px));
+  padding: env(safe-area-inset-top, 0px) 16px 0; box-sizing: border-box;
+  background: rgba(255,255,255,.94); backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--line);
 }
 .topbar .brand { font-weight: 800; letter-spacing: -.4px; font-size: 17px; }
 .topbar .brand em { color: var(--primary); font-style: normal; }
 .topbar .spacer { flex: 1; }
+/* 返回按钮统一尺寸：34×34 点击区、26px 箭头，修正原来 5 种尺寸/位置不一 */
+.topbar .back, .topbar .back-btn, .topbar .nav-back {
+  width: 34px; height: 34px; min-width: 34px; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 26px; line-height: 1; color: var(--text); border-radius: 8px; padding: 0;
+}
+/* 标题居中：left 绝对定位时标题不参与 flex 布局，这里用 flex:1 + text-align:left 保持左对齐统一；
+   需要居中的页面自行加 .topbar--center */
+.topbar .title, .topbar .nav-title { flex: 1; min-width: 0; font-size: 15px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .topbar a, .topbar button { font-size: 13px; color: var(--muted); padding: 6px 8px; border-radius: 8px; }
+.topbar .back, .topbar .back-btn, .topbar .nav-back, .topbar .brand { padding: 0; }
 .topbar a:hover, .topbar button:hover { background: #f1f5f9; color: var(--primary); }
 
 .card {

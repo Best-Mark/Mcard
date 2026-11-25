@@ -1,6 +1,9 @@
 <template>
   <div class="page">
-    <header class="topbar"><router-link to="/me" class="brand">M<em>Card</em></router-link></header>
+    <header class="topbar">
+      <router-link to="/me" class="back" aria-label="返回">‹</router-link>
+      <span class="title">支付结果</span>
+    </header>
     <div class="container" style="max-width:480px;margin-top:26px">
       <div class="card card-pad center">
         <template v-if="loading">查询中…</template>

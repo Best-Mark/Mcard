@@ -165,10 +165,7 @@ async function done() {
 
 <style scoped>
 .page { padding-bottom: calc(100px + env(safe-area-inset-bottom)); }
-.topbar { height: 50px; display: flex; align-items: center; gap: 10px; padding: 0 12px; background: #fff; border-bottom: 1px solid var(--line); }
-.topbar .back { font-size: 30px; line-height: 1; color: var(--text); }
-.topbar .title { font-weight: 700; font-size: 15px; }
-.topbar .spacer { flex: 1; }
+/* 顶栏统一用 global.css 的沉浸式 .topbar（含 safe-area 贴顶、34px 返回按钮、左右 16px 对齐） */
 .badge.on { background: #eef4ff; background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--primary); }
 .preview-panel { margin-top: 12px; }
 .preview-card { padding: 12px; }

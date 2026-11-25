@@ -599,7 +599,7 @@ async function toggleFavorite() {
 }
 .cv-cover > * { position: relative; z-index: 1; }
 @media (prefers-reduced-motion: reduce) { .cv-cover::before { animation: none; opacity: .7; } }
-.cv-back { position: absolute; left: 14px; top: calc(14px + env(safe-area-inset-top)); font-size: 30px; color: #fff; line-height: 1; }
+.cv-back { position: absolute; left: 16px; top: calc(14px + env(safe-area-inset-top)); font-size: 30px; color: #fff; line-height: 1; }
 /* 持有者预览的编辑入口：与返回按钮同位，稍缩字号避免与品牌字重叠 */
 .cv-owner-edit { font-size: 22px; width: 34px; text-align: center; z-index: 2; }
 .cv-brand { position: absolute; right: 16px; top: calc(18px + env(safe-area-inset-top)); color: #fff; font-weight: 800; opacity: .9; }
@@ -1210,7 +1210,7 @@ async function toggleFavorite() {
 .cv-tpl-sidebar .cv-contact-label { text-align: right; }
 .cv-tpl-sidebar .cv-contact-value, .cv-tpl-sidebar .cv-block { text-align: right; }
 .cv-clean .cv-cover { height: 0; border-radius: 0; background: transparent; }
-.cv-clean .cv-back { top: calc(10px + env(safe-area-inset-top)); left: 12px; color: var(--cv-back-color); background: var(--cv-back-bg); border-radius: 50%; width: 34px; height: 34px; display: grid; place-items: center; font-size: 24px; backdrop-filter: blur(6px); }
+.cv-clean .cv-back { top: calc(10px + env(safe-area-inset-top)); left: 16px; color: var(--cv-back-color); background: var(--cv-back-bg); border-radius: 50%; width: 34px; height: 34px; display: grid; place-items: center; font-size: 24px; backdrop-filter: blur(6px); }
 .cv-clean .cv-brand { top: calc(18px + env(safe-area-inset-top)); color: var(--cv-brand-color); }
 .cv-clean .cv-main { max-width: 430px; margin: 30px auto 0; }
 .cv-clean .cv-main > .card, .cv-clean .cv-main > .cv-profile { border-radius: 0; border: 0; box-shadow: none; background: transparent; margin-top: 0; }

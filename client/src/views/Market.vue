@@ -1,7 +1,6 @@
 <template>
   <div class="market-page">
     <header class="topbar market-nav">
-      <button class="nav-back" @click="router.back ? router.back() : router.push('/')" aria-label="返回">‹</button>
       <span class="nav-title">名片集市 · 发现对口伙伴</span>
       <button class="nav-menu-btn" aria-label="菜单" @click="toggleDrawer"><i class="menu-glyph"></i></button>
       <router-link to="/me" class="nav-me">我的</router-link>
@@ -298,8 +297,7 @@ onMounted(async () => {
 
 <style scoped>
 .market-page { min-height: 100vh; background: var(--bg-page, #f4f6fb); padding-bottom: 40px; }
-.market-nav { position: sticky; top: 0; z-index: 30; }
-.nav-back { border: 0; background: transparent; font-size: 30px; line-height: 1; padding: 0 10px; color: var(--primary, #2563eb); }
+.market-nav { position: sticky; top: 0; }
 .nav-title { flex: 1; font-weight: 700; font-size: 15px; }
 .nav-me { font-size: 13px; color: var(--primary, #2563eb); }
 .mk-quality { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; margin-left: 4px; vertical-align: middle; }

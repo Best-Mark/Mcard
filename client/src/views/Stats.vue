@@ -1,7 +1,6 @@
 <template>
   <div class="page">
     <header class="topbar">
-      <button class="back" @click="router.back ? router.back() : router.push('/me')">‹</button>
       <span class="title">浏览统计</span>
       <div class="spacer"></div>
       <button class="dash-icon" aria-label="回到名片" @click="router.push('/me')">▤</button>

@@ -1,7 +1,6 @@
 <template>
   <div class="page">
     <header class="topbar">
-      <button class="back" @click="router.back ? router.back() : router.push('/me')">‹</button>
       <span class="title">消息通知</span>
       <div class="spacer"></div>
       <button v-if="unread" class="btn btn-sm btn-ghost" :disabled="marking" @click="markAll">{{ marking ? '处理中…' : '全部已读' }}</button>
