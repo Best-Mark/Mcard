@@ -114,6 +114,7 @@
 
       <view class="dock">
         <button class="btn primary" open-type="share">分享名片</button>
+        <button class="btn" @tap="savePhoneContact">存入通讯录</button>
         <button class="btn" @tap="copyContact">复制名片信息</button>
       </view>
     </block>
@@ -231,6 +232,37 @@ function copyContact() {
     `电子名片：${c.url || baseUrl + '/c/' + c.slug}`
   ].filter(Boolean).join('\n')
   copyText(text, '名片信息已复制')
+}
+
+// 存入系统通讯录：拉起微信原生添加联系人界面，预填当前名片资料。
+// 注意：这是系统通讯录写入，与「交换名片/名片夹」无关；无法静默保存，用户须在界面里确认。
+function savePhoneContact() {
+  const c = card.value
+  if (!c) return
+  const mobile = c.mobile || c.phone || ''
+  if (!mobile) return toast('该名片未填写手机号，无法存入通讯录')
+  const payload = {
+    firstName: c.name || c.name_en || '未填写姓名',
+    mobilePhoneNumber: mobile,
+    organization: c.company || '',
+    title: [c.title, c.department].filter(Boolean).join(' · '),
+    email: c.email || '',
+    addressState: c.province || '',
+    addressCity: c.city || '',
+    addressStreet: [c.district, c.street, c.address, c.address_detail].filter(Boolean).join(' '),
+    weChatNumber: c.wechat || c.whatsapp || '',
+    url: c.website || c.shop_url || '',
+    success: () => toast('已打开添加联系人，请确认保存', 'success'),
+    fail: err => {
+      if (/cancel/i.test(String((err && err.errMsg) || ''))) return
+      toast('无法调起通讯录，请检查小程序权限后重试')
+    }
+  }
+  try {
+    uni.addPhoneContact(payload)
+  } catch (e) {
+    toast('当前环境不支持存入通讯录')
+  }
 }
 
 async function exchange() {
