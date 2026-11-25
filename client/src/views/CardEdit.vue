@@ -404,10 +404,12 @@ async function upload(e, field) {
 const SECTION_FIELDS = {
   identity: ['name', 'name_en', 'title', 'company', 'department', 'logo'],
   bio: ['bio', 'company_intro', 'tags'],
-  contact: ['mobile', 'phone', 'email', 'wechat', 'alipay', 'whatsapp', 'province', 'city', 'district', 'street', 'address', 'address_detail'],
+  // ⚠️ 坐标必须随联系方式一起保存：本页的「选地区/自动定位/地图选点」都会改 latitude/longitude，
+  // 若只存省市文本不存坐标，就会出现「地址明明改了、集市距离却按旧坐标算」的错配。
+  // 集市页（/me/card/market）保存的是 market_opt_in/industry，坐标不重复定义、只在本页持久化。
+  contact: ['mobile', 'phone', 'email', 'wechat', 'alipay', 'whatsapp', 'province', 'city', 'district', 'street', 'address', 'address_detail', 'latitude', 'longitude'],
   links: ['website', 'shop_url', 'links']
-  // ⚠️ 外观（template/theme/accent/qr_*）与集市（market_opt_in/industry/latitude/longitude）已独立到
-  // /me/card/style、/me/card/market 保存；本页不提交这些字段（参数唯一真相源）。地区字段归联系方式。
+  // ⚠️ 外观（template/theme/accent/qr_*）已独立到 /me/card/style 保存；本页不提交这些字段（参数唯一真相源）。
 }
 const savedSections = ref({})
 const dirtySections = ref({})
