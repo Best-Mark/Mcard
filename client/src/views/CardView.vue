@@ -170,6 +170,15 @@
           </a>
         </div>
       </BottomSheet>
+      <!-- 通讯录兜底：intent 拉不起来的个别机型/PC/鸿蒙，用复制基本信息代替下载 VCF（信息层展示，操作收在弹层） -->
+      <BottomSheet :show="contactFallbackOpen" @update:show="contactFallbackOpen = $event">
+        <div class="map-sheet-head"><b>存入通讯录 · 复制信息</b><button @click="contactFallbackOpen = false">×</button></div>
+        <div class="cf-body">
+          <p class="small muted">当前手机无法直接打开通讯录，复制下面的信息，到通讯录新建联系人粘贴即可。</p>
+          <pre class="cf-info">{{ contactCopyText }}</pre>
+          <button class="btn btn-primary btn-block" @click="copyContactInfo">一键复制名片信息</button>
+        </div>
+      </BottomSheet>
     </template>
 
     <!-- 名片地址二维码大图：微信扫一扫打开名片页，再点页面里的「存入通讯录」保存 -->
@@ -296,6 +305,7 @@ const template = ref('contact')
 const CLEAN_TEMPLATES = ['contact', 'paper', 'glass', 'wood', 'neon', 'acid', 'pop', 'magazine', 'poster', 'ticket', 'horizontal', 'sidebar']
 const isCleanTpl = computed(() => CLEAN_TEMPLATES.includes(template.value))
 const qrModal = ref(false); const guide = ref(''); const guideImage = ref(''); const exchangeOpen = ref(false)
+const contactFallbackOpen = ref(false) // 安卓 intent 拉不起通讯录时的兜底：复制基本信息卡片（全程不下载）
 const mapOpen = ref(false); const moreOpen = ref(false)
 const mySlug = ref(''); const exchanging = ref(false)
 const favorite = ref(false); const favBusy = ref(false)
@@ -378,25 +388,23 @@ const fullUrl = u => (u ? new URL(u, windowRef.location.origin).href : '')
 // 模板里区分微信/Safari 的保存引导（微信→去浏览器，iOS→长按图片）
 const inWeChat = isWeChat()
 const deviceEnvKey = deviceEnv()
-// 手机浏览器：用真实 <a href=".vcf"> 顶层导航直接拉起系统通讯录，不用先下载文件再导入。
-// Safari 只信任用户点击的顶层导航；Chrome/安卓对 text/vcard + 无 attachment 的直链同样会用通讯录应用打开。
-// JS location.href/fetch 下载在 iOS 上会被当下载拦截，所以 iOS/Android 都走 <a>。
-const contactNative = deviceEnvKey === 'ios' || deviceEnvKey === 'android'
+// iOS：用真实 <a href=".vcf"> 顶层导航弹系统添加联系人（Safari 只信任用户点击的顶层导航）。
+// 安卓：必须走按钮点击 saveContact —— 需要监听 visibilitychange 判断 intent 是否拉起，拉不起来弹复制卡片兜底。
+const contactNative = deviceEnvKey === 'ios'
 // iOS：.vcf 直链弹添加联系人；安卓：intent:// 直接拉起预填的添加联系人界面（收到 vcf 只会下载，必须走 intent）。
-// 安卓 intent 带 browser_fallback_url 指向强制下载的 vcf，通讯录不可用时自动降级为下载。
+// 安卓不设 browser_fallback_url（那是下载），拉不起来时由 saveContact 的 visibilitychange 检测弹「复制信息」卡片。
 const contactHref = computed(() => {
   if (deviceEnvKey !== 'android') return vcfApi.value
-  const fallback = `${windowRef.location.origin}${vcfApi.value}?download=1`
-  return androidContactIntent(card.value, fallback)
+  return androidContactIntent(card.value)
 })
 const saveTip = SAVE_IMAGE_TIPS[deviceEnvKey] || SAVE_IMAGE_TIPS.other
 // 通讯录操作按环境出文案：iOS/Android 直接开系统界面、鸿蒙/其它下载 vcf、微信引导去浏览器
 const CONTACT_ACTION = {
   ios: { label: '打开通讯录', tip: '点此直接打开系统添加联系人界面' },
   android: { label: '打开通讯录', tip: '点此直接打开系统添加联系人界面' },
-  harmony: { label: '下载联系人', tip: '点此下载联系人文件，打开即可导入通讯录' },
+  harmony: { label: '复制信息', tip: '点此复制名片信息，到通讯录新建联系人粘贴' },
   wechat: { label: '去浏览器添加', tip: '微信内无法直接写入通讯录，请点右上角「···」在浏览器中打开' },
-  other: { label: '添加联系人', tip: '点此下载联系人文件，打开即可导入通讯录' }
+  other: { label: '复制信息', tip: '点此复制名片信息，到通讯录新建联系人粘贴' }
 }
 const contactActionLabel = (CONTACT_ACTION[deviceEnvKey] || CONTACT_ACTION.other).label
 const contactActionTip = (CONTACT_ACTION[deviceEnvKey] || CONTACT_ACTION.other).tip
@@ -415,18 +423,18 @@ const CONTACT_STEPS = {
   ] },
   android: { title: '安卓 · 通常一步到位', lines: [
     '点页面底部「存入通讯录」，直接拉起已填好资料的添加联系人界面',
-    '确认姓名与号码无误',
-    '点「保存」即存入；若手机不支持会自动改为下载联系人文件'
+    '确认姓名与号码无误，点「保存」即存入',
+    '个别机型拉不起时，会自动弹出名片信息，一键复制后到通讯录新建粘贴即可'
   ] },
-  harmony: { title: '鸿蒙 · 通常一步到位', lines: [
-    '点页面底部「存入通讯录」，直接下载联系人文件',
-    '到「文件管理」→ 下载 里点开',
-    '选「导入到通讯录」，确认即完成'
+  harmony: { title: '鸿蒙 · 复制信息保存', lines: [
+    '点页面底部「存入通讯录」，弹出名片信息',
+    '点「一键复制名片信息」',
+    '到通讯录新建联系人，粘贴保存即可'
   ] },
   other: { title: '电脑端 / 其他浏览器', lines: [
-    '点页面底部「存入通讯录」下载联系人文件（.vcf）',
-    '双击文件即可导入 Outlook / 系统通讯录',
-    '手机扫码打开此页，可直接拨号、一键存档'
+    '点页面底部「存入通讯录」，弹出名片信息',
+    '点「一键复制名片信息」',
+    '到通讯录 / Outlook 新建联系人，粘贴保存即可'
   ] }
 }
 const contactSteps = computed(() => {
@@ -583,12 +591,37 @@ async function saveQr() {
   if (r.kind === 'longpress') { await showGuide('qr'); return }
   showToast(r.kind === 'downloaded' ? '二维码已开始下载' : '已打开二维码，请长按保存', 'success')
 }
+// 复制名片里的关键信息（不下载任何文件）：安卓 intent 拉不起通讯录时的兜底，用户复制到通讯录新建即可。
+const contactCopyText = computed(() => {
+  const c = card.value || {}
+  const lines = [['姓名', c.name || c.name_en], ['公司', c.company], ['职位', [c.title, c.department].filter(Boolean).join(' · ')], ['手机', c.mobile || c.phone], ['邮箱', c.email]]
+  return lines.filter(([, v]) => v).map(([k, v]) => `${k}：${v}`).join('\n')
+})
+async function copyContactInfo() {
+  if (!contactCopyText.value) return
+  await copy(contactCopyText.value, '名片信息')
+  contactFallbackOpen.value = false
+  showToast('已复制，去通讯录新建联系人粘贴即可', 'success')
+}
+
+let contactLeftPage = false
 async function saveContact() {
   if (!card.value) return
   if (isWeChat()) { await showGuide('contact'); return }
   if (/Android|Adr/i.test(navigator.userAgent)) {
-    // 安卓：走 intent 拉起预填的添加联系人界面，失败自动 fallback 到下载 vcf（见 androidContactIntent）。
+    // 安卓：intent 拉起预填的添加联系人界面。若 1.2s 内页面没进入后台（说明 intent 没拉起），
+    // 弹「复制基本信息」卡片兜底——全程不下载 VCF，个别机型照样能存。
+    contactLeftPage = false
+    const markLeft = () => {
+      if (document.visibilityState === 'hidden') contactLeftPage = true
+    }
+    document.addEventListener('visibilitychange', markLeft)
+    window.addEventListener('pagehide', () => { contactLeftPage = true })
     window.location.href = contactHref.value
+    setTimeout(() => {
+      document.removeEventListener('visibilitychange', markLeft)
+      if (!contactLeftPage && document.visibilityState === 'visible') contactFallbackOpen.value = true
+    }, 1200)
     return
   }
   if (isIOS()) {
@@ -596,9 +629,8 @@ async function saveContact() {
     openVcfInline(vcfApi.value)
     return
   }
-  const r = await saveImageUrl(vcfApi.value, `${card.value.name || slug.value}.vcf`)
-  if (r.kind === 'downloaded') showToast('已下载，打开即可导入通讯录', 'success')
-  else showToast('已打开名片文件，请选择导入通讯录')
+  // PC / 鸿蒙 / 其它：不下载，直接弹复制信息卡片
+  contactFallbackOpen.value = true
 }
 async function doShare() {
   if (isWeChat()) {
@@ -754,6 +786,8 @@ async function toggleFavorite() {
 .map-sheet-list { padding: 6px 12px 18px; overflow-y: auto; }
 .map-sheet-list a { display: flex; align-items: center; gap: 12px; padding: 13px 10px; border-bottom: 1px solid #f0f3f8; text-decoration: none; color: #17233c; font-size: 14px; }
 .map-sheet-list a:last-child { border-bottom: 0; }
+.cf-body { padding: 14px 18px calc(20px + env(safe-area-inset-bottom)); }
+.cf-info { margin: 12px 0; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-page); font-size: 14px; line-height: 1.9; white-space: pre-wrap; word-break: break-all; user-select: all; }
 .map-ico { flex: 0 0 34px; width: 34px; height: 34px; display: block; object-fit: contain; border-radius: 8px; }
 .map-arrow { margin-left: auto; color: #94a3b8; font-size: 16px; }
 .cv-footer { text-align: center; color: var(--t-muted); font-size: 11px; padding: 26px 0 10px; }

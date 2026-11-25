@@ -29,11 +29,12 @@ export function openVcfInline(url) {
 
 // 安卓：用 Chrome intent:// 直接拉起系统「添加联系人」界面并预填资料，彻底摆脱「下载 vcf 再导入」。
 // 安卓浏览器收到 text/vcard 只会下载（不像 iOS Safari 会弹添加联系人），唯一可靠的直拉方式是 Android intent。
-// 格式依据 Chrome 官方文档：intent:#Intent;action=...;type=...;S.xxx=...;S.browser_fallback_url=...;end
-// - S.browser_fallback_url：intent 无法解析/无通讯录应用时自动跳这个 URL（指向强制下载的 VCF）。
+// 格式依据 Chrome 官方文档：intent:#Intent;action=...;type=...;S.xxx=...;end
+// - 刻意不设 browser_fallback_url：那个兜底会跳去下载 VCF。拉不起来的场景由调用方用
+//   visibilitychange 检测后弹「复制基本信息」卡片兜底，全程不产生下载。
 // - 字段值用 encodeURIComponent，避免中文/分隔符（; =）破坏 intent 语法。
 // - 微信 X5 不支持 intent://，所以仅安卓外部浏览器用；微信内走「去浏览器打开」引导。
-export function androidContactIntent(card, fallbackUrl) {
+export function androidContactIntent(card) {
   const enc = v => encodeURIComponent(String(v || '').slice(0, 120))
   const parts = [
     'intent:#Intent',
@@ -51,8 +52,6 @@ export function androidContactIntent(card, fallbackUrl) {
   if (title) parts.push(`S.title=${enc(title)}`)
   const email = String(card?.email || '').trim()
   if (email) parts.push(`S.email=${enc(email)}`)
-  const abs = /^https?:\/\//i.test(fallbackUrl || '') ? fallbackUrl : new URL(fallbackUrl || '/', window.location.origin).href
-  parts.push(`S.browser_fallback_url=${encodeURIComponent(abs)}`)
   parts.push('end')
   return parts.join(';')
 }
