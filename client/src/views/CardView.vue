@@ -378,14 +378,15 @@ const fullUrl = u => (u ? new URL(u, windowRef.location.origin).href : '')
 // 模板里区分微信/Safari 的保存引导（微信→去浏览器，iOS→长按图片）
 const inWeChat = isWeChat()
 const deviceEnvKey = deviceEnv()
-// iOS Safari：必须用真实 <a href=".vcf"> 链接（Safari 只信任用户点击的顶层导航），
-// 而不是 JS location.href——后者在 iOS 上常被当下载/拦截，导致「存不进通讯录」。
-const contactNative = deviceEnvKey === 'ios'
+// 手机浏览器：用真实 <a href=".vcf"> 顶层导航直接拉起系统通讯录，不用先下载文件再导入。
+// Safari 只信任用户点击的顶层导航；Chrome/安卓对 text/vcard + 无 attachment 的直链同样会用通讯录应用打开。
+// JS location.href/fetch 下载在 iOS 上会被当下载拦截，所以 iOS/Android 都走 <a>。
+const contactNative = deviceEnvKey === 'ios' || deviceEnvKey === 'android'
 const saveTip = SAVE_IMAGE_TIPS[deviceEnvKey] || SAVE_IMAGE_TIPS.other
-// 通讯录操作按环境出文案：iOS 直接开系统界面、Android/鸿蒙下载 vcf、微信引导去浏览器
+// 通讯录操作按环境出文案：iOS/Android 直接开系统界面、鸿蒙/其它下载 vcf、微信引导去浏览器
 const CONTACT_ACTION = {
   ios: { label: '打开通讯录', tip: '点此直接打开系统添加联系人界面' },
-  android: { label: '下载联系人', tip: '点此下载联系人文件，打开即可导入通讯录' },
+  android: { label: '打开通讯录', tip: '点此直接打开系统添加联系人界面' },
   harmony: { label: '下载联系人', tip: '点此下载联系人文件，打开即可导入通讯录' },
   wechat: { label: '去浏览器添加', tip: '微信内无法直接写入通讯录，请点右上角「···」在浏览器中打开' },
   other: { label: '添加联系人', tip: '点此下载联系人文件，打开即可导入通讯录' }
@@ -406,9 +407,9 @@ const CONTACT_STEPS = {
     '点「完成」即保存到通讯录'
   ] },
   android: { title: '安卓 · 通常一步到位', lines: [
-    '点页面底部「存入通讯录」，直接下载联系人文件',
-    '通知栏点该文件，或到「文件管理」→ 下载 里点开',
-    '选「导入到通讯录」，确认即完成'
+    '点页面底部「存入通讯录」，直接拉起系统通讯录',
+    '确认姓名与号码无误',
+    '点「保存 / 完成」即存入通讯录'
   ] },
   harmony: { title: '鸿蒙 · 通常一步到位', lines: [
     '点页面底部「存入通讯录」，直接下载联系人文件',
@@ -578,9 +579,9 @@ async function saveQr() {
 async function saveContact() {
   if (!card.value) return
   if (isWeChat()) { await showGuide('contact'); return }
-  if (isIOS()) {
-    // iOS Safari：直接跳 .vcf 唤起系统「添加联系人」弹层（覆盖在当前页，不会触发 visibilitychange）。
-    // 若被拦截无法弹出，用户可复制页面里的手机号手动新建联系人——不再主动弹窗打断。
+  if (isIOS() || /Android|Adr/i.test(navigator.userAgent)) {
+    // 手机浏览器：直接跳 .vcf 顶层导航拉起系统「添加联系人」界面（服务端按 UA 去掉 attachment）。
+    // 若被定制浏览器拦截，用户可复制页面里的手机号手动新建联系人——不再主动弹窗打断。
     openVcfInline(vcfApi.value)
     return
   }

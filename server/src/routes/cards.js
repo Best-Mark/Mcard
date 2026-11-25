@@ -380,13 +380,15 @@ router.get('/public/:slug/card.vcf', wrap((req, res) => {
   const origin = originOf(req)
   const text = vcard.build(publicView(row, origin), origin)
   res.set('Content-Type', 'text/vcard; charset=utf-8')
-  // iOS Safari 只有「URL 以 .vcf 结尾 + 无 Content-Disposition: attachment」时才弹系统添加联系人；
-  // 带 attachment 或带 ?query 都会退化成下载到「文件」。按 UA 自动识别，前端用纯 .vcf 直链即可。
-  // 微信内 WKWebView 无法弹通讯录，仍返回 attachment（引导去外部浏览器）。
+  // 手机浏览器收到「text/vcard + URL 以 .vcf 结尾 + 无 Content-Disposition: attachment」时，
+  // iOS Safari 弹系统添加联系人，安卓 Chrome 用系统通讯录应用打开——都能直接拉起通讯录，不必下载文件。
+  // 带 attachment 会强制下载到「文件」，所以要按 UA 对手机浏览器自动去掉。
+  // 微信内 WebView 拦通讯录，仍返回 attachment（引导去外部浏览器）。
   const ua = String(req.headers['user-agent'] || '')
   const isIOS = /iPad|iPhone|iPod/.test(ua)
+  const isAndroid = /Android/i.test(ua)
   const isWeChat = /MicroMessenger/i.test(ua)
-  const inline = String(req.query.inline) === '1' || (isIOS && !isWeChat)
+  const inline = String(req.query.inline) === '1' || ((isIOS || isAndroid) && !isWeChat)
   if (inline) {
     // 不设 Content-Disposition：iOS Safari 按 MIME(text/vcard)+.vcf 后缀识别为联系人卡片，
     // 带 filename 的 inline 头会被 Safari 当下载请求 → 弹「无法下载此文件」。
