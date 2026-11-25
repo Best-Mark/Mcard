@@ -16,6 +16,7 @@ const WechatQrLogin = () => import('../views/WechatQrLogin.vue')
 const WechatQrResult = () => import('../views/WechatQrResult.vue')
 const Dashboard = () => import('../views/Dashboard.vue')
 const Profile = () => import('../views/Profile.vue')
+const AccountProfile = () => import('../views/AccountProfile.vue')
 const CardEdit = () => import('../views/CardEdit.vue')
 const CardStyle = () => import('../views/CardStyle.vue')
 const CardMarket = () => import('../views/CardMarket.vue')
@@ -42,6 +43,7 @@ const routes = [
   { path: '/wechat/qr-result', name: 'wechat-qr-result', component: WechatQrResult },
   { path: '/me', name: 'dashboard', component: Dashboard, meta: { auth: true } },
   { path: '/me/profile', name: 'profile', component: Profile, meta: { auth: true } },
+  { path: '/me/account', name: 'account-profile', component: AccountProfile, meta: { auth: true } },
   { path: '/me/card', name: 'card-edit', component: CardEdit, meta: { auth: true } },
   { path: '/me/card/style', name: 'card-style', component: CardStyle, meta: { auth: true } },
   { path: '/me/card/market', name: 'card-market', component: CardMarket, meta: { auth: true } },

@@ -349,6 +349,16 @@ router.put('/avatar', authRequired, wrap((req, res) => {
   ok(res, { avatar })
 }))
 
+// 账户资料（与名片资料完全独立）：昵称只写 users.nickname，绝不碰 cards 表任何字段。
+// 名片姓名/职位/公司等在 /api/cards 改，两者不是一个概念。
+router.put('/profile', authRequired, wrap((req, res) => {
+  const nickname = String(req.body?.nickname ?? '').trim().slice(0, 30)
+  if (!nickname) return fail(res, 400, '昵称不能为空')
+  db.prepare('UPDATE users SET nickname = ? WHERE id = ?').run(nickname, req.user.id)
+  const u = db.prepare('SELECT id, phone, nickname, role, status, avatar FROM users WHERE id = ?').get(req.user.id)
+  ok(res, { user: publicUser(u) })
+}))
+
 // 微信内已登录 → 生成一次性凭证，前端把它拼到当前 URL，引导「在浏览器中打开」后免二次登录
 router.post('/share-ticket', authRequired, wrap((req, res) => {
   ok(res, { ticket: signShareTicket(req.user.id) })

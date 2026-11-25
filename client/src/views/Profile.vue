@@ -13,16 +13,17 @@
       <button class="pf-gear" aria-label="设置" @click="toggleDrawer">⚙</button>
       <button v-if="card" class="pf-qr" aria-label="我的名片二维码" @click="goQr">▦</button>
 
-      <!-- 头像 = 更换头像入口，昵称 = 编辑资料入口（2026-11-25 用户定稿：这两项不再在下方 cell 列表重复） -->
+      <!-- 头像点击换头像（名片展示头像）；昵称点击进「账户资料」独立页——
+           账户昵称(auth.user.nickname) 与 名片姓名(card.name) 是两套东西，绝不混在一起（2026-11-25 用户定稿） -->
       <div class="pf-user">
         <button class="pf-ava" title="点击更换头像（从素材库选）" aria-label="更换头像" @click="openAvatarPicker">
           <img v-if="avatar" :src="avatar" alt="账号头像" />
           <span v-else>{{ (auth.user?.phone || card?.name || '名').slice(0, 1) }}</span>
           <i class="pf-ava-cam"><AppIcon name="camera" :size="12" /></i>
         </button>
-        <button class="pf-ident" title="点击编辑资料" aria-label="编辑资料" @click="router.push('/me/card')">
+        <button class="pf-ident" title="点击编辑账户资料" aria-label="编辑账户资料" @click="router.push('/me/account')">
           <div class="pf-name">
-            {{ card?.name || auth.user?.phone || '我的账户' }}
+            {{ auth.user?.nickname || auth.user?.phone || '我的账户' }}
             <span v-if="card" class="pf-status" :class="card.active ? 'ok' : 'warn'">{{ card.active ? '已开通' : '未开通' }}</span>
           </div>
           <div class="pf-slogan">{{ card?.title || card?.company || '一张永不失效的二维码，让客户一键存下你' }}</div>
