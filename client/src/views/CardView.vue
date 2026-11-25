@@ -18,6 +18,7 @@
     <template v-else-if="card">
       <div class="container cv-main">
         <div class="cv-profile card" :data-wm="(template === 'navygold' || isCleanTpl) ? (card.company || '').slice(0, 4) : ''">
+          <span class="cv-sheen" aria-hidden="true"></span>
           <div class="cv-avatar">
             <img v-if="card.avatar" :src="card.avatar" :alt="card.name" />
             <span v-else>{{ (card.name || '名').slice(0, 1) }}</span>
@@ -302,7 +303,14 @@ async function countMaterialView(m) {
 }
 
 const t = computed(() => themeOf({ theme: currentTheme.value, accent: card.value?.accent }))
-const vars = computed(() => themeVars(t.value))
+// 动态光效用主题强调色而非写死白色：把 #rrggbb 转 rgb 分量，CSS 里 rgba(var(--glow-rgb), .x)
+function hexToRgb(hex) {
+  const h = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''))
+  if (!h) return '37,99,235'
+  const n = parseInt(h[1], 16)
+  return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`
+}
+const vars = computed(() => ({ ...themeVars(t.value), '--glow-rgb': hexToRgb(t.value.accent) }))
 // 扫码进来的访客多为未登录：只在未登录且非本人时展示建卡引导，避免打扰名片主人
 const showCreateOwn = computed(() => !auth.token && !isOwner.value)
 const regionLine = computed(() => {
@@ -545,7 +553,15 @@ async function toggleFavorite() {
 .cv-page { background: var(--t-bg); color: var(--t-text); min-height: 100vh; padding-bottom: 84px; }
 /* 高档商务名片：卡片大圆角 + 轻阴影，浅灰蓝底衬托层次 */
 .cv-page .card { border-radius: 20px; box-shadow: 0 4px 18px rgba(30,64,120,.07); border: 0; overflow: hidden; }
-.cv-cover { height: 168px; position: relative; border-radius: 0 0 28px 28px; background: var(--t-cover); }
+.cv-cover { height: 168px; position: relative; border-radius: 0 0 28px 28px; background: var(--t-cover); overflow: hidden; }
+/* 封面动态光晕：主题色柔光呼吸（无位移），低亮度不压文字 */
+.cv-cover::before {
+  content: ''; position: absolute; inset: -30%; pointer-events: none; z-index: 0;
+  background: radial-gradient(70% 90% at 22% 10%, rgba(var(--glow-rgb, 37,99,235), .22), transparent 62%);
+  animation: cvGlowBreath 30s ease-in-out infinite alternate;
+}
+.cv-cover > * { position: relative; z-index: 1; }
+@media (prefers-reduced-motion: reduce) { .cv-cover::before { animation: none; opacity: .7; } }
 .cv-back { position: absolute; left: 14px; top: calc(14px + env(safe-area-inset-top)); font-size: 30px; color: #fff; line-height: 1; }
 .cv-brand { position: absolute; right: 16px; top: calc(18px + env(safe-area-inset-top)); color: #fff; font-weight: 800; opacity: .9; }
 .cv-brand em { font-style: normal; opacity: .75; }
@@ -775,6 +791,12 @@ async function toggleFavorite() {
 .cv-tpl-elite .cv-main { margin-top: -70px; }
 .cv-tpl-elite .card { background: #15171c; border: 1px solid rgba(255,255,255,.09); }
 .cv-tpl-elite .cv-profile { flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 24px 18px; background: #15171c; border-color: rgba(255,255,255,.1); }
+/* 曜石黑金质感：斜向金属拉丝 + 顶部暖金高光（静态，不动画） */
+.cv-tpl-elite .cv-profile {
+  background-image:
+    linear-gradient(180deg, rgba(185,147,85,.16), transparent 30%),
+    repeating-linear-gradient(112deg, rgba(255,255,255,.035) 0 1px, transparent 1px 4px);
+}
 .cv-tpl-elite .cv-avatar { width: 92px; height: 92px; flex: 0 0 92px; border-radius: 50%; border: 3px solid var(--t-accent); box-shadow: 0 0 0 5px #15171c, 0 12px 30px rgba(0,0,0,.4); }
 .cv-tpl-elite .cv-name-row { justify-content: center; }
 .cv-tpl-elite .cv-name { font-family: Georgia,'Songti SC',serif; font-size: 26px; letter-spacing: 4px; color: #f5f5f4; }
@@ -1173,6 +1195,40 @@ async function toggleFavorite() {
   letter-spacing: -4px; line-height: 1; pointer-events: none;
 }
 .cv-clean .cv-profile > * { position: relative; z-index: 2; }
+/* ===== 高级感光效：只作用于简洁单卡，颜色跟随主题强调色（--glow-rgb）=====
+   教训（参考 MShop）：位移会被感知为「有遮罩在动」，所以主光晕只做 opacity 呼吸、
+   无 translate/scale；斜光带亮度极低、扫完淡出停半程；静态质感层不动画。 */
+.cv-sheen { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; border-radius: inherit; }
+.cv-sheen::before {
+  content: ''; position: absolute; inset: -30%;
+  background: radial-gradient(80% 55% at 24% 0%, rgba(var(--glow-rgb, 37,99,235), .14) 0%, rgba(var(--glow-rgb, 37,99,235), .05) 38%, transparent 68%);
+  animation: cvGlowBreath 28s ease-in-out infinite alternate;
+}
+.cv-sheen::after {
+  content: ''; position: absolute; top: -20%; bottom: -20%; width: 46%; left: -60%;
+  background: linear-gradient(105deg, transparent 0%, rgba(var(--glow-rgb, 37,99,235), .045) 50%, transparent 100%);
+  transform: translateX(-120%);
+  animation: cvSheenSweep 34s ease-in-out infinite;
+}
+@keyframes cvGlowBreath { 0% { opacity: .35; } 100% { opacity: 1; } }
+@keyframes cvSheenSweep {
+  0% { transform: translateX(-120%); opacity: 0; }
+  18% { opacity: 1; }
+  46% { transform: translateX(320%); opacity: 1; }
+  60% { opacity: 0; }
+  100% { transform: translateX(320%); opacity: 0; }
+}
+/* 尊重系统「减少动画」：静态显示一层柔光，不闪不动 */
+@media (prefers-reduced-motion: reduce) {
+  .cv-sheen::before { animation: none; opacity: .7; }
+  .cv-sheen::after { display: none; }
+}
+/* 质感：顶缘 1px 内高光 + 极淡拉丝纹（静态，随主题色），只加在简洁卡 */
+.cv-clean .cv-main > .cv-profile {
+  background-image:
+    linear-gradient(180deg, rgba(255,255,255,.5), rgba(255,255,255,0) 32%),
+    repeating-linear-gradient(112deg, rgba(var(--glow-rgb, 37,99,235), .018) 0 1px, transparent 1px 5px);
+}
 .cv-clean .cv-avatar { width: 64px; height: 64px; flex: 0 0 64px; border-radius: var(--cv-logo-radius); font-size: 26px; color: var(--cv-btn-main-color); background: var(--cv-logo-bg); box-shadow: var(--cv-logo-shadow); }
 .cv-clean .cv-name { color: var(--cv-name-color); font-size: var(--cv-name-size); font-weight: var(--cv-name-weight); letter-spacing: var(--cv-name-spacing); font-family: var(--cv-name-font); }
 .cv-clean .cv-en { color: var(--cv-ink-2); }

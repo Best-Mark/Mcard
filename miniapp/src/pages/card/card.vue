@@ -1,5 +1,5 @@
 <template>
-  <view class="page" :class="'tpl-' + tpl" :style="{ '--t-accent': card?.accent || '#2563eb' }">
+  <view class="page" :class="'tpl-' + tpl" :style="{ '--t-accent': card?.accent || '#2563eb', '--glow-rgb': glowRgb }">
     <view v-if="loading" class="state">名片加载中…</view>
     <view v-else-if="error" class="state">
       <view class="big">!</view>
@@ -135,6 +135,13 @@ const exchanging = ref(false)
 const tpl = ref('classic')
 const materials = ref([])
 
+// 动态光效用主题强调色，#rrggbb → rgb 分量
+const glowRgb = computed(() => {
+  const h = /^#?([0-9a-f]{6})$/i.exec(String(card.value?.accent || ''))
+  if (!h) return '37,99,235'
+  const n = parseInt(h[1], 16)
+  return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`
+})
 const coverBg = computed(() => {
   const c = card.value?.accent || '#2563eb'
   if (tpl.value === 'minimal') return '#ffffff'
@@ -247,13 +254,21 @@ onShareAppMessage(() => ({
 .state { padding: 120rpx 40rpx; text-align: center; color: #6b7688; }
 .state .big { font-size: 80rpx; color: #cbd5e1; }
 .state .muted { margin-top: 10rpx; }
-.cover { height: 240rpx; border-radius: 0 0 40rpx 40rpx; padding: 30rpx; color: #fff; position: relative; }
+.cover { height: 240rpx; border-radius: 0 0 40rpx 40rpx; padding: 30rpx; color: #fff; position: relative; overflow: hidden; }
+/* 封面动态光晕：主题色柔光呼吸，只动 opacity 不动位移（避免被感知为遮罩在动） */
+.cover::before { content: ''; position: absolute; inset: -30%; pointer-events: none; z-index: 0; background: radial-gradient(70% 90% at 22% 10%, rgba(var(--glow-rgb, 37,99,235), .22), transparent 62%); animation: cvGlow 30s ease-in-out infinite alternate; }
+.cover > * { position: relative; z-index: 1; }
+@keyframes cvGlow { 0% { opacity: .4; } 100% { opacity: 1; } }
 .brand { font-size: 36rpx; font-weight: 800; }
 .em { opacity: .8; }
 .inactive { position: absolute; right: 30rpx; top: 34rpx; font-size: 22rpx; background: rgba(255,255,255,.22); padding: 6rpx 16rpx; border-radius: 999rpx; }
 .body { padding: 22rpx; margin-top: -56rpx; }
 .card { background: #fff; border-radius: 24rpx; padding: 26rpx; margin-bottom: 18rpx; box-shadow: 0 8rpx 28rpx rgba(15,23,42,.05); }
-.profile { display: flex; flex-wrap: wrap; align-items: center; gap: 20rpx; }
+.profile { display: flex; flex-wrap: wrap; align-items: center; gap: 20rpx; position: relative; overflow: hidden; }
+/* 主卡静态质感：顶缘高光 + 极淡主题色拉丝（不动画，稳重不花哨） */
+.tpl-contact .profile, .tpl-navygold .profile, .tpl-classic .profile {
+  background-image: linear-gradient(180deg, rgba(255,255,255,.55), transparent 30%), repeating-linear-gradient(112deg, rgba(var(--glow-rgb, 37,99,235),.018) 0 1rpx, transparent 1rpx 6rpx);
+}
 .avatar { width: 120rpx; height: 120rpx; border-radius: 24rpx; background: #2563eb; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 52rpx; font-weight: 800; overflow: hidden; flex-shrink: 0; }
 .avatar image { width: 100%; height: 100%; }
 .ident { flex: 1; min-width: 0; }
