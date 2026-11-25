@@ -677,7 +677,8 @@ async function toggleFavorite() {
 .cv-embed .cv-main { margin-top: -34px; }
 .cv-embed .cv-profile { margin-top: 0; }
 /* 持有者预览：整页与公开页同款，但 /me 是 tab 页、底部还有 MemberNav（z110），dock/fab 抬到它上方避免被盖 */
-.cv-page.cv-owner { padding-bottom: 148px; }
+/* padding-top 用页面背景色给出与顶栏的间距（不用 margin，避免透出 body 白色） */
+.cv-page.cv-owner { padding-top: 12px; padding-bottom: 148px; }
 .cv-owner .cv-dock { bottom: 56px; }
 .cv-owner .cv-fab { bottom: calc(128px + env(safe-area-inset-bottom)); }
 .cv-owner .cv-fab-menu { bottom: calc(180px + env(safe-area-inset-bottom)); }
@@ -809,8 +810,8 @@ async function toggleFavorite() {
   /* ⚠️ 必须保持 fixed 贴底：这里若写 position:relative 会让 dock 掉进内容流悬在半空（2026-11-25 实锤）。 */
   overflow: hidden;
   gap: 8px; padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
-  background: rgba(18,22,36,.84);
-  background: linear-gradient(180deg, rgba(var(--glow-rgb, 37,99,235), .52), rgba(var(--glow-rgb, 37,99,235), .72));
+  background: rgba(18,22,36,.7);
+  background: linear-gradient(180deg, rgba(var(--glow-rgb, 37,99,235), .36), rgba(var(--glow-rgb, 37,99,235), .56));
   border-top: 1px solid rgba(255,255,255,.26);
   box-shadow: 0 -8px 30px -14px rgba(var(--glow-rgb, 37,99,235), .75);
   -webkit-backdrop-filter: blur(18px) saturate(1.35); backdrop-filter: blur(18px) saturate(1.35);
@@ -1314,7 +1315,7 @@ async function toggleFavorite() {
   --cv-back-color: #6b4a2e; --cv-back-bg: #fff; --cv-brand-color: #2a2118;
 }
 .cv-clean.cv-page { font-family: var(--cv-name-font, inherit); padding-bottom: 92px; }
-.cv-clean.cv-page.cv-owner { padding-bottom: 148px; }
+.cv-clean.cv-page.cv-owner { padding-top: 12px; padding-bottom: 148px; }
 .cv-tpl-acid.cv-page { background-image: var(--cv-page-grid); }
 /* 渐变文字（E 霓虹） */
 .cv-tpl-neon .cv-name { -webkit-background-clip: text; background-clip: text; background-image: var(--cv-name-gradient); color: transparent; -webkit-text-fill-color: transparent; }
