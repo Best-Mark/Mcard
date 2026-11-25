@@ -42,9 +42,9 @@
         <div class="cv-contact-label">{{ f.label }}：</div>
         <div class="cv-contact-value">{{ f.value }}</div>
         <div v-if="interactive" class="cv-contact-acts" @click.stop>
-          <button v-if="f.key === 'mobile' || f.key === 'phone'" class="cv-row-act" type="button" @click="$emit('tel', f.value)">打电话</button>
-          <button v-if="f.key === 'mobile'" class="cv-row-act" type="button" @click="$emit('sms', f.value)">短信</button>
-          <button v-if="f.key === 'email'" class="cv-row-act" type="button" @click="$emit('mailto', f.value)">邮件</button>
+          <button v-if="f.key === 'mobile' || f.key === 'phone'" class="cv-row-act" type="button" :title="'拨打 ' + f.value" :aria-label="'拨打 ' + f.value" @click="$emit('tel', f.value)"><AppIcon name="phone" :size="14" /></button>
+          <button v-if="f.key === 'mobile'" class="cv-row-act" type="button" :title="'发短信给 ' + f.value" :aria-label="'发短信给 ' + f.value" @click="$emit('sms', f.value)"><AppIcon name="sms" :size="14" /></button>
+          <button v-if="f.key === 'email'" class="cv-row-act" type="button" :title="'发邮件到 ' + f.value" :aria-label="'发邮件到 ' + f.value" @click="$emit('mailto', f.value)"><AppIcon name="mail" :size="14" /></button>
         </div>
       </div>
       <div v-if="fullAddress" class="cv-contact-row" @click="onCopy(fullAddress, '地址')">
@@ -54,7 +54,7 @@
           <span v-if="detailAddress">{{ detailAddress }}</span>
         </div>
         <div v-if="interactive && maps.length" class="cv-contact-acts" @click.stop>
-          <button class="cv-row-act" type="button" @click="$emit('map')">导航</button>
+          <button class="cv-row-act" type="button" title="地图导航" aria-label="地图导航" @click="$emit('map')"><AppIcon name="nav" :size="14" /></button>
         </div>
       </div>
     </div>
@@ -78,8 +78,8 @@
         <div v-for="l in siteLinks" :key="l.key" class="cv-site">
           <div><b>{{ l.label }}</b><span class="small muted">{{ shortUrl(l.url) }}</span></div>
           <div class="btn-row">
-            <a :href="safeUrl(l.url)" target="_blank" rel="noopener" class="btn btn-sm btn-primary">打开</a>
-            <button class="btn btn-sm btn-ghost" type="button" @click="onCopy(l.url, l.label)">复制</button>
+            <a :href="safeUrl(l.url)" target="_blank" rel="noopener" class="btn btn-sm btn-primary btn-icon" :title="'打开' + l.label" :aria-label="'打开' + l.label"><AppIcon name="link" :size="15" /></a>
+            <button class="btn btn-sm btn-ghost btn-icon" type="button" :title="'复制' + l.label" :aria-label="'复制' + l.label" @click="onCopy(l.url, l.label)"><AppIcon name="copy" :size="15" /></button>
           </div>
         </div>
       </div>
