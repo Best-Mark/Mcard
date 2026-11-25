@@ -344,7 +344,7 @@
                   <label>
                     {{ f.label }}
                     <span v-if="f.type === 'secret' && cfg[f.key + '_fp']" class="badge ok small">已配置 · 指纹 {{ cfg[f.key + '_fp'] }}</span>
-                    <button v-if="f.type === 'secret'" class="eye" :title="revealed[f.key] ? '隐藏' : '显示'" @click="revealed[f.key] = !revealed[f.key]">
+                    <button v-if="f.type === 'secret' && (!f.upload || manualSecrets[f.key])" class="eye" :title="revealed[f.key] ? '隐藏' : '显示'" @click="revealed[f.key] = !revealed[f.key]">
                       <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path :d="revealed[f.key] ? ICONS.eyeOff[0] : ICONS.eye[0]" /><circle cx="12" cy="12" r="3" /></svg>
                     </button>
                   </label>
@@ -368,9 +368,20 @@
                     </label>
                     <span class="small muted">{{ cfg.wechat_oauth_verify_name ? '已载入：' + cfg.wechat_oauth_verify_name + '（点保存后生效）' : '从微信公众平台下载后直接上传，无需填写路径或内容' }}</span>
                   </div>
+                  <!-- 密钥文件：本地 FileReader 读原文填进 cfg，跟着「保存分组」一起 PUT；
+                       不走 /api/upload、不产生公开 URL，避免密钥落到上传目录被 Static 服务出去。 -->
+                  <div v-else-if="f.type === 'secret' && f.upload && !manualSecrets[f.key]" class="cfg-file">
+                    <label class="cfg-file-btn">
+                      <input type="file" :accept="f.accept || '.txt'" @change="onSecretFileChosen($event, f)" />
+                      {{ cfg[f.key + '_fp'] || pendingSecrets[f.key] ? '重新选择文件' : '选择密钥文件' }}
+                    </label>
+                    <span class="small muted">{{ pendingSecrets[f.key] ? '已读取新文件，点「保存」后生效' : (cfg[f.key + '_fp'] ? '已配置，重新选择文件即覆盖' : (f.fileHint || '从支付平台下载后直接选择，无需粘贴')) }}</span>
+                    <button class="cfg-manual-link" @click="manualSecrets[f.key] = true">手动粘贴</button>
+                  </div>
                   <textarea v-else-if="f.large" v-model="cfg[f.key]" class="textarea" rows="5" :placeholder="f.type === 'secret' ? (cfg[f.key] ? '留空则不修改已保存的密钥' : '粘贴 PEM 全文') : ''"></textarea>
                   <input v-else v-model="cfg[f.key]" class="input" :type="f.type === 'secret' && !revealed[f.key] ? 'password' : 'text'"
                          :placeholder="f.type === 'secret' ? (cfg[f.key] ? '•••••• 已配置，留空不改' : '未配置') : ''" />
+                  <button v-if="f.type === 'secret' && f.upload && manualSecrets[f.key]" class="cfg-manual-link" @click="backToFileMode(f)">改用文件上传</button>
                 </div>
               </div>
 
@@ -563,7 +574,7 @@ const currentTitle = computed(() => menus.find(m => m.k === tab.value)?.t || '')
 const phone = ref(''); const password = ref(''); const busy = ref(false); const loading = ref(false)
 const tab = ref('overview'); const stats = ref({}); const packages = ref([]); const cards = ref([])
 const orders = ref([]); const users = ref([]); const cfg = ref({}); const cfgGroups = ref([])
-const activeGroup = ref('site'); const revealed = ref({})
+const activeGroup = ref('site'); const revealed = ref({}); const manualSecrets = ref({}); const pendingSecrets = ref({})
 const smsPhone = ref(''); const smsBusy = ref(false)
 const regions = ref([]); const regionLevel = ref(0); const regionBusy = ref(false)
 const regionForm = ref({ code: '', parent_code: '', name: '', level: 1, sort: 0, enabled: true }); const regionEditing = ref(false)
@@ -824,6 +835,7 @@ async function loadTab(k) {
     if (k === 'config') {
       const d = (await api.get('/api/admin/config')).data.data
       cfg.value = d.values || {}
+      pendingSecrets.value = {} // 重新拉取到权威状态，清掉「已读取待保存」的本地标记
       cfgGroups.value = Object.entries(d.groups || {}).map(([key, g]) => ({ key, ...g }))
       if (cfgGroups.value.length && !cfgGroups.value.some(g => g.key === activeGroup.value)) activeGroup.value = cfgGroups.value[0].key
       // 地域下拉：独立于配置加载链，失败也不阻塞配置显示（MShop 教训：链尾请求失败=功能永远不出）
@@ -909,6 +921,39 @@ function onVerifyFileChosen(e) {
   }
   reader.onerror = () => showToast('读取文件失败，请重试', 'error')
   reader.readAsText(file)
+}
+
+// 密钥文件上传：只在浏览器里读成文本塞进 cfg，随分组保存统一 PUT。
+// 绝不用 /api/upload——那条链路会产生可公开访问的 URL，密钥不能落到上传目录。
+function onSecretFileChosen(e, f) {
+  const input = e.target
+  const file = input.files && input.files[0]
+  input.value = '' // 允许重复选同一个文件
+  if (!file) return
+  const max = Number(f.maxBytes) || 20000
+  if (file.size > max) { showToast(`文件不能超过 ${max} 字节`, 'error'); return }
+  const isPem = String(f.accept || '').includes('.pem')
+  const reader = new FileReader()
+  reader.onload = () => {
+    const text = String(reader.result || '').trim()
+    if (!text) { showToast('文件内容为空，请确认文件内容', 'error'); return }
+    if (isPem && !/-----BEGIN [A-Z ]+-----[\s\S]*-----END [A-Z ]+-----/.test(text)) {
+      showToast('不是有效的 PEM 文件，请选择商户私钥 / 平台证书原文', 'error')
+      return
+    }
+    cfg.value[f.key] = text
+    delete cfg.value[f.key + '_fp'] // 旧指纹已不代表新内容，保存后由服务端重新下发
+    pendingSecrets.value[f.key] = true
+    manualSecrets.value[f.key] = false
+    showToast(`已读取「${f.label}」文件，点保存后生效`, 'success')
+  }
+  reader.onerror = () => showToast('读取文件失败，请重试', 'error')
+  reader.readAsText(file)
+}
+function backToFileMode(f) {
+  manualSecrets.value[f.key] = false
+  pendingSecrets.value[f.key] = false
+  cfg.value[f.key] = '' // 未保存的手动输入直接丢弃，空值在服务端视为「不修改」
 }
 
 async function saveGroup() {
@@ -1272,6 +1317,8 @@ async function saveUpdateConfig() {
 .cfg-file-btn { display: inline-flex; align-items: center; justify-content: center; width: fit-content; padding: 8px 14px; border: 1px solid var(--primary); border-radius: 8px; color: var(--primary); font-size: 13px; cursor: pointer; }
 .cfg-file-btn:hover { background: rgba(59,130,246,.06); }
 .cfg-file-btn input { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.cfg-manual-link { width: fit-content; color: var(--muted); font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
+.cfg-manual-link:hover { color: var(--primary); }
 .cfg-actions { display: flex; align-items: center; gap: 14px; justify-content: flex-end; padding-top: 16px; margin-top: 6px; border-top: 1px solid var(--line); }
 .sms-test { margin-top: 18px; padding-top: 6px; border-top: 1px dashed var(--line); }
 .sms-row { display: flex; gap: 10px; max-width: 520px; }

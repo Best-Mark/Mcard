@@ -30,11 +30,13 @@ const GROUPS = {
       { key: 'pay_mode', label: '支付模式（mock / wechat）', type: 'text' },
       { key: 'wechat_mch_id', label: '微信商户号 MCH ID', type: 'text' },
       { key: 'wechat_app_id', label: '微信 AppID', type: 'text' },
-      { key: 'wechat_api_v3_key', label: 'API v3 密钥', type: 'secret' },
+      // 密钥类改用本地文件选择：前端 FileReader 读原文填进配置，随分组 PUT，不产生公开上传地址。
+      // accept/maxBytes 是前后端共用的唯一真相源；type 仍是 secret，掩码+指纹机制完全不变。
+      { key: 'wechat_api_v3_key', label: 'API v3 密钥', type: 'secret', upload: true, accept: '.txt', fileHint: '选择从微信商户平台下载的 API v3 密钥文本文件', maxBytes: 1000 },
       { key: 'wechat_cert_serial_no', label: '商户证书序列号', type: 'text' },
-      { key: 'wechat_private_key', label: '商户私钥 PEM', type: 'secret', large: true },
+      { key: 'wechat_private_key', label: '商户私钥 PEM', type: 'secret', large: true, upload: true, accept: '.pem,.key,.txt', fileHint: '选择商户 API 私钥文件 apiclient_key.pem', maxBytes: 20000 },
       { key: 'wechat_notify_url', label: '支付回调 URL', type: 'text' },
-      { key: 'wechat_platform_cert', label: '微信平台证书 PEM（可选，用于回调验签）', type: 'secret', large: true }
+      { key: 'wechat_platform_cert', label: '微信平台证书 PEM（可选，用于回调验签）', type: 'secret', large: true, upload: true, accept: '.pem,.crt,.cer,.txt', fileHint: '选择微信支付平台证书文件', maxBytes: 20000 }
     ]
   },
   sms: {

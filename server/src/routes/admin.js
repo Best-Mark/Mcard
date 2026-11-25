@@ -192,7 +192,9 @@ router.put('/config', superRequired, wrap((req, res) => {
     if (k === 'wechat_oauth_verify_name' && String(v) && !/^MP_verify_[A-Za-z0-9_-]{1,64}\.txt$/.test(String(v))) {
       return fail(res, 400, '校验文件名格式应为 MP_verify_xxx.txt')
     }
-    const max = k === 'wechat_private_key' || k === 'wechat_platform_cert' ? 20000 : k.startsWith('share_') ? 4000 : 1000
+    // 容量上限取字段元数据（与后台文件选择共用唯一真相源），share 池沿用独立上限
+    const fieldMeta = Object.values(settings.GROUPS).flatMap(g => g.fields).find(f => f.key === k)
+    const max = fieldMeta?.maxBytes || (k.startsWith('share_') ? 4000 : 1000)
     entries.push([k, JSON.stringify(String(v ?? '').slice(0, max))])
   }
   const stmt = db.prepare("INSERT INTO site_config (key, value, updated_at) VALUES (?,?,datetime('now')) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')")
