@@ -28,8 +28,11 @@
       </div>
       <button class="btn btn-sm btn-primary" :disabled="loading" @click="useHere">用这里</button>
     </div>
-    <div ref="mapEl" class="mp-map"></div>
-    <div class="mp-cross" aria-hidden="true">＋</div>
+    <div class="mp-map-wrap">
+      <div ref="mapEl" class="mp-map"></div>
+      <!-- 选点指针固定在地图正中心（相对地图容器，不受搜索栏高度影响） -->
+      <div class="mp-cross" aria-hidden="true">＋</div>
+    </div>
     <div class="mp-hint small muted">拖动地图让十字准星对准位置，点「用这里」确认</div>
     <div v-if="centerHint" class="mp-center small">{{ centerHint }}</div>
     <div v-if="error" class="mp-error small">{{ error }}</div>
@@ -71,20 +74,20 @@ let suggestSeq = 0     // 联想请求序号，防竞态（旧响应不得覆盖
 const CHINA_CENTER = { lat: 35.8617, lng: 104.1954, zoom: 4 }
 
 async function resolveStartCenter() {
-  // 1) 已有坐标（库里 GCJ-02，高德瓦片同坐标系，直接用）
-  if (Number.isFinite(props.lat) && Number.isFinite(props.lng)) {
-    return { lat: props.lat, lng: props.lng, zoom: 15, hint: '已用名片原有位置，可拖动微调', fromSaved: true }
-  }
-  // 2) 已填省市区 → 正解（后端返回 GCJ-02）
+  // 1) 已填省市区优先：用户前面选了地区，选点就必须按地区进来（而不是沿用名片里可能错误的旧坐标）
   const region = String(props.region || '').trim()
   if (region) {
     try {
       const { data } = await api.get('/api/geo/geocode', { params: { address: region }, timeout: 5000 })
       const g = data?.data
       if (g && Number.isFinite(Number(g.lat)) && Number.isFinite(Number(g.lng))) {
-        return { lat: Number(g.lat), lng: Number(g.lng), zoom: 14, hint: `已按「${region}」定位，请拖动微调到具体位置`, fromSaved: false }
+        return { lat: Number(g.lat), lng: Number(g.lng), zoom: 15, hint: `已按「${region}」定位（已有坐标不作为初始位置），请拖动微调`, fromSaved: false }
       }
-    } catch { /* 正解失败走当前定位 */ }
+    } catch { /* 正解失败退回已有坐标 */ }
+  }
+  // 2) 已有坐标（库里 GCJ-02，高德瓦片同坐标系，直接用）
+  if (Number.isFinite(props.lat) && Number.isFinite(props.lng)) {
+    return { lat: props.lat, lng: props.lng, zoom: 15, hint: '已用名片原有位置，可拖动微调', fromSaved: true }
   }
   // 3) 当前定位（geo.js 四级降级，统一 GCJ-02，带超时兜底）
   try {
@@ -208,8 +211,9 @@ onBeforeUnmount(() => {
 .mp-sg-name { font-size: 13px; font-weight: 600; color: var(--text, #0f172a); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .mp-sg-addr { font-size: 11px; color: var(--muted, #6b7688); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .mp-suggest-loading { padding: 10px 12px; font-size: 12px; color: var(--muted, #6b7688); }
+.mp-map-wrap { position: relative; }
 .mp-map { height: 320px; border-radius: 10px; border: 1px solid var(--line, #e8edf4); background: #eef2f7; }
-.mp-cross { position: absolute; left: 50%; top: calc(50% + 20px); transform: translate(-50%, -50%); font-size: 30px; color: #dc2626; text-shadow: 0 1px 3px #fff; pointer-events: none; font-weight: 700; z-index: 5; }
+.mp-cross { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 36px; line-height: 1; color: #dc2626; text-shadow: 0 1px 4px #fff, 0 0 2px #fff; pointer-events: none; font-weight: 700; z-index: 500; }
 .mp-hint { margin-top: 6px; }
 .mp-center { margin-top: 6px; padding: 6px 9px; border-radius: 8px; background: #eff6ff; color: #2563eb; line-height: 1.5; }
 .mp-error { margin-top: 6px; color: #b45309; }
