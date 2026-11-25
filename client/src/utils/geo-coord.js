@@ -38,3 +38,17 @@ export function wgs84ToGcj02(lat, lng) {
   dLng = (dLng * 180.0) / (A / sqrtMagic * Math.cos(radLat) * PI)
   return { lat: la + dLat, lng: ln + dLng }
 }
+
+// GCJ-02 → WGS84（迭代反解）——与 server/src/utils/geoCoord.js 同算法。
+// 地图选点拿到的是库里的 GCJ-02，而 OSM 瓦片认 WGS84，setView 前必须反解，否则位置偏 300~700m。
+export function gcj02ToWgs84(lat, lng) {
+  const la = Number(lat), ln = Number(lng)
+  if (!Number.isFinite(la) || !Number.isFinite(ln) || outOfChina(la, ln)) return { lat: la, lng: ln }
+  let wLat = la, wLng = ln
+  for (let i = 0; i < 5; i++) {
+    const g = wgs84ToGcj02(wLat, wLng)
+    wLat -= g.lat - la
+    wLng -= g.lng - ln
+  }
+  return { lat: wLat, lng: wLng }
+}

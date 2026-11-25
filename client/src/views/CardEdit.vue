@@ -196,8 +196,9 @@
           <button class="btn btn-sm btn-ghost" @click="mapOpen = false">关闭</button>
         </div>
         <MapPicker
-          :lat="form.latitude || 39.9042"
-          :lng="form.longitude || 116.4074"
+          :lat="form.latitude"
+          :lng="form.longitude"
+          :region="regionPath"
           @confirm="onMapPicked"
         />
       </div>
