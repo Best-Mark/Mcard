@@ -1269,7 +1269,9 @@ async function toggleFavorite() {
 .cv-clean .cv-title { color: var(--cv-role-color); font-size: var(--cv-role-size); letter-spacing: var(--cv-role-spacing); font-weight: 400; }
 .cv-clean .cv-tags span { border-radius: var(--cv-tag-radius); background: var(--cv-tag-bg); color: var(--cv-tag-color); box-shadow: var(--cv-tag-shadow); }
 .cv-clean .cv-status { right: 14px; bottom: 6px; }
-.cv-clean .cv-block { padding: 14px var(--cv-card-x); background: var(--cv-panel-bg); margin-top: 0; }
+/* ⚠️ 特异性必须 ≥ L1216 的 `.cv-clean .cv-main > .card {background:transparent}`，
+   否则简洁模板（尤其深底 contact/neon/acid）的内容卡变透明、号码/简介深色字融进深底看不见（2026-11-25 实修） */
+.cv-clean .cv-main > .cv-block, .cv-clean .cv-block { padding: 14px var(--cv-card-x); background: var(--cv-panel-bg); margin-top: 0; }
 .cv-clean .cv-block h3, .cv-clean .cv-sec-title { font-size: 12px; letter-spacing: .1em; color: var(--cv-block-title); border-left: 0; padding-left: 0; }
 .cv-clean .cv-block h3 .small.muted { letter-spacing: 0; }
 .cv-clean .cv-contact-row { padding: 11px 0; border-top: 1px solid var(--cv-line); }
