@@ -55,13 +55,10 @@
 
             <template v-else-if="openSection === 'industry'">
               <div class="section-title" style="margin-top:0">所属行业</div>
-              <p class="small muted">被同行按行业精确搜到。</p>
-              <div class="field"><label>行业</label>
-                <select v-model="card.industry" class="input">
-                  <option value="">未选择</option>
-                  <option v-for="ind in meta.industries" :key="ind.key" :value="ind.key">{{ ind.label }}</option>
-                </select>
-              </div>
+              <p class="small muted">被同行按行业精确搜到；点下方从底部列表选择。</p>
+              <button class="picker-trigger" @click="industryOpen = true">
+                <span>{{ industryLabel || '未选择行业' }}</span><span class="picker-arrow">›</span>
+              </button>
             </template>
 
             <template v-else-if="openSection === 'region'">
@@ -88,6 +85,19 @@
         </div>
       </template>
     </div>
+
+    <!-- 行业选择：移动端底部弹窗，不用网页原生 select -->
+    <BottomSheet :show="industryOpen" @update:show="industryOpen = $event">
+      <div class="ind-sheet-head"><b>选择行业</b><button class="btn btn-sm btn-ghost" @click="industryOpen = false">关闭</button></div>
+      <div class="ind-sheet-list">
+        <button class="ind-option" :class="{ on: !card?.industry }" @click="pickIndustry('')">
+          <span>未选择</span><span v-if="!card?.industry" class="ind-check">✓</span>
+        </button>
+        <button v-for="ind in meta.industries" :key="ind.key" class="ind-option" :class="{ on: card?.industry === ind.key }" @click="pickIndustry(ind.key)">
+          <span>{{ ind.label }}</span><span v-if="card?.industry === ind.key" class="ind-check">✓</span>
+        </button>
+      </div>
+    </BottomSheet>
   </div>
 </template>
 
@@ -97,6 +107,7 @@ import { useRouter } from 'vue-router'
 import api from '../api'
 import { showToast } from '../store'
 import CardPreview from '../components/CardPreview.vue'
+import BottomSheet from '../components/BottomSheet.vue'
 
 const router = useRouter()
 const card = ref(null)
@@ -122,6 +133,12 @@ const SECTIONS = [
   { k: 'region', label: '地区' },
   { k: 'tune', label: '曝光' }
 ]
+const industryOpen = ref(false)
+const industryLabel = computed(() => meta.value.industries.find(i => i.key === card.value?.industry)?.label || '')
+function pickIndustry(key) {
+  card.value.industry = key
+  industryOpen.value = false
+}
 const regionText = computed(() => {
   const c = card.value
   return c ? [c.province, c.city, c.district].filter(Boolean).join(' · ') : ''
@@ -206,4 +223,13 @@ async function done() {
 .cp-market-row { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
 .cp-market-row span { color: var(--muted); }
 .sheet-confirm { position: sticky; bottom: 0; padding: 10px 0 2px; background: #fff; margin-top: 6px; }
+/* 行业选择触发项（代替网页原生 select） */
+.picker-trigger { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: #fff; font-size: 14px; color: var(--text); }
+.picker-arrow { color: var(--muted); font-size: 18px; }
+/* 底部弹窗行业列表 */
+.ind-sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.ind-sheet-list { max-height: 52vh; overflow-y: auto; overscroll-behavior: contain; padding: 6px 0 10px; }
+.ind-option { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 13px 18px; font-size: 14px; border-bottom: 1px solid var(--line); }
+.ind-option.on { color: var(--primary); font-weight: 700; background: color-mix(in srgb, var(--primary) 6%, transparent); }
+.ind-check { color: var(--primary); font-weight: 800; }
 </style>
