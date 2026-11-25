@@ -506,10 +506,11 @@
   letter-spacing: -1px; line-height: 1; pointer-events: none; max-width: 60%; overflow: hidden; white-space: nowrap; text-overflow: clip;
 }
 .cv-clean .cv-profile > * { position: relative; z-index: 2; }
-/* 光效层也是 .cv-profile 直接子元素，会被上面这条强制 position:relative —— 空 span 在 flex 容器里宽高 0，
-   overflow:hidden 把静态织理和动态扫光全裁掉（用户「一直没看到扫光」的根因）。与 .cv-qr-entry 同款坑，
-   用更高特异性 (0,3,0) 锁回 absolute，z-index:1 保持在内容层(z2)之下不遮字。 */
-.cv-clean .cv-profile > .cv-sheen { position: absolute; z-index: 1; }
+/* 光效层也是 .cv-profile 直接子元素，会被 .cv-clean .cv-profile > * 以及文件末尾
+   .cv-page.cv-clean .cv-profile > * 强制 position:relative —— 空 span 在 flex 容器里宽高 0，
+   overflow:hidden 把静态织理和动态扫光全裁掉（用户「一直没看到扫光」的根因）。
+   后者特异性 (0,3,0) 与本条旧写法相同且位置更靠后，必须以 (0,4,0) 锁回；z-index:1 保持在内容层(z2)之下不遮字。 */
+.cv-page.cv-clean .cv-profile > .cv-sheen { position: absolute; z-index: 1; }
 /* ===== 名片卡光效 + 丝绸质感 =====
    静态：微颗粒 + 两组极细交叉斜纹（缎面织理）+ 一条柔和缎光带 + 大尺度光影；
    动态：柔光只 opacity 呼吸（26s 不位移），斜光带扫光 12s 周期、跟随模板点缀色，扫完淡出停半程。
