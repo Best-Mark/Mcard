@@ -233,7 +233,8 @@ async function done() {
 /* 缩略图骨架与配色来自共享 template-thumbs.css，这里只把面板内改 3 列 + 缩略图稍矮 */
 .tpl-list { grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .tpl-thumb { height: 46px; }
-.sheet-confirm { position: sticky; bottom: 0; padding: 10px 0 2px; background: #fff; margin-top: 6px; }
+/* 层级：模板缩略图 .tpl-ava 带 z-index:2，确定按钮必须更高，否则头像块会穿透盖到按钮上 */
+.sheet-confirm { position: sticky; bottom: 0; z-index: 3; padding: 10px 0 2px; background: #fff; margin-top: 6px; }
 .qr-presets { display: flex; gap: 8px; flex-wrap: wrap; }
 .qr-preset { display: flex; align-items: center; gap: 5px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 12px; }
 .qr-preset.on { border-color: var(--primary); color: var(--primary); }
