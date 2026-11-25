@@ -8,8 +8,8 @@
 
       <div class="cp-body">
         <div class="cp-profile" data-sec="identity">
-          <div class="cp-avatar">
-            <img v-if="card.avatar || card.logo" :src="card.avatar || card.logo" :alt="card.name" />
+          <div class="cp-avatar" :class="{ 'is-logo': !!card.logo }">
+            <img v-if="card.logo || card.avatar" :src="card.logo || card.avatar" :alt="card.logo ? ((card.company || '公司') + ' LOGO') : card.name" />
             <span v-else>{{ (card.name || '名').slice(0, 1) }}</span>
           </div>
           <div class="cp-ident">
@@ -194,6 +194,8 @@ watch(() => props.section, async () => {
 .cp-profile { display: flex; gap: 10px; align-items: flex-start; padding: 12px; background: var(--t-surface); border-radius: 12px; border: 1px solid var(--line); }
 .cp-avatar { flex: 0 0 52px; width: 52px; height: 52px; border-radius: 12px; overflow: hidden; background: var(--t-accent); color: #fff; display: grid; place-items: center; font-size: 22px; font-weight: 800; }
 .cp-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.cp-avatar.is-logo { background: #fff; padding: 4px; }
+.cp-avatar.is-logo img { object-fit: contain; }
 .cp-ident { flex: 1; min-width: 0; }
 .cp-name { font-size: 17px; font-weight: 800; line-height: 1.25; word-break: break-all; }
 .cp-en { display: block; font-size: 10px; color: var(--t-muted); font-weight: 500; }

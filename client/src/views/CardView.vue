@@ -19,13 +19,12 @@
       <div class="container cv-main">
         <div class="cv-profile card" :data-wm="(template === 'navygold' || isCleanTpl) ? (card.company || '').slice(0, 4) : ''">
           <span class="cv-sheen" aria-hidden="true"></span>
-          <div class="cv-avatar">
-            <img v-if="card.avatar" :src="card.avatar" :alt="card.name" />
+          <div class="cv-avatar" :class="{ 'is-logo': !!card.logo }">
+            <img v-if="card.logo || card.avatar" :src="card.logo || card.avatar" :alt="card.logo ? ((card.company || '公司') + ' LOGO') : card.name" />
             <span v-else>{{ (card.name || '名').slice(0, 1) }}</span>
           </div>
           <div class="cv-ident">
             <div class="cv-name-row">
-              <img v-if="card.logo" class="cv-logo" :src="card.logo" :alt="(card.company || '公司') + ' LOGO'" />
               <div class="cv-name">{{ card.name || card.name_en || '未填写姓名' }}
                 <span v-if="card.name_en" class="cv-en">{{ card.name_en }}</span>
               </div>
@@ -573,9 +572,11 @@ async function toggleFavorite() {
 .cv-profile { padding: 18px; display: flex; gap: 14px; align-items: flex-start; position: relative; background: var(--t-surface); }
 .cv-avatar { flex: 0 0 70px; height: 70px; border-radius: 18px; overflow: hidden; background: var(--t-accent); color: #fff; display: grid; place-items: center; font-size: 30px; font-weight: 800; }
 .cv-avatar img { width: 100%; height: 100%; object-fit: cover; }
+/* LOGO 多为横向/带字，用 contain 完整显示 + 白底，避免 cover 裁掉内容 */
+.cv-avatar.is-logo { background: #fff; padding: 6px; }
+.cv-avatar.is-logo img { object-fit: contain; }
 .cv-ident { flex: 1; min-width: 0; }
 .cv-name-row { display: flex; align-items: center; gap: 10px; }
-.cv-logo { width: 40px; height: 40px; object-fit: contain; flex-shrink: 0; border-radius: 8px; background: rgba(127,127,127,.06); padding: 3px; }
 .cv-name { font-size: 22px; font-weight: 800; letter-spacing: -.5px; }
 .cv-en { font-size: 12px; color: var(--t-muted); font-weight: 500; margin-left: 6px; }
 .cv-title { color: var(--t-muted); font-size: 12px; margin-top: 3px; }

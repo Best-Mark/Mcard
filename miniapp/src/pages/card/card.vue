@@ -16,13 +16,12 @@
 
       <view class="body">
         <view class="card profile">
-          <view class="avatar">
-            <image v-if="card.avatar" :src="card.avatar" mode="aspectFill" />
+          <view class="avatar" :class="{ 'is-logo': !!card.logo }">
+            <image v-if="card.logo || card.avatar" :src="card.logo || card.avatar" :mode="card.logo ? 'aspectFit' : 'aspectFill'" />
             <text v-else>{{ (card.name || '名').slice(0, 1) }}</text>
           </view>
           <view class="ident">
             <view class="name-row">
-              <image v-if="card.logo" class="logo" :src="card.logo" mode="aspectFit" />
               <view class="name">{{ card.name || card.name_en || '未填写姓名' }}</view>
             </view>
             <view class="title">{{ titleText }}</view>
@@ -271,9 +270,10 @@ onShareAppMessage(() => ({
 }
 .avatar { width: 120rpx; height: 120rpx; border-radius: 24rpx; background: #2563eb; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 52rpx; font-weight: 800; overflow: hidden; flex-shrink: 0; }
 .avatar image { width: 100%; height: 100%; }
+/* LOGO 优先时白底完整展示；头像仍铺满 */
+.avatar.is-logo { background: #fff; padding: 10rpx; box-sizing: border-box; }
 .ident { flex: 1; min-width: 0; }
 .name-row { display: flex; align-items: center; gap: 14rpx; }
-.logo { width: 64rpx; height: 64rpx; border-radius: 12rpx; background: rgba(0,0,0,.04); flex-shrink: 0; }
 .name { font-size: 38rpx; font-weight: 800; }
 .title { font-size: 24rpx; color: #6b7688; margin-top: 6rpx; }
 .tags { width: 100%; display: flex; gap: 10rpx; flex-wrap: wrap; }
