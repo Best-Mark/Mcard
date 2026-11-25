@@ -754,10 +754,10 @@
   text-align: left; font-size: 12px; letter-spacing: .1em; color: var(--cv-block-title);
   border-left: 0; padding-left: 0; border-top: 0; font-weight: 700;
 }
-/* 联系方式行（2026-11-26 用户定）：标签按自身宽度排、不换行，值紧跟冒号，不再留固定列的空。
-   行上下留白 8px；列间距 4px 只为冒号与值之间留一点呼吸。 */
+/* 联系方式行（2026-11-26 用户定）：标签不换行、用最小宽度对齐各行的值，
+   46px 刚好容纳最长的「支付宝:」，短标签不再撑出大空档；列间距 4px，行上下留白 8px。 */
 .cv-page.cv-clean .cv-contact-row { flex-direction: row; align-items: center; gap: 4px; padding: 8px 0; border: 0; border-top: 1px solid var(--cv-line); }
-.cv-page.cv-clean .cv-contact-label { flex: 0 0 auto; min-width: 0; white-space: nowrap; text-align: left; letter-spacing: normal; color: var(--cv-ink-2); }
+.cv-page.cv-clean .cv-contact-label { flex: 0 0 auto; min-width: 46px; white-space: nowrap; text-align: left; letter-spacing: normal; color: var(--cv-ink-2); }
 .cv-page.cv-clean .cv-contact-value { text-align: left; font-family: inherit; color: var(--cv-ink); font-weight: 600; }
 .cv-page.cv-clean .cv-bio, .cv-page.cv-clean .small.muted { color: var(--cv-ink-2); }
 /* 链接副标题/文件小字同样落在卡内，不能用主题 --t-muted（暗色模板上会糊掉） */
