@@ -506,11 +506,11 @@
   letter-spacing: -1px; line-height: 1; pointer-events: none; max-width: 60%; overflow: hidden; white-space: nowrap; text-overflow: clip;
 }
 .cv-clean .cv-profile > * { position: relative; z-index: 2; }
-/* ===== 名片卡光效 =====
-   微颗粒 + 极细缎纹 + 大尺度光影做静态质感；柔光只 opacity 呼吸（26s 不位移），
-   斜光带扫光 12s 周期、跟随模板点缀色（2026-11-26 用户要求可见动效），扫完淡出停半程。
-   四边定位替 inset 兼容老 WebView；系统「减少动画」下全部关闭。 */
-.cv-sheen { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1; pointer-events: none; overflow: hidden; border-radius: inherit; background-image: radial-gradient(rgba(255,255,255,.055) .8px, transparent 1.1px), radial-gradient(rgba(255,255,255,.03) .7px, transparent 1px), repeating-linear-gradient(115deg, rgba(var(--glow-rgb, 37,99,235), .02) 0 1px, transparent 1px 4px), radial-gradient(160% 120% at 20% 0%, rgba(255,255,255,.12) 0%, transparent 52%), radial-gradient(130% 110% at 85% 95%, rgba(0,0,0,.09) 0%, transparent 55%); background-size: .4em .4em, .4em .4em, auto, auto, auto; background-position: 0 0, .2em .2em, 0 0, center, center; background-repeat: repeat, repeat, no-repeat, no-repeat, no-repeat; }
+/* ===== 名片卡光效 + 丝绸质感 =====
+   静态：微颗粒 + 两组极细交叉斜纹（缎面织理）+ 一条柔和缎光带 + 大尺度光影；
+   动态：柔光只 opacity 呼吸（26s 不位移），斜光带扫光 12s 周期、跟随模板点缀色，扫完淡出停半程。
+   织理全部用字面量 rgba（老 WebView 兼容），只动 transform/opacity；系统「减少动画」下动态全部关闭。 */
+.cv-sheen { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1; pointer-events: none; overflow: hidden; border-radius: inherit; background-image: radial-gradient(rgba(255,255,255,.055) .8px, transparent 1.1px), radial-gradient(rgba(255,255,255,.03) .7px, transparent 1px), repeating-linear-gradient(115deg, rgba(255,255,255,.035) 0 1px, transparent 1px 5px), repeating-linear-gradient(25deg, rgba(255,255,255,.018) 0 1px, transparent 1px 7px), linear-gradient(115deg, rgba(255,255,255,.05) 0%, rgba(255,255,255,0) 28%, rgba(255,255,255,.035) 52%, rgba(255,255,255,0) 78%), radial-gradient(160% 120% at 20% 0%, rgba(255,255,255,.12) 0%, transparent 52%), radial-gradient(130% 110% at 85% 95%, rgba(0,0,0,.09) 0%, transparent 55%); background-size: .4em .4em, .4em .4em, auto, auto, auto, auto, auto; background-position: 0 0, .2em .2em, 0 0, 0 0, center, center, center; background-repeat: repeat, repeat, repeat, repeat, no-repeat, no-repeat, no-repeat; }
 .cv-sheen::before {
   content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
   background: radial-gradient(140% 110% at 28% 12%, rgba(255,255,255,.10) 0%, rgba(255,255,255,.03) 42%, transparent 68%);
