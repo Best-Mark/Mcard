@@ -328,8 +328,11 @@ function publicUser(u) {
 
 router.get('/me', authRequired, (req, res) => ok(res, req.user))
 
-// 账号头像（个人中心管理）：唯一真相源 = 该用户名片的 avatar 字段。
-// 名片编辑页不再提供头像上传；这里读写的 URL 由 /api/upload 生成，白名单只接受本站媒体路径。
+// ===== 账户层接口（users 表）——强制约定：与名片层 cards 彻底独立 =====
+// 2026-11-25 用户定稿（强调两遍）：账户资料 nickname/phone/avatar 只写 users 表；
+// 名片资料 name/title/company/avatar/logo 只写 cards 表。任何接口不得混写两层。
+// 账户头像唯一真相源 = users.avatar；名片展示头像在 /api/cards/avatar，互不影响。
+// URL 由 /api/upload 生成，白名单只接受本站媒体路径。
 function normalizeAvatar(v) {
   const s = String(v || '').trim()
   if (!s) return ''
@@ -337,15 +340,13 @@ function normalizeAvatar(v) {
   return s.slice(0, 500)
 }
 router.get('/avatar', authRequired, wrap((req, res) => {
-  const card = db.prepare('SELECT avatar FROM cards WHERE user_id = ?').get(req.user.id)
-  ok(res, { avatar: card?.avatar || '' })
+  const u = db.prepare('SELECT avatar FROM users WHERE id = ?').get(req.user.id)
+  ok(res, { avatar: u?.avatar || '' })
 }))
 router.put('/avatar', authRequired, wrap((req, res) => {
   const avatar = normalizeAvatar(req.body?.avatar)
   if (avatar === null) return fail(res, 400, '头像地址不合法')
-  const card = db.prepare('SELECT id FROM cards WHERE user_id = ?').get(req.user.id)
-  if (!card) return fail(res, 404, '请先创建名片')
-  db.prepare('UPDATE cards SET avatar = ? WHERE user_id = ?').run(avatar, req.user.id)
+  db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(avatar, req.user.id)
   ok(res, { avatar })
 }))
 

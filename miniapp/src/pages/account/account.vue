@@ -13,7 +13,12 @@
       <view class="card">
         <view class="section">账号信息</view>
         <view class="row"><text class="label">手机号</text><text>{{ user.phone || '—' }}</text></view>
-        <view class="row"><text class="label">昵称</text><text>{{ user.nickname || '未设置' }}</text></view>
+        <view class="row">
+          <text class="label">昵称</text>
+          <input v-model.trim="nickname" class="nickname-input" maxlength="30" placeholder="账户显示名称" />
+        </view>
+        <button class="btn tiny primary" :disabled="saving" style="margin-top:16rpx" @tap="saveNickname">{{ saving ? '保存中…' : '保存昵称' }}</button>
+        <view class="muted small" style="margin-top:12rpx">昵称属于账号资料，与名片上的姓名互不影响。</view>
       </view>
     </view>
   </view>
@@ -26,10 +31,28 @@ import { api, baseUrl, toast } from '../../utils/request'
 
 const avatar = ref('')
 const busy = ref(false)
+const saving = ref(false)
+const nickname = ref('')
 const user = ref(uni.getStorageSync('mcard_user') || {})
 
 async function load() {
+  nickname.value = user.value.nickname || ''
   try { avatar.value = (await api.get('/api/auth/avatar', true))?.avatar || '' } catch {}
+}
+async function saveNickname() {
+  if (saving.value) return
+  if (!nickname.value) return toast('昵称不能为空')
+  saving.value = true
+  try {
+    const d = await api.put('/api/auth/profile', { nickname: nickname.value }, true)
+    const u = d?.user || d
+    if (u?.nickname) {
+      user.value = { ...user.value, nickname: u.nickname }
+      uni.setStorageSync('mcard_user', user.value)
+    }
+    toast('昵称已保存', 'success')
+  } catch (e) { toast(e.message || '保存失败') }
+  finally { saving.value = false }
 }
 onShow(load)
 
@@ -70,4 +93,5 @@ function uploadAvatar(filePath) {
 .row { display: flex; justify-content: space-between; align-items: center; padding: 16rpx 0; border-bottom: 2rpx solid #f1f5f9; font-size: 26rpx; }
 .row:last-child { border-bottom: 0; }
 .label { color: #64748b; }
+.nickname-input { flex: 1; text-align: right; font-size: 26rpx; color: #0f172a; }
 </style>

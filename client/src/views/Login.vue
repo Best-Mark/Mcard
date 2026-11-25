@@ -42,7 +42,7 @@
           <div v-if="errMsg" class="hint warm" style="margin-bottom:14px">{{ errMsg }}</div>
           <div class="field"><label>手机号</label><input v-model.trim="phone" class="input" inputmode="numeric" maxlength="11" placeholder="11 位手机号" /></div>
           <div class="field"><label>密码</label><input v-model.trim="password" class="input" type="password" placeholder="至少 6 位" @keyup.enter="submit" /></div>
-          <div v-if="mode === 'register'" class="field"><label>昵称（选填）</label><input v-model.trim="nickname" class="input" placeholder="展示用名称" /></div>
+          <div v-if="mode === 'register'" class="field"><label>昵称（选填）</label><input v-model.trim="nickname" class="input" placeholder="账户显示名称（与名片姓名无关）" /></div>
           <button class="btn btn-primary btn-block primary-submit" :disabled="busy" @click="submit">{{ busy ? '请稍候…' : (mode === 'login' ? '登录' : '注册并登录') }}</button>
           <button v-if="wxEnabled && isWechat" class="switch-link" style="margin-top:12px" @click="showPassword = false">返回微信一键登录</button>
         </div>

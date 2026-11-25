@@ -15,7 +15,7 @@
       </view>
       <view v-if="mode === 'register'" class="field">
         <text class="label">昵称（选填）</text>
-        <input v-model.trim="nickname" class="input" placeholder="展示用名称" />
+        <input v-model.trim="nickname" class="input" placeholder="账户显示名称（与名片姓名无关）" />
       </view>
       <button class="btn primary block" :disabled="busy" @tap="submit">{{ busy ? '请稍候…' : (mode === 'login' ? '登录' : '注册并登录') }}</button>
       <view class="switch" @tap="mode = mode === 'login' ? 'register' : 'login'">

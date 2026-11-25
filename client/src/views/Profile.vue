@@ -17,8 +17,8 @@
            账户昵称(auth.user.nickname) 与 名片姓名(card.name) 是两套东西，绝不混在一起（2026-11-25 用户定稿） -->
       <div class="pf-user">
         <button class="pf-ava" title="点击更换头像（从素材库选）" aria-label="更换头像" @click="openAvatarPicker">
-          <img v-if="avatar" :src="avatar" alt="账号头像" />
-          <span v-else>{{ (auth.user?.phone || card?.name || '名').slice(0, 1) }}</span>
+          <img v-if="avatar" :src="avatar" alt="名片头像" />
+          <span v-else>{{ (card?.name || auth.user?.phone || '名').slice(0, 1) }}</span>
           <i class="pf-ava-cam"><AppIcon name="camera" :size="12" /></i>
         </button>
         <button class="pf-ident" title="点击编辑账户资料" aria-label="编辑账户资料" @click="router.push('/me/account')">
@@ -141,7 +141,7 @@ async function load() {
   loading.value = true
   loadError.value = ''
   try {
-    const [c, a] = await Promise.all([api.get('/api/cards/mine'), api.get('/api/auth/avatar')])
+    const [c, a] = await Promise.all([api.get('/api/cards/mine'), api.get('/api/cards/avatar')])
     card.value = c?.data?.data || null
     avatar.value = a?.data?.data?.avatar || ''
     loadUnread()
@@ -165,7 +165,7 @@ const avatarPick = computed({
 })
 async function saveAvatar(url) {
   if (!url) return
-  const { data } = await api.put('/api/auth/avatar', { avatar: url })
+  const { data } = await api.put('/api/cards/avatar', { avatar: url })
   avatar.value = data?.data?.avatar || url
   if (card.value) card.value.avatar = avatar.value
 }

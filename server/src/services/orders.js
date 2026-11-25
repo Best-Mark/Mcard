@@ -15,10 +15,11 @@ function activateOrder(orderId, payNo = '') {
 
     let card = db.prepare('SELECT * FROM cards WHERE user_id = ?').get(order.user_id)
     if (!card) {
-      const user = db.prepare('SELECT nickname, phone FROM users WHERE id = ?').get(order.user_id)
+      // 名片姓名留空由用户填，不再拿 users.nickname 当默认值
+      // （2026-11-25 强制约定：账户层 users 与名片层 cards 字段互不混用）
       const slug = makeSlug()
       db.prepare('INSERT INTO cards (user_id, slug, name, status) VALUES (?,?,?,?)')
-        .run(order.user_id, slug, user?.nickname || '我的名片', 'draft')
+        .run(order.user_id, slug, '', 'draft')
       card = db.prepare('SELECT * FROM cards WHERE user_id = ?').get(order.user_id)
     }
     // 终身套餐：duration_days = 0 → expires_at = NULL（永不过期）

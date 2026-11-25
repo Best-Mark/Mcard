@@ -27,7 +27,8 @@
 
       <view class="grid">
         <view class="cell" @tap="go('/pages/card/card?slug=' + card.slug)"><view class="ico">◎</view><view>查看名片</view></view>
-        <view class="cell" @tap="go('/pages/edit/edit')"><view class="ico">✎</view><view>编辑资料</view></view>
+        <!-- 明确是「编辑名片」（改 cards 表），与下方「账号资料」（改 users 表）严格分开 -->
+        <view class="cell" @tap="go('/pages/edit/edit')"><view class="ico">✎</view><view>编辑名片</view></view>
         <view class="cell" @tap="go('/pages/materials/materials?slug=' + card.slug)"><view class="ico">📚</view><view>相册</view></view>
         <view class="cell" @tap="go('/pages/notifications/notifications')"><view class="ico">🔔</view><view>消息通知<text v-if="unread" class="cdot">{{ unread }}</text></view></view>
         <view class="cell" @tap="go('/pages/batch-scan/batch-scan')"><view class="ico">📷</view><view>展会连扫</view></view>

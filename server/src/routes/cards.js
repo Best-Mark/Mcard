@@ -406,13 +406,35 @@ router.get('/mine', authRequired, wrap((req, res) => {
   ok(res, row ? ownerView(row, originOf(req)) : null)
 }))
 
+// 名片展示头像（唯一真相源 = cards.avatar，与账户头像 users.avatar 完全独立）
+// 2026-11-25 强制约定：账户层(users) 与名片层(cards) 不得混写。
+function normalizeCardAvatar(v) {
+  const s = String(v || '').trim()
+  if (!s) return ''
+  if (!/^\/(uploads|media)\//.test(s) && !/^https?:\/\//.test(s)) return null
+  return s.slice(0, 500)
+}
+router.get('/avatar', authRequired, wrap((req, res) => {
+  const row = db.prepare('SELECT avatar FROM cards WHERE user_id = ?').get(req.user.id)
+  ok(res, { avatar: row?.avatar || '' })
+}))
+router.put('/avatar', authRequired, wrap((req, res) => {
+  const avatar = normalizeCardAvatar(req.body?.avatar)
+  if (avatar === null) return fail(res, 400, '头像地址不合法')
+  const row = db.prepare('SELECT id FROM cards WHERE user_id = ?').get(req.user.id)
+  if (!row) return fail(res, 404, '请先创建名片')
+  db.prepare('UPDATE cards SET avatar = ? WHERE user_id = ?').run(avatar, req.user.id)
+  ok(res, { avatar })
+}))
+
 router.post('/mine', authRequired, wrap((req, res) => {
   const exists = db.prepare('SELECT id FROM cards WHERE user_id = ?').get(req.user.id)
   if (exists) return fail(res, 400, '每个账号仅可开通一张名片')
   const preferred = normalizeSlug(req.body?.slug)
   const slug = makeSlug(preferred || req.user.phone?.slice(-8))
+  // 名片姓名留空由用户填；不再拿账户昵称当默认值（2026-11-25 强制约定：users 与 cards 字段互不混用）
   db.prepare('INSERT INTO cards (user_id, slug, name) VALUES (?,?,?)')
-    .run(req.user.id, slug, req.user.nickname || '')
+    .run(req.user.id, slug, '')
   const row = db.prepare('SELECT * FROM cards WHERE user_id = ?').get(req.user.id)
   ok(res, ownerView(row, originOf(req)))
 }))
