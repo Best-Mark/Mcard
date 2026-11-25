@@ -144,16 +144,20 @@ export const setWechatShare = setupWechatShare
  * 缩略图 LOGO → 头像，都不合格再由 setupWechatShare 落分享池。
  * 工作台必须自己配置，不能只靠异步嵌入的 CardView——否则加载慢时转发走全局兜底。
  */
-export function setCardShare(api, card, link) {
+export function setCardShare(api, card, link, shareImage) {
   const target = link || card?.url || ''
+  const title = `${card?.name || card?.name_en || '名片'}的名片`
+  // 微信转发面板顶部显示的是 document.title，必须与分享卡片标题一致为「某某的名片」，
+  // 否则即使 JS-SDK 标题配对了，面板顶部仍是站点默认标题「MCard 电子名片」。
+  if (typeof document !== 'undefined' && document.title !== title) document.title = title
   return setupWechatShare(api, {
-    title: `${card?.name || '名片'}的名片`,
+    title,
     desc: String(card?.bio || card?.company_intro || '').slice(0, 120),
     link: target,
-    // 名片 LOGO → 名片头像 → 站点 LOGO → 二维码 PNG 兜底：
-    // 前几个可能是 webp 会被 cardImage 过滤，站点 LOGO 未配置也为空，最后这项必为合格 PNG，
-    // 确保 imgUrl 非空、分享不退化成裸链接。站点 LOGO 是后台「站点基础」配置的唯一真相源。
-    imgCandidates: [card?.logo, card?.avatar, absoluteMediaUrl(siteConfig.site_logo), cardQrThumb(card, target)]
+    // 名片卡片预览图（含头像/姓名/二维码）→ 站点 LOGO → 二维码 PNG 兜底：
+    // 第一项是自动生成并上传的名片样式图，比纯二维码好看；上传失败自动回落到后面的候选。
+    // 注意 cardImage 只认 jpg/png/gif，webp 会被过滤，所以 LOGO 直链不再作为候选。
+    imgCandidates: [shareImage, absoluteMediaUrl(siteConfig.site_logo), cardQrThumb(card, target)]
   })
 }
 

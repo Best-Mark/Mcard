@@ -7,7 +7,7 @@ const esc = s => String(s ?? '').replace(/[<>&"']/g, c => ({ '<': '&lt;', '>': '
 // 深底版式的固定墨色/纸色（不随浅色主题漂走，保证印刷对比度）
 const INK = { dark: '#111827', dark2: '#1f2937', paper: '#f8fafc', gold: '#c9a163', gold2: '#e3c893', line: 'rgba(255,255,255,.28)' }
 
-async function inlineImage(url) {
+export async function inlineImage(url) {
   if (!url) return ''
   if (url.startsWith('data:')) return url
   try {
@@ -23,7 +23,7 @@ async function inlineImage(url) {
   } catch { return '' }
 }
 
-function qrPath(text, x, y, size, fg) {
+export function qrPath(text, x, y, size, fg) {
   const qr = QRCode.create(text, { errorCorrectionLevel: 'H' })
   const n = qr.modules.size
   const cell = size / n
