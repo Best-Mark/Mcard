@@ -39,9 +39,14 @@ function qrPath(text, x, y, size, fg) {
   return `<path d="${parts.join('')}" fill="${fg}"/>`
 }
 
-// 二维码统一白底方块，保证任何深色版式都能扫
+// 二维码统一白底方块，保证任何深色版式都能扫。
+// 边界钳制：白底（含 pad）必须完整落在安全区内，否则裁切后会缺角导致扫不出。
+// x/y 是二维码本体左上角，白底从 x-pad 到 x+size+pad。
 function qrBlock(qrText, x, y, size, fg = '#0f172a', pad = 1.5) {
-  return `<rect x="${x - pad}" y="${y - pad}" width="${size + pad * 2}" height="${size + pad * 2}" rx="1.2" fill="#fff"/>${qrPath(qrText, x, y, size, fg)}`
+  const lo = SAFE + pad, hiX = W - SAFE - size - pad, hiY = H - SAFE - size - pad
+  const qx = Math.min(Math.max(x, lo), hiX)
+  const qy = Math.min(Math.max(y, lo), hiY)
+  return `<rect x="${qx - pad}" y="${qy - pad}" width="${size + pad * 2}" height="${size + pad * 2}" rx="1.2" fill="#fff"/>${qrPath(qrText, qx, qy, size, fg)}`
 }
 
 // 头像：方形/圆形可选，clipPath id 随位置生成避免多头像冲突

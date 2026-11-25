@@ -18,7 +18,7 @@
       <div v-else-if="!card" class="card card-pad">请先创建名片 <router-link to="/me" style="color:var(--primary)">去创建</router-link></div>
 
       <template v-else>
-        <!-- 抖音发布页同款：预览常驻顶部，下面逐项调节，改一项上方立刻看到 -->
+        <!-- 一屏式：上面完整看预览，底部一排功能往上弹出调节，弹出后仍是横向功能条 -->
         <div class="print-layout">
           <div class="preview-panel">
             <div class="card card-pad preview-card">
@@ -33,8 +33,12 @@
               <p class="small muted center preview-cap">{{ side === 'front' ? '正面' : '背面' }} · {{ guides ? '含辅助线' : '成品效果' }} · {{ currentLabel }}</p>
             </div>
           </div>
+        </div>
 
-          <!-- 横向功能条：点一项下方只出这一项的内容，像抖音发布页；不堆成一长列 -->
+        <!-- 底部一排功能：点击往上弹 sheet，弹出后里面还是横向 6 项 -->
+        <div class="sheet-mask" :class="{ show: sheetOpen }" @click="sheetOpen = false"></div>
+        <div class="edit-sheet" :class="{ show: sheetOpen }" role="dialog" aria-label="实体名片设置">
+          <div class="sheet-grab" @click="sheetOpen = false"><span></span></div>
           <div class="control-tabs" role="tablist">
             <button v-for="s in SECTIONS" :key="s.k" class="control-tab" :class="{ on: openSection === s.k }" role="tab" :aria-selected="openSection === s.k" @click="openSection = s.k">
               <span class="tab-ico" :class="'ico-' + s.k"></span>
@@ -104,6 +108,13 @@
             </template>
           </div>
         </div>
+
+        <!-- 常驻底部的一排功能入口：点任意项打开上面的调节面板 -->
+        <div class="bottom-launcher">
+          <button v-for="s in SECTIONS" :key="s.k" :class="{ on: sheetOpen && openSection === s.k }" @click="openSection = s.k; sheetOpen = true">
+            <span class="tab-ico" :class="'ico-' + s.k"></span><span>{{ s.label }}</span>
+          </button>
+        </div>
       </template>
     </div>
   </div>
@@ -132,6 +143,7 @@ const SECTIONS = [
   { k: 'tips', label: '说明' }
 ]
 const openSection = ref('color')
+const sheetOpen = ref(false)
 
 // 印刷配色复用主题唯一真相源 THEMES，不另建颜色定义（参数唯一真相源约束）
 const PRINT_THEMES = Object.entries(THEMES).map(([k, v]) => ({ k, label: v.label, accent: v.accent }))
@@ -203,9 +215,10 @@ async function download(kind) {
 </script>
 
 <style scoped>
-/* 预览常驻顶部（sticky）：滚动下方调节项时始终能看到成品，top 让开 56px 吸顶导航 */
+/* 一屏式：预览常驻，调节从底部上弹；页面留出底部两排（功能入口+会员导航）高度 */
+.page { padding-bottom: calc(132px + env(safe-area-inset-bottom)); }
 .print-layout { display: flex; flex-direction: column; gap: 12px; }
-.preview-panel { position: sticky; top: 66px; z-index: 20; background: var(--bg-page, #f4f6fb); padding-bottom: 6px; }
+.preview-panel { padding-bottom: 6px; }
 .preview-card { padding: 14px 16px 12px; }
 .preview-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
 .side-switch button { padding: 6px 18px; font-size: 12px; }
@@ -228,7 +241,31 @@ async function download(kind) {
 .tab-dot { position: absolute; bottom: 4px; width: 12px; height: 3px; border-radius: 2px; background: var(--t-accent, var(--primary, #2563eb)); }
 .control-panel { margin-top: 6px; }
 .control-panel .section-title { font-size: 15px; }
-@media (max-width: 900px) { .preview-panel { top: 62px; } }
+/* 底部常驻一排功能入口：抬到会员导航（约 60px）之上，宽屏限宽居中 */
+.bottom-launcher {
+  position: fixed; left: 0; right: 0; z-index: 105;
+  bottom: calc(60px + env(safe-area-inset-bottom));
+  display: flex; gap: 2px; padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+  background: var(--bg-card, #fff); border-top: 1px solid var(--line); box-shadow: 0 -4px 18px rgba(15,23,42,.06);
+}
+.bottom-launcher button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px 0; border: 0; background: transparent; color: var(--muted, #6b7688); font-size: 11px; }
+.bottom-launcher button.on { color: var(--t-accent, var(--primary, #2563eb)); font-weight: 700; }
+@media (min-width: 900px) { .bottom-launcher { max-width: 520px; left: 50%; right: auto; transform: translateX(-50%); border-radius: 14px 14px 0 0; } }
+
+/* 上弹调节面板：内部仍是横向 6 项功能条，点遮罩或把手收起 */
+.sheet-mask { position: fixed; inset: 0; z-index: 120; background: rgba(15,23,42,.45); opacity: 0; pointer-events: none; transition: opacity .2s; }
+.sheet-mask.show { opacity: 1; pointer-events: auto; }
+.edit-sheet {
+  position: fixed; left: 0; right: 0; z-index: 121;
+  bottom: 0; max-height: 78vh; overflow-y: auto; overscroll-behavior: contain;
+  padding: 6px 14px calc(18px + env(safe-area-inset-bottom));
+  background: var(--bg-page, #f4f6fb); border-radius: 18px 18px 0 0; box-shadow: 0 -10px 40px rgba(15,23,42,.22);
+  transform: translateY(105%); transition: transform .24s ease; visibility: hidden;
+}
+.edit-sheet.show { transform: translateY(0); visibility: visible; }
+@media (min-width: 900px) { .edit-sheet { max-width: 560px; left: 50%; right: auto; transform: translate(-50%, 105%); } .edit-sheet.show { transform: translate(-50%, 0); } }
+.sheet-grab { display: grid; place-items: center; height: 20px; cursor: pointer; }
+.sheet-grab span { display: block; width: 38px; height: 4px; border-radius: 3px; background: var(--line, #d7dce5); }
 .tpl-list { display: flex; gap: 8px; flex-wrap: wrap; }
 .tpl-list button { padding: 8px 14px; border: 1px solid var(--line); border-radius: 9px; font-size: 12px; }
 .tpl-list button.on { border-color: var(--primary); background: #eff6ff; color: var(--primary); font-weight: 700; }
