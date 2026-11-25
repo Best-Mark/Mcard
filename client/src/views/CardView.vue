@@ -166,7 +166,7 @@
         <div class="map-sheet-head"><b>选择导航地图</b><button @click="mapOpen = false">×</button></div>
         <div class="map-sheet-list">
           <a v-for="m in maps" :key="m.key" :href="m.href" target="_blank" rel="noopener" @click="mapOpen = false">
-            <span class="map-ico" v-html="mapIcon(m.key)"></span><span>{{ m.label }}地图</span><span class="map-arrow">↗</span>
+            <img class="map-ico" :src="mapIcon(m.key)" alt="" /><span>{{ m.label }}地图</span><span class="map-arrow">↗</span>
           </a>
         </div>
       </BottomSheet>
@@ -266,7 +266,6 @@ import { setCardShare } from '../utils/wx-share'
 import { getCachedPosition } from '../utils/geo'
 import BottomSheet from '../components/BottomSheet.vue'
 import AppIcon from '../components/AppIcon.vue'
-import { BRAND_ICONS, FUNC_ICONS } from '../utils/icons'
 
 const route = useRoute(); const router = useRouter()
 const embed = props.embed
@@ -534,24 +533,12 @@ function openMapSheet() {
   if (!maps.value.length) return showToast('尚未填写地址')
   mapOpen.value = true
 }
-// 地图图标：全部用各产品官方 logo path（simple-icons / arcticons），白底渲染原色，去除自绘准星。
-// 全部内联、零外部依赖。指示性使用场景（点击即用该地图导航）。
-const MAP_ICON_CFG = {
-  amap: { brand: 'amap', bg: '#fff' },
-  baidu: { brand: 'baidu', bg: '#fff' },
-  qq: { brand: 'qq', bg: '#fff' },
-  apple: { brand: 'apple', bg: '#fff' },
-  google: { brand: 'googlemaps', bg: '#fff' }
-}
+// 地图图标：直接用各家 App Store 上架的官方图标（client/public/maps/*.png，本地静态资源）。
+// simple-icons 那种单色剪影和真实 App 图标对不上，用户看不出来是哪家；这里只做「点开即用该地图」的指示性使用。
+const MAP_ICON_KEYS = ['amap', 'baidu', 'qq', 'apple', 'google']
 function mapIcon(key) {
-  const cfg = MAP_ICON_CFG[key]
-  if (!cfg) return `<svg viewBox="0 0 24 24" width="100%" height="100%"><path d="${FUNC_ICONS.nav.path}" fill="none" stroke="#64748b" stroke-width="1.8"/></svg>`
-  const b = BRAND_ICONS[cfg.brand]
-  const vb = b.viewBox || '0 0 24 24'
-  const inner = b.stroke
-    ? `<path d="${b.path}" fill="none" stroke="${b.color}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>`
-    : `<path d="${b.path}" fill="${b.color}"/>`
-  return `<svg viewBox="${vb}" width="100%" height="100%"><rect x="0" y="0" width="${vb.includes('48') ? 48 : 24}" height="${vb.includes('48') ? 48 : 24}" rx="6" fill="${cfg.bg}"/>${inner}</svg>`
+  const k = MAP_ICON_KEYS.includes(key) ? key : 'amap'
+  return `${import.meta.env.BASE_URL}maps/${k}.png`
 }
 async function copy(v, label) {
   if (!v) return showToast(`尚未填写${label}`)
@@ -739,8 +726,7 @@ async function toggleFavorite() {
 .map-sheet-list { padding: 6px 12px 18px; overflow-y: auto; }
 .map-sheet-list a { display: flex; align-items: center; gap: 12px; padding: 13px 10px; border-bottom: 1px solid #f0f3f8; text-decoration: none; color: #17233c; font-size: 14px; }
 .map-sheet-list a:last-child { border-bottom: 0; }
-.map-ico { flex: 0 0 34px; width: 34px; height: 34px; display: grid; place-items: center; }
-.map-ico svg { display: block; width: 100%; height: 100%; }
+.map-ico { flex: 0 0 34px; width: 34px; height: 34px; display: block; object-fit: contain; border-radius: 8px; }
 .map-arrow { margin-left: auto; color: #94a3b8; font-size: 16px; }
 .cv-footer { text-align: center; color: var(--t-muted); font-size: 11px; padding: 26px 0 10px; }
 /* 高档深灰底栏：四个主操作单排铺满，窄屏也不换行 */
