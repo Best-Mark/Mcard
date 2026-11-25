@@ -1,35 +1,43 @@
 <template>
   <!--
-    省市区三列同屏滚轮（H5）——严格对齐 MShop client/src/components/RegionTriplePicker.vue：
-    van-picker 标准 iOS 滚轮（上下渐变遮罩 + 贯穿横线 + 44px 项高 + 6 行可见），
-    替代原来手写列表 + 三列圆角蓝框 + 三条蓝色下划线标题（用户反馈"很怪"的观感来源）。
-    数据源仍用 MCard 自己的 /api/geo/regions（地区唯一真相源），不引入第二份地区库。
+    省市区三列同屏滚轮（H5）——视觉对齐 MShop 的 van-picker 标准 iOS 滚轮：
+    上下渐变遮罩 + 贯穿三列的细横线 + 44px 项高 + 6 行可见 + 统一工具栏。
+    纯手写实现，不引入 vant（服务器自动更新只做 git pull+build，不会 npm install 新依赖，
+    曾因 import vant 导致线上构建失败回滚）。数据仍用 /api/geo/regions（地区唯一真相源）。
   -->
-  <div v-if="ready" ref="hostRef" class="rp-host">
-    <van-picker
-      :columns="columns"
-      :model-value="selValues"
-      title="选择所在地区"
-      confirm-button-text="确定"
-      cancel-button-text="取消"
-      @confirm="onConfirm"
-      @cancel="emit('close')"
-    />
+  <div class="rp-host">
+    <div class="rp-toolbar">
+      <button class="rp-action rp-cancel" @click="emit('close')">取消</button>
+      <span class="rp-title">选择所在地区</span>
+      <button class="rp-action rp-confirm" @click="confirm">确定</button>
+    </div>
+    <div v-if="!ready" class="rp-loading small muted">地区数据加载中…</div>
+    <div v-else ref="columnsRef" class="rp-columns">
+      <!-- 贯穿三列的选中横线（不是每列一个圆角蓝框） -->
+      <div class="rp-frame" aria-hidden="true"></div>
+      <!-- 上下渐变遮罩，消除滚轮硬切边 -->
+      <div class="rp-mask" aria-hidden="true"></div>
+      <div v-for="(col, ci) in wheels" :key="ci" class="rp-column" :ref="el => setWheelRef(el, ci)">
+        <div class="rp-pad"></div>
+        <button
+          v-for="(r, ri) in col.list" :key="r.code"
+          class="rp-item"
+          :class="{ sel: ri === col.index }"
+          @click="clickItem(ci, ri)"
+        >{{ r.name }}</button>
+        <div class="rp-pad"></div>
+      </div>
+    </div>
   </div>
-  <div v-else class="rp-loading small muted">地区数据加载中…</div>
 </template>
 
 <script setup>
 /**
- * 省市区三列联动选择器（H5）——逻辑逐行对齐 MShop RegionTriplePicker（已上线验证）：
- * · van-picker 普通三列（非级联树），三列始终同屏，不逐层下钻；
- * · 停驻检测轮询每列 wrapper 的 transform 位移驱动级联，不依赖 transitionend
- *   （部分 WebView 丢该事件导致转动不联动，见 MShop pickup/Apply.vue、Verify.vue 实踩）；
- * · 打开时按已有省市区文本反查编码定位三列；没动过就点确定则原样回传，绝不静默改成第一个省。
+ * 省市区三列同屏滚轮：scrollTop 轮询检测停驻（不依赖 transitionend，部分 WebView 会丢该事件
+ * 导致不联动，见 MShop pickup/Apply.vue、Verify.vue 实踩），手指按住时不提交，停稳后重建下级列。
+ * 视觉复刻 van-picker：44px 项高、上下渐变遮罩、贯穿横线、无每列独立标题。
  */
-import { ref, computed, onBeforeUnmount } from 'vue'
-import { Picker as VanPicker } from 'vant'
-import 'vant/es/picker/index.css'
+import { ref, nextTick, onBeforeUnmount } from 'vue'
 import api from '../api'
 
 const props = defineProps({
@@ -40,141 +48,181 @@ const props = defineProps({
 })
 const emit = defineEmits(['confirm', 'close'])
 
-const hostRef = ref(null)
+const ITEM_H = 44       // 与 .rp-item 高度一致
+const VISIBLE = 6       // 可见行数，与 .rp-columns height = 44*6 一致
+const PAD = ((VISIBLE - 1) / 2) * ITEM_H // 上下留白，让首尾项能停在中间横线
+
 const ready = ref(false)
+const columnsRef = ref(null)
 const all = ref([])
-const selValues = ref(['', '', ''])
-let initialSel = ['', '', '']
+const selected = ref({ 1: null, 2: null, 3: null })
+const wheels = ref([
+  { list: [], index: 0 },
+  { list: [], index: 0 },
+  { list: [], index: 0 }
+])
 
 function childrenOf(level, parentCode) {
   return all.value.filter(r => r.level === level && (level === 1 ? !r.parent_code : r.parent_code === parentCode))
 }
-const toOption = r => ({ text: r.name, value: r.code })
-const provCol = computed(() => childrenOf(1, '').map(toOption))
-const cityCol = ref([])
-const distCol = ref([])
-const columns = computed(() => [provCol.value, cityCol.value, distCol.value])
-
-// 街道（第 4 级）稀疏，仍由外层 CardEdit 以 chips 形式给出；本组件只管省/市/区三列。
 const findByText = (list, name) => {
   if (!name) return null
   return list.find(r => r.name === name) || list.find(r => r.name.includes(name) || name.includes(r.name)) || null
 }
 
-// 由已有省市区文本反查编码定位三列（MShop locate 同款）；反算不到旧值时按首项停靠，
-// 但靠 onConfirm 的 unchanged 判断保证「用户没动过就原样回传」，绝不悄悄改数据。
-function locate() {
-  const p = findByText(provCol.value, props.province) || provCol.value[0] || null
-  const cList = p ? childrenOf(2, p.code).map(toOption) : []
-  const c = findByText(cList, props.city) || cList[0] || null
-  const dList = c ? childrenOf(3, c.code).map(toOption) : []
-  const d = findByText(dList, props.district) || dList[0] || null
-  cityCol.value = cList
-  distCol.value = dList
-  initialSel = [p?.code || '', c?.code || '', d?.code || '']
-  selValues.value = initialSel.slice()
-}
+// 打开时的原值：用户没动过滚轮就原样回传，已有地区不在下拉数据里也不会被悄悄改成第一项
+let initialVal = { province: '', city: '', district: '', street: '' }
+let dirty = false
 
-// 读一列滚轮当前停在哪个选项（按 transform 位移算，不依赖任何事件）
-function readWheelIdx(colEl) {
-  const wrapper = colEl.querySelector('.van-picker-column__wrapper')
-  const items = colEl.querySelectorAll('.van-picker-column__item')
-  if (!wrapper || !items.length) return -1
-  const m = getComputedStyle(wrapper).transform || ''
-  const parts = m.match(/matrix\(([^)]+)\)/)
-  if (!parts) return -1
-  const ty = parseFloat(parts[1].split(',')[5]) || 0
-  const h = items[0].offsetHeight || 44
-  const base = (colEl.clientHeight - h) / 2
-  return Math.max(0, Math.min(items.length - 1, Math.round(-(ty - base) / h)))
-}
-
+const wheelEls = [null, null, null]
+function setWheelRef(el, ci) { if (el) wheelEls[ci] = el }
 let pollTimer = null
-let prevTy = ['', '', '']
-let lastIdx = [-1, -1, -1]
 let touching = false
+let prevTop = [null, null, null]
+let lastIdx = [-1, -1, -1]
 let settledOnce = false
+let firstPoll = true
+
+function setWheelScroll(ci, idx, smooth = false) {
+  const el = wheelEls[ci]
+  if (!el) return
+  const top = Math.max(0, idx) * ITEM_H
+  try { el.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' }) }
+  catch { el.scrollTop = top }
+}
+function scrollWheel(ci) {
+  const el = wheelEls[ci]
+  if (!el || !wheels.value[ci]?.list.length) return -1
+  const idx = Math.round(el.scrollTop / ITEM_H)
+  return Math.max(0, Math.min(wheels.value[ci].list.length - 1, idx))
+}
+function childList(level, parent) {
+  return parent ? childrenOf(level, parent.code) : []
+}
+
+function rebuildFromSelection() {
+  const s = selected.value
+  const pList = childrenOf(1, '')
+  const p = s[1] && pList.some(x => x.code === s[1].code) ? s[1] : (pList[0] || null)
+  const cList = childList(2, p)
+  const c = s[2] && cList.some(x => x.code === s[2].code) ? s[2] : (cList[0] || null)
+  const dList = childList(3, c)
+  const d = s[3] && dList.some(x => x.code === s[3].code) ? s[3] : (dList[0] || null)
+  wheels.value = [
+    { list: pList, index: Math.max(0, pList.findIndex(x => x.code === p?.code)) },
+    { list: cList, index: Math.max(0, cList.findIndex(x => x.code === c?.code)) },
+    { list: dList, index: Math.max(0, dList.findIndex(x => x.code === d?.code)) }
+  ]
+  nextTickScroll()
+}
+function nextTickScroll() {
+  Promise.resolve().then(() => wheels.value.forEach((_, i) => setWheelScroll(i, wheels.value[i].index)))
+}
+
+function clickItem(ci, ri) {
+  setWheelScroll(ci, ri, true)
+  applyWheel(ci, ri)
+}
+function applyWheel(ci, idx) {
+  const list = wheels.value[ci]?.list || []
+  const hit = list[idx]
+  if (!hit) return
+  dirty = true
+  if (ci === 0) {
+    if (selected.value[1]?.code === hit.code) return
+    selected.value[1] = hit
+    selected.value[2] = null; selected.value[3] = null
+    const cList = childrenOf(2, hit.code)
+    const c = cList[0] || null
+    selected.value[2] = c
+    const dList = c ? childrenOf(3, c.code) : []
+    selected.value[3] = dList[0] || null
+    wheels.value[1] = { list: cList, index: 0 }
+    wheels.value[2] = { list: dList, index: 0 }
+    nextTick(() => { setWheelScroll(1, 0); setWheelScroll(2, 0) })
+  } else if (ci === 1) {
+    if (selected.value[2]?.code === hit.code) return
+    selected.value[2] = hit
+    selected.value[3] = null
+    const dList = childrenOf(3, hit.code)
+    selected.value[3] = dList[0] || null
+    wheels.value[2] = { list: dList, index: 0 }
+    nextTick(() => setWheelScroll(2, 0))
+  } else if (ci === 2) {
+    if (selected.value[3]?.code === hit.code) return
+    selected.value[3] = hit
+  }
+}
 
 function pollSettle() {
   if (touching || !settledOnce) return
-  const host = hostRef.value
-  if (!host) return
-  const cols = host.querySelectorAll('.van-picker-column')
-  if (cols.length < 3) return
-  const idxs = []
   let stable = true
+  const idxs = []
   for (let i = 0; i < 3; i++) {
-    const wrapper = cols[i].querySelector('.van-picker-column__wrapper')
-    const m = wrapper ? (getComputedStyle(wrapper).transform || '') : ''
-    const parts = m.match(/matrix\(([^)]+)\)/)
-    const ty = parts ? (parseFloat(parts[1].split(',')[5]) || 0) : 0
-    const key = ty.toFixed(1)
-    if (key !== prevTy[i]) stable = false
-    prevTy[i] = key
-    idxs.push(readWheelIdx(cols[i]))
+    const el = wheelEls[i]
+    if (!el) return
+    const top = Math.round(el.scrollTop)
+    if (prevTop[i] !== null && top !== prevTop[i]) stable = false
+    prevTop[i] = top
+    idxs.push(scrollWheel(i))
   }
-  if (!stable || idxs.some(v => v < 0)) return
-  if (lastIdx[0] === idxs[0] && lastIdx[1] === idxs[1] && lastIdx[2] === idxs[2]) return
+  if (!stable) return
+  // 首帧只记账：初始定位的 scrollTo 不能当成用户滚动
+  if (!firstPoll) {
+    for (let i = 0; i < 3; i++) {
+      if (idxs[i] !== lastIdx[i]) applyWheel(i, idxs[i])
+      if (wheels.value[i] && wheels.value[i].index !== idxs[i]) wheels.value[i].index = idxs[i]
+    }
+  }
   lastIdx = idxs.slice()
-
-  const sel = selValues.value.slice()
-  // 省变化 → 重建市/区；市变化 → 重建区（MShop 同款，三列始终同屏）
-  const p = provCol.value[idxs[0]]
-  if (p && p.value !== sel[0]) {
-    sel[0] = p.value
-    const cList = childrenOf(2, p.value).map(toOption)
-    cityCol.value = cList
-    const c = cList[0] || { text: '', value: '' }
-    sel[1] = c.value
-    const dList = c.value ? childrenOf(3, c.value).map(toOption) : []
-    distCol.value = dList
-    sel[2] = (dList[0] || { text: '', value: '' }).value
-  }
-  const c2 = cityCol.value[idxs[1]]
-  if (c2 && c2.value !== sel[1]) {
-    sel[1] = c2.value
-    const dList = childrenOf(3, c2.value).map(toOption)
-    distCol.value = dList
-    sel[2] = (dList.find(o => o.value === sel[2]) || dList[0] || { text: '', value: '' }).value
-  }
-  const d2 = distCol.value[idxs[2]]
-  if (d2 && d2.value !== sel[2]) sel[2] = d2.value
-  selValues.value = sel
+  firstPoll = false
 }
 
 function startPoll() {
   stopPoll()
   touching = false
-  prevTy = ['', '', '']
+  prevTop = [null, null, null]
   lastIdx = [-1, -1, -1]
   settledOnce = false
+  firstPoll = true
   pollTimer = setInterval(pollSettle, 120)
   nextTick(() => {
-    const host = hostRef.value
-    if (!host || host.dataset.pollBound) return
-    host.dataset.pollBound = '1'
-    host.addEventListener('touchstart', () => { touching = true }, { passive: true })
-    const onUp = () => { touching = false; prevTy = ['', '', ''] }
-    host.addEventListener('touchend', onUp, { passive: true })
-    host.addEventListener('touchcancel', onUp, { passive: true })
+    const host = columnsRef.value
+    if (host && !host.dataset.pollBound) {
+      host.dataset.pollBound = '1'
+      host.addEventListener('touchstart', () => { touching = true }, { passive: true })
+      const onUp = () => { touching = false; prevTop = [null, null, null] }
+      host.addEventListener('touchend', onUp, { passive: true })
+      host.addEventListener('touchcancel', onUp, { passive: true })
+    }
     setTimeout(() => { settledOnce = true }, 150)
   })
 }
 function stopPoll() { clearInterval(pollTimer); pollTimer = null }
 
-function onConfirm() {
-  const sel = selValues.value || []
-  // 打开后没动过、且原文非空：原样回传，避免脏数据/改名被悄悄改成第一个省市区
-  if (sel.every((v, i) => v === initialSel[i]) && (props.province || props.city || props.district)) {
-    emit('confirm', { province: props.province, city: props.city, district: props.district, street: props.street })
+function locate() {
+  const p = findByText(childrenOf(1, ''), props.province) || childrenOf(1, '')[0] || null
+  const cList = p ? childrenOf(2, p.code) : []
+  const c = findByText(cList, props.city) || cList[0] || null
+  const dList = c ? childrenOf(3, c.code) : []
+  const d = findByText(dList, props.district) || dList[0] || null
+  selected.value = { 1: p, 2: c, 3: d }
+  initialVal = { province: props.province, city: props.city, district: props.district, street: props.street }
+  dirty = false
+  rebuildFromSelection()
+}
+
+function confirm() {
+  if (!dirty && (initialVal.province || initialVal.city || initialVal.district)) {
+    emit('confirm', { ...initialVal })
     return
   }
-  const opt = (col, v) => col.find(o => o.value === v)?.text || ''
+  const s = selected.value
   emit('confirm', {
-    province: opt(provCol.value, sel[0]),
-    city: opt(cityCol.value, sel[1]),
-    district: opt(distCol.value, sel[2]),
-    street: ''
+    province: s[1]?.name || '',
+    city: s[2]?.name || '',
+    district: s[3]?.name || '',
+    street: props.street || ''
   })
 }
 
@@ -183,21 +231,27 @@ function onConfirm() {
     const { data } = await api.get('/api/geo/regions')
     all.value = data?.data?.regions || []
   } catch { all.value = [] }
-  finally {
-    locate()
-    ready.value = true
-    startPoll()
-  }
+  finally { locate(); ready.value = true; startPoll() }
 })()
 
 onBeforeUnmount(stopPoll)
 </script>
 
 <style scoped>
-/* 滚轮视觉全部沿用 van-picker 默认（渐变遮罩 + 贯穿横线 + 44px 项高），只做背景对齐 */
 .rp-host { background: var(--bg-card, #fff); }
-.rp-host :deep(.van-picker) { background: var(--bg-card, #fff); }
-.rp-host :deep(.van-picker__columns) { height: 264px; }
-.rp-host :deep(.van-picker-column__item) { font-size: 15px; color: var(--text, #0f172a); }
-.rp-loading { padding: 40px 0; text-align: center; }
+.rp-toolbar { display: flex; align-items: center; justify-content: space-between; height: 44px; padding: 0 4px; border-bottom: 1px solid var(--line, #eef2f7); }
+.rp-action { font-size: 14px; padding: 8px 10px; color: var(--muted, #6b7688); }
+.rp-confirm { color: var(--primary, #2563eb); font-weight: 700; }
+.rp-title { font-size: 15px; font-weight: 700; color: var(--text, #0f172a); }
+.rp-loading { padding: 60px 0; text-align: center; }
+.rp-columns { position: relative; display: flex; height: 264px; overflow: hidden; }
+/* 贯穿三列的选中横线：1px 上下细线，无圆角无填充（van-picker frame 同款） */
+.rp-frame { position: absolute; top: 50%; left: 0; right: 0; height: 44px; transform: translateY(-50%); border-top: 1px solid var(--line, #e5e7eb); border-bottom: 1px solid var(--line, #e5e7eb); pointer-events: none; z-index: 2; }
+/* 上下渐变遮罩：消除硬切边，让滚轮看起来连续 */
+.rp-mask { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1; pointer-events: none; background-image: linear-gradient(180deg, var(--bg-card, #fff) 0%, rgba(255,255,255,.1) 100%), linear-gradient(0deg, var(--bg-card, #fff) 0%, rgba(255,255,255,.1) 100%); background-position: top, bottom; background-size: 100% 50%; background-repeat: no-repeat; }
+.rp-column { flex: 1; min-width: 0; height: 264px; overflow-y: auto; scroll-snap-type: y mandatory; scrollbar-width: none; -ms-overflow-style: none; overscroll-behavior: contain; }
+.rp-column::-webkit-scrollbar { display: none; }
+.rp-pad { height: 110px; }
+.rp-item { display: block; width: 100%; height: 44px; line-height: 44px; scroll-snap-align: center; text-align: center; font-size: 16px; color: var(--text, #0f172a); background: transparent; }
+.rp-item.sel { font-weight: 600; color: var(--primary, #2563eb); }
 </style>
