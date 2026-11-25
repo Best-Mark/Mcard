@@ -141,7 +141,7 @@
       <div v-if="full && !owner && moreOpen" class="cv-fab-mask" @click="moreOpen = false">
         <div class="cv-fab-menu" @click.stop>
           <button v-if="fullAddress && maps.length" @click="moreOpen = false; openMapSheet()">导航到此处</button>
-          <button @click="moreOpen = false; toggleFavorite()">{{ favorite ? '★ 已收藏' : '☆ 收藏名片' }}</button>
+          <button @click="moreOpen = false; toggleFavorite()">{{ favorite ? '已收藏' : '收藏名片' }}</button>
           <button @click="moreOpen = false; openExchange()">交换名片</button>
         </div>
       </div>
