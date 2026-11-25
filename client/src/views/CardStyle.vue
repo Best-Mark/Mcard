@@ -27,51 +27,64 @@
           </div>
         </div>
 
-        <!-- 底部功能上弹面板：模板 + 二维码风格融合在一个面板。
-             强调色不再单列（选模板即配好整套配色）；二维码只留预设/码点/定位角，中心 LOGO 固定居中常显。 -->
+        <!-- 底部功能上弹面板：模板 / 二维码两个分区分开（按之前那样的交互）。
+             强调色不再单列；二维码只留预设/码点/定位角，中心 LOGO 固定居中常显。
+             分区清单唯一真相源 = SECTIONS：弹层内 tab 与底部入口都从它渲染，不各写一份。 -->
         <div class="sheet-mask" :class="{ show: sheetOpen }" @click="sheetOpen = false"></div>
-        <div class="edit-sheet" :class="{ show: sheetOpen }" role="dialog" aria-label="模板与二维码设置">
+        <div class="edit-sheet" :class="{ show: sheetOpen }" role="dialog" aria-label="配色风格设置">
           <div class="sheet-grab" @click="sheetOpen = false"><span></span></div>
 
-          <div class="card card-pad control-panel">
-            <div class="section-title" style="margin-top:0">展示模板</div>
-            <p class="small muted">选一套模板即应用整套配色（含强调色与二维码配色）。</p>
-            <div class="tpl-list">
-              <button v-for="tpl in templates" :key="tpl.key" class="tpl-item" :class="{ on: card.template === tpl.key }" @click="chooseTemplate(tpl.key)">
-                <span class="tpl-thumb" :class="'thumb-' + tpl.key"><i class="tpl-ava"></i></span>
-                <b>{{ tpl.label }}</b>
-                <span class="tpl-desc">{{ tpl.desc }}</span>
-                <span v-if="card.template === tpl.key" class="tpl-check">✓ 使用中</span>
-              </button>
-            </div>
-            <div v-if="!templates.length" class="small muted">模板列表加载中，请稍候…</div>
+          <div class="control-tabs" role="tablist">
+            <button v-for="s in SECTIONS" :key="s.k" class="control-tab" :class="{ on: openSection === s.k }" role="tab"
+                    :aria-selected="openSection === s.k" @click="openSection = s.k">
+              <span class="tab-ico" :class="'ico-' + s.k"></span><span class="tab-txt">{{ s.label }}</span>
+              <span class="tab-dot" v-if="openSection === s.k"></span>
+            </button>
+          </div>
 
-            <div class="section-title qr-section-title">二维码</div>
-            <p class="small muted">中心 LOGO 固定居中常显，这里只挑码点风格。</p>
-            <div class="field"><label>一键预设</label>
-              <div class="qr-presets">
-                <button v-for="p in QR_PRESETS" :key="p.key" class="qr-preset" :class="{ on: qrPresetActive(p) }" @click="applyQrPreset(p)">
-                  <i :style="{ background: p.swatch }"></i>{{ p.label }}
+          <div class="card card-pad control-panel">
+            <template v-if="openSection === 'template'">
+              <div class="section-title" style="margin-top:0">展示模板</div>
+              <p class="small muted">选一套模板即应用整套配色（含强调色与二维码配色）。</p>
+              <div class="tpl-list">
+                <button v-for="tpl in templates" :key="tpl.key" class="tpl-item" :class="{ on: card.template === tpl.key }" @click="chooseTemplate(tpl.key)">
+                  <span class="tpl-thumb" :class="'thumb-' + tpl.key"><i class="tpl-ava"></i></span>
+                  <b>{{ tpl.label }}</b>
+                  <span class="tpl-desc">{{ tpl.desc }}</span>
+                  <span v-if="card.template === tpl.key" class="tpl-check">✓ 使用中</span>
                 </button>
               </div>
-            </div>
-            <div class="grid2">
-              <div class="field"><label>码点形状</label>
-                <BottomSelect v-model="card.qr_style.dot" :options="DOT_OPTIONS" title="码点形状" />
+              <div v-if="!templates.length" class="small muted">模板列表加载中，请稍候…</div>
+            </template>
+            <template v-else>
+              <div class="section-title" style="margin-top:0">二维码</div>
+              <p class="small muted">中心 LOGO 固定居中常显，这里只挑码点风格。</p>
+              <div class="field"><label>一键预设</label>
+                <div class="qr-presets">
+                  <button v-for="p in QR_PRESETS" :key="p.key" class="qr-preset" :class="{ on: qrPresetActive(p) }" @click="applyQrPreset(p)">
+                    <i :style="{ background: p.swatch }"></i>{{ p.label }}
+                  </button>
+                </div>
               </div>
-              <div class="field"><label>定位角样式</label>
-                <BottomSelect v-model="card.qr_style.eye" :options="EYE_OPTIONS" title="定位角样式" />
+              <div class="grid2">
+                <div class="field"><label>码点形状</label>
+                  <BottomSelect v-model="card.qr_style.dot" :options="DOT_OPTIONS" title="码点形状" />
+                </div>
+                <div class="field"><label>定位角样式</label>
+                  <BottomSelect v-model="card.qr_style.eye" :options="EYE_OPTIONS" title="定位角样式" />
+                </div>
               </div>
-            </div>
+            </template>
             <!-- 明确收起面板：点了才算本项设置完（真正持久化仍是右上角「完成」） -->
             <div class="sheet-confirm"><button class="btn btn-primary btn-block" @click="sheetOpen = false">确定</button></div>
           </div>
         </div>
 
-        <!-- 常驻底部入口：所有风格项都在同一个面板里 -->
+        <!-- 常驻底部入口：模板 / 二维码各一个，保持分开的交互 -->
         <div class="bottom-launcher">
-          <button :class="{ on: sheetOpen }" @click="sheetOpen = true">
-            <span class="tab-ico ico-template"></span><span>模板与二维码</span>
+          <button v-for="s in SECTIONS" :key="s.k" :class="{ on: sheetOpen && openSection === s.k }"
+                  @click="openSection = s.k; sheetOpen = true">
+            <span class="tab-ico" :class="'ico-' + s.k"></span><span>{{ s.label }}</span>
           </button>
         </div>
       </template>
@@ -97,6 +110,12 @@ const busyLoad = ref(false)
 const loading = ref(false)
 const loadError = ref('')
 const sheetOpen = ref(false)
+// 模板 / 二维码两个分区：弹层内 tab 与底部入口共用这份清单（强调色已精简掉，不再回来）
+const SECTIONS = [
+  { k: 'template', label: '模板' },
+  { k: 'qr', label: '二维码' }
+]
+const openSection = ref('template')
 // 弹层打开锁页面滚动，避免上拖时带动背后的页（弹层内部自己滚）
 let bodyOverflowBefore = ''
 watch(sheetOpen, on => {
@@ -196,9 +215,15 @@ async function done() {
 @media (min-width: 900px) { .edit-sheet { left: 50%; right: auto; width: 560px; margin-left: -280px; border-radius: 16px 16px 0 0; } }
 .sheet-grab { height: 18px; display: grid; place-items: center; flex: 0 0 18px; }
 .sheet-grab span { width: 36px; height: 4px; border-radius: 2px; background: var(--line); }
+/* 弹层内分区 tab：与底部入口共用 SECTIONS，选中态两处一致 */
+.control-tabs { display: flex; gap: 4px; padding: 6px 12px; overflow-x: auto; border-bottom: 1px solid var(--line); }
+.control-tab { position: relative; flex: 0 0 auto; display: flex; align-items: center; gap: 5px; padding: 8px 12px; border-radius: 8px; color: var(--muted); font-size: 13px; }
+.control-tab.on { background: #eef4ff; background: color-mix(in srgb, var(--primary) 10%, transparent); color: var(--primary); font-weight: 700; }
+.tab-dot { position: absolute; left: 50%; bottom: 1px; width: 12px; height: 2px; margin-left: -6px; border-radius: 2px; background: currentColor; }
 .tab-ico { width: 14px; height: 14px; border-radius: 3px; background: currentColor; opacity: .75; flex: 0 0 14px; }
+.ico-template { border-radius: 3px; }
+.ico-qr { border-radius: 2px; }
 .control-panel { margin: 0; border-radius: 0; border: 0; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
-.qr-section-title { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
 /* tabbar 在本页已隐藏（App.vue hideMemberNav），功能条贴底；z105 仍低于弹层 120/121 */
 .bottom-launcher { position: fixed; left: 0; right: 0; bottom: 0; z-index: 105; display: flex; gap: 6px; padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid var(--line); box-shadow: 0 -4px 16px rgba(0,0,0,.06); }
 .bottom-launcher button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 0; border-radius: 8px; color: var(--muted); font-size: 12px; }
