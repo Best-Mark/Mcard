@@ -76,7 +76,9 @@ watch(() => props.section, async () => {
 .cp-screen.cv-clean .cv-main { max-width: none; }
 /* 集市展示状态行（预览特有辅助信息，不属于名片卡本体） */
 .cp-market-row { display: flex; gap: 8px; padding: 4px 0; font-size: 10px; }
-.cp-market-row > span { flex: 0 0 32px; color: var(--t-muted); }
-.cp-market-row b { font-weight: 500; }
-.cp-market-row b.cp-on { color: #0f766e; font-weight: 700; }
+/* 预览辅助信息落在名片卡内部：必须走模板 --cv-* 配色，不能用主题 --t-muted/写死浅底色绿字，
+   否则墨夜玻璃等暗色模板上小字直接看不见（2026-11-26 实锤）。 */
+.cp-market-row > span { flex: 0 0 32px; color: var(--cv-ink-2); }
+.cp-market-row b { font-weight: 500; color: var(--cv-ink); }
+.cp-market-row b.cp-on { color: var(--cv-block-title); font-weight: 700; }
 </style>

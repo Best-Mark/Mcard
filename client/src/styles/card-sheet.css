@@ -758,6 +758,8 @@
 .cv-page.cv-clean .cv-contact-label { flex-basis: 52px; text-align: left; letter-spacing: normal; color: var(--cv-ink-2); }
 .cv-page.cv-clean .cv-contact-value { text-align: left; font-family: inherit; color: var(--cv-ink); font-weight: 600; }
 .cv-page.cv-clean .cv-bio, .cv-page.cv-clean .small.muted { color: var(--cv-ink-2); }
+/* 链接副标题/文件小字同样落在卡内，不能用主题 --t-muted（暗色模板上会糊掉） */
+.cv-page.cv-clean .cv-links span, .cv-page.cv-clean .cv-gallery-file small { color: var(--cv-ink-2); }
 .cv-page.cv-clean .cv-links b, .cv-page.cv-clean .cv-region-line { color: var(--cv-link-color); }
 .cv-page.cv-clean .cv-map-launch, .cv-page.cv-clean .cv-maps a { background: var(--cv-mini-bg); color: var(--cv-mini-color); box-shadow: var(--cv-mini-shadow); }
 
