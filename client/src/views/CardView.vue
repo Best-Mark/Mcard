@@ -9,11 +9,11 @@
     6. 页面底部留白 ≥ dock 高度（单排约 92px），末张卡片不被遮挡；
     7. 配色/质感跟随主题强调色，不写死白色；尊重 prefers-reduced-motion。
   -->
-  <div class="cv-page" :class="['cv-tpl-' + template, { 'cv-clean': isCleanTpl }]" :style="vars">
+  <div class="cv-page" :class="['cv-tpl-' + template, { 'cv-clean': isCleanTpl, 'cv-embed': embed }]" :style="vars">
     <div class="cv-cover">
-      <button class="cv-back" @click="router.back ? router.back() : router.push('/')" aria-label="返回">‹</button>
+      <button v-if="!embed" class="cv-back" @click="router.back ? router.back() : router.push('/')" aria-label="返回">‹</button>
       <div class="cv-brand">M<em>Card</em></div>
-      <div class="cv-themes">
+      <div v-if="!embed" class="cv-themes">
         <button v-for="(v, k) in THEMES" :key="k" :style="{ background: v.accent }"
                 :class="{ on: currentTheme === k }" :title="v.label" @click="currentTheme = k" />
       </div>
@@ -44,21 +44,21 @@
             <div v-if="card.tags?.length" class="cv-tags"><span v-for="tag in card.tags" :key="tag">{{ tag }}</span></div>
           </div>
           <!-- 二维码是信息入口：小图常驻姓名区右上角，点击弹层放大；正文不再摆大码卡 -->
-          <button class="cv-qr-entry" @click="qrModal = true" title="扫码打开名片 · 点击放大" aria-label="查看名片二维码">
+          <button v-if="!embed" class="cv-qr-entry" @click="qrModal = true" title="扫码打开名片 · 点击放大" aria-label="查看名片二维码">
             <img :src="qrApi + '/qr.svg?size=200'" alt="名片二维码" />
           </button>
           <span v-if="!card.active" class="badge warn cv-status">未开通 / 已到期</span>
         </div>
 
-        <div v-if="!card.active" class="card card-pad notice-card">
+        <div v-if="!embed && !card.active" class="card card-pad notice-card">
           <b>这张名片尚未开通或已到期</b>
           <p class="small muted">联系持有者开通后，二维码仍会指向这里，无需更换。</p>
         </div>
-        <div v-if="isOwner && !card.active" class="btn-row" style="margin:12px 0">
+        <div v-if="!embed && isOwner && !card.active" class="btn-row" style="margin:12px 0">
           <router-link to="/me/plans" class="btn btn-primary">立即开通</router-link>
         </div>
 
-        <div v-if="contactFields.length || fullAddress" class="card card-pad cv-block">
+        <div v-if="!embed && (contactFields.length || fullAddress)" class="card card-pad cv-block">
           <h3>联系方式 <span class="small muted">· 点一行即复制该字段</span></h3>
           <div v-for="f in contactFields" :key="f.key" class="cv-contact-row" @click="copy(f.value, f.label)">
             <div class="cv-contact-label">{{ f.label }}：</div>
@@ -71,6 +71,8 @@
           </div>
         </div>
 
+        <!-- 嵌入模式（/me 预览）只展示真实模板的封面+身份区，其余信息由宿主页呈现 -->
+        <template v-if="!embed">
         <div v-if="card.bio" class="card card-pad cv-block">
           <h3>关于我</h3><p class="cv-bio">{{ card.bio }}</p>
         </div>
@@ -136,9 +138,10 @@
         </div>
 
         <p class="cv-footer">由 <b>{{ siteConfig.site_name }}</b> 提供技术支持 · 资料可改 · 二维码不变</p>
+        </template>
       </div>
       <!-- 次级操作收进悬浮「⋯」：导航/收藏/交换名片，不铺在正文 -->
-      <button class="cv-fab" :class="{ on: moreOpen }" @click="moreOpen = !moreOpen" aria-label="更多操作">⋯</button>
+      <button v-if="!embed" class="cv-fab" :class="{ on: moreOpen }" @click="moreOpen = !moreOpen" aria-label="更多操作">⋯</button>
       <div v-if="moreOpen" class="cv-fab-mask" @click="moreOpen = false">
         <div class="cv-fab-menu" @click.stop>
           <button v-if="fullAddress && maps.length" @click="moreOpen = false; openMapSheet()">导航到此处</button>
@@ -147,7 +150,7 @@
         </div>
       </div>
       <!-- 主操作单排 4 个，不再两行六个 -->
-      <div class="cv-dock">
+      <div v-if="!embed" class="cv-dock">
         <button class="btn btn-primary" :disabled="!contactPhone" @click="tel(contactPhone)">打电话</button>
         <button class="btn btn-ghost" :disabled="!contactPhone" @click="copy(contactPhone, '号码')">复制号码</button>
         <a v-if="contactNative" class="btn btn-ghost" :title="contactActionTip" :aria-label="contactActionLabel" :href="vcfApi">存入通讯录</a>
@@ -237,6 +240,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+
+// embed：嵌入模式，供 /me 工作台复用同一套模板渲染真实名片头部（封面+身份区），
+// 不显示返回/切肤/二维码入口/dock/分享等，也不上报浏览与设置微信分享。
+const props = defineProps({ embed: { type: Boolean, default: false }, embedSlug: { type: String, default: '' } })
 import api from '../api'
 import { showToast, auth, siteConfig } from '../store'
 import { THEMES, themeOf, themeVars } from '../utils/themes'
@@ -249,7 +256,8 @@ import AppIcon from '../components/AppIcon.vue'
 import { BRAND_ICONS, FUNC_ICONS } from '../utils/icons'
 
 const route = useRoute(); const router = useRouter()
-const slug = route.params.slug
+const embed = props.embed
+const slug = props.embedSlug || route.params.slug
 const qrApi = `/api/cards/public/${slug}`
 const vcfApi = `${qrApi}/card.vcf`
 // 二维码统一用名片地址短链（qr.svg/qr.png）：码点少、微信扫一扫必开；
@@ -413,13 +421,13 @@ async function load() {
     card.value = data.data
     currentTheme.value = THEMES[data.data.theme] ? data.data.theme : 'ocean'
     template.value = data.data.template || 'contact'
-    setupWechatShare(api, {
+    if (!embed) setupWechatShare(api, {
       title: `${card.value.name || '名片'} · ${card.value.title || card.value.company || '电子名片'}`,
       desc: `${[card.value.company, card.value.department, card.value.title].filter(Boolean).join(' · ') || '电子名片'}，扫码打开名片`,
       link: card.value.url || windowRef.location.href,
       imgUrl: absoluteMediaUrl(card.value.avatar || card.value.logo || card.value.cover)
     })
-    if (auth.token) {
+    if (!embed && auth.token) {
       try { const mine = await api.get('/api/cards/mine'); isOwner.value = mine.data.data?.slug === slug } catch { /* 忽略 */ }
       if (!isOwner.value) {
         try { favorite.value = !!(await api.get(`/api/cards/public/${slug}/favorite`)).data.data?.favorite } catch { /* 忽略 */ }
@@ -435,6 +443,7 @@ async function load() {
       if (changed) windowRef.history.replaceState(null, '', u.toString())
     }
   } catch (e) { error.value = e.message } finally { loading.value = false }
+  if (embed) return // 嵌入预览不拉资料夹、不上报浏览，不污染访问统计
   // 资料夹与来源/城市上报：不阻塞名片主流程，失败静默
   try { materialsList.value = (await api.get(`${qrApi}/materials`)).data.data?.list || [] } catch { /* 忽略 */ }
   traceVisit()
@@ -539,6 +548,11 @@ async function toggleFavorite() {
 <style scoped>
 /* 底部 dock 单排常驻，所有模板统一留足底部空间，避免遮住最后一张卡片 */
 .cv-page { background: var(--t-bg); color: var(--t-text); min-height: 100vh; padding-bottom: 92px; }
+/* 嵌入模式（/me 预览）：只做名片头部展示，不吃整屏、不留 dock 空间 */
+.cv-page.cv-embed { min-height: 0; padding-bottom: 0; background: transparent; }
+.cv-embed .cv-cover { border-radius: 0 0 18px 18px; }
+.cv-embed .cv-main { margin-top: -34px; }
+.cv-embed .cv-profile { margin-top: 0; }
 /* 高档商务名片：卡片大圆角 + 轻阴影，浅灰蓝底衬托层次 */
 .cv-page .card { border-radius: 20px; box-shadow: 0 4px 18px rgba(30,64,120,.07); border: 0; overflow: hidden; }
 .cv-cover { height: 168px; position: relative; border-radius: 0 0 28px 28px; background: var(--t-cover); overflow: hidden; }
