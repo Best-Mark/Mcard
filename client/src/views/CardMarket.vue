@@ -77,6 +77,7 @@
               <p class="small muted">集市默认按距离优先曝光，坐标越准越靠前；行业对口、关键词命中也会提升曝光。完善名片资料（简介、相册）能提升对方点开后的留存。</p>
               <router-link to="/market" class="btn btn-sm btn-primary">去集市看看 →</router-link>
             </template>
+            <div class="sheet-confirm"><button class="btn btn-primary btn-block" @click="sheetOpen = false">确定</button></div>
           </div>
         </div>
 
@@ -204,4 +205,5 @@ async function done() {
 .market-checks .ok { color: var(--primary); }
 .cp-market-row { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
 .cp-market-row span { color: var(--muted); }
+.sheet-confirm { position: sticky; bottom: 0; padding: 10px 0 2px; background: #fff; margin-top: 6px; }
 </style>

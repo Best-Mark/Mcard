@@ -55,14 +55,11 @@
 
             <template v-else-if="openSection === 'color'">
               <div class="section-title" style="margin-top:0">强调色</div>
-              <p class="small muted">当前配色来自模板「{{ currentTplLabel }}」，这里可单独微调。</p>
-              <div class="grid2">
-                <div class="field"><label>强调色</label><input v-model="card.accent" type="color" class="color-input" /></div>
-                <div class="field"><label>主题</label>
-                  <select v-model="card.theme" class="input">
-                    <option v-for="(v, k) in THEMES" :key="k" :value="k">{{ v.label }}</option>
-                  </select>
-                </div>
+              <p class="small muted">点色块即可切换，选模板时也会自动配好整套颜色。</p>
+              <div class="swatch-grid">
+                <button v-for="s in ACCENT_SWATCHES" :key="s.key" class="swatch-item" :class="{ on: card.accent === s.color }" @click="card.accent = s.color; card.theme = s.key">
+                  <i :style="{ background: s.color }"></i><span>{{ s.label }}</span>
+                </button>
               </div>
             </template>
 
@@ -75,19 +72,33 @@
                   </button>
                 </div>
               </div>
+              <div class="field"><label>码色（深码浅底才扫得出）</label>
+                <div class="swatch-grid compact">
+                  <button v-for="s in QR_SWATCHES" :key="s.color" class="swatch-item" :class="{ on: card.qr_fg === s.color }" @click="card.qr_fg = s.color">
+                    <i :style="{ background: s.color }"></i><span>{{ s.label }}</span>
+                  </button>
+                </div>
+              </div>
+              <div class="field"><label>底色</label>
+                <div class="swatch-grid compact">
+                  <button v-for="s in QR_SWATCHES" :key="s.color" class="swatch-item" :class="{ on: card.qr_bg === s.color }" @click="card.qr_bg = s.color">
+                    <i :style="{ background: s.color }"></i><span>{{ s.label }}</span>
+                  </button>
+                </div>
+              </div>
               <div class="grid2">
-                <div class="field"><label>二维码颜色</label><input v-model="card.qr_fg" type="color" class="color-input" /></div>
-                <div class="field"><label>二维码背景</label><input v-model="card.qr_bg" type="color" class="color-input" /></div>
                 <div class="field"><label>码点形状</label>
                   <select v-model="card.qr_style.dot" class="input"><option value="square">方形</option><option value="dots">圆点</option><option value="rounded">圆角</option></select>
                 </div>
                 <div class="field"><label>定位角样式</label>
                   <select v-model="card.qr_style.eye" class="input"><option value="square">方形</option><option value="rounded">圆角</option><option value="circle">圆形</option></select>
                 </div>
-                <div class="field"><label>渐变终点色（留空=纯色）</label>
-                  <div style="display:flex;gap:8px;align-items:center">
-                    <input v-model="card.qr_style.gradTo" type="color" class="color-input" />
-                    <button class="btn btn-sm btn-ghost" @click="card.qr_style.gradTo = ''">清除</button>
+                <div class="field"><label>渐变终点色（不选=纯色）</label>
+                  <div class="swatch-grid compact">
+                    <button v-for="s in QR_SWATCHES" :key="s.color" class="swatch-item" :class="{ on: card.qr_style.gradTo === s.color }" @click="card.qr_style.gradTo = s.color">
+                      <i :style="{ background: s.color }"></i><span>{{ s.label }}</span>
+                    </button>
+                    <button class="swatch-item" :class="{ on: !card.qr_style.gradTo }" @click="card.qr_style.gradTo = ''"><i style="background:#fff;border:1px solid var(--line)"></i><span>纯色</span></button>
                   </div>
                 </div>
                 <div class="field"><label>中心 Logo 底板</label>
@@ -97,6 +108,8 @@
               </div>
               <p class="small muted">二维码请保持足够对比度（深码 + 浅底），否则可能扫不出来。</p>
             </template>
+            <!-- 明确收起面板：点了才算本项设置完（真正持久化仍是右上角「完成」） -->
+            <div class="sheet-confirm"><button class="btn btn-primary btn-block" @click="sheetOpen = false">确定</button></div>
           </div>
         </div>
 
@@ -141,6 +154,15 @@ const SECTIONS = [
   { k: 'template', label: '模板' },
   { k: 'color', label: '强调色' },
   { k: 'qr', label: '二维码' }
+]
+// 强调色板：直接来自主题唯一真相源 THEMES（不再弹系统取色器，那东西在手机上没有确定的返回语义）
+const ACCENT_SWATCHES = Object.entries(THEMES).map(([k, v]) => ({ key: k, label: v.label, color: v.accent }))
+// 二维码配色板：常用深码 / 浅底安全色；渐变终点允许「无」
+const QR_SWATCHES = [
+  { label: '墨黑', color: '#0f172a' }, { label: '深蓝', color: '#1e3a8a' },
+  { label: '翠绿', color: '#0f766e' }, { label: '金棕', color: '#b45309' },
+  { label: '纯白', color: '#ffffff' }, { label: '米白', color: '#f8fafc' },
+  { label: '浅青', color: '#e0f2fe' }
 ]
 const QR_PRESETS = [
   { key: 'classic', label: '经典', swatch: '#0f172a', dot: 'square', eye: 'square', gradTo: '', logoShape: 'rounded' },
@@ -244,7 +266,13 @@ async function done() {
 /* 缩略图骨架与配色来自共享 template-thumbs.css，这里只把面板内改 3 列 + 缩略图稍矮 */
 .tpl-list { grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .tpl-thumb { height: 46px; }
-.color-input { width: 100%; height: 40px; padding: 2px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+/* 色板点选替代系统取色器：无吸色器/无确定歧义，点了即选中 */
+.swatch-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.swatch-grid.compact { grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.swatch-item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 2px; border: 1px solid var(--line); border-radius: 8px; font-size: 11px; color: var(--muted); }
+.swatch-item i { width: 100%; height: 26px; border-radius: 6px; display: block; }
+.swatch-item.on { border-color: var(--primary); color: var(--primary); font-weight: 700; box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 18%, transparent); }
+.sheet-confirm { position: sticky; bottom: 0; padding: 10px 0 2px; background: #fff; margin-top: 6px; }
 .qr-presets { display: flex; gap: 8px; flex-wrap: wrap; }
 .qr-preset { display: flex; align-items: center; gap: 5px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 12px; }
 .qr-preset.on { border-color: var(--primary); color: var(--primary); }
