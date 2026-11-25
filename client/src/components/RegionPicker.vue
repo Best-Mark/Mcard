@@ -82,8 +82,11 @@ let pollTimer = null
 let touching = false
 let prevTop = [null, null, null]
 let lastIdx = [-1, -1, -1]
-let initialSig = ''
+// 打开时的原值：只要用户没主动改过滚轮，确认就原样回传。已有地区不在下拉数据里时也不会被悄悄改成第一项。
+let initialVal = { province: '', city: '', district: '', street: '' }
+const dirty = ref(false)
 let settledOnce = false
+let firstPoll = true
 
 function setWheelScroll(ci, idx, smooth = false) {
   const el = wheelEls[ci]
@@ -101,13 +104,23 @@ function scrollWheel(ci) {
   return Math.max(0, Math.min(wheels.value[ci].list.length - 1, idx))
 }
 
+// 已有地区文本不在下拉数据里时，用占位项补进滚轮首项：看得见原值、停得住位置、确认不会被改成第一项
+function withKeep(list, item) {
+  if (item && String(item.code).startsWith('KEEP:') && !list.some(x => x.code === item.code)) return [item, ...list]
+  return list
+}
+function childList(level, parent) {
+  if (!parent || String(parent.code).startsWith('KEEP:')) return [] // 占位省/市没有真实下级
+  return childrenOf(level, parent.code)
+}
+
 function rebuildFromSelection() {
   const s = selected.value
-  const pList = childrenOf(1, '')
+  const pList = withKeep(childrenOf(1, ''), s[1])
   const p = s[1] || pList[0] || null
-  const cList = p ? childrenOf(2, p.code) : []
+  const cList = withKeep(childList(2, p), s[2])
   const c = s[2] || cList[0] || null
-  const dList = c ? childrenOf(3, c.code) : []
+  const dList = withKeep(childList(3, c), s[3])
   const d = s[3] || dList[0] || null
   wheels.value = [
     { title: LEVEL_TITLES[0], list: pList, index: Math.max(0, pList.findIndex(x => x.code === p?.code)) },
@@ -126,6 +139,8 @@ function applyWheel(ci, idx) {
   const list = wheels.value[ci]?.list || []
   const hit = list[idx]
   if (!hit) return
+  if (String(hit.code).startsWith('KEEP:')) return // 占位项不是真实选择，保留原值不动
+  dirty.value = true
   if (ci === 0) {
     if (selected.value[1]?.code === hit.code) return
     selected.value[1] = hit
@@ -169,10 +184,14 @@ function pollSettle() {
     idxs.push(scrollWheel(i))
   }
   if (!stable) return
-  for (let i = 0; i < 3; i++) {
-    if (idxs[i] !== lastIdx[i]) applyWheel(i, idxs[i])
+  // 首帧只记账：初始定位的 scrollTo 不能当成用户滚动，否则已有地区会被悄悄改成第一项
+  if (!firstPoll) {
+    for (let i = 0; i < 3; i++) {
+      if (idxs[i] !== lastIdx[i]) applyWheel(i, idxs[i])
+    }
   }
   lastIdx = idxs.slice()
+  firstPoll = false
 }
 
 function onTouch(down) { touching = down }
@@ -182,6 +201,7 @@ function startPoll() {
   prevTop = [null, null, null]
   lastIdx = [-1, -1, -1]
   settledOnce = false
+  firstPoll = true
   pollTimer = setInterval(pollSettle, 120)
   // 首帧后允许轮询，避免初始定位被当成滚动
   nextTick(() => setTimeout(() => { settledOnce = true }, 120))
@@ -189,29 +209,32 @@ function startPoll() {
 function stopPoll() { clearInterval(pollTimer); pollTimer = null }
 onBeforeUnmount(stopPoll)
 
-// 由传入文本反查并定位各级（编辑已有地址时回显）
+// 由传入文本反查并定位各级（编辑已有地址时回显）；找不到时用原文本占位，绝不静默回落到第一项
 function locateByText() {
   const find = (level, name, parentCode) => {
     if (!name) return null
     const list = childrenOf(level, parentCode)
     return list.find(r => r.name === name) || list.find(r => r.name.includes(name) || name.includes(r.name)) || null
   }
-  const p = find(1, props.province, '')
-  const c = p ? find(2, props.city, p.code) : null
-  const d = c ? find(3, props.district, c.code) : null
-  const s = d ? find(4, props.street, d.code) : null
+  const keep = name => name ? { name, code: `KEEP:${name}`, parent_code: '' } : null
+  const realCode = x => (x && !String(x.code).startsWith('KEEP:')) ? x.code : ''
+  const p = find(1, props.province, '') || keep(props.province)
+  const c = p ? (find(2, props.city, realCode(p)) || keep(props.city)) : null
+  const d = c ? (find(3, props.district, realCode(c)) || keep(props.district)) : null
+  const s = d ? (find(4, props.street, realCode(d)) || keep(props.street)) : null
   selected.value = { 1: p, 2: c, 3: d, street: s }
-  initialSig = [props.province, props.city, props.district].join('|')
+  initialVal = { province: props.province, city: props.city, district: props.district, street: props.street }
+  dirty.value = false
   rebuildFromSelection()
 }
 
 function confirm() {
-  const s = selected.value
-  // 打开后没滚动就确认：原样回传，避免脏数据/地区改名时被悄悄改成第一项
-  if (initialSig && pathText.value.split(' / ').slice(0, 3).join('|') === initialSig) {
-    emit('confirm', { province: props.province, city: props.city, district: props.district, street: props.street })
+  // 用户没主动改过滚轮：原样回传打开时的值（已有地区即使不在数据里也不会被改掉）
+  if (!dirty.value && (initialVal.province || initialVal.city || initialVal.district)) {
+    emit('confirm', { ...initialVal })
     return
   }
+  const s = selected.value
   emit('confirm', {
     province: s[1]?.name || '',
     city: s[2]?.name || '',

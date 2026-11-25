@@ -219,19 +219,27 @@ const marketMeta = ref({ industries: [], cities: [] })
 const locating = ref(false)
 const geoBusy = ref(false)
 const regions = ref([])
-const provinceNames = computed(() => ['未选择', ...regions.value.filter(r => r.level === 1).map(r => r.name)])
+// 已有地区若不在下拉数据里（历史数据/地区改名），补进 range 紧跟「未选择」，避免 indexOf 落到 0 显示成未选择
+const withCurrent = (names, current) => {
+  if (current && !names.includes(current)) names.splice(1, 0, current)
+  return names
+}
+const provinceNames = computed(() => withCurrent(['未选择', ...regions.value.filter(r => r.level === 1).map(r => r.name)], form.value.province))
 const provinceIdx = computed(() => Math.max(0, provinceNames.value.indexOf(form.value.province || '未选择')))
 const cityRegions = computed(() => {
   const p = regions.value.find(r => r.level === 1 && r.name === form.value.province)
   return p ? regions.value.filter(r => r.level === 2 && r.parent_code === p.code) : []
 })
-const cityNames = computed(() => cityRegions.value.length ? ['未选择', ...cityRegions.value.map(r => r.name)] : ['未选择', ...(marketMeta.value.cities || []).map(c => c.name)])
+const cityNames = computed(() => withCurrent(
+  cityRegions.value.length ? ['未选择', ...cityRegions.value.map(r => r.name)] : ['未选择', ...(marketMeta.value.cities || []).map(c => c.name)],
+  form.value.city
+))
 const cityIdx = computed(() => Math.max(0, cityNames.value.indexOf(form.value.city || '未选择')))
 const districtRegions = computed(() => {
   const c = regions.value.find(r => r.level === 2 && r.name === form.value.city && cityRegions.value.some(x => x.code === r.code))
   return c ? regions.value.filter(r => r.level === 3 && r.parent_code === c.code) : []
 })
-const districtNames = computed(() => ['未选择', ...districtRegions.value.map(r => r.name)])
+const districtNames = computed(() => withCurrent(['未选择', ...districtRegions.value.map(r => r.name)], form.value.district))
 const districtIdx = computed(() => Math.max(0, districtNames.value.indexOf(form.value.district || '未选择')))
 const industryLabels = computed(() => ['未选择', ...(marketMeta.value.industries || []).map(i => i.label)])
 const industryIdx = computed(() => {

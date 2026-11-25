@@ -329,10 +329,12 @@ const defaults = {
 const insertCfg = db.prepare('INSERT OR IGNORE INTO site_config (key, value) VALUES (?,?)')
 Object.entries(defaults).forEach(([k, v]) => insertCfg.run(k, JSON.stringify(v)))
 
-// ---------------- 四级行政区划种子（幂等，仅首次初始化） ----------------
+// ---------------- 四级行政区划种子（幂等，版本升级即补齐） ----------------
 // 自愈约定：标记键存在即跳过；后台 CRUD 后即使清空也不会被「复活」。
+// ⚠️ 每次扩充 region-data.js 的城市覆盖，必须提升标记版本号（v1→v2→v3…）：
+// 存量库已有旧标记会跳过种子，导致新城市永远补不进来；INSERT OR IGNORE 保证不覆盖后台改名/排序。
 const { REGIONS, STREET_EXAMPLES } = require('./utils/region-data')
-if (!seeded('seed_regions_v1')) {
+if (!seeded('seed_regions_v2')) {
   const insertRegion = db.prepare('INSERT OR IGNORE INTO regions (code, parent_code, name, level, sort) VALUES (?,?,?,?,?)')
   db.transaction(() => {
     let sort = 0
@@ -354,7 +356,7 @@ if (!seeded('seed_regions_v1')) {
         }
       }
     }
-    insertSeedFlag.run('seed_regions_v1', '1')
+    insertSeedFlag.run('seed_regions_v2', '1')
   })()
 }
 
