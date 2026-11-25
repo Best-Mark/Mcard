@@ -4,7 +4,6 @@
       <button class="back" @click="done" aria-label="返回">‹</button>
       <span class="title">名片集市</span>
       <span class="spacer"></span>
-      <button class="btn btn-sm btn-primary" :disabled="saving || loading || !!loadError" @click="done">{{ saving ? '保存中…' : '完成' }}</button>
     </header>
 
     <div class="container wide">
@@ -49,7 +48,7 @@
             <div class="region-line small muted">地区：{{ regionText || '未填写（去名片资料里填）' }}</div>
             <div class="sheet-actions">
               <router-link to="/market" class="btn btn-sm btn-ghost">去集市看看</router-link>
-              <button class="btn btn-primary" @click="sheetOpen = false">确定</button>
+              <button class="btn btn-ghost" @click="sheetOpen = false">收起</button>
             </div>
           </div>
         </div>
@@ -58,6 +57,12 @@
           <button :class="{ on: sheetOpen }" @click="sheetOpen = true">
             <span class="tab-ico ico-status"></span><span>上架设置</span>
           </button>
+        </div>
+
+        <!-- 唯一保存入口：上架设置弹层只负责编辑与收起 -->
+        <div class="design-done-bar">
+          <span class="small muted">上架设置改完后点完成保存</span>
+          <button class="btn btn-finish" :disabled="saving || loading || !!loadError" @click="done">{{ saving ? '保存中…' : '完成，返回名片' }}</button>
         </div>
       </template>
     </div>

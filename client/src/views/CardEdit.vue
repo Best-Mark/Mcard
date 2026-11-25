@@ -145,7 +145,7 @@
                 <button v-if="sectionIndex > 0" class="btn btn-sm btn-ghost" @click="goSection(sectionIndex - 1)">‹ 上一项</button>
                 <button v-if="sectionIndex < sections.length - 1" class="btn btn-sm btn-ghost" @click="goSection(sectionIndex + 1)">下一项 ›</button>
               </template>
-              <button class="btn btn-sm btn-primary" :disabled="saving || finishing || loadError || !loaded" @click="finish">{{ finishing ? '保存中…' : (sectionIndex === sections.length - 1 || sectionIndex < 0 ? '完成，返回名片' : '返回名片') }}</button>
+              <button class="btn btn-sm btn-finish" :disabled="saving || finishing || loadError || !loaded" @click="finish">{{ finishing ? '保存中…' : (sectionIndex === sections.length - 1 || sectionIndex < 0 ? '完成，返回名片' : '返回名片') }}</button>
             </div>
           </div>
         </div>
@@ -611,7 +611,7 @@ async function finish() {
 .section-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
 .save-state { font-size: 12px; color: var(--muted); }
 .save-state.saved { color: var(--ok); }
-.done-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; padding: 14px; background: #eff6ff; border: 1px solid #dbeafe; border-radius: 12px; flex-wrap: wrap; }
+.done-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; padding: 14px; background: var(--bg-page, #f8fafc); border: 1px solid var(--line); border-radius: 12px; flex-wrap: wrap; }
 .done-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .back-btn { font-size: 16px; color: var(--primary); padding: 4px 8px; margin-left: -8px; }
 .preview-toggle { display: none; }

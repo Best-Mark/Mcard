@@ -4,7 +4,6 @@
       <button class="back" @click="done" aria-label="返回">‹</button>
       <span class="title">配色风格</span>
       <span class="spacer"></span>
-      <button class="btn btn-sm btn-primary" :disabled="saving || loading || !!loadError" @click="done">{{ saving ? '保存中…' : '完成' }}</button>
     </header>
 
     <div class="container wide">
@@ -75,8 +74,8 @@
                 </div>
               </div>
             </template>
-            <!-- 明确收起面板：点了才算本项设置完（真正持久化仍是右上角「完成」） -->
-            <div class="sheet-confirm"><button class="btn btn-primary btn-block" @click="sheetOpen = false">确定</button></div>
+            <!-- 只收起面板，不保存；保存统一走页面底部唯一「完成」按钮 -->
+            <div class="sheet-confirm"><button class="btn btn-ghost btn-block" @click="sheetOpen = false">收起面板</button></div>
           </div>
         </div>
 
@@ -86,6 +85,12 @@
                   @click="openSection = s.k; sheetOpen = true">
             <span class="tab-ico" :class="'ico-' + s.k"></span><span>{{ s.label }}</span>
           </button>
+        </div>
+
+        <!-- 唯一保存入口：与资料编辑页同构，弹层里的按钮只负责收起 -->
+        <div class="design-done-bar">
+          <span class="small muted">选好后点完成，返回个人中心</span>
+          <button class="btn btn-finish" :disabled="saving || loading || !!loadError" @click="done">{{ saving ? '保存中…' : '完成，返回名片' }}</button>
         </div>
       </template>
     </div>

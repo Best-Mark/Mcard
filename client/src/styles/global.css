@@ -94,6 +94,10 @@ img { display: block; max-width: 100%; }
 /* ⚠️ 渐变前必须写纯色 fallback：微信老 WebView 解析不了「渐变里嵌 var()」，
    整条 background 失效会露白底，配合白字就是「按钮文字消失」（2026-11-25 实锤）。 */
 .btn-primary { background: var(--primary, #2563eb); background: linear-gradient(135deg, var(--primary), var(--primary-2)); color: #fff; box-shadow: 0 4px 14px rgba(37,99,235,.24); }
+/* 独立设计页唯一保存按钮：纯色、无渐变、无写死蓝色光晕（避免与名片主题撞色）。
+   弹层里只收起面板的按钮用 btn-ghost，不再和「完成」抢同一视觉权重。 */
+.btn-finish { background: var(--primary, #2563eb); color: #fff; border-color: transparent; box-shadow: none; }
+.design-done-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; padding: 14px 16px; background: var(--bg-card, #fff); border-top: 1px solid var(--line); }
 .btn-ok { background: var(--ok); color: #fff; }
 .btn-warn { background: #ea580c; color: #fff; }
 .btn-danger { background: #fee2e2; color: var(--danger); }
