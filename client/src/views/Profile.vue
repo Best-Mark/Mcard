@@ -10,6 +10,7 @@
          下方分组列表仍严格遵守用户端「卡片左右贴边、方角」约定）。套餐/日期用 MCard 自有数据。 -->
     <div class="pf-header">
       <div class="pf-bg" aria-hidden="true"></div>
+      <span class="pf-sheen" aria-hidden="true"></span>
       <button class="pf-gear" aria-label="设置" @click="toggleDrawer">⚙</button>
       <button v-if="card" class="pf-qr" aria-label="我的名片二维码" @click="goQr"><AppIcon name="qrcode" :size="19" /></button>
 
@@ -171,11 +172,22 @@ function logoutNow() { logout(); router.push('/') }
 /* 头像=换头像、昵称=编辑资料；下方 cell 不再重复这两项（2026-11-25 用户定稿）。
    顶栏居顶由全局 .page > .topbar:first-child 统一处理，这里不再私有覆写 padding。 */
 
-/* ===== 上半部分：深渐变头卡（MShop 观感，视觉焦点，内缩圆角形态例外） ===== */
-.pf-header { position: relative; margin: 12px 12px 0; padding: 12px 16px 14px; border-radius: 18px; overflow: hidden; color: #fff; background: linear-gradient(135deg, #17357c, #2563eb 60%, #06b6d4); box-shadow: 0 10px 28px rgba(23,53,124,.22); }
-.pf-bg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; background-image: radial-gradient(rgba(255,255,255,.05) .8px, transparent 1.1px), repeating-linear-gradient(115deg, rgba(255,255,255,.02) 0 1px, transparent 1px 4px), radial-gradient(160% 120% at 20% 0%, rgba(255,255,255,.12), transparent 52%); border-radius: 18px; }
-/* ⚠️ 只给需要盖在 .pf-bg 上的内容层加层级，不能用 > *:not(.pf-bg) 通配——
-   那条选择器特异性(0,2,0)高于 .pf-gear/.pf-qr 的(0,1,0)，会把它们的 absolute 覆写成 relative，
+/* ===== 上半部分：丝绸质感头卡（视觉焦点，内缩圆角形态例外） =====
+   丝绸 = 多层柔光底 + 两组同角度的明暗细丝纹；扫光走 transform/opacity（不触发重排），
+   22s 里只扫 6~7s、其余时间停在不可见状态，避免「一直有东西在动」的廉价感。
+   兼容：只用 rgba / transform / opacity，不用 inset、color-mix 等老 WebView 不认的写法。 */
+.pf-header { position: relative; margin: 12px 12px 0; padding: 12px 16px 14px; border-radius: 18px; overflow: hidden; color: #fff; background: radial-gradient(120% 140% at 8% 0%, rgba(126,182,255,.42), rgba(126,182,255,0) 48%), radial-gradient(100% 120% at 94% 8%, rgba(34,211,238,.30), rgba(34,211,238,0) 52%), linear-gradient(122deg, #17357c 0%, #2457c5 38%, #2563eb 62%, #0e9bbd 100%); box-shadow: 0 10px 28px rgba(23,53,124,.22); }
+.pf-bg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 0; pointer-events: none; border-radius: 18px; background-image: radial-gradient(160% 120% at 20% 0%, rgba(255,255,255,.13), transparent 52%), repeating-linear-gradient(118deg, rgba(255,255,255,.045) 0 1px, rgba(255,255,255,0) 1px 6px), repeating-linear-gradient(118deg, rgba(4,26,80,.10) 0 2px, rgba(4,26,80,0) 2px 9px), linear-gradient(96deg, rgba(6,20,70,.18) 0%, rgba(6,20,70,0) 38%, rgba(255,255,255,.06) 62%, rgba(255,255,255,0) 100%); }
+.pf-sheen { position: absolute; top: -30%; bottom: -30%; left: 0; z-index: 0; width: 42%; pointer-events: none; opacity: 0; background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.08) 35%, rgba(255,255,255,.18) 50%, rgba(255,255,255,.08) 65%, rgba(255,255,255,0) 100%); transform: translateX(-140%) skewX(-18deg); animation: pf-silk-sweep 22s ease-in-out infinite; will-change: transform, opacity; }
+@keyframes pf-silk-sweep {
+  0%, 8% { transform: translateX(-140%) skewX(-18deg); opacity: 0; }
+  12% { opacity: .9; }
+  38% { transform: translateX(360%) skewX(-18deg); opacity: 0; }
+  100% { transform: translateX(360%) skewX(-18deg); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .pf-sheen { animation: none; } }
+/* ⚠️ 只给需要盖在 .pf-bg / .pf-sheen 上的内容层加层级，不能用 > *:not(...) 通配——
+   那条选择器特异性高于 .pf-gear/.pf-qr 的(0,1,0)，会把它们的 absolute 覆写成 relative，
    导致齿轮压到头像上、二维码落到套餐条上（2026-11-25 实机截图实锤）。 */
 .pf-header > .pf-user, .pf-header > .pf-plan { position: relative; z-index: 1; }
 .pf-gear { position: absolute; right: 14px; top: 12px; z-index: 2; width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,.16); color: #fff; display: grid; place-items: center; }
