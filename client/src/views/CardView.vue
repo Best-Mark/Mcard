@@ -1563,7 +1563,7 @@ async function toggleFavorite() {
 .cv-page.cv-clean {
   --cv-card-radius: 22px; --cv-card-x: 24px; --cv-card-pad: 30px 24px 22px;
   --cv-card-border: 0; --cv-card-blur: none;
-  --cv-card-shadow: 0 26px 60px -22px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.06);
+  --cv-card-shadow: none;
   --cv-topbar-h: 6px; --cv-topbar-x: 0;
   --cv-logo-radius: 14px; --cv-logo-shadow: inset 0 0 0 2px rgba(216,187,133,.5),0 8px 18px -8px rgba(18,32,46,.5);
   --cv-name-size: 27px; --cv-name-weight: 900; --cv-name-spacing: .04em; --cv-name-font: inherit;
