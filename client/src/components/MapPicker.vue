@@ -65,8 +65,10 @@ import { getCurrentPosition } from '../utils/geo'
 // ③ 初始中心：已有坐标 > 按已填地区正解 > 当前定位 > 中国中心占位（绝不写死北京）；
 // ④ 地址输入走后端 /api/geo/poi/search（高德 place/text，key 不下发前端）做联想，点击飞到该点。
 const props = defineProps({
-  lat: { type: Number, default: null },
+  lat: { type: Number, default: null }, // 初始地图中心（当前选点，便于微调）
   lng: { type: Number, default: null },
+  originLat: { type: Number, default: null }, // 固定「原点」：左下角「当前位置」钮的目标，不随选点漂移
+  originLng: { type: Number, default: null },
   region: { type: String, default: '' } // 已填省市区文本，用于无坐标时推导中心
 })
 const emit = defineEmits(['confirm', 'close'])
@@ -87,12 +89,17 @@ let suggestTimer = null
 let suggestSeq = 0     // 联想请求序号，防竞态（旧响应不得覆盖新结果）
 
 const CHINA_CENTER = { lat: 35.8617, lng: 104.1954, zoom: 4 }
-// 原点 = 调用方传入的坐标（集市=当前搜索原点；名片编辑=名片原坐标）。有原点才显示「回到原点」按钮。
-const hasOrigin = computed(() => Number.isFinite(props.lat) && Number.isFinite(props.lng))
+// 原点 = 调用方传入的固定原点坐标（集市=进入时的定位/城市；名片编辑=名片原坐标）。有原点才显示定位钮。
+// 与 lat/lng（弹层初始中心=当前选点）分开，避免选点后「回到原点」回到上一次选的点。
+// 未显式传 originLat/Lng 时回落到 lat/lng（兼容名片编辑等只传坐标的调用方）。
+const origin = computed(() => (Number.isFinite(props.originLat) && Number.isFinite(props.originLng))
+  ? { lat: props.originLat, lng: props.originLng }
+  : (Number.isFinite(props.lat) && Number.isFinite(props.lng) ? { lat: props.lat, lng: props.lng } : null))
+const hasOrigin = computed(() => !!origin.value)
 
 function backToOrigin() {
-  if (!map || !hasOrigin.value) return
-  map.flyTo([props.lat, props.lng], 15, { duration: 0.5 })
+  if (!map || !origin.value) return
+  map.flyTo([origin.value.lat, origin.value.lng], 15, { duration: 0.5 })
   touched = false
   centerHint.value = '已回到原点，可拖动微调后点「用这里」'
   error.value = ''

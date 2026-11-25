@@ -99,7 +99,9 @@
         <b>地图选点</b>
         <button @click="mapPickerOpen = false">×</button>
       </div>
-      <div v-if="mapPickerOpen" class="mp-sheet-body"><MapPicker :lat="coords?.lat" :lng="coords?.lng" @confirm="onMapPicked" /></div>
+      <div v-if="mapPickerOpen" class="mp-sheet-body">
+        <MapPicker :lat="coords?.lat" :lng="coords?.lng" :origin-lat="originCoords?.lat" :origin-lng="originCoords?.lng" @confirm="onMapPicked" />
+      </div>
     </BottomSheet>
     <CityPicker v-model:show="cityPickerOpen" :current="city || currentCity" :located-city="currentCity" :cities="meta.cities" :relocating="locating" @select="onCitySelected" @relocate="relocate" />
   </div>
@@ -110,7 +112,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '../api'
 import { showToast, toggleDrawer } from '../store'
-import { getCurrentPosition, getPositionQualityLabel, setManualPosition } from '../utils/geo'
+import { getCurrentPosition, getPositionQualityLabel } from '../utils/geo'
 import { wgs84ToGcj02 } from '../utils/geo-coord'
 import { CITIES as FALLBACK_CITIES } from '../utils/city-data'
 import MapPicker from '../components/MapPicker.vue'
@@ -143,6 +145,7 @@ const RADIUS_OPTIONS = [
 ]
 const radiusKm = ref(0)
 const originSource = ref('') // map=地图选点 / current=当前定位 / city=城市中心
+const originCoords = ref(null) // 固定「原点」= 进入时的定位/切换的城市坐标；地图选点只改 coords 不改它，供选点弹层「回到原点」用
 const originPlace = ref('') // 原点的具体位置（逆地理编码：省市区街道），选点后显示真实地名而非「地图选点」
 const distanceMode = computed(() => !!(coords.value || city.value))
 // 原点文案：具体位置地名 > 城市 > 当前定位 > 全国（未定位）
@@ -193,6 +196,7 @@ function onCitySelected(c) {
   originPlace.value = ''  // 切城市后显示城市名，清掉上一次选点的具体地名
   // 常用城市有精确坐标→按距离排序；其余城市无坐标→服务端按城市名筛选+热度排序
   coords.value = (Number.isFinite(c.lat) && Number.isFinite(c.lng)) ? { lat: c.lat, lng: c.lng } : null
+  if (coords.value) originCoords.value = { ...coords.value } // 切城市即换原点
   if (coords.value && sort.value === 'views') sort.value = 'distance'
   showToast(`已切换到 ${c.name}`, 'success')
   load()
@@ -222,7 +226,7 @@ function onMapPicked(p) {
   coords.value = { lat: p.lat, lng: p.lng }
   city.value = ''  // 自定义原点不再按城市名过滤
   originSource.value = 'map'
-  setManualPosition(p.lat, p.lng, '')
+  // 选点只改当前筛选坐标 coords，不动固定原点 originCoords（否则弹层「回到原点」会回到上次选的点）
   sort.value = 'distance'
   resolveOriginPlace(p.lat, p.lng)
   showToast('已按地图选点位置排序', 'success')
@@ -256,6 +260,7 @@ async function relocate() {
     // 四级降级：微信 JS-SDK → GPS → IP → 城市兜底，永不为空
     const pos = await getCurrentPosition({ city: city.value || undefined, forceRefresh: true, timeout: 10000 })
     coords.value = { lat: pos.lat, lng: pos.lng }
+    originCoords.value = { lat: pos.lat, lng: pos.lng } // 重新定位即换原点
     positionMeta.value = getPositionQualityLabel()
     if (pos.city && pos.source !== 'default') currentCity.value = pos.city
     // 重新定位后以定位城市为原点（用户主动点的，覆盖手动选择）
@@ -280,7 +285,7 @@ onMounted(async () => {
   const cityQ = String(route.query.city || '').trim()
   const latQ = Number(route.query.lat)
   const lngQ = Number(route.query.lng)
-  if (Number.isFinite(latQ) && Number.isFinite(lngQ)) { coords.value = { lat: latQ, lng: lngQ }; originSource.value = 'map' }
+  if (Number.isFinite(latQ) && Number.isFinite(lngQ)) { coords.value = { lat: latQ, lng: lngQ }; originCoords.value = { lat: latQ, lng: lngQ }; originSource.value = 'map' }
 
   await loadMeta()
   if (cityQ) {
@@ -288,7 +293,7 @@ onMounted(async () => {
     if (!originSource.value) originSource.value = 'city'
     if (!coords.value) {
       const hit = cityOf(cityQ)
-      if (hit) coords.value = { lat: hit.lat, lng: hit.lng }
+      if (hit) { coords.value = { lat: hit.lat, lng: hit.lng }; originCoords.value = { lat: hit.lat, lng: hit.lng } }
     }
   }
   const sortQ = String(route.query.sort || '')
@@ -299,6 +304,7 @@ onMounted(async () => {
     try {
       const pos = await getCurrentPosition({})
       coords.value = { lat: pos.lat, lng: pos.lng }
+      originCoords.value = { lat: pos.lat, lng: pos.lng }
       positionMeta.value = getPositionQualityLabel()
       if (pos.city && pos.source !== 'default') currentCity.value = pos.city
       originSource.value = 'current' // 不选地图点则视为当前定位点
