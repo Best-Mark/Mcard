@@ -748,37 +748,40 @@ async function toggleFavorite() {
 .cv-dock .btn { flex: 1; min-width: 0; padding: 0 2px; font-size: 12.5px; white-space: nowrap; }
 .cv-dock .btn-primary { background: var(--t-accent, #2563eb); color: #fff; border-color: transparent; }
 .cv-dock .btn-ghost { background: rgba(255,255,255,.12); color: #e2e8f0; border-color: transparent; }
-/* ===== 高档玻璃底栏（2026-11-25 用户定稿：粒子透明质感、按钮加大）=====
-   半透明深色玻璃 + 顶部一道微光描边 + radial-gradient 做的几粒「微光粒子」，
-   纯 CSS 无 canvas 开销、微信老 WebView 也能渲染（radial-gradient 是字面量色）。
-   仅覆盖深色系模板；极简白( minimal/paper )在下方单独恢复浅色，避免白底上压深玻璃违和。 */
+/* ===== 主题毛玻璃底栏（2026-11-25 用户定稿：底栏与四个按钮都跟名片配色走）=====
+   色相唯一真相源 = .cv-page 内联的 --t-accent / --glow-rgb（由名片主题算出），
+   不再写死深灰 + 香槟金，任何主题（皇家紫/翡翠绿/黑金）都自动匹配。
+   半透明渐变 + backdrop-filter 做毛玻璃；不支持滤镜的老 WebView 由第一层不透明底色兜底。
+   粒子用 radial-gradient 字面量，无 canvas 开销。 */
 .cv-page .cv-dock.cv-dock-glass {
-  /* ⚠️ 必须保持 fixed 贴底：这里若写 position:relative 会让 dock 掉进内容流悬在半空（2026-11-25 实锤）。
-     粒子 ::before 用 absolute 相对 fixed 的 dock 定位即可，不需要改这里。 */
+  /* ⚠️ 必须保持 fixed 贴底：这里若写 position:relative 会让 dock 掉进内容流悬在半空（2026-11-25 实锤）。 */
   overflow: hidden;
   gap: 8px; padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
-  background: rgba(12,22,38,.72);
-  background: color-mix(in srgb, var(--ng-deep, #0c1a26) 82%, transparent);
-  border-top: 1px solid rgba(216,187,133,.42);
-  box-shadow: 0 -8px 30px -14px rgba(0,0,0,.55);
-  -webkit-backdrop-filter: blur(16px) saturate(1.2); backdrop-filter: blur(16px) saturate(1.2);
+  background: rgba(18,22,36,.84);
+  background: linear-gradient(180deg, rgba(var(--glow-rgb, 37,99,235), .52), rgba(var(--glow-rgb, 37,99,235), .72));
+  border-top: 1px solid rgba(255,255,255,.26);
+  box-shadow: 0 -8px 30px -14px rgba(var(--glow-rgb, 37,99,235), .75);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35); backdrop-filter: blur(18px) saturate(1.35);
 }
-/* 微光粒子：三层径向渐变散点（香槟金/冷蓝），低透明度不抢内容 */
+/* 微光粒子：白点 + 主题色点交替，低透明度不抢内容；四边定位代替 inset（老 WebView 兼容） */
 .cv-page .cv-dock.cv-dock-glass::before {
-  content: ''; position: absolute; inset: 0; pointer-events: none;
+  content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none;
   background:
-    radial-gradient(circle at 12% 30%, rgba(216,187,133,.22) 0 2px, transparent 3px),
-    radial-gradient(circle at 34% 72%, rgba(139,211,255,.18) 0 1.5px, transparent 3px),
-    radial-gradient(circle at 62% 24%, rgba(216,187,133,.16) 0 1.5px, transparent 3px),
-    radial-gradient(circle at 84% 66%, rgba(139,211,255,.20) 0 2px, transparent 3px),
-    radial-gradient(circle at 52% 88%, rgba(216,187,133,.14) 0 1px, transparent 2px);
+    radial-gradient(circle at 12% 30%, rgba(255,255,255,.28) 0 2px, transparent 3px),
+    radial-gradient(circle at 34% 72%, rgba(var(--glow-rgb, 37,99,235),.85) 0 1.5px, transparent 3px),
+    radial-gradient(circle at 62% 24%, rgba(255,255,255,.20) 0 1.5px, transparent 3px),
+    radial-gradient(circle at 84% 66%, rgba(var(--glow-rgb, 37,99,235),.75) 0 2px, transparent 3px),
+    radial-gradient(circle at 52% 88%, rgba(255,255,255,.16) 0 1px, transparent 2px);
 }
-/* 苹果拨号那种圆润胶囊按钮：图标 + 文字横排、按压有回弹反馈（2026-11-25 用户定稿） */
+/* 四个主操作按钮本身就是毛玻璃：淡透明白底 + 主题色描边，第一枚用主题色加深强调 */
 .cv-page .cv-dock.cv-dock-glass .dock-btn {
   position: relative; min-height: 50px; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 3px;
   font-size: 12px; font-weight: 600; letter-spacing: .02em;
-  border-radius: 16px; border-color: transparent; padding: 6px 2px;
+  border-radius: 16px; border: 1px solid rgba(255,255,255,.24); padding: 6px 2px;
+  background: rgba(255,255,255,.12); color: #fff;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.16);
   transition: transform .16s ease, filter .16s ease;
 }
 .cv-page .cv-dock.cv-dock-glass .dock-btn:active { transform: scale(.94); filter: brightness(1.08); }
@@ -794,28 +797,33 @@ async function toggleFavorite() {
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.2.4 2.4.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.4 0 .8-.2 1l-2.3 2.2z'/%3E%3C/svg%3E") center/contain no-repeat;
 }
 .cv-page .cv-dock.cv-dock-glass .btn-primary {
-  background: #a8834a; background: linear-gradient(135deg, #c9a163, #a8834a); color: #fff;
-  box-shadow: 0 10px 24px -12px rgba(169,131,74,.95);
+  background: var(--t-accent, #2563eb);
+  background: linear-gradient(135deg, rgba(var(--glow-rgb, 37,99,235), .68), rgba(var(--glow-rgb, 37,99,235), .94));
+  color: #fff; border-color: rgba(255,255,255,.38);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 10px 24px -12px rgba(var(--glow-rgb, 37,99,235), .95);
 }
 .cv-page .cv-dock.cv-dock-glass .btn-ghost {
-  background: rgba(255,255,255,.10); color: #f2ead8;
-  box-shadow: inset 0 0 0 1px rgba(216,187,133,.28);
+  background: rgba(255,255,255,.10); color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.10);
 }
-/* 极简白 / 纸白模板：玻璃深底换成浅色毛玻璃，按钮走深色文字，避免白卡上压黑条 */
+/* 极简白 / 纸白模板：换成浅色毛玻璃，按钮文字走名片深色，底与描边仍带主题色 */
 .cv-page.cv-tpl-minimal .cv-dock.cv-dock-glass,
 .cv-page.cv-clean.cv-tpl-paper .cv-dock.cv-dock-glass {
-  background: rgba(255,255,255,.82);
-  border-top-color: rgba(0,0,0,.08);
-  box-shadow: 0 -6px 22px -14px rgba(0,0,0,.2);
+  background: rgba(255,255,255,.88);
+  background: linear-gradient(180deg, rgba(255,255,255,.88), rgba(var(--glow-rgb, 37,99,235), .16));
+  border-top-color: rgba(var(--glow-rgb, 37,99,235), .30);
+  box-shadow: 0 -6px 22px -14px rgba(var(--glow-rgb, 37,99,235), .35);
 }
+.cv-page.cv-tpl-minimal .cv-dock.cv-dock-glass .dock-btn,
+.cv-page.cv-clean.cv-tpl-paper .cv-dock.cv-dock-glass .dock-btn { color: var(--t-text, #374151); border-color: rgba(var(--glow-rgb, 37,99,235), .20); }
 .cv-page.cv-tpl-minimal .cv-dock.cv-dock-glass .btn-ghost,
-.cv-page.cv-clean.cv-tpl-paper .cv-dock.cv-dock-glass .btn-ghost { background: rgba(0,0,0,.05); color: #374151; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); }
+.cv-page.cv-clean.cv-tpl-paper .cv-dock.cv-dock-glass .btn-ghost { background: rgba(var(--glow-rgb, 37,99,235), .10); color: var(--t-text, #374151); box-shadow: inset 0 0 0 1px rgba(var(--glow-rgb, 37,99,235), .14); }
 .cv-page.cv-tpl-minimal .cv-dock.cv-dock-glass .btn-primary,
-.cv-page.cv-clean.cv-tpl-paper .cv-dock.cv-dock-glass .btn-primary { background: var(--t-accent, #2563eb); color: #fff; box-shadow: none; }
+.cv-page.cv-clean.cv-tpl-paper .cv-dock.cv-dock-glass .btn-primary { background: var(--t-accent, #2563eb); color: #fff; border-color: transparent; box-shadow: 0 8px 20px -12px rgba(var(--glow-rgb, 37,99,235), .9); }
 /* 悬浮次级入口：导航/收藏/交换名片收进这里；菜单用中性白底，任何主题都清晰 */
 .cv-fab { position: fixed; right: 14px; bottom: calc(72px + env(safe-area-inset-bottom)); z-index: 64; width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--t-accent, #2563eb); color: #fff; font-size: 24px; line-height: 1; box-shadow: 0 8px 24px rgba(15,23,42,.3); cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .cv-fab.on { transform: scale(.94); }
-.cv-fab-mask { position: fixed; inset: 0; z-index: 63; background: rgba(15,23,42,.28); }
+.cv-fab-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 63; background: rgba(15,23,42,.28); }
 .cv-fab-menu { position: absolute; right: 14px; bottom: calc(124px + env(safe-area-inset-bottom)); width: 168px; padding: 6px; border-radius: 14px; background: #fff; box-shadow: 0 18px 44px rgba(15,23,42,.28); }
 .cv-fab-menu button { display: block; width: 100%; padding: 12px 14px; border: 0; border-radius: 9px; background: transparent; color: #1f2937; font-size: 14px; font-weight: 600; text-align: left; }
 .cv-fab-menu button:active { background: #f1f5f9; }
