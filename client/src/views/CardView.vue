@@ -699,7 +699,7 @@ async function toggleFavorite() {
 .cv-inline-edit:active { transform: scale(.92); }
 /* owner 页已有蓝色工作台顶栏：封面白条不再需要，名片卡直接贴近顶栏（不影响公开页的模板封面） */
 .cv-owner .cv-cover { display: none; }
-.cv-owner .cv-main { margin-top: 12px !important; }
+.cv-owner .cv-main { margin-top: 0 !important; }
 .cv-brand { position: absolute; right: 16px; top: calc(18px + var(--safe-top)); color: #fff; font-weight: 800; opacity: .9; }
 .cv-brand em { font-style: normal; opacity: .75; }
 .cv-main { margin-top: -48px; position: relative; }
