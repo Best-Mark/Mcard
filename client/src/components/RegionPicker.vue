@@ -1,11 +1,11 @@
 <template>
   <!--
-    省市区三列同屏滚轮（H5）——完整移植 MShop client/src/components/RegionTriplePicker.vue 的成熟交互。
-    用 van-picker 的标准 iOS 滚轮（上下渐变遮罩 + 贯穿横线 + 44px 项高），替代原来的手写列表+圆角蓝框
-    （那个版本三列像并排列表、顶部三条蓝色下划线标题、硬切边，视觉很怪）。
+    省市区三列同屏滚轮（H5）——严格对齐 MShop client/src/components/RegionTriplePicker.vue：
+    van-picker 标准 iOS 滚轮（上下渐变遮罩 + 贯穿横线 + 44px 项高 + 6 行可见），
+    替代原来手写列表 + 三列圆角蓝框 + 三条蓝色下划线标题（用户反馈"很怪"的观感来源）。
     数据源仍用 MCard 自己的 /api/geo/regions（地区唯一真相源），不引入第二份地区库。
   -->
-  <div ref="hostRef" class="rp-host">
+  <div v-if="ready" ref="hostRef" class="rp-host">
     <van-picker
       :columns="columns"
       :model-value="selValues"
@@ -14,20 +14,20 @@
       cancel-button-text="取消"
       @confirm="onConfirm"
       @cancel="emit('close')"
-      @change="onPickerChange"
     />
   </div>
+  <div v-else class="rp-loading small muted">地区数据加载中…</div>
 </template>
 
 <script setup>
 /**
- * 省市区三列同屏联动选择器（H5）——与 MShop RegionTriplePicker 同款：
+ * 省市区三列联动选择器（H5）——逻辑逐行对齐 MShop RegionTriplePicker（已上线验证）：
  * · van-picker 普通三列（非级联树），三列始终同屏，不逐层下钻；
  * · 停驻检测轮询每列 wrapper 的 transform 位移驱动级联，不依赖 transitionend
  *   （部分 WebView 丢该事件导致转动不联动，见 MShop pickup/Apply.vue、Verify.vue 实踩）；
- * · 打开时按已有省市区文本反查编码定位三列；没动过就点确认则原样回传，绝不静默改成第一个省。
+ * · 打开时按已有省市区文本反查编码定位三列；没动过就点确定则原样回传，绝不静默改成第一个省。
  */
-import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
+import { ref, computed, onBeforeUnmount } from 'vue'
 import { Picker as VanPicker } from 'vant'
 import 'vant/es/picker/index.css'
 import api from '../api'
@@ -41,6 +41,7 @@ const props = defineProps({
 const emit = defineEmits(['confirm', 'close'])
 
 const hostRef = ref(null)
+const ready = ref(false)
 const all = ref([])
 const selValues = ref(['', '', ''])
 let initialSel = ['', '', '']
@@ -54,24 +55,23 @@ const cityCol = ref([])
 const distCol = ref([])
 const columns = computed(() => [provCol.value, cityCol.value, distCol.value])
 
-// 街道（第 4 级）数据稀疏，仍由外层 CardEdit 以 chips 形式给出；本组件只管省/市/区三列。
-
+// 街道（第 4 级）稀疏，仍由外层 CardEdit 以 chips 形式给出；本组件只管省/市/区三列。
 const findByText = (list, name) => {
   if (!name) return null
   return list.find(r => r.name === name) || list.find(r => r.name.includes(name) || name.includes(r.name)) || null
 }
 
-// 由传入文本反查并定位三列；找不到时用「占位项」保住原值，确认时不会被悄悄改成第一项
+// 由已有省市区文本反查编码定位三列（MShop locate 同款）；反算不到旧值时按首项停靠，
+// 但靠 onConfirm 的 unchanged 判断保证「用户没动过就原样回传」，绝不悄悄改数据。
 function locate() {
-  const p = findByText(provCol.value, props.province) || (props.province ? { code: `KEEP:${props.province}`, name: props.province } : null)
-  const cList = p && !String(p.code).startsWith('KEEP:') ? childrenOf(2, p.code).map(toOption) : []
-  const c = findByText(cList, props.city) || (props.city ? { code: `KEEP:${props.city}`, name: props.city } : null)
-  const dList = c && !String(c.code).startsWith('KEEP:') ? childrenOf(3, c.code).map(toOption) : []
-  const d = findByText(dList, props.district) || (props.district ? { code: `KEEP:${props.district}`, name: props.district } : null)
-
+  const p = findByText(provCol.value, props.province) || provCol.value[0] || null
+  const cList = p ? childrenOf(2, p.code).map(toOption) : []
+  const c = findByText(cList, props.city) || cList[0] || null
+  const dList = c ? childrenOf(3, c.code).map(toOption) : []
+  const d = findByText(dList, props.district) || dList[0] || null
   cityCol.value = cList
   distCol.value = dList
-  initialSel = [p?.code || cList[0]?.value || '', c?.code || dList[0]?.value || '', d?.code || '']
+  initialSel = [p?.code || '', c?.code || '', d?.code || '']
   selValues.value = initialSel.slice()
 }
 
@@ -118,6 +118,7 @@ function pollSettle() {
   lastIdx = idxs.slice()
 
   const sel = selValues.value.slice()
+  // 省变化 → 重建市/区；市变化 → 重建区（MShop 同款，三列始终同屏）
   const p = provCol.value[idxs[0]]
   if (p && p.value !== sel[0]) {
     sel[0] = p.value
@@ -134,29 +135,11 @@ function pollSettle() {
     sel[1] = c2.value
     const dList = childrenOf(3, c2.value).map(toOption)
     distCol.value = dList
-    sel[2] = (dList[0] || { text: '', value: '' }).value
+    sel[2] = (dList.find(o => o.value === sel[2]) || dList[0] || { text: '', value: '' }).value
   }
   const d2 = distCol.value[idxs[2]]
   if (d2 && d2.value !== sel[2]) sel[2] = d2.value
   selValues.value = sel
-}
-
-// van-picker 的 change 事件：省/市变化时同步重建下级列（轮询之外再兜一道，响应更快）
-function onPickerChange({ columnIndex, selectedValues }) {
-  const sel = selectedValues.slice()
-  if (columnIndex === 0 && sel[0] !== initialSel[0]) {
-    const cList = sel[0] && !String(sel[0]).startsWith('KEEP:') ? childrenOf(2, sel[0]).map(toOption) : []
-    cityCol.value = cList
-    sel[1] = cList[0]?.value || ''
-    const dList = sel[1] ? childrenOf(3, sel[1]).map(toOption) : []
-    distCol.value = dList
-    sel[2] = dList[0]?.value || ''
-    selValues.value = sel
-  } else if (columnIndex === 1) {
-    const dList = sel[1] && !String(sel[1]).startsWith('KEEP:') ? childrenOf(3, sel[1]).map(toOption) : []
-    distCol.value = dList
-    if (!dList.some(o => o.value === sel[2])) { sel[2] = dList[0]?.value || ''; selValues.value = sel }
-  }
 }
 
 function startPoll() {
@@ -166,14 +149,23 @@ function startPoll() {
   lastIdx = [-1, -1, -1]
   settledOnce = false
   pollTimer = setInterval(pollSettle, 120)
-  nextTick(() => setTimeout(() => { settledOnce = true }, 150))
+  nextTick(() => {
+    const host = hostRef.value
+    if (!host || host.dataset.pollBound) return
+    host.dataset.pollBound = '1'
+    host.addEventListener('touchstart', () => { touching = true }, { passive: true })
+    const onUp = () => { touching = false; prevTy = ['', '', ''] }
+    host.addEventListener('touchend', onUp, { passive: true })
+    host.addEventListener('touchcancel', onUp, { passive: true })
+    setTimeout(() => { settledOnce = true }, 150)
+  })
 }
 function stopPoll() { clearInterval(pollTimer); pollTimer = null }
 
 function onConfirm() {
   const sel = selValues.value || []
-  const unchanged = sel.every((v, i) => v === initialSel[i])
-  if (unchanged && (props.province || props.city || props.district)) {
+  // 打开后没动过、且原文非空：原样回传，避免脏数据/改名被悄悄改成第一个省市区
+  if (sel.every((v, i) => v === initialSel[i]) && (props.province || props.city || props.district)) {
     emit('confirm', { province: props.province, city: props.city, district: props.district, street: props.street })
     return
   }
@@ -191,12 +183,12 @@ function onConfirm() {
     const { data } = await api.get('/api/geo/regions')
     all.value = data?.data?.regions || []
   } catch { all.value = [] }
-  finally { locate(); startPoll() }
+  finally {
+    locate()
+    ready.value = true
+    startPoll()
+  }
 })()
-
-watch(() => [props.province, props.city, props.district].join('|'), () => {
-  if (all.value.length) { locate(); startPoll() }
-})
 
 onBeforeUnmount(stopPoll)
 </script>
@@ -207,4 +199,5 @@ onBeforeUnmount(stopPoll)
 .rp-host :deep(.van-picker) { background: var(--bg-card, #fff); }
 .rp-host :deep(.van-picker__columns) { height: 264px; }
 .rp-host :deep(.van-picker-column__item) { font-size: 15px; color: var(--text, #0f172a); }
+.rp-loading { padding: 40px 0; text-align: center; }
 </style>
