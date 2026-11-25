@@ -207,12 +207,45 @@ export function getLocation() {
 
 // 四级降级定位（对齐 Web 端 geo.js）：原生 getLocation → 后端 IP 定位 → 城市中心兜底。
 // 永不 reject（除非网络与定位都异常），返回 { lat, lng, city, source, quality }。
+// 内置城市中心是公开 WGS84 值，需转 GCJ-02 才能与名片库坐标（高德/微信选点）一致；
+// 集市距离偏差 300~700m 的主因之一就是两套坐标系混用。
+// ⚠️ 算法镜像：server/src/utils/geoCoord.js、client/src/utils/geo-coord.js，改一处要三处同步。
+const GCJ_PI = Math.PI, GCJ_A = 6378245.0, GCJ_EE = 0.00669342162296594323
+function gcjTransformLat(x, y) {
+  let r = -100 + 2 * x + 3 * y + 0.2 * y * y + 0.1 * x * y + 0.2 * Math.sqrt(Math.abs(x))
+  r += (20 * Math.sin(6 * x * GCJ_PI) + 20 * Math.sin(2 * x * GCJ_PI)) * 2 / 3
+  r += (20 * Math.sin(y * GCJ_PI) + 40 * Math.sin(y / 3 * GCJ_PI)) * 2 / 3
+  r += (160 * Math.sin(y / 12 * GCJ_PI) + 320 * Math.sin(y * GCJ_PI / 30)) * 2 / 3
+  return r
+}
+function gcjTransformLng(x, y) {
+  let r = 300 + x + 2 * y + 0.1 * x * x + 0.1 * x * y + 0.1 * Math.sqrt(Math.abs(x))
+  r += (20 * Math.sin(6 * x * GCJ_PI) + 20 * Math.sin(2 * x * GCJ_PI)) * 2 / 3
+  r += (20 * Math.sin(x * GCJ_PI) + 40 * Math.sin(x / 3 * GCJ_PI)) * 2 / 3
+  r += (150 * Math.sin(x / 12 * GCJ_PI) + 300 * Math.sin(x / 30 * GCJ_PI)) * 2 / 3
+  return r
+}
+function wgs84ToGcj02(lat, lng) {
+  const la = Number(lat), ln = Number(lng)
+  if (!(ln > 73.66 && ln < 135.05 && la > 3.86 && la < 53.55)) return { lat: la, lng: ln }
+  let dLat = gcjTransformLat(ln - 105, la - 35), dLng = gcjTransformLng(ln - 105, la - 35)
+  const rad = la / 180 * GCJ_PI
+  let magic = Math.sin(rad); magic = 1 - GCJ_EE * magic * magic
+  const sq = Math.sqrt(magic)
+  dLat = (dLat * 180) / ((GCJ_A * (1 - GCJ_EE)) / (magic * sq) * GCJ_PI)
+  dLng = (dLng * 180) / (GCJ_A / sq * Math.cos(rad) * GCJ_PI)
+  return { lat: la + dLat, lng: ln + dLng }
+}
 const MP_CITY_CENTERS = {
   '北京': { lat: 39.9042, lng: 116.4074 }, '上海': { lat: 31.2304, lng: 121.4737 },
   '广州': { lat: 23.1291, lng: 113.2644 }, '深圳': { lat: 22.5431, lng: 114.0579 },
   '杭州': { lat: 30.2741, lng: 120.1551 }, '成都': { lat: 30.5728, lng: 104.0668 },
   '重庆': { lat: 29.5630, lng: 106.5516 }, '武汉': { lat: 30.5928, lng: 114.3055 },
   '西安': { lat: 34.3416, lng: 108.9398 }, '南京': { lat: 32.0603, lng: 118.7969 }
+}
+for (const c of Object.values(MP_CITY_CENTERS)) {
+  const g = wgs84ToGcj02(c.lat, c.lng)
+  c.lat = g.lat; c.lng = g.lng
 }
 const validCoord = (a, b) => {
   const x = Number(a), y = Number(b)
@@ -224,7 +257,7 @@ export function geoLocate(defaultCity = '上海') {
   return new Promise(async resolve => {
     const fallback = () => {
       const c = MP_CITY_CENTERS[defaultCity] || MP_CITY_CENTERS['上海']
-      resolve({ lat: c.lat, lng: c.lng, city: defaultCity, source: 'default', quality: 'coarse' })
+      resolve({ lat: c.lat, lng: c.lng, city: defaultCity, source: 'default', quality: 'coarse', coordSys: 'gcj02' })
     }
     // L0/L1: 原生定位
     try {

@@ -147,7 +147,12 @@ function openMapPicker() {
 
 const locateHint = computed(() => city.value ? `以 ${city.value} 为中心，按距离发现伙伴` : coords.value ? `按附近距离排序${sourceLabel.value ? ' · ' + sourceLabel.value : ''}` : '点「切换城市」选城市，按距离发现伙伴')
 
-function fmtDist(km) { return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km` }
+function fmtDist(km) {
+  if (km == null) return ''
+  // 原点来自城市中心/IP 定位时只是粗范围，加「约」避免把估算距离当精确定位
+  const prefix = sourceLabel.value && sourceLabel.value !== '微信定位' && sourceLabel.value !== 'GPS 定位' ? '约 ' : ''
+  return prefix + (km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`)
+}
 
 async function loadMeta() {
   try { meta.value = await api.get('/api/cards/public/market/meta', false) } catch {}

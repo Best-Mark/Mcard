@@ -14,6 +14,7 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { wgs84ToGcj02 } from '../utils/geo-coord'
 
 const props = defineProps({
   lat: { type: Number, default: 39.9042 },
@@ -47,7 +48,9 @@ function initMap() {
 function useHere() {
   if (!map) return
   const c = map.getCenter()
-  emit('confirm', { lat: Number(c.lat.toFixed(6)), lng: Number(c.lng.toFixed(6)) })
+  // Leaflet + OSM 瓦片是 WGS84，必须转 GCJ-02 才能与名片库/小程序定位一致，否则集市距离偏 300~700m
+  const g = wgs84ToGcj02(c.lat, c.lng)
+  emit('confirm', { lat: Number(g.lat.toFixed(6)), lng: Number(g.lng.toFixed(6)) })
 }
 
 async function search() {

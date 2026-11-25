@@ -1,7 +1,8 @@
 // 名片集市元数据 —— 行业类目与内置城市坐标的唯一真相源。
 // 前端通过 GET /api/cards/market/meta 拉取，不各自硬编码。
-// 坐标采用 WGS84 近似的 GCJ-02 城市中心点，仅用于「按城市选点/距离粗排」，
-// 真正精确定位由客户端 navigator.geolocation / uni.getLocation 提供。
+// 坐标采用 GCJ-02 城市中心点，仅用于「按城市选点/距离粗排」，
+// 真正精确定位由客户端定位提供（Web 端 WGS84 需转 GCJ-02，见 utils/geoCoord.js）。
+// 距离算法唯一真相源 = utils/geoCoord.js 的 distanceKm（WGS84 椭球 Vincenty）。
 // py = 城市名拼音首字母缩写（如北京=BJ、哈尔滨=HEB），供城市选择弹层的 A-Z 快捷索引使用。
 
 const INDUSTRIES = [
@@ -209,14 +210,17 @@ function cityCoords(name) {
   return fuzzy ? { lat: fuzzy.lat, lng: fuzzy.lng } : null
 }
 
-// Haversine 距离（公里）
-function distanceKm(lat1, lng1, lat2, lng2) {
-  const R = 6371
-  const toRad = d => (d * Math.PI) / 180
-  const dLat = toRad(lat2 - lat1)
-  const dLng = toRad(lng2 - lng1)
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+// 距离算法已收敛到 geoCoord.js（WGS84 椭球 Vincenty，误差远小于原球面 Haversine）；
+// 此处保留 re-export，避免调用方（routes/cards.js）改动，也保证只有一处实现。
+const { distanceKm, wgs84ToGcj02 } = require('./geoCoord')
+
+// 城市中心点原始值来自公开 WGS84 数据；对外统一下发 GCJ-02，
+// 与名片存库坐标（地图选点/高德）一致，避免「选城市 vs 精确定位」两套距离口径。
+for (const c of CITIES) {
+  if (Number.isFinite(c.lat) && Number.isFinite(c.lng)) {
+    const g = wgs84ToGcj02(c.lat, c.lng)
+    c.lat = Number(g.lat.toFixed(6)); c.lng = Number(g.lng.toFixed(6))
+  }
 }
 
 module.exports = { INDUSTRIES, INDUSTRY_KEYS, CITIES, HOT_CITIES, cityCoords, isIndustry, normalizeIndustry, distanceKm }

@@ -3,6 +3,7 @@
 // 高德 Key 服务端直读 settings，绝不下发前端；所有外部请求带超时 + try/catch（自愈约定）。
 const settings = require('../utils/settings')
 const { CITIES } = require('../utils/market')
+const { wgs84ToGcj02, gcj02ToWgs84 } = require('../utils/geoCoord')
 
 // 带超时的 JSON GET（兼容 Node 18，手写 AbortController 不依赖 AbortSignal.timeout）
 async function httpGetJson(url, timeout = 4000, headers = {}) {
@@ -96,17 +97,17 @@ function freeIpLocate(ip) {
     async () => {
       const d = await httpGetJson(`https://ipapi.co/${encodeURIComponent(ip)}/json/`, 4000)
       if (!d.latitude || !d.longitude) return null
-      return { lat: Number(d.latitude), lng: Number(d.longitude), city: stripSuffix(d.city), province: stripSuffix(d.region), source: 'ip' }
+      return { lat: Number(d.latitude), lng: Number(d.longitude), city: stripSuffix(d.city), province: stripSuffix(d.region), source: 'ip', coordSys: 'wgs84' }
     },
     async () => {
       const d = await httpGetJson(`http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,lat,lon,city,regionName`, 4000)
       if (d.status !== 'success' || !d.lat || !d.lon) return null
-      return { lat: Number(d.lat), lng: Number(d.lng), city: stripSuffix(d.city), province: stripSuffix(d.regionName), source: 'ip' }
+      return { lat: Number(d.lat), lng: Number(d.lng), city: stripSuffix(d.city), province: stripSuffix(d.regionName), source: 'ip', coordSys: 'wgs84' }
     },
     async () => {
       const d = await httpGetJson(`https://api.ip.sb/geoip/${encodeURIComponent(ip)}`, 4000)
       if (!d.latitude || !d.longitude) return null
-      return { lat: Number(d.latitude), lng: Number(d.longitude), city: stripSuffix(d.city), province: stripSuffix(d.region), source: 'ip' }
+      return { lat: Number(d.latitude), lng: Number(d.longitude), city: stripSuffix(d.city), province: stripSuffix(d.region), source: 'ip', coordSys: 'wgs84' }
     }
   ]
   return firstValid(tasks)
@@ -128,6 +129,13 @@ async function ipLocate(req) {
     result.lng = c?.lng ?? null
   }
   if (!validCoords(result.lat, result.lng)) return null
+  // 坐标系归一：高德返回 GCJ-02（coordSys 缺省即 gcj02）；免费 IP API 返回 WGS84。
+  // 只转 WGS84 来源，避免把高德的 GCJ-02 二次转换（会再偏几百米）。
+  if (result.coordSys === 'wgs84') {
+    const g = wgs84ToGcj02(result.lat, result.lng)
+    result.lat = g.lat; result.lng = g.lng
+  }
+  delete result.coordSys
   return result
 }
 
@@ -152,8 +160,10 @@ async function reverseGeocode(lat, lng) {
     } catch { /* 高德失败走 OSM 兜底 */ }
   }
   // OSM Nominatim 兜底（无需 Key，国内较慢但可用；带明确 UA）
+  // 入口坐标统一是 GCJ-02，而 Nominatim 认 WGS84，先反向转换，否则城市/街道会偏几百米
   try {
-    const d = await httpGetJson(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${Number(lat)}&lon=${Number(lng)}&accept-language=zh-CN&zoom=16`, 5000, { 'User-Agent': 'MCard-Geo/1.0 (contact: site owner)' })
+    const w = gcj02ToWgs84(lat, lng)
+    const d = await httpGetJson(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${Number(w.lat)}&lon=${Number(w.lng)}&accept-language=zh-CN&zoom=16`, 5000, { 'User-Agent': 'MCard-Geo/1.0 (contact: site owner)' })
     const a = d.address || {}
     const city = stripSuffix(a.city || a.town || a.county || a.state)
     if (city) {
@@ -188,7 +198,10 @@ async function geocode(address, hintCity) {
     const d = await httpGetJson(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(text)}&accept-language=zh-CN&limit=1`, 5000, { 'User-Agent': 'MCard-Geo/1.0 (contact: site owner)' })
     if (d?.length) {
       const lat = Number(d[0].lat), lng = Number(d[0].lon)
-      if (validCoords(lat, lng)) return { lat, lng, formatted: d[0].display_name || text }
+      if (validCoords(lat, lng)) {
+        const p = wgs84ToGcj02(lat, lng) // Nominatim=WGS84，高德=GCJ-02，出口统一
+        return { lat: p.lat, lng: p.lng, formatted: d[0].display_name || text }
+      }
     }
   } catch { /* 全失败返回 null */ }
   return null

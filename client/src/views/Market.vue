@@ -117,6 +117,7 @@ import { useRouter, useRoute } from 'vue-router'
 import api from '../api'
 import { showToast, toggleDrawer } from '../store'
 import { getCurrentPosition, getPositionQualityLabel, setManualPosition } from '../utils/geo'
+import { wgs84ToGcj02 } from '../utils/geo-coord'
 import { CITIES as FALLBACK_CITIES } from '../utils/city-data'
 import MapPicker from '../components/MapPicker.vue'
 import ScrollChips from '../components/ScrollChips.vue'
@@ -152,9 +153,12 @@ const locateHint = computed(() => {
   return '点「切换城市」选城市，按距离发现伙伴'
 })
 
+// 原点来自城市中心/IP 定位时只是粗范围，加「约」避免把估算距离当精确定位
+const distApprox = computed(() => positionMeta.value.level !== 'high' || !coords.value)
 function fmtDist(km) {
   if (km == null) return ''
-  return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`
+  const prefix = distApprox.value ? '约 ' : ''
+  return prefix + (km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`)
 }
 
 async function loadMeta() {
@@ -165,8 +169,12 @@ async function loadMeta() {
 }
 
 function cityOf(name) {
-  const all = (meta.value.cities?.length ? meta.value.cities : FALLBACK_CITIES)
-  return all.find(c => c.name === name) || all.find(c => c.name.includes(name) || name.includes(c.name)) || null
+  const fromMeta = meta.value.cities?.length > 0
+  const all = fromMeta ? meta.value.cities : FALLBACK_CITIES
+  const hit = all.find(c => c.name === name) || all.find(c => c.name.includes(name) || name.includes(c.name)) || null
+  if (!hit || !Number.isFinite(hit.lat) || !Number.isFinite(hit.lng)) return hit
+  // meta 已由服务端转 GCJ-02；仅本地兜底（WGS84 原始镜像）需要转换
+  return fromMeta ? hit : { ...hit, ...wgs84ToGcj02(hit.lat, hit.lng) }
 }
 function openCityPicker() { cityPickerOpen.value = true }
 // 城市选择弹层选中：设为原点（城市中心坐标），立即按距离排序

@@ -5,9 +5,13 @@
 //   Layer 3  城市中心坐标兜底（永不为空）
 // 设计：单例共享 + 即时缓存 + 渐进升级 + 精度分级 + 防重入 + 全链路超时兜底。
 // 铁律：页面禁止直接调 navigator.geolocation / IP 接口，统一走本模块。
+// ⚠️ 坐标系铁律：对外统一输出 GCJ-02（与名片存库坐标、小程序、高德一致）。
+//    微信 type=wgs84 与浏览器 Geolocation 是 WGS84 → set() 统一转换；
+//    IP 定位走后端（高德 GCJ-02 优先），免费 API 的 WGS84 由后端转换（services/geo.js）。
 import api from '../api'
 import { isWeChat, configWx } from './wx-sdk'
 import { CITIES } from './city-data'
+import { wgs84ToGcj02 } from './geo-coord'
 
 export const QUALITY = Object.freeze({ PRECISE: 'precise', APPROXIMATE: 'approximate', COARSE: 'coarse' })
 const SOURCE_QUALITY = { wechat: QUALITY.PRECISE, gps: QUALITY.PRECISE, ip: QUALITY.APPROXIMATE, default: QUALITY.COARSE, manual: QUALITY.PRECISE }
@@ -29,6 +33,13 @@ function valid(lat, lng) {
 function set(pos) {
   pos._ts = Date.now()
   if (!pos.quality) pos.quality = SOURCE_QUALITY[pos.source] || QUALITY.COARSE
+  // 统一坐标系：wgs84 来源（微信 JS-SDK type=wgs84、浏览器 Geolocation）转 GCJ-02；
+  // ip/default 已是 GCJ-02（后端高德 / 内置城市中心点），manual 由调用方保证 GCJ-02。
+  if (pos.coordSys === 'wgs84' && valid(pos.lat, pos.lng)) {
+    const g = wgs84ToGcj02(pos.lat, pos.lng)
+    pos.lat = g.lat; pos.lng = g.lng
+  }
+  pos.coordSys = 'gcj02'
   current = pos
   notify()
   return pos
@@ -52,7 +63,9 @@ export function getPositionQualityLabel() {
 
 export function cityCenter(name) {
   const clean = String(name || '').replace(/[市省区]$/, '')
-  return CITIES.find(c => c.name === clean || c.name.includes(clean) || clean.includes(c.name)) || CITIES.find(c => c.name === '上海')
+  const c = CITIES.find(c => c.name === clean || c.name.includes(clean) || clean.includes(c.name)) || CITIES.find(c => c.name === '上海')
+  // 前端城市镜像是 WGS84 原始值；对外统一 GCJ-02（与服务端 meta 下发的一致）
+  return Number.isFinite(c.lat) && Number.isFinite(c.lng) ? { ...c, ...wgs84ToGcj02(c.lat, c.lng) } : c
 }
 
 // ---- Layer 0: 微信 JS-SDK getLocation（带离线校验窗口重试）----
@@ -69,7 +82,7 @@ async function getByWechat(timeout = 8000) {
         try {
           wx.getLocation({
             type: 'wgs84',
-            success: r => { clearTimeout(timer); finish(r?.latitude && r?.longitude ? { lat: r.latitude, lng: r.longitude, accuracy: r.accuracy || null, source: 'wechat' } : null) },
+            success: r => { clearTimeout(timer); finish(r?.latitude && r?.longitude ? { lat: r.latitude, lng: r.longitude, accuracy: r.accuracy || null, source: 'wechat', coordSys: 'wgs84' } : null) },
             fail: () => { clearTimeout(timer); finish(null) },
             cancel: () => { clearTimeout(timer); finish(null) }
           })
@@ -95,7 +108,7 @@ function getByBrowser(timeout, highAccuracy) {
         p => {
           clearTimeout(timer)
           const lat = p?.coords?.latitude, lng = p?.coords?.longitude
-          finish(valid(lat, lng) ? { lat, lng, accuracy: p.coords.accuracy || null, source: 'gps' } : null)
+          finish(valid(lat, lng) ? { lat, lng, accuracy: p.coords.accuracy || null, source: 'gps', coordSys: 'wgs84' } : null)
         },
         () => { clearTimeout(timer); finish(null) },
         { enableHighAccuracy: !!highAccuracy, timeout: timeout - 200, maximumAge: highAccuracy ? 0 : 30000 }
