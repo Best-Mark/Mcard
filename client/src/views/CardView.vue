@@ -147,7 +147,7 @@
       </div>
       <!-- 主操作单排 4 个。持有者视角：编辑名片 / 配色风格 / 名片集市 / 分享；
            公开页：打电话 / 复制号码 / 存入通讯录 / 分享。2026-11-25 用户定稿。 -->
-      <div v-if="full" class="cv-dock">
+      <div v-if="full" class="cv-dock cv-dock-glass">
         <template v-if="owner">
           <button class="btn btn-primary" @click="router.push('/me/card')">编辑名片</button>
           <button class="btn btn-ghost" @click="router.push('/me/card/style')">配色风格</button>
@@ -744,6 +744,50 @@ async function toggleFavorite() {
 .cv-dock .btn { flex: 1; min-width: 0; padding: 0 2px; font-size: 12.5px; white-space: nowrap; }
 .cv-dock .btn-primary { background: var(--t-accent, #2563eb); color: #fff; border-color: transparent; }
 .cv-dock .btn-ghost { background: rgba(255,255,255,.12); color: #e2e8f0; border-color: transparent; }
+/* ===== 高档玻璃底栏（2026-11-25 用户定稿：粒子透明质感、按钮加大）=====
+   半透明深色玻璃 + 顶部一道微光描边 + radial-gradient 做的几粒「微光粒子」，
+   纯 CSS 无 canvas 开销、微信老 WebView 也能渲染（radial-gradient 是字面量色）。
+   仅覆盖深色系模板；极简白( minimal/paper )在下方单独恢复浅色，避免白底上压深玻璃违和。 */
+.cv-page .cv-dock.cv-dock-glass {
+  position: relative; overflow: hidden;
+  gap: 8px; padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+  background: rgba(12,22,38,.72);
+  background: color-mix(in srgb, var(--ng-deep, #0c1a26) 82%, transparent);
+  border-top: 1px solid rgba(216,187,133,.42);
+  box-shadow: 0 -8px 30px -14px rgba(0,0,0,.55);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2); backdrop-filter: blur(16px) saturate(1.2);
+}
+/* 微光粒子：三层径向渐变散点（香槟金/冷蓝），低透明度不抢内容 */
+.cv-page .cv-dock.cv-dock-glass::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 30%, rgba(216,187,133,.22) 0 2px, transparent 3px),
+    radial-gradient(circle at 34% 72%, rgba(139,211,255,.18) 0 1.5px, transparent 3px),
+    radial-gradient(circle at 62% 24%, rgba(216,187,133,.16) 0 1.5px, transparent 3px),
+    radial-gradient(circle at 84% 66%, rgba(139,211,255,.20) 0 2px, transparent 3px),
+    radial-gradient(circle at 52% 88%, rgba(216,187,133,.14) 0 1px, transparent 2px);
+}
+.cv-page .cv-dock.cv-dock-glass .btn {
+  position: relative; min-height: 44px; font-size: 14px; font-weight: 700; letter-spacing: .02em;
+  border-radius: 12px; border-color: transparent;
+}
+.cv-page .cv-dock.cv-dock-glass .btn-primary {
+  background: #a8834a; background: linear-gradient(135deg, #c9a163, #a8834a); color: #fff;
+  box-shadow: 0 10px 24px -12px rgba(169,131,74,.95);
+}
+.cv-page .cv-dock.cv-dock-glass .btn-ghost {
+  background: rgba(255,255,255,.10); color: #f2ead8;
+  box-shadow: inset 0 0 0 1px rgba(216,187,133,.28);
+}
+/* 极简白 / 纸白模板：玻璃深底换成浅色毛玻璃，按钮走深色文字，避免白卡上压黑条 */
+.cv-page.cv-tpl-minimal .cv-dock.cv-dock-glass,
+.cv-page.cv-clean.cv-tpl-paper .cv-dock.cv-dock-glass {
+  background: rgba(255,255,255,.82);
+  border-top-color: rgba(0,0,0,.08);
+  box-shadow: 0 -6px 22px -14px rgba(0,0,0,.2);
+}
+.cv-page.cv-tpl-minimal .cv-dock.cv-dock-glass .btn-ghost,
+.cv-page.cv-clean.cv-tpl-paper .cv-dock.cv-dock-glass .btn-ghost { background: rgba(0,0,0,.05); color: #374151; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); }
 /* 悬浮次级入口：导航/收藏/交换名片收进这里；菜单用中性白底，任何主题都清晰 */
 .cv-fab { position: fixed; right: 14px; bottom: calc(72px + env(safe-area-inset-bottom)); z-index: 64; width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--t-accent, #2563eb); color: #fff; font-size: 24px; line-height: 1; box-shadow: 0 8px 24px rgba(15,23,42,.3); cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .cv-fab.on { transform: scale(.94); }
