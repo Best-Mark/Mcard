@@ -733,28 +733,17 @@
   border-radius: var(--cv-tag-radius); background: var(--cv-tag-bg); color: var(--cv-tag-color);
   box-shadow: var(--cv-tag-shadow); border: 0; letter-spacing: normal; padding: 3px 9px;
 }
-/* 深色身份头上的文字/标签/编辑钮一并提亮，浅色模板因为没有这些变量完全不受影响 */
-.cv-page.cv-clean.cv-tpl-contact .cv-name, .cv-page.cv-clean.cv-tpl-navygold .cv-name {
-  color: var(--cv-header-ink); -webkit-text-fill-color: var(--cv-header-ink);
-}
-.cv-page.cv-clean.cv-tpl-contact .cv-en, .cv-page.cv-clean.cv-tpl-contact .cv-title,
-.cv-page.cv-clean.cv-tpl-navygold .cv-en, .cv-page.cv-clean.cv-tpl-navygold .cv-title { color: var(--cv-header-muted); }
-.cv-page.cv-clean.cv-tpl-contact .cv-org, .cv-page.cv-clean.cv-tpl-navygold .cv-org {
-  color: var(--cv-header-accent); border-top-color: var(--cv-header-line);
-}
-.cv-page.cv-clean.cv-tpl-contact .cv-tags span:nth-child(n), .cv-page.cv-clean.cv-tpl-navygold .cv-tags span:nth-child(n) {
+/* 深色身份头上的文字/标签/编辑钮统一提亮（18 套模板全部走这一份，不再逐套写选择器） */
+.cv-page.cv-clean .cv-name { color: var(--cv-header-ink); -webkit-text-fill-color: var(--cv-header-ink); }
+.cv-page.cv-clean .cv-en, .cv-page.cv-clean .cv-title { color: var(--cv-header-muted); }
+.cv-page.cv-clean .cv-org { color: var(--cv-header-accent); border-top-color: var(--cv-header-line); }
+.cv-page.cv-clean .cv-tags span:nth-child(n) {
   background: var(--cv-header-tag-bg); color: var(--cv-header-accent);
   box-shadow: inset 0 0 0 1px var(--cv-header-line);
 }
-.cv-page.cv-clean.cv-tpl-contact .cv-inline-edit, .cv-page.cv-clean.cv-tpl-navygold .cv-inline-edit {
-  color: var(--cv-header-accent); background: var(--cv-header-tag-bg); border-color: var(--cv-header-line);
-}
-.cv-page.cv-clean.cv-tpl-contact .cv-qr-entry, .cv-page.cv-clean.cv-tpl-navygold .cv-qr-entry {
-  border-color: var(--cv-header-line); box-shadow: 0 6px 20px rgba(0,0,0,.28);
-}
-.cv-page.cv-clean.cv-tpl-contact .cv-avatar:not(.is-logo), .cv-page.cv-clean.cv-tpl-navygold .cv-avatar:not(.is-logo) {
-  box-shadow: inset 0 0 0 2px rgba(216,187,133,.55), 0 8px 18px -8px rgba(0,0,0,.65);
-}
+.cv-page.cv-clean .cv-inline-edit { color: var(--cv-header-accent); background: var(--cv-header-tag-bg); border-color: var(--cv-header-line); }
+.cv-page.cv-clean .cv-qr-entry { border-color: var(--cv-header-line); box-shadow: 0 6px 20px rgba(0,0,0,.28); }
+.cv-page.cv-clean .cv-avatar:not(.is-logo) { box-shadow: inset 0 0 0 2px var(--cv-header-line), 0 8px 18px -8px rgba(0,0,0,.65); }
 
 /* ③ 内容块统一：无间隔拼接 + 细线分隔，抹掉 poster 两列、ticket 锯齿、sidebar 右对齐 */
 .cv-page.cv-clean .cv-block, .cv-page.cv-clean .cv-block:has(.cv-contact-row) {

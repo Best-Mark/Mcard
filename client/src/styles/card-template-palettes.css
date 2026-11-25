@@ -29,8 +29,18 @@
   --cv-mini-bg: #f4f1ea; --cv-mini-color: #1d3a55; --cv-mini-shadow: inset 0 0 0 1px rgba(185,147,85,.28); --cv-mini-on-solid: #a8834a; --cv-mini-on-bg: linear-gradient(135deg,#c9a163,#a8834a); --cv-mini-on-color: #fff;
   --cv-block-title: #b99355; --cv-link-color: #1d3a55;
   --cv-foot-color: #a9b1ba; --cv-foot-b: #b99355; --cv-hint-color: #9fb0c0;
-  --cv-wm-color: #12202e; --cv-wm-opacity: .04;
+  --cv-wm-color: #d8bb85; --cv-wm-opacity: .08;
   --cv-back-color: #d8bb85; --cv-back-bg: rgba(12,26,38,.5); --cv-brand-color: rgba(255,255,255,.85);
+  /* 深色身份头全局原则（2026-11-26 用户定）：18 套模板统一「深底头部 + 信息区原底色」层次。
+     各模板只覆盖 --cv-header-solid/bg/accent，文字亮度与描边共用下面的中性值。
+     渐变必须写字面量（老 WebView 解析不了渐变里嵌 var()），色值只用在这里和 card-sheet.css。 */
+  --cv-header-solid: #12202e;
+  --cv-header-bg: linear-gradient(135deg,#132a3d 0%,#0c1a26 62%,#1d3a55 100%);
+  --cv-header-ink: #f7f4ee;
+  --cv-header-muted: rgba(247,244,238,.74);
+  --cv-header-accent: #d8bb85;
+  --cv-header-line: rgba(255,255,255,.24);
+  --cv-header-tag-bg: rgba(255,255,255,.10);
   background: var(--cv-page-bg); color: var(--cv-ink);
 }
 /* B 极简纸白：6px 小圆角 + 1px 发丝线 + 细体大字 + 描边按钮 */
@@ -271,18 +281,23 @@
 /* 深蓝鎏金 navygold：沿用已有 --ng-* 色系 */
 .cv-tpl-navygold { --cv-page-bg:var(--ng-page-bg); --cv-panel-bg:#fff; --cv-card-bg:#fff; --cv-ink:var(--ng-ink); --cv-ink-2:var(--ng-ink-2); --cv-line:var(--ng-line); --cv-name-color:var(--ng-ink); --cv-role-color:var(--ng-ink-2); --cv-org-color:var(--ng-navy); --cv-tag-bg:var(--ng-paper); --cv-tag-color:#6b5a3c; --cv-topbar-bg:linear-gradient(90deg,var(--ng-navy),var(--ng-navy-2) 40%,var(--ng-gold-2) 78%,var(--ng-gold)); --cv-logo-bg:linear-gradient(145deg,#1d3a55,#0e2233); --cv-logo-bg-solid:#1d3a55; --cv-btn-main-solid:#1d3a55; --cv-btn-main-bg:linear-gradient(135deg,#1d3a55,#0f2739); --cv-btn-main-color:#fff; --cv-btn-ghost-bg:#f7f5f0; --cv-btn-ghost-color:#1d3a55; --cv-btn-save-bg:linear-gradient(135deg,#c9a163,#a8834a); --cv-btn-save-color:#fff; --cv-mini-bg:#f4f1ea; --cv-mini-color:#1d3a55; --cv-block-title:var(--ng-navy); --cv-link-color:var(--ng-navy); --cv-foot-color:#a9b1ba; --cv-foot-b:var(--ng-gold); --cv-back-color:var(--ng-gold-2); --cv-back-bg:rgba(12,26,38,.5); --cv-brand-color:rgba(255,255,255,.85); }
 
-/* 头部深底（2026-11-26 用户定）：金黑简洁联络 / 深蓝鎏金两套的姓名卡改成深蓝底+沙金字，
-   下面信息区仍是白卡，形成「深色身份区 + 浅色信息区」层次。只改这两套，纸白/暖木/多巴胺等浅色模板不动。
-   变量只在 card-template-palettes.css 定义一次，card-sheet.css 负责使用。 */
-.cv-clean.cv-tpl-contact,
-.cv-clean.cv-tpl-navygold {
-  --cv-header-solid: #12202e;
-  --cv-header-bg: linear-gradient(135deg,#132a3d 0%,#0c1a26 62%,#1d3a55 100%);
-  --cv-header-ink: #f7f4ee;
-  --cv-header-muted: rgba(247,244,238,.74);
-  --cv-header-accent: #d8bb85;
-  --cv-header-line: rgba(216,187,133,.28);
-  --cv-header-tag-bg: rgba(216,187,133,.14);
-  --cv-wm-color: #d8bb85;
-  --cv-wm-opacity: .08;
-}
+/* 18 套模板的深色身份头：每套只换深底与点缀色，保持各自辨识度；
+   信息区仍用各自的 --cv-panel-bg（浅色模板白卡、暗色模板沿用暗卡），原则一致但不强行同色。
+   变量唯一真相源在这里，card-sheet.css 只负责使用。 */
+.cv-clean.cv-tpl-classic    { --cv-header-solid:#1e3a8a; --cv-header-bg:linear-gradient(135deg,#1e3a8a 0%,#122455 100%); --cv-header-accent:#93c5fd; }
+.cv-clean.cv-tpl-minimal    { --cv-header-solid:#111827; --cv-header-bg:linear-gradient(135deg,#111827 0%,#030712 100%); --cv-header-accent:#fff; }
+.cv-clean.cv-tpl-elite      { --cv-header-solid:#0b0d12; --cv-header-bg:linear-gradient(135deg,#0b0d12 0%,#1c1408 100%); --cv-header-accent:#d8bb85; }
+.cv-clean.cv-tpl-vivid      { --cv-header-solid:#2e1065; --cv-header-bg:linear-gradient(135deg,#2e1065 0%,#4c1d95 100%); --cv-header-accent:#c4b5fd; }
+.cv-clean.cv-tpl-seal       { --cv-header-solid:#12213c; --cv-header-bg:linear-gradient(135deg,#12213c 0%,#0b1630 100%); --cv-header-accent:#93c5fd; }
+.cv-clean.cv-tpl-navygold   { --cv-header-solid:#12202e; --cv-header-bg:linear-gradient(135deg,#1d3a55 0%,#0c1a26 62%,#1d3a55 100%); --cv-header-accent:#d8bb85; }
+.cv-clean.cv-tpl-paper      { --cv-header-solid:#111; --cv-header-bg:linear-gradient(135deg,#111 0%,#2b2b2b 100%); --cv-header-accent:#fff; }
+.cv-clean.cv-tpl-glass      { --cv-header-solid:#0b1622; --cv-header-bg:linear-gradient(135deg,#0b1622 0%,#173049 100%); --cv-header-accent:#7fd3c1; }
+.cv-clean.cv-tpl-wood       { --cv-header-solid:#3b2f24; --cv-header-bg:linear-gradient(135deg,#3b2f24 0%,#221a12 100%); --cv-header-accent:#d8b98a; }
+.cv-clean.cv-tpl-neon       { --cv-header-solid:#190b32; --cv-header-bg:linear-gradient(135deg,#190b32 0%,#3d1a72 100%); --cv-header-accent:#ff4fa3; }
+.cv-clean.cv-tpl-acid       { --cv-header-solid:#050505; --cv-header-bg:linear-gradient(135deg,#050505 0%,#141a00 100%); --cv-header-accent:#ccff00; }
+.cv-clean.cv-tpl-pop        { --cv-header-solid:#241b3a; --cv-header-bg:linear-gradient(135deg,#241b3a 0%,#3b2d63 100%); --cv-header-accent:#ffd166; }
+.cv-clean.cv-tpl-magazine   { --cv-header-solid:#1a1a1a; --cv-header-bg:linear-gradient(135deg,#1a1a1a 0%,#33302b 100%); --cv-header-accent:#e07a5f; }
+.cv-clean.cv-tpl-poster     { --cv-header-solid:#101d29; --cv-header-bg:linear-gradient(135deg,#101d29 0%,#060c13 100%); --cv-header-accent:#d8bb85; }
+.cv-clean.cv-tpl-ticket     { --cv-header-solid:#232323; --cv-header-bg:linear-gradient(135deg,#232323 0%,#0f0f0f 100%); --cv-header-accent:#e5e7eb; }
+.cv-clean.cv-tpl-horizontal { --cv-header-solid:#17222e; --cv-header-bg:linear-gradient(135deg,#17222e 0%,#0f1822 100%); --cv-header-accent:#d8bb85; }
+.cv-clean.cv-tpl-sidebar    { --cv-header-solid:#2a2118; --cv-header-bg:linear-gradient(135deg,#2a2118 0%,#16100b 100%); --cv-header-accent:#d9c9b2; }
