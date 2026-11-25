@@ -9,11 +9,12 @@
     6. 页面底部留白 ≥ dock 高度（单排约 92px），末张卡片不被遮挡；
     7. 配色/质感跟随主题强调色，不写死白色；尊重 prefers-reduced-motion。
   -->
-  <div class="cv-page" :class="['cv-tpl-' + template, { 'cv-clean': isCleanTpl, 'cv-embed': embed }]" :style="vars">
+  <div class="cv-page" :class="['cv-tpl-' + template, { 'cv-clean': isCleanTpl, 'cv-embed': embed, 'cv-owner': owner }]" :style="vars">
     <div class="cv-cover">
-      <button v-if="!embed" class="cv-back" @click="router.back ? router.back() : router.push('/')" aria-label="返回">‹</button>
+      <button v-if="owner" class="cv-back cv-owner-edit" @click="router.push('/me/card')" aria-label="编辑名片">✎</button>
+      <button v-else-if="full" class="cv-back" @click="router.back ? router.back() : router.push('/')" aria-label="返回">‹</button>
       <div class="cv-brand">M<em>Card</em></div>
-      <div v-if="!embed" class="cv-themes">
+      <div v-if="full" class="cv-themes">
         <button v-for="(v, k) in THEMES" :key="k" :style="{ background: v.accent }"
                 :class="{ on: currentTheme === k }" :title="v.label" @click="currentTheme = k" />
       </div>
@@ -44,21 +45,21 @@
             <div v-if="card.tags?.length" class="cv-tags"><span v-for="tag in card.tags" :key="tag">{{ tag }}</span></div>
           </div>
           <!-- 二维码是信息入口：小图常驻姓名区右上角，点击弹层放大；正文不再摆大码卡 -->
-          <button v-if="!embed" class="cv-qr-entry" @click="qrModal = true" title="扫码打开名片 · 点击放大" aria-label="查看名片二维码">
+          <button v-if="full" class="cv-qr-entry" @click="qrModal = true" title="扫码打开名片 · 点击放大" aria-label="查看名片二维码">
             <img :src="qrApi + '/qr.svg?size=200'" alt="名片二维码" />
           </button>
           <span v-if="!card.active" class="badge warn cv-status">未开通 / 已到期</span>
         </div>
 
-        <div v-if="!embed && !card.active" class="card card-pad notice-card">
+        <div v-if="full && !card.active" class="card card-pad notice-card">
           <b>这张名片尚未开通或已到期</b>
           <p class="small muted">联系持有者开通后，二维码仍会指向这里，无需更换。</p>
         </div>
-        <div v-if="!embed && isOwner && !card.active" class="btn-row" style="margin:12px 0">
+        <div v-if="full && isOwner && !card.active" class="btn-row" style="margin:12px 0">
           <router-link to="/me/plans" class="btn btn-primary">立即开通</router-link>
         </div>
 
-        <div v-if="!embed && (contactFields.length || fullAddress)" class="card card-pad cv-block">
+        <div v-if="full && (contactFields.length || fullAddress)" class="card card-pad cv-block">
           <h3>联系方式 <span class="small muted">· 点一行即复制该字段</span></h3>
           <div v-for="f in contactFields" :key="f.key" class="cv-contact-row" @click="copy(f.value, f.label)">
             <div class="cv-contact-label">{{ f.label }}：</div>
@@ -71,8 +72,8 @@
           </div>
         </div>
 
-        <!-- 嵌入模式（/me 预览）只展示真实模板的封面+身份区，其余信息由宿主页呈现 -->
-        <template v-if="!embed">
+        <!-- 仅 embed 裁剪正文；owner 与公开页渲染完全相同的整页内容 -->
+        <template v-if="full">
         <div v-if="card.bio" class="card card-pad cv-block">
           <h3>关于我</h3><p class="cv-bio">{{ card.bio }}</p>
         </div>
@@ -141,7 +142,7 @@
         </template>
       </div>
       <!-- 次级操作收进悬浮「⋯」：导航/收藏/交换名片，不铺在正文 -->
-      <button v-if="!embed" class="cv-fab" :class="{ on: moreOpen }" @click="moreOpen = !moreOpen" aria-label="更多操作">⋯</button>
+      <button v-if="full" class="cv-fab" :class="{ on: moreOpen }" @click="moreOpen = !moreOpen" aria-label="更多操作">⋯</button>
       <div v-if="moreOpen" class="cv-fab-mask" @click="moreOpen = false">
         <div class="cv-fab-menu" @click.stop>
           <button v-if="fullAddress && maps.length" @click="moreOpen = false; openMapSheet()">导航到此处</button>
@@ -149,9 +150,10 @@
           <button @click="moreOpen = false; openExchange()">交换名片</button>
         </div>
       </div>
-      <!-- 主操作单排 4 个，不再两行六个 -->
-      <div v-if="!embed" class="cv-dock">
-        <button class="btn btn-primary" :disabled="!contactPhone" @click="tel(contactPhone)">打电话</button>
+      <!-- 主操作单排 4 个。与公开页唯一差异：持有者视角首按钮为「编辑名片」而非「打电话」。 -->
+      <div v-if="full" class="cv-dock">
+        <button v-if="owner" class="btn btn-primary" @click="router.push('/me/card')">编辑名片</button>
+        <button v-else class="btn btn-primary" :disabled="!contactPhone" @click="tel(contactPhone)">打电话</button>
         <button class="btn btn-ghost" :disabled="!contactPhone" @click="copy(contactPhone, '号码')">复制号码</button>
         <a v-if="contactNative" class="btn btn-ghost" :title="contactActionTip" :aria-label="contactActionLabel" :href="vcfApi">存入通讯录</a>
         <button v-else class="btn btn-ghost" :title="contactActionTip" :aria-label="contactActionLabel" @click="saveContact">存入通讯录</button>
@@ -241,9 +243,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-// embed：嵌入模式，供 /me 工作台复用同一套模板渲染真实名片头部（封面+身份区），
-// 不显示返回/切肤/二维码入口/dock/分享等，也不上报浏览与设置微信分享。
-const props = defineProps({ embed: { type: Boolean, default: false }, embedSlug: { type: String, default: '' } })
+// embed：嵌入模式（只渲染封面+身份区，其余由宿主页呈现）；owner：持有者预览（/me 我的名片）。
+// ⚠️ owner 必须与公开页「同一套模板、同一套样式、同一屏内容」，唯一差异是 dock 首个按钮为「编辑名片」
+// 而不是「打电话」，且不设置微信分享/不查收藏/不上报访问（避免污染统计）。2026-11-25 用户定稿。
+const props = defineProps({
+  embed: { type: Boolean, default: false },
+  embedSlug: { type: String, default: '' },
+  owner: { type: Boolean, default: false }
+})
 import api from '../api'
 import { showToast, auth, siteConfig } from '../store'
 import { THEMES, themeOf, themeVars } from '../utils/themes'
@@ -257,6 +264,9 @@ import { BRAND_ICONS, FUNC_ICONS } from '../utils/icons'
 
 const route = useRoute(); const router = useRouter()
 const embed = props.embed
+const owner = props.owner
+// 是否渲染公开页整页内容：owner 模式与公开页完全一致，只有 embed 才裁成头部
+const full = !embed
 const slug = props.embedSlug || route.params.slug
 const qrApi = `/api/cards/public/${slug}`
 const vcfApi = `${qrApi}/card.vcf`
@@ -307,7 +317,7 @@ function hexToRgb(hex) {
 }
 const vars = computed(() => ({ ...themeVars(t.value), '--glow-rgb': hexToRgb(t.value.accent) }))
 // 扫码进来的访客多为未登录：只在未登录且非本人时展示建卡引导，避免打扰名片主人
-const showCreateOwn = computed(() => !auth.token && !isOwner.value)
+const showCreateOwn = computed(() => !owner && !auth.token && !isOwner.value)
 const regionLine = computed(() => {
   const c = card.value || {}
   return [c.province, c.city, c.district, c.street].filter(Boolean).join(' · ')
@@ -421,13 +431,13 @@ async function load() {
     card.value = data.data
     currentTheme.value = THEMES[data.data.theme] ? data.data.theme : 'ocean'
     template.value = data.data.template || 'contact'
-    if (!embed) setupWechatShare(api, {
+    if (!embed && !owner) setupWechatShare(api, {
       title: `${card.value.name || '名片'} · ${card.value.title || card.value.company || '电子名片'}`,
       desc: `${[card.value.company, card.value.department, card.value.title].filter(Boolean).join(' · ') || '电子名片'}，扫码打开名片`,
       link: card.value.url || windowRef.location.href,
       imgUrl: absoluteMediaUrl(card.value.avatar || card.value.logo || card.value.cover)
     })
-    if (!embed && auth.token) {
+    if (!embed && !owner && auth.token) {
       try { const mine = await api.get('/api/cards/mine'); isOwner.value = mine.data.data?.slug === slug } catch { /* 忽略 */ }
       if (!isOwner.value) {
         try { favorite.value = !!(await api.get(`/api/cards/public/${slug}/favorite`)).data.data?.favorite } catch { /* 忽略 */ }
@@ -443,7 +453,7 @@ async function load() {
       if (changed) windowRef.history.replaceState(null, '', u.toString())
     }
   } catch (e) { error.value = e.message } finally { loading.value = false }
-  if (embed) return // 嵌入预览不拉资料夹、不上报浏览，不污染访问统计
+  if (embed || owner) return // 嵌入预览/持有者预览不拉资料夹、不上报浏览，不污染访问统计
   // 资料夹与来源/城市上报：不阻塞名片主流程，失败静默
   try { materialsList.value = (await api.get(`${qrApi}/materials`)).data.data?.list || [] } catch { /* 忽略 */ }
   traceVisit()
@@ -548,11 +558,16 @@ async function toggleFavorite() {
 <style scoped>
 /* 底部 dock 单排常驻，所有模板统一留足底部空间，避免遮住最后一张卡片 */
 .cv-page { background: var(--t-bg); color: var(--t-text); min-height: 100vh; padding-bottom: 92px; }
-/* 嵌入模式（/me 预览）：只做名片头部展示，不吃整屏、不留 dock 空间 */
+/* 嵌入模式（仅裁头部的旧用法，保留兼容）：不吃整屏、不留 dock 空间 */
 .cv-page.cv-embed { min-height: 0; padding-bottom: 0; background: transparent; }
 .cv-embed .cv-cover { border-radius: 0 0 18px 18px; }
 .cv-embed .cv-main { margin-top: -34px; }
 .cv-embed .cv-profile { margin-top: 0; }
+/* 持有者预览：整页与公开页同款，但 /me 是 tab 页、底部还有 MemberNav（z110），dock/fab 抬到它上方避免被盖 */
+.cv-page.cv-owner { padding-bottom: 148px; }
+.cv-owner .cv-dock { bottom: 56px; }
+.cv-owner .cv-fab { bottom: calc(128px + env(safe-area-inset-bottom)); }
+.cv-owner .cv-fab-menu { bottom: calc(180px + env(safe-area-inset-bottom)); }
 /* 高档商务名片：卡片大圆角 + 轻阴影，浅灰蓝底衬托层次 */
 .cv-page .card { border-radius: 20px; box-shadow: 0 4px 18px rgba(30,64,120,.07); border: 0; overflow: hidden; }
 .cv-cover { height: 168px; position: relative; border-radius: 0 0 28px 28px; background: var(--t-cover); overflow: hidden; }
@@ -565,6 +580,8 @@ async function toggleFavorite() {
 .cv-cover > * { position: relative; z-index: 1; }
 @media (prefers-reduced-motion: reduce) { .cv-cover::before { animation: none; opacity: .7; } }
 .cv-back { position: absolute; left: 14px; top: calc(14px + env(safe-area-inset-top)); font-size: 30px; color: #fff; line-height: 1; }
+/* 持有者预览的编辑入口：与返回按钮同位，稍缩字号避免与品牌字重叠 */
+.cv-owner-edit { font-size: 22px; width: 34px; text-align: center; z-index: 2; }
 .cv-brand { position: absolute; right: 16px; top: calc(18px + env(safe-area-inset-top)); color: #fff; font-weight: 800; opacity: .9; }
 .cv-brand em { font-style: normal; opacity: .75; }
 .cv-themes { position: absolute; right: 16px; bottom: 14px; display: flex; gap: 6px; }
@@ -1101,6 +1118,7 @@ async function toggleFavorite() {
   --cv-back-color: #6b4a2e; --cv-back-bg: #fff; --cv-brand-color: #2a2118;
 }
 .cv-clean.cv-page { font-family: var(--cv-name-font, inherit); padding-bottom: 92px; }
+.cv-clean.cv-page.cv-owner { padding-bottom: 148px; }
 .cv-tpl-acid.cv-page { background-image: var(--cv-page-grid); }
 /* 渐变文字（E 霓虹） */
 .cv-tpl-neon .cv-name { -webkit-background-clip: text; background-clip: text; background-image: var(--cv-name-gradient); color: transparent; -webkit-text-fill-color: transparent; }
