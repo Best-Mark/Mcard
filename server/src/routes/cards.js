@@ -1,8 +1,5 @@
 const express = require('express')
-const fs = require('fs')
-const path = require('path')
 const db = require('../db')
-const config = require('../config')
 const { originOf, requestUrl } = require('../utils/origin')
 const { ok, fail, wrap } = require('../utils/response')
 const { authRequired, parseToken } = require('../utils/auth')
@@ -19,59 +16,15 @@ const notify = require('../services/notify')
 const router = express.Router()
 
 // 二维码中心图三级回落（唯一真相源）：名片 LOGO(cards.logo) > 名片头像(cards.avatar) > 默认 brand 文字。
-// ⚠️ SVG 以 <img> 加载时浏览器禁止引用任何外部资源，本地文件与远程头像都必须内联成 dataURL；
-// 否则会出现「LOGO 配了却显示默认 M」。远程读取带超时/大小上限/类型白名单，失败静默回落下一级。
-const QR_CENTER_MAX_BYTES = 2 * 1024 * 1024
-const QR_CENTER_REMOTE_TTL = 30 * 60 * 1000
-const qrCenterRemoteCache = new Map()
-
-function qrLocalDataUrl(url) {
-  const m = typeof url === 'string' && url.match(/^\/(?:uploads|media)\/([A-Za-z0-9_.-]{4,120})$/)
-  if (!m) return ''
-  const file = path.join(config.UPLOAD_DIR, m[1])
-  if (!fs.existsSync(file)) return ''
-  try {
-    const buf = fs.readFileSync(file)
-    if (!buf.length || buf.length > QR_CENTER_MAX_BYTES) return ''
-    const ext = path.extname(m[1]).toLowerCase()
-    const mime = ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg'
-      : ext === '.webp' ? 'image/webp' : ext === '.gif' ? 'image/gif' : 'image/png'
-    return `data:${mime};base64,${buf.toString('base64')}`
-  } catch (e) { console.warn('[qr-center] 本地中心图读取失败:', e.message); return '' }
-}
-
-async function qrRemoteDataUrl(url) {
-  if (!/^https?:\/\//i.test(String(url || ''))) return ''
-  const cached = qrCenterRemoteCache.get(url)
-  if (cached && Date.now() - cached.t < QR_CENTER_REMOTE_TTL) return cached.v
-  let timer
-  try {
-    const ctl = new AbortController()
-    timer = setTimeout(() => ctl.abort(), 4000)
-    const resp = await fetch(url, { signal: ctl.signal, redirect: 'follow' })
-    if (!resp || !resp.ok) return ''
-    const type = String(resp.headers.get('content-type') || '').split(';')[0].trim().toLowerCase()
-    if (!/^image\/(png|jpe?g|webp|gif)$/.test(type)) return ''
-    const buf = Buffer.from(await resp.arrayBuffer())
-    if (!buf.length || buf.length > QR_CENTER_MAX_BYTES) return ''
-    const mime = type === 'image/jpg' ? 'image/jpeg' : type
-    const data = `data:${mime};base64,${buf.toString('base64')}`
-    qrCenterRemoteCache.set(url, { t: Date.now(), v: data })
-    if (qrCenterRemoteCache.size > 100) qrCenterRemoteCache.delete(qrCenterRemoteCache.keys().next().value)
-    return data
-  } catch (e) {
-    console.warn('[qr-center] 远程头像读取失败，回落下一级:', e.message)
-    return ''
-  } finally { if (timer) clearTimeout(timer) }
-}
+// ⚠️ SVG 以 <img> 加载时浏览器禁止引用任何外部资源，必须内联成 dataURL；复用 utils/inlineImage 的
+// 超时/类型/大小/缓存逻辑（与打印、分享缩略图同一份真相源）。内部调用允许存量外链头像（仍拒绝内网/本机）。
+const { inlineImage } = require('../utils/inlineImage')
 
 async function qrCenterImage(row) {
   for (const url of [row?.logo, row?.avatar]) {
     if (!url) continue
-    const local = qrLocalDataUrl(url)
-    if (local) return local
-    const remote = await qrRemoteDataUrl(url)
-    if (remote) return remote
+    const data = await inlineImage(url, { allowAny: true })
+    if (data) return data
   }
   return ''
 }
@@ -181,6 +134,15 @@ function marketView(row, originLat, originLng, origin) {
 router.get('/public/templates', wrap((req, res) => {
   res.set('Cache-Control', 'public, max-age=60, must-revalidate')
   ok(res, { templates: CARD_TEMPLATES })
+}))
+
+// 图片内联（打印名片/分享缩略图用）：服务端拉取 OSS 图片转 dataURL，绕开浏览器 CORS。
+// 匿名可用（公开名片页也要生成分享图），但只允许本站 uploads 与已配置 OSS 域名，杜绝 SSRF。
+router.get('/public/inline-image', wrap(async (req, res) => {
+  const url = String(req.query.url || '').trim().slice(0, 2000)
+  const data = await inlineImage(url)
+  res.set('Cache-Control', data ? 'private, max-age=300' : 'no-store')
+  ok(res, { data })
 }))
 
 // 资料夹类型 + 访客来源清单（前端编辑器/统计页唯一真相源，不各自硬编码）

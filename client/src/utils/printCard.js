@@ -7,19 +7,30 @@ const esc = s => String(s ?? '').replace(/[<>&"']/g, c => ({ '<': '&lt;', '>': '
 // 深底版式的固定墨色/纸色（不随浅色主题漂走，保证印刷对比度）
 const INK = { dark: '#111827', dark2: '#1f2937', paper: '#f8fafc', gold: '#c9a163', gold2: '#e3c893', line: 'rgba(255,255,255,.28)' }
 
+// 图片内联唯一真相源（2026-11-26）：远程图一律走服务端 /api/cards/public/inline-image，
+// 由服务端带白名单/超时/大小限制拉取并转 dataURL，绕开浏览器 CORS（OSS 未配 Access-Control-Allow-Origin）。
+// 本地 /uploads 与 data: 直接返回/直读，不绕服务端；接口失败静默回落空串，调用方用默认头像/文字兜底。
 export async function inlineImage(url) {
   if (!url) return ''
   if (url.startsWith('data:')) return url
+  if (url.startsWith('/')) {
+    try {
+      const res = await fetch(url)
+      if (!res.ok) return ''
+      const blob = await res.blob()
+      return await new Promise(resolve => {
+        const fr = new FileReader()
+        fr.onload = () => resolve(fr.result)
+        fr.onerror = () => resolve('')
+        fr.readAsDataURL(blob)
+      })
+    } catch { return '' }
+  }
   try {
-    const res = await fetch(url)
+    const res = await fetch(`/api/cards/public/inline-image?url=${encodeURIComponent(url)}`)
     if (!res.ok) return ''
-    const blob = await res.blob()
-    return await new Promise(resolve => {
-      const fr = new FileReader()
-      fr.onload = () => resolve(fr.result)
-      fr.onerror = () => resolve('')
-      fr.readAsDataURL(blob)
-    })
+    const json = await res.json()
+    return json?.code === 0 && json?.data?.data ? json.data.data : ''
   } catch { return '' }
 }
 
