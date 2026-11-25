@@ -14,10 +14,6 @@
       <button v-if="owner" class="cv-back cv-owner-edit" @click="router.push('/me/card')" aria-label="编辑名片">✎</button>
       <button v-else-if="full" class="cv-back" @click="router.back ? router.back() : router.push('/')" aria-label="返回">‹</button>
       <div class="cv-brand">M<em>Card</em></div>
-      <div v-if="full" class="cv-themes">
-        <button v-for="(v, k) in THEMES" :key="k" :style="{ background: v.accent }"
-                :class="{ on: currentTheme === k }" :title="v.label" @click="currentTheme = k" />
-      </div>
     </div>
 
     <div v-if="loading" class="container cv-loading">名片加载中…</div>
@@ -599,9 +595,6 @@ async function toggleFavorite() {
 .cv-owner-edit { font-size: 22px; width: 34px; text-align: center; z-index: 2; }
 .cv-brand { position: absolute; right: 16px; top: calc(18px + env(safe-area-inset-top)); color: #fff; font-weight: 800; opacity: .9; }
 .cv-brand em { font-style: normal; opacity: .75; }
-.cv-themes { position: absolute; right: 16px; bottom: 14px; display: flex; gap: 6px; }
-.cv-themes button { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255,255,255,.6); }
-.cv-themes button.on { box-shadow: 0 0 0 2px #fff; transform: scale(1.15); }
 .cv-main { margin-top: -48px; position: relative; }
 .cv-loading { padding: 60px 0; text-align: center; }
 .cv-profile { padding: 18px; display: flex; gap: 14px; align-items: flex-start; position: relative; background: var(--t-surface); }
@@ -709,7 +702,6 @@ async function toggleFavorite() {
 .cv-tpl-minimal .cv-cover { height: 76px; border-radius: 0; background: var(--t-surface); border-bottom: 1px solid var(--line); }
 .cv-tpl-minimal .cv-brand { color: var(--t-accent); opacity: 1; }
 .cv-tpl-minimal .cv-back { color: var(--t-text); }
-.cv-tpl-minimal .cv-themes { display: none; }
 .cv-tpl-minimal .cv-main { margin-top: 0; }
 .cv-tpl-minimal .card { box-shadow: none; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; }
 .cv-tpl-minimal .cv-profile { padding: 24px 18px; }
@@ -805,7 +797,6 @@ async function toggleFavorite() {
 .cv-tpl-minimal .cv-cover { height: 54px; border-radius: 0; background: #fff; border-bottom: 1px solid #e5e7eb; }
 .cv-tpl-minimal .cv-brand { color: #111827; opacity: 1; top: calc(16px + env(safe-area-inset-top)); }
 .cv-tpl-minimal .cv-back { color: #111827; }
-.cv-tpl-minimal .cv-themes { display: none; }
 .cv-tpl-minimal .cv-main { margin-top: 0; }
 .cv-tpl-minimal .card { border: 0; border-bottom: 1px solid #eef0f3; border-radius: 0; box-shadow: none; background: transparent; }
 .cv-tpl-minimal .cv-profile { padding: 26px 18px 22px; align-items: flex-start; gap: 16px; }
@@ -865,7 +856,6 @@ async function toggleFavorite() {
 .cv-tpl-seal .cv-cover::after { display: none; }
 .cv-tpl-seal .cv-brand { color: #fff; letter-spacing: 3px; }
 .cv-tpl-seal .cv-back { color: #fff; }
-.cv-tpl-seal .cv-themes { display: none; }
 .cv-tpl-seal .cv-main { margin-top: -20px; }
 .cv-tpl-seal .card { border-radius: 0; border: 2px solid #111827; box-shadow: 4px 4px 0 rgba(17,24,39,.12); background: #fff; }
 .cv-tpl-seal .cv-profile { border-top: 6px solid #111827; padding: 18px 16px; align-items: flex-end; }
@@ -1213,7 +1203,6 @@ async function toggleFavorite() {
 .cv-clean .cv-cover { height: 0; border-radius: 0; background: transparent; }
 .cv-clean .cv-back { top: calc(10px + env(safe-area-inset-top)); left: 12px; color: var(--cv-back-color); background: var(--cv-back-bg); border-radius: 50%; width: 34px; height: 34px; display: grid; place-items: center; font-size: 24px; backdrop-filter: blur(6px); }
 .cv-clean .cv-brand { top: calc(18px + env(safe-area-inset-top)); color: var(--cv-brand-color); }
-.cv-clean .cv-themes { bottom: auto; top: calc(20px + env(safe-area-inset-top)); }
 .cv-clean .cv-main { max-width: 430px; margin: 30px auto 0; }
 .cv-clean .cv-main > .card, .cv-clean .cv-main > .cv-profile { border-radius: 0; border: 0; box-shadow: none; background: transparent; margin-top: 0; }
 .cv-clean .cv-main > .cv-profile {
@@ -1306,7 +1295,6 @@ async function toggleFavorite() {
 /* ============ 深蓝鎏金 navygold：参考名片配色与结构（放在最后覆盖通用商务风）============ */
 .cv-tpl-navygold { color: var(--ng-ink); background: var(--ng-page-bg); }
 .cv-tpl-navygold .cv-cover { border-radius: 0 0 22px 22px; background: linear-gradient(135deg, var(--ng-navy) 0%, var(--ng-deep) 100%); }
-.cv-tpl-navygold .cv-themes button { border-color: rgba(216,187,133,.6); }
 .cv-tpl-navygold .card { border-color: rgba(185,147,85,.28); border-radius: 16px; box-shadow: 0 10px 30px -18px rgba(0,0,0,.55); }
 .cv-tpl-navygold .cv-profile {
   position: relative; overflow: hidden; border-radius: 22px; padding: 30px 24px 22px;
