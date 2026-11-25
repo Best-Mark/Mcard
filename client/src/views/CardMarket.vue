@@ -91,7 +91,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
 import { showToast } from '../store'
@@ -107,6 +107,13 @@ const loading = ref(false)
 const loadError = ref('')
 const sheetOpen = ref(false)
 const openSection = ref('status')
+// 弹层打开锁页面滚动，避免上拖时带动背后的页
+let bodyOverflowBefore = ''
+watch(sheetOpen, on => {
+  if (on) { bodyOverflowBefore = document.body.style.overflow; document.body.style.overflow = 'hidden' }
+  else document.body.style.overflow = bodyOverflowBefore
+})
+onBeforeUnmount(() => { document.body.style.overflow = bodyOverflowBefore })
 
 const SECTIONS = [
   { k: 'status', label: '上架' },
@@ -168,10 +175,12 @@ async function done() {
 .preview-card { padding: 12px; }
 .preview-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 
-.sheet-mask { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 98; opacity: 0; pointer-events: none; transition: opacity .2s; }
+/* 层级与实体名片设计一致：tabbar=110，launcher=105，遮罩=120，弹层=121；
+   低于 tabbar 会让弹层底部字段点不到，visibility 隐藏避免拦截背后滚动。 */
+.sheet-mask { position: fixed; inset: 0; background: rgba(15,23,42,.45); z-index: 120; opacity: 0; pointer-events: none; transition: opacity .2s; }
 .sheet-mask.show { opacity: 1; pointer-events: auto; }
-.edit-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 99; background: #fff; border-radius: 16px 16px 0 0; transform: translateY(105%); transition: transform .25s; max-height: 78vh; overflow: hidden; display: flex; flex-direction: column; }
-.edit-sheet.show { transform: translateY(0); }
+.edit-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 121; background: #fff; border-radius: 16px 16px 0 0; transform: translateY(105%); transition: transform .24s ease; visibility: hidden; max-height: 78vh; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
+.edit-sheet.show { transform: translateY(0); visibility: visible; }
 @media (min-width: 900px) { .edit-sheet { left: 50%; right: auto; width: 560px; margin-left: -280px; border-radius: 16px 16px 0 0; } }
 .sheet-grab { height: 18px; display: grid; place-items: center; flex: 0 0 18px; }
 .sheet-grab span { width: 36px; height: 4px; border-radius: 2px; background: var(--line); }
@@ -184,8 +193,8 @@ async function done() {
 .ico-region { border-radius: 2px; }
 .ico-tune { border-radius: 50% 50% 3px 3px; }
 .tab-dot { position: absolute; bottom: 0; left: 50%; width: 4px; height: 4px; border-radius: 50%; background: var(--primary); }
-.control-panel { margin: 0; border-radius: 0; border: 0; overflow-y: auto; }
-.bottom-launcher { position: fixed; left: 0; right: 0; bottom: calc(56px + env(safe-area-inset-bottom)); z-index: 60; display: flex; gap: 6px; padding: 8px 12px; background: #fff; border-top: 1px solid var(--line); box-shadow: 0 -4px 16px rgba(0,0,0,.06); }
+.control-panel { margin: 0; border-radius: 0; border: 0; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.bottom-launcher { position: fixed; left: 0; right: 0; bottom: calc(60px + env(safe-area-inset-bottom)); z-index: 105; display: flex; gap: 6px; padding: 8px 12px; background: #fff; border-top: 1px solid var(--line); box-shadow: 0 -4px 16px rgba(0,0,0,.06); }
 .bottom-launcher button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 0; border-radius: 8px; color: var(--muted); font-size: 12px; }
 .bottom-launcher button.on { color: var(--primary); background: color-mix(in srgb, var(--primary) 10%, transparent); }
 .market-value { background: var(--bg-page); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
