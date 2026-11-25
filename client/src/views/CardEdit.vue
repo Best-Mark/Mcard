@@ -42,15 +42,8 @@
               </div>
             </div>
 
-            <div class="identity-block divided">
-              <!-- 名片头像属于名片资料(cards.avatar)，与个人中心的账户头像(users.avatar)相互独立 -->
-              <div class="block-title">👤 名片头像 <span class="muted small">展示在名片上的个人照片 · 与账户头像分开</span></div>
-              <div class="field">
-                <div v-if="form.avatar" class="logo-current"><img :src="form.avatar" alt="当前名片头像" /><span>当前名片头像 · 可到素材库替换</span></div>
-                <AssetPicker v-model="form.avatar" label="从素材库选" />
-              </div>
-            </div>
-
+            <!-- 名片头像入口已移除：名片视觉主体是上面的 LOGO，账户头像在个人中心单独管；
+                 cards.avatar 字段保留（存量数据与分享缩略图兜底仍会读），不再在这里暴露编辑项。 -->
             <div class="identity-block divided">
               <div class="block-title">✎ 姓名与职位</div>
             <div class="grid2">
@@ -580,13 +573,8 @@ async function finish() {
 .identity-block.divided { border-top: 1px solid var(--line, #e8edf4); margin-top: 16px; padding-top: 16px; }
 .block-title { font-size: 14px; font-weight: 700; color: var(--text, #0f172a); margin-bottom: 12px; }
 .block-title .muted { font-weight: 400; margin-left: 6px; }
-.avatar-row { display: flex; align-items: center; gap: 14px; margin-bottom: 4px; }
 .logo-current { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 12px; color: var(--muted); }
 .logo-current img { width: 48px; height: 48px; object-fit: contain; border: 1px solid var(--line); border-radius: 10px; background: #fff; padding: 4px; }
-.avatar-preview { width: 64px; height: 64px; border-radius: 16px; background: var(--primary); color: #fff; display: grid; place-items: center; font-size: 26px; font-weight: 800; overflow: hidden; }
-.avatar-preview img { width: 100%; height: 100%; object-fit: cover; }
-.upload-btn { position: relative; overflow: hidden; }
-.upload-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .locate-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .locate-row .mono { color: var(--muted); }
 .market-value { padding: 12px 14px; margin-bottom: 14px; border-radius: 12px; background: linear-gradient(135deg, #ecfeff, #eff6ff); border: 1px solid #c7d2fe; }
