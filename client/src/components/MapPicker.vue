@@ -26,13 +26,27 @@
         </div>
         <div v-else-if="suggestOpen && searching" class="mp-suggest mp-suggest-loading">搜索中…</div>
       </div>
-      <button v-if="hasOrigin" class="btn btn-sm mp-back-btn" :disabled="loading" title="回到本次选点的出发点" @click="backToOrigin">⌖ 回到原点</button>
       <button class="btn btn-sm btn-primary" :disabled="loading" @click="useHere">用这里</button>
     </div>
     <div class="mp-map-wrap">
       <div ref="mapEl" class="mp-map"></div>
       <!-- 选点指针固定在地图正中心（相对地图容器，不受搜索栏高度影响） -->
       <div class="mp-cross" aria-hidden="true">＋</div>
+      <!-- 左下角悬浮「回到原点」定位钮（参照 SMARTBNB 的当前位置钮：纯图标+文字，不占搜索行） -->
+      <button v-if="hasOrigin" class="mp-locate" :disabled="loading" title="回到本次选点的出发点" @click="backToOrigin">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+          <circle cx="12" cy="12" r="10.5" />
+          <line x1="12" y1="1.5" x2="12" y2="9" />
+          <line x1="12" y1="15" x2="12" y2="22.5" />
+          <line x1="1.5" y1="12" x2="9" y2="12" />
+          <line x1="15" y1="12" x2="22.5" y2="12" />
+          <line x1="10.5" y1="4.5" x2="13.5" y2="4.5" />
+          <line x1="4.5" y1="10.5" x2="4.5" y2="13.5" />
+          <line x1="19.5" y1="10.5" x2="19.5" y2="13.5" />
+          <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" />
+        </svg>
+        <span>当前位置</span>
+      </button>
     </div>
     <div class="mp-hint small muted">拖动地图让十字准星对准位置，点「用这里」确认</div>
     <div v-if="centerHint" class="mp-center small">{{ centerHint }}</div>
@@ -217,7 +231,6 @@ onBeforeUnmount(() => {
 .mp-search-row { display: flex; gap: 8px; margin-bottom: 8px; }
 .mp-input-wrap { position: relative; flex: 1; min-width: 0; }
 .mp-search { width: 100%; }
-.mp-back-btn { white-space: nowrap; border: 1px solid var(--line, #e8edf4); background: var(--bg-card, #fff); color: var(--primary, #2563eb); font-weight: 600; }
 .mp-suggest { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 30; max-height: 240px; overflow-y: auto; background: var(--bg-card, #fff); border: 1px solid var(--line, #e8edf4); border-radius: 10px; box-shadow: 0 8px 24px rgba(15,23,42,.14); }
 .mp-suggest-item { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--line, #eef2f7); }
 .mp-suggest-item:last-child { border-bottom: 0; }
@@ -227,6 +240,10 @@ onBeforeUnmount(() => {
 .mp-map-wrap { position: relative; }
 .mp-map { height: 320px; border-radius: 10px; border: 1px solid var(--line, #e8edf4); background: #eef2f7; }
 .mp-cross { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 36px; line-height: 1; color: #dc2626; text-shadow: 0 1px 4px #fff, 0 0 2px #fff; pointer-events: none; font-weight: 700; z-index: 500; }
+/* 回到原点：地图左下角悬浮定位钮（对齐 SMARTBNB 当前位置钮：纯图标 + 白字阴影，无按钮框） */
+.mp-locate { position: absolute; left: 12px; bottom: 16px; z-index: 500; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0; border: 0; background: transparent; color: #22c55e; cursor: pointer; }
+.mp-locate:disabled { opacity: .5; }
+.mp-locate span { font-size: 10px; line-height: 1; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.6); white-space: nowrap; }
 .mp-hint { margin-top: 6px; }
 .mp-center { margin-top: 6px; padding: 6px 9px; border-radius: 8px; background: #eff6ff; color: #2563eb; line-height: 1.5; }
 .mp-error { margin-top: 6px; color: #b45309; }
