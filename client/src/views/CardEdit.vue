@@ -173,7 +173,7 @@
           <b>实时预览 · 改一项看一项</b>
           <button class="btn btn-sm btn-ghost" @click="showPreview = false">关闭</button>
         </div>
-        <CardPreview :card="form" :tags="tagList" :materials="materials" :qr-url="previewQr" :section="active" />
+        <CardPreview :card="form" :tags="tagList" :materials="materials" :qr-url="previewQr" :section="active" :industries="marketMeta.industries" />
       </div>
     </div>
 

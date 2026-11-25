@@ -1,6 +1,5 @@
 <template>
   <div class="cp-wrap">
-    <div class="cp-hint">正在编辑：<b>{{ sectionLabel }}</b> · 下方即时更新（未保存也能看到）</div>
     <div ref="screen" class="cp-screen" :class="'cp-tpl-' + (card.template || 'classic')" :style="vars">
       <div class="cp-cover">
         <div class="cp-brand">M<em>Card</em></div>
@@ -110,16 +109,18 @@ const props = defineProps({
 })
 
 const screen = ref(null)
+// 行业名称唯一真相源：先按传入的行业清单映射 key→label；未传清单时回落服务端随名片下发的
+// industryLabel（/api/cards/mine、集市列表均已算好），绝不把原始 key（如 service）直接露给用户。
 const industryLabel = computed(() => {
-  const hit = (props.industries || []).find(i => i.key === props.card.industry)
-  return hit ? hit.label : (props.card.industry || '未选择')
+  const key = String(props.card?.industry || '').toLowerCase()
+  if (!key) return '未选择'
+  const hit = (props.industries || []).find(i => i.key === key)
+  if (hit) return hit.label
+  const serverLabel = String(props.card?.industryLabel || '')
+  if (serverLabel && serverLabel !== key) return serverLabel
+  return key
 })
 const vars = computed(() => themeVars(themeOf(props.card)))
-const SECTION_LABELS = {
-  identity: '身份信息', bio: '简介与标签', contact: '联系方式', qr: '二维码',
-  links: '更多链接', materials: '资料夹', market: '名片集市', appearance: '外观风格'
-}
-const sectionLabel = computed(() => SECTION_LABELS[props.section] || '身份信息')
 
 const displayTitle = computed(() => {
   const c = props.card || {}
@@ -182,8 +183,6 @@ watch(() => props.section, async () => {
 
 <style scoped>
 .cp-wrap { display: flex; flex-direction: column; gap: 8px; }
-.cp-hint { font-size: 11px; color: var(--muted); background: #eff6ff; border: 1px solid #dbeafe; border-radius: 8px; padding: 7px 10px; line-height: 1.5; }
-.cp-hint b { color: var(--primary); }
 .cp-screen { height: min(72vh, 760px); overflow-y: auto; background: var(--t-bg); color: var(--t-text); border: 1px solid var(--line); border-radius: 14px; position: relative; scroll-behavior: smooth; }
 .cp-cover { height: 92px; position: relative; border-radius: 0 0 18px 18px; background: var(--t-cover); }
 .cp-brand { position: absolute; right: 12px; top: 12px; color: #fff; font-weight: 800; font-size: 13px; opacity: .9; }
