@@ -4,15 +4,19 @@
       <!-- 三列同屏滚轮：省 / 市 / 区，滚动一列停稳后自动联动下级（MShop RegionTriplePicker 同款交互） -->
       <div v-for="(col, ci) in wheels" :key="ci" class="rp-col">
         <div class="rp-col-title">{{ col.title }}</div>
-        <div class="rp-wheel" :ref="el => setWheelRef(el, ci)" :data-col="ci" @touchstart="onTouch(true)" @touchend="onTouch(false)" @touchcancel="onTouch(false)">
-          <div class="rp-wheel-pad"></div>
-          <button
-            v-for="(r, ri) in col.list" :key="r.code"
-            class="rp-item"
-            :class="{ on: ri === col.index }"
-            @click="clickItem(ci, ri)"
-          >{{ r.name }}</button>
-          <div class="rp-wheel-pad"></div>
+        <div class="rp-wheel-wrap">
+          <div class="rp-wheel" :ref="el => setWheelRef(el, ci)" :data-col="ci" @touchstart="onTouch(true)" @touchend="onTouch(false)" @touchcancel="onTouch(false)">
+            <div class="rp-wheel-pad"></div>
+            <button
+              v-for="(r, ri) in col.list" :key="r.code"
+              class="rp-item"
+              :class="{ on: ri === col.index }"
+              @click="clickItem(ci, ri)"
+            >{{ r.name }}</button>
+            <div class="rp-wheel-pad"></div>
+          </div>
+          <!-- 固定选中框：相对不滚动的 wrap 定位，内容从框后滚过，转到哪就选中哪（对齐 MShop RegionTriplePicker 的中间选中体验） -->
+          <div class="rp-frame" aria-hidden="true"></div>
         </div>
       </div>
     </div>
@@ -188,6 +192,8 @@ function pollSettle() {
   if (!firstPoll) {
     for (let i = 0; i < 3; i++) {
       if (idxs[i] !== lastIdx[i]) applyWheel(i, idxs[i])
+      // 高亮序号跟随滚动同步，保证与固定选中框里的项一致（原来只在初始化设置，滚动后蓝块跟着旧项跑掉）
+      if (wheels.value[i] && wheels.value[i].index !== idxs[i]) wheels.value[i].index = idxs[i]
     }
   }
   lastIdx = idxs.slice()
@@ -262,18 +268,20 @@ watch(() => [props.province, props.city, props.district, props.street].join('|')
 .rp-col { min-width: 0; }
 .rp-col-title { font-size: 12px; font-weight: 700; color: var(--primary, #2563eb); padding: 6px 8px; border-bottom: 2px solid var(--primary, #2563eb); margin-bottom: 6px; }
 /* 滚轮：每项 40px，上下各留 80px 让首尾项能停在中间高亮行 */
-.rp-wheel { height: 200px; overflow-y: auto; scroll-snap-type: y mandatory; scrollbar-width: none; -ms-overflow-style: none; overscroll-behavior: contain; position: relative; }
+.rp-wheel-wrap { position: relative; }
+.rp-wheel { height: 200px; overflow-y: auto; scroll-snap-type: y mandatory; scrollbar-width: none; -ms-overflow-style: none; overscroll-behavior: contain; }
 .rp-wheel::-webkit-scrollbar { display: none; }
 .rp-wheel-pad { height: 80px; }
 .rp-item { display: block; width: 100%; height: 40px; line-height: 40px; scroll-snap-align: center; text-align: center; font-size: 13px; color: var(--text, #0f172a); border-radius: 8px; }
-.rp-item.on { background: var(--primary, #2563eb); color: #fff; font-weight: 700; }
+/* 选中态交给固定选中框，项本身不再画蓝色实心块（滚动时蓝块会跟着内容跑掉） */
+.rp-item.on { color: var(--primary, #2563eb); font-weight: 700; }
+/* 固定中间选中框：相对不滚动的 wrap 定位，内容从框后滚过，转到哪就选中哪 */
+.rp-frame { position: absolute; top: 80px; left: 2px; right: 2px; height: 40px; border-top: 2px solid var(--primary, #2563eb); border-bottom: 2px solid var(--primary, #2563eb); background: rgba(37, 99, 235, .07); border-radius: 8px; pointer-events: none; z-index: 2; }
 .rp-street { margin-top: 14px; }
 .rp-street-chips { display: flex; flex-wrap: wrap; gap: 8px; max-height: 92px; overflow-y: auto; }
 .chip { font-size: 12px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line, #e8edf4); background: var(--bg-page, #f4f6fb); color: var(--muted, #6b7688); }
 .chip.on { background: var(--primary, #2563eb); border-color: var(--primary, #2563eb); color: #fff; font-weight: 700; }
 .rp-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line, #e8edf4); }
 .rp-path { flex: 1; min-width: 0; }
-@media (max-width: 400px) {
-  .rp-wheel { height: 180px; }
-}
+/* 小屏不再压低滚轮高度：选中框定位在 80px，需与 200px 滚轮的可视中心严格对齐 */
 </style>
