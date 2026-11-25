@@ -760,6 +760,13 @@
 .cv-page.cv-clean .cv-bio, .cv-page.cv-clean .small.muted { color: var(--cv-ink-2); }
 /* 链接副标题/文件小字同样落在卡内，不能用主题 --t-muted（暗色模板上会糊掉） */
 .cv-page.cv-clean .cv-links span, .cv-page.cv-clean .cv-gallery-file small { color: var(--cv-ink-2); }
+/* 暗底信息区的次要文字强制走最亮正文色：这条在 card-sheet.css 末尾、加载顺序晚于配色表，
+   不再依赖各模板 --cv-ink-2 的数值（旧构建/级联差异会让酸性荧光等仍显示暗橄榄字）。 */
+.cv-page.cv-clean.cv-tpl-glass,
+.cv-page.cv-clean.cv-tpl-elite,
+.cv-page.cv-clean.cv-tpl-neon,
+.cv-page.cv-clean.cv-tpl-acid,
+.cv-page.cv-clean.cv-tpl-poster { --cv-ink-2: var(--cv-ink); }
 .cv-page.cv-clean .cv-links b, .cv-page.cv-clean .cv-region-line { color: var(--cv-link-color); }
 .cv-page.cv-clean .cv-map-launch, .cv-page.cv-clean .cv-maps a { background: var(--cv-mini-bg); color: var(--cv-mini-color); box-shadow: var(--cv-mini-shadow); }
 
