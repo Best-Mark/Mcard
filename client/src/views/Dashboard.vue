@@ -3,7 +3,7 @@
        ⚠️ owner 与公开名片页必须同模板、同内容、同样式，唯一差异是 dock 首按钮「编辑名片」vs「打电话」。
        本页不再画任何名片内容（封面/联系方式/二维码/简介），否则就是两套样式（2026-11-25 用户定稿）。
        顶部 header 属于工作台 chrome（与统计/名片夹等页同款），不属于名片模板，公开页没有是正常的。 -->
-  <div>
+  <div :class="{ 'dash-collapsed': topCollapsed }" :style="card ? { paddingTop: 'calc(50px + var(--safe-top))' } : null">
     <header v-if="card" class="dash-top">
       <span class="dash-brand">M<em>Card</em></span>
       <span class="dash-sub">我的名片</span>
@@ -41,7 +41,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
 import { showToast, toggleDrawer } from '../store'
@@ -59,6 +59,26 @@ const busy = ref(false)
 const newSlug = ref('')
 const loadError = ref('')
 let loadStarted = false
+
+// 顶栏随滚动方向收起/出现：往下推（页面向下滚）收起，往上拉（页面向上滚）出现，停在顶部必现。
+// 用 rAF 节流 + 6px 阈值，避免轻微抖动反复切换；独立标志不与业务状态耦合。
+const topCollapsed = ref(false)
+let lastScrollY = 0
+let scrollRaf = 0
+function onScroll() {
+  if (scrollRaf) return
+  scrollRaf = requestAnimationFrame(() => {
+    scrollRaf = 0
+    const y = window.scrollY || document.documentElement.scrollTop || 0
+    const delta = y - lastScrollY
+    if (y <= 8) topCollapsed.value = false
+    else if (delta > 6) topCollapsed.value = true   // 向下滚 → 收起
+    else if (delta < -6) topCollapsed.value = false // 向上滚 → 出现
+    lastScrollY = y
+  })
+}
+onMounted(() => { lastScrollY = window.scrollY || 0; window.addEventListener('scroll', onScroll, { passive: true }) })
+onBeforeUnmount(() => { window.removeEventListener('scroll', onScroll); if (scrollRaf) cancelAnimationFrame(scrollRaf) })
 
 async function load() {
   if (loadStarted && loading.value) return
@@ -102,8 +122,10 @@ async function doShare() {
 
 <style scoped>
 /* 工作台头部：中性品牌蓝，不随名片模板变化（它是工作台 chrome，不属于名片本身） */
-/* 沉浸式顶到物理屏幕最上：状态栏区域也绘制品牌蓝，左右统一 16px */
-.dash-top { position: sticky; top: 0; z-index: 50; height: calc(50px + var(--safe-top)); display: flex; align-items: center; gap: 8px; padding: var(--safe-top) 16px 0; background: linear-gradient(90deg,#143b8f,#2563eb 60%,#06b6d4); color: #fff; }
+/* 沉浸式顶到物理屏幕最上：状态栏区域也绘制品牌蓝，左右统一 16px。
+   fixed + 滚动方向收起：往下推收起、往上拉出现；根 div 的 padding-top 补偿 fixed 脱离的文档流。 */
+.dash-top { position: fixed; top: 0; left: 0; right: 0; z-index: 50; height: calc(50px + var(--safe-top)); display: flex; align-items: center; gap: 8px; padding: var(--safe-top) 16px 0; background: linear-gradient(90deg,#143b8f,#2563eb 60%,#06b6d4); color: #fff; transition: transform .26s ease; }
+.dash-collapsed .dash-top { transform: translateY(-105%); }
 .dash-brand { font-weight: 800; font-size: 18px; }
 .dash-brand em { font-style: normal; opacity: .75; }
 .dash-sub { font-size: 12px; opacity: .8; }
