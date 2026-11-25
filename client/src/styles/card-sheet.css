@@ -746,3 +746,7 @@
 .cv-page.cv-clean .cv-dock .btn-ghost { background: var(--cv-btn-ghost-bg); color: var(--cv-btn-ghost-color, var(--cv-ink)); box-shadow: var(--cv-btn-ghost-shadow); }
 .cv-page.cv-clean .cv-site .btn-primary { background: var(--cv-btn-main-solid, var(--cv-btn-main-bg)); color: var(--cv-btn-main-color); border-color: transparent; }
 .cv-page.cv-clean .cv-site .btn-ghost { background: var(--cv-btn-ghost-bg); color: var(--cv-btn-ghost-color, var(--cv-ink)); border-color: transparent; }
+
+/* 地址作为联系方式卡内一行时，省市区与详细地址分两行显示（2026-11-26 用户定：地址属于联系信息） */
+.cv-contact-row .cv-contact-value > span { display: block; }
+.cv-contact-row .cv-contact-value > span + span { margin-top: 2px; }

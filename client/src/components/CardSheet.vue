@@ -35,7 +35,8 @@
     <!-- 各页面特有辅助块（未开通提示/集市展示状态）由 slot 注入，卡片本体不含业务流程 -->
     <slot name="after-profile" />
 
-    <div v-if="full && contactFields.length" class="card card-pad cv-block" data-sec="contact">
+    <!-- 地址本身属于联系信息，作为本卡最后一行（2026-11-26 用户定），不再单独成块 -->
+    <div v-if="full && (contactFields.length || fullAddress)" class="card card-pad cv-block" data-sec="contact">
       <h3>联系方式 <span class="small muted">· 点一行即复制该字段</span></h3>
       <div v-for="f in contactFields" :key="f.key" class="cv-contact-row" @click="onCopy(f.value, f.label)">
         <div class="cv-contact-label">{{ f.label }}：</div>
@@ -46,19 +47,19 @@
           <button v-if="f.key === 'email'" class="cv-row-act" type="button" @click="$emit('mailto', f.value)">邮件</button>
         </div>
       </div>
+      <div v-if="fullAddress" class="cv-contact-row" @click="onCopy(fullAddress, '地址')">
+        <div class="cv-contact-label">地址：</div>
+        <div class="cv-contact-value">
+          <span v-if="regionLine">{{ regionLine }}</span>
+          <span v-if="detailAddress">{{ detailAddress }}</span>
+        </div>
+        <div v-if="interactive && maps.length" class="cv-contact-acts" @click.stop>
+          <button class="cv-row-act" type="button" @click="$emit('map')">导航</button>
+        </div>
+      </div>
     </div>
 
     <template v-if="full">
-      <!-- 顺序口径（2026-11-26 用户定）：地址紧接联系方式；相册放信息区最后一块。 -->
-      <div v-if="fullAddress" class="card card-pad cv-block" data-sec="address">
-        <h3>地址</h3>
-        <div v-if="regionLine" class="cv-region-line">{{ regionLine }}</div>
-        <div class="cv-address" @click="onCopy(fullAddress, '地址')">
-          <span v-if="detailAddress">地址：{{ detailAddress }}</span>
-          <button v-if="maps.length" class="cv-map-launch" type="button" @click.stop="$emit('map')">导航</button>
-        </div>
-      </div>
-
       <div v-if="introText" class="card card-pad cv-block" data-sec="bio">
         <h3>简介</h3><p class="cv-bio">{{ introText }}</p>
       </div>
