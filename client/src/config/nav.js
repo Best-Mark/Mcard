@@ -1,6 +1,6 @@
 // 导航唯一真相源：H5 底部 tab / 抽屉 与 PC 侧栏共用同一份菜单定义。
 // 两端只负责「怎么跳转」，菜单项本身（文案/图标/分组/目标）在此一处定义。
-// kind: route=站内跳转；public=打开自己公开名片（query 可为 ?save=1 = 弹名片二维码大图）；share=分享名片。
+// kind: route=站内跳转；public=打开自己公开名片（query 可为 ?save=1 = 弹名片二维码大图）；share=分享名片；logout=退出登录。
 // path 可带 ?focus=xxx，由 CardEdit.vue 的 applyFocus 响应（模板与配色等子页）。
 // icon 一律填 client/src/utils/icons.js 的 FUNC_ICONS 名称：整套 Lucide 描边风格，
 // 禁止在这里写 emoji 或特殊字符（彩色 emoji 会破坏导航统一观感，且不同系统渲染不一致）。
@@ -26,14 +26,20 @@ export const DRAWER_GROUPS = [
       { label: '浏览统计 / 订单', icon: 'chart', kind: 'route', path: '/me/stats' },
       { label: '套餐 / 续期', icon: 'gem', kind: 'route', path: '/me/plans' }
     ]
+  },
+  {
+    title: '账户',
+    items: [
+      { label: '退出登录', icon: 'logout', kind: 'logout', danger: true }
+    ]
   }
 ]
 
-// 动作映射：把 nav 项交给调用方统一处理，两端逻辑一致（都在各自组件实现 go/goPublic/doShare）
-// 用户端不提供退出登录：微信内静默登录，退出后下一次进页面又会自动登录；后台管理员退出在 Admin.vue。
+// 动作映射：把 nav 项交给调用方统一处理，两端逻辑一致（都在各自组件实现 go/goPublic/doShare/logoutNow）
 export function runNavItem(item, handlers) {
   if (!item) return
   if (item.kind === 'route') return handlers.go(item.path)
   if (item.kind === 'public') return handlers.goPublic(item.query || '')
   if (item.kind === 'share') return handlers.doShare()
+  if (item.kind === 'logout') return handlers.logoutNow()
 }

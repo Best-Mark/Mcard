@@ -36,7 +36,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
 import AppIcon from '../components/AppIcon.vue'
-import { auth, ui, closeDrawer, showToast } from '../store'
+import { auth, ui, closeDrawer, logout, showToast } from '../store'
 import { shareOrCopy } from '../utils/share'
 import { isWeChat } from '../utils/save-image'
 import { setCardShare } from '../utils/wx-share'
@@ -49,8 +49,12 @@ const router = useRouter()
 const show = computed(() => !isPC.value && ((route.path.startsWith('/me') && !route.path.startsWith('/me/pay')) || route.path === '/market'))
 // 集市放在正中并做凸起强调：当前阶段以发现对口伙伴为重点（数据源唯一真相在 config/nav.js）
 const tabs = BOTTOM_TABS
-// 菜单真相源在 config/nav.js：用户端不提供退出登录（微信内静默登录，退出后会自动登录）。
-const visibleGroups = computed(() => DRAWER_GROUPS)
+// 微信内打开即静默登录，退出没有意义（下一次进页面又自动登录），抽屉里也不摆退出入口。
+// 菜单真相源仍在 config/nav.js，这里只按环境过滤展示，不复制一份菜单定义。
+const inWechat = isWeChat()
+const visibleGroups = computed(() => DRAWER_GROUPS
+  .map(g => ({ ...g, items: g.items.filter(it => !(it.kind === 'logout' && inWechat)) }))
+  .filter(g => g.items.length))
 const slug = ref('')
 const myCard = ref(null)
 const unread = ref(0)
@@ -70,7 +74,7 @@ function isActive(t) {
   const base = String(t.path || '').split('?')[0]
   return t.exact ? route.path === base : route.path.startsWith(base)
 }
-const navHandlers = { go, goPublic, doShare }
+const navHandlers = { go, goPublic, doShare, logoutNow }
 function onNav(item) { closeDrawer(); runNavItem(item, navHandlers) }
 function go(path) {
   closeDrawer()
@@ -104,6 +108,12 @@ async function doShare() {
   if (r === 'copied') showToast('链接已复制', 'success')
   else if (r === 'failed') showToast('复制失败，请手动复制地址栏链接', 'error')
 }
+function logoutNow() {
+  logout()
+  closeDrawer()
+  router.push('/')
+}
+
 watch(show, v => {
   document.body.classList.toggle('member-shell', v)
   if (!v) closeDrawer()
