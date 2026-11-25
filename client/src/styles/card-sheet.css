@@ -754,8 +754,10 @@
   text-align: left; font-size: 12px; letter-spacing: .1em; color: var(--cv-block-title);
   border-left: 0; padding-left: 0; border-top: 0; font-weight: 700;
 }
-.cv-page.cv-clean .cv-contact-row { flex-direction: row; align-items: center; gap: 10px; padding: 11px 0; border: 0; border-top: 1px solid var(--cv-line); }
-.cv-page.cv-clean .cv-contact-label { flex-basis: 52px; text-align: left; letter-spacing: normal; color: var(--cv-ink-2); }
+/* 联系方式行收紧（2026-11-26 用户反馈「中间空太多」）：标签列 52→42px（够放「支付宝:」），
+   列间距 10→6px，行上下留白 11→8px；仍保持所有行的值左对齐。 */
+.cv-page.cv-clean .cv-contact-row { flex-direction: row; align-items: center; gap: 6px; padding: 8px 0; border: 0; border-top: 1px solid var(--cv-line); }
+.cv-page.cv-clean .cv-contact-label { flex-basis: 42px; text-align: left; letter-spacing: normal; color: var(--cv-ink-2); }
 .cv-page.cv-clean .cv-contact-value { text-align: left; font-family: inherit; color: var(--cv-ink); font-weight: 600; }
 .cv-page.cv-clean .cv-bio, .cv-page.cv-clean .small.muted { color: var(--cv-ink-2); }
 /* 链接副标题/文件小字同样落在卡内，不能用主题 --t-muted（暗色模板上会糊掉） */
