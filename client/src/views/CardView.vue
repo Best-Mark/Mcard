@@ -1,4 +1,13 @@
 <template>
+  <!--
+    名片模板全局约定（所有 18 套模板必须遵守，新增模板时逐条核对）：
+    1. 操作按钮（拨号/复制号码/存入通讯录/导航/收藏/分享）只在底部 dock，不铺在名片内容区；
+    2. 「存入通讯录」的操作步骤只在 guide 弹层内展示，页面任何位置都不摆步骤；
+    3. 公司名水印缩在卡片右下角、低透明、不遮挡姓名/职位/联系方式；
+    4. 联系方式值全局高对比（浅底深字、深底亮字），不得用装饰色牺牲可读性；
+    5. 页面底部留白 ≥ dock 高度（两行约 110px），末张卡片不被遮挡；
+    6. 配色/质感跟随主题强调色，不写死白色；尊重 prefers-reduced-motion。
+  -->
   <div class="cv-page" :class="['cv-tpl-' + template, { 'cv-clean': isCleanTpl }]" :style="vars">
     <div class="cv-cover">
       <button class="cv-back" @click="router.back ? router.back() : router.push('/')" aria-label="返回">‹</button>
@@ -540,7 +549,8 @@ async function toggleFavorite() {
 </script>
 
 <style scoped>
-.cv-page { background: var(--t-bg); color: var(--t-text); min-height: 100vh; padding-bottom: 84px; }
+/* 底部 dock 两行常驻，所有模板统一留足底部空间，避免遮住最后一张卡片 */
+.cv-page { background: var(--t-bg); color: var(--t-text); min-height: 100vh; padding-bottom: 110px; }
 /* 高档商务名片：卡片大圆角 + 轻阴影，浅灰蓝底衬托层次 */
 .cv-page .card { border-radius: 20px; box-shadow: 0 4px 18px rgba(30,64,120,.07); border: 0; overflow: hidden; }
 .cv-cover { height: 168px; position: relative; border-radius: 0 0 28px 28px; background: var(--t-cover); overflow: hidden; }
@@ -593,7 +603,8 @@ async function toggleFavorite() {
 .cv-contact-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--t-line, rgba(0,0,0,.06)); cursor: pointer; }
 .cv-contact-row:last-child { border-bottom: 0; }
 .cv-contact-label { flex: 0 0 56px; font-size: 12px; color: var(--t-muted); }
-.cv-contact-value { flex: 1; min-width: 0; font-size: 13px; word-break: break-all; }
+/* 号码/邮箱等字段值全局高对比：继承正文色并加粗，深色主题不会糊在背景里 */
+.cv-contact-value { flex: 1; min-width: 0; font-size: 13px; word-break: break-all; color: var(--t-text); font-weight: 600; }
 .cv-material-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--t-line, rgba(0,0,0,.06)); color: inherit; text-decoration: none; }
 .cv-material-row:last-child { border-bottom: 0; }
 .cv-material-ico { font-size: 18px; }
@@ -633,7 +644,7 @@ async function toggleFavorite() {
 .cv-exchange h3 { font-size: 14px; }
 .cv-footer { text-align: center; color: var(--t-muted); font-size: 11px; padding: 26px 0 10px; }
 /* 高档深灰底栏：主操作蓝，次操作深灰半透明，参考商务数字名片质感 */
-.cv-dock { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 6px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: #252a33; border-top: 1px solid rgba(255,255,255,.08); z-index: 60; }
+.cv-dock { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 6px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: #252a33; border-top: 1px solid rgba(255,255,255,.08); z-index: 60; color: #e2e8f0; }
 .cv-dock .btn { flex: 1; padding-left: 4px; padding-right: 4px; font-size: 13px; }
 .cv-dock .btn-primary { background: var(--t-accent, #2563eb); color: #fff; border-color: transparent; }
 .cv-dock .btn-ghost { background: rgba(255,255,255,.12); color: #e2e8f0; border-color: transparent; }
@@ -770,7 +781,7 @@ async function toggleFavorite() {
 .cv-tpl-minimal .cv-block h3, .cv-tpl-minimal .cv-sec-title { font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #9ca3af; border-left: 0; padding-left: 0; }
 .cv-tpl-minimal .cv-actions { padding: 14px 0; }
 .cv-tpl-minimal .cv-actions i { border-radius: 50%; border: 1px solid #e5e7eb; background: transparent; color: #374151; }
-.cv-tpl-minimal .cv-dock { background: #fff; border-top: 1px solid #e5e7eb; }
+.cv-tpl-minimal .cv-dock { background: #fff; border-top: 1px solid #e5e7eb; color: #374151; }
 .cv-tpl-minimal .cv-dock .btn-primary { background: var(--t-accent); }
 .cv-tpl-minimal .cv-dock .btn-ghost { background: #f3f4f6; color: #374151; }
 
@@ -1226,8 +1237,8 @@ async function toggleFavorite() {
 .cv-clean .cv-block h3 .small.muted { letter-spacing: 0; }
 .cv-clean .cv-contact-row { padding: 11px 0; border-top: 1px solid var(--cv-line); }
 .cv-clean .cv-contact-label { flex-basis: 52px; color: var(--cv-ink-2); letter-spacing: .08em; }
-/* 号码/邮箱等值必须高对比：深色模板用亮色，避免浅字叠深底看不清 */
-.cv-clean .cv-contact-value { color: var(--cv-link-color); font-weight: 600; }
+/* 简洁模板号码值沿用全局高对比（--t-text），不再用装饰性的 link 色，保证任意主题可读 */
+.cv-clean .cv-contact-value { color: var(--t-text); font-weight: 600; }
 .cv-clean .cv-bio, .cv-clean .small.muted, .cv-clean .cv-qr-lead { color: var(--cv-ink-2); }
 .cv-clean .cv-links a, .cv-clean .cv-gallery-cell { border-color: var(--cv-line); background: var(--cv-panel-bg); }
 .cv-clean .cv-links b, .cv-clean .cv-region-line, .cv-clean .cv-contact-row b { color: var(--cv-link-color); }
@@ -1242,10 +1253,10 @@ async function toggleFavorite() {
 .cv-dock-main { display: flex; gap: 6px; }
 .cv-dock-main .btn { flex: 1; }
 .cv-dock-sub { display: flex; gap: 6px; justify-content: center; }
-.cv-dock-sub button { flex: 1; background: transparent; border: 0; color: #cfd6e0; font-size: 12px; padding: 3px 0; }
-.cv-dock-sub button.on { color: #fbbf24; }
-/* 简洁模板的次操作行用主题色，适配浅/深底 */
-.cv-clean .cv-dock-sub button { color: var(--cv-mini-color, #cfd6e0); }
+/* 次操作行颜色跟随各模板 dock 的按钮色：用 currentColor 继承父级，浅色/深色 dock 都清晰 */
+.cv-dock-sub button { flex: 1; background: transparent; border: 0; color: inherit; font-size: 12px; padding: 3px 0; opacity: .9; }
+.cv-dock-sub button.on { color: #fbbf24; opacity: 1; }
+.cv-dock-sub button:disabled { opacity: .4; }
 .guide-lead { margin: 4px 0 10px; }
 .guide-steps { background: var(--t-bg, #f6f8fb); border-radius: 10px; padding: 12px 14px; }
 .guide-steps-t { font-size: 12px; font-weight: 700; color: var(--t-accent, #2563eb); margin-bottom: 6px; }
@@ -1301,10 +1312,12 @@ async function toggleFavorite() {
 }
 .cv-tpl-navygold .cv-actions button:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .cv-tpl-navygold .cv-actions i { width: auto; height: auto; border-radius: 0; background: transparent; color: inherit; font-size: 17px; }
-/* 深蓝底上的内容块必须白底深字，否则号码/邮箱等深色文字在深背景上完全看不清 */
+/* 深蓝底上的内容块必须白底深字，否则号码/邮箱等文字看不清 */
 .cv-tpl-navygold .cv-main > .card, .cv-tpl-navygold .cv-block {
   background: #fff; border: 1px solid var(--ng-line);
 }
+.cv-tpl-navygold .cv-contact-value { color: var(--ng-ink); font-weight: 700; }
+.cv-tpl-navygold .cv-contact-label, .cv-tpl-navygold .small.muted { color: var(--ng-ink-2); }
 .cv-tpl-navygold .cv-block h3, .cv-tpl-navygold .cv-sec-title { color: var(--ng-navy); border-left: 3px solid var(--ng-gold); padding-left: 9px; }
 .cv-tpl-navygold .cv-bio, .cv-tpl-navygold .small.muted, .cv-tpl-navygold .cv-qr-lead { color: var(--ng-ink-2); }
 .cv-tpl-navygold .cv-links a { border-color: var(--ng-line); background: #fff; }
