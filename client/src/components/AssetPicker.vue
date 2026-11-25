@@ -103,6 +103,8 @@ async function remove(a) {
     showToast('已移除素材', 'success')
   } catch (e) { showToast(e.message || '删除失败', 'error') }
 }
+// 暴露 open：父页面可把「点头像/点 LOGO」等自定义触发元素接到素材库，无需再摆一个「从素材库选」按钮。
+defineExpose({ open })
 </script>
 
 <style scoped>

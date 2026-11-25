@@ -13,20 +13,23 @@
       <button class="pf-gear" aria-label="设置" @click="toggleDrawer">⚙</button>
       <button v-if="card" class="pf-qr" aria-label="我的名片二维码" @click="goQr">▦</button>
 
+      <!-- 头像 = 更换头像入口，昵称 = 编辑资料入口（2026-11-25 用户定稿：这两项不再在下方 cell 列表重复） -->
       <div class="pf-user">
-        <div class="pf-ava" title="从素材库选择头像">
+        <button class="pf-ava" title="点击更换头像（从素材库选）" aria-label="更换头像" @click="openAvatarPicker">
           <img v-if="avatar" :src="avatar" alt="账号头像" />
           <span v-else>{{ (auth.user?.phone || card?.name || '名').slice(0, 1) }}</span>
           <i class="pf-ava-cam"><AppIcon name="camera" :size="12" /></i>
-        </div>
-        <div class="pf-ident">
+        </button>
+        <button class="pf-ident" title="点击编辑资料" aria-label="编辑资料" @click="router.push('/me/card')">
           <div class="pf-name">
             {{ card?.name || auth.user?.phone || '我的账户' }}
             <span v-if="card" class="pf-status" :class="card.active ? 'ok' : 'warn'">{{ card.active ? '已开通' : '未开通' }}</span>
           </div>
           <div class="pf-slogan">{{ card?.title || card?.company || '一张永不失效的二维码，让客户一键存下你' }}</div>
-        </div>
+        </button>
       </div>
+      <!-- 隐藏的素材库实例：头像点击时 open() 唤起，单选即保存（avatarPick） -->
+      <AssetPicker ref="avatarPicker" v-model="avatarPick" label="从素材库选头像" class="pf-avatar-picker" />
 
       <!-- 套餐有效期玻璃条：到期日期来自 card.expiresAt（兼容 expires_at） -->
       <div class="pf-plan">
@@ -74,14 +77,6 @@
 
     <div class="pf-group">
       <div class="pf-group-title">账号与服务</div>
-      <div class="pf-cell">
-        <i class="pf-cell-ico">👤</i><span class="pf-cell-t">更换头像</span>
-        <AssetPicker v-model="avatarPick" label="从素材库选" />
-        <span class="pf-cell-arrow">›</span>
-      </div>
-      <router-link to="/me/card" class="pf-cell">
-        <i class="pf-cell-ico">✎</i><span class="pf-cell-t">编辑资料</span><span class="pf-cell-arrow">›</span>
-      </router-link>
       <router-link to="/me/card/style" class="pf-cell">
         <i class="pf-cell-ico">🎨</i><span class="pf-cell-t">配色风格</span><span class="pf-cell-arrow">›</span>
       </router-link>
@@ -111,6 +106,8 @@ const router = useRouter()
 const card = ref(null)
 const avatar = ref('')
 const avatarSaving = ref(false)
+const avatarPicker = ref(null)
+function openAvatarPicker() { avatarPicker.value?.open() }
 const loading = ref(true)
 const loadError = ref('')
 const unread = ref(0)
@@ -186,7 +183,7 @@ function logoutNow() { logout(); router.push('/') }
 </script>
 
 <style scoped>
-/* 头卡头像点击直接上传；素材库选图入口在编辑资料页（CardEdit），功能不丢。
+/* 头像=换头像、昵称=编辑资料；下方 cell 不再重复这两项（2026-11-25 用户定稿）。
    顶栏居顶由全局 .page > .topbar:first-child 统一处理，这里不再私有覆写 padding。 */
 
 /* ===== 上半部分：深渐变头卡（MShop 观感，视觉焦点，内缩圆角形态例外） ===== */
@@ -198,12 +195,16 @@ function logoutNow() { logout(); router.push('/') }
 .pf-header > .pf-user, .pf-header > .pf-plan { position: relative; z-index: 1; }
 .pf-gear { position: absolute; right: 14px; top: 12px; z-index: 2; width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,.16); color: #fff; display: grid; place-items: center; }
 .pf-user { display: flex; align-items: center; gap: 12px; }
-.pf-ava { position: relative; width: 54px; height: 54px; flex: 0 0 54px; border-radius: 50%; background: rgba(255,255,255,.2); border: 2.5px solid rgba(255,255,255,.55); display: grid; place-items: center; font-size: 21px; font-weight: 800; overflow: hidden; cursor: pointer; }
+.pf-ava { position: relative; width: 54px; height: 54px; flex: 0 0 54px; border-radius: 50%; background: rgba(255,255,255,.2); border: 2.5px solid rgba(255,255,255,.55); display: grid; place-items: center; font-size: 21px; font-weight: 800; overflow: hidden; cursor: pointer; padding: 0; color: #fff; }
+.pf-ava:active { transform: scale(.95); }
 .pf-ava img { width: 100%; height: 100%; object-fit: cover; }
 .pf-ava input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .pf-ava-cam { position: absolute; right: -1px; bottom: -1px; width: 18px; height: 18px; border-radius: 50%; background: #fff; color: #2563eb; display: grid; place-items: center; }
 /* 右侧给「二维码 + 设置」两个圆形按钮留位，避免姓名/副标题被压到按钮底下 */
-.pf-ident { flex: 1; min-width: 0; padding-right: 72px; }
+.pf-ident { flex: 1; min-width: 0; padding-right: 72px; background: transparent; border: 0; color: inherit; text-align: left; cursor: pointer; font: inherit; }
+.pf-ident:active { opacity: .75; }
+/* 隐藏素材库的触发按钮，只保留它的弹层（头像点击用 open() 唤起） */
+.pf-avatar-picker :deep(.ap-trigger) { display: none; }
 .pf-name { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pf-status { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; flex-shrink: 0; }
 .pf-status.ok { background: rgba(255,255,255,.2); color: #fff; }
