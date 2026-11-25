@@ -15,7 +15,8 @@
             <div class="cp-name">{{ card.name || card.name_en || '你的姓名' }}
               <span v-if="card.name_en" class="cp-en">{{ card.name_en }}</span>
             </div>
-            <div class="cp-title">{{ displayTitle || '职位 · 公司 · 部门' }}</div>
+            <div class="cp-title">{{ displayTitle || '职位 · 部门' }}</div>
+            <div v-if="card.company" class="cp-org">{{ card.company }}</div>
             <div v-if="tags.length" class="cp-tags"><span v-for="tag in tags" :key="tag">{{ tag }}</span></div>
           </div>
         </div>
@@ -116,10 +117,10 @@ const industryLabel = computed(() => {
 })
 const vars = computed(() => themeVars(themeOf(props.card)))
 
+// 与展示页同口径（2026-11-25）：公司名独立一行，职位行只放 title + department，不重复公司
 const displayTitle = computed(() => {
   const c = props.card || {}
-  const parts = c.template === 'navygold' ? [c.title, c.department] : [c.title, c.company, c.department]
-  return parts.filter(Boolean).join(' · ')
+  return [c.title, c.department].filter(Boolean).join(' · ')
 })
 const regionLine = computed(() => {
   const c = props.card || {}
@@ -233,4 +234,25 @@ watch(() => props.section, async () => {
 .cp-tpl-seal .cp-profile, .cp-tpl-seal .cp-block, .cp-tpl-seal .cp-actions { border-radius: 0; border: 1px solid #cbd5e1; }
 .cp-tpl-contact .cp-cover { border-radius: 0 0 12px 12px; }
 .cp-tpl-contact .cp-name { color: #0f2147; }
+
+/* ============ 预览统一层（2026-11-25，放在最后覆盖上面所有模板专属骨架）============
+   与公开名片页同口径：18 套模板预览都是「一张连续大卡」，区块间只用细线分隔，不再各自成卡断开。
+   预览仍按模板/主题换 --t-* 配色，所以切换模板当场能看到颜色变化；结构差异全部抹平。 */
+/* 封面归零、正文卡一体化 */
+.cp-screen .cp-cover { height: 0; border-radius: 0; border-bottom: 0; background: transparent; }
+.cp-screen .cp-body { margin-top: 0; padding: 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: var(--t-surface); }
+.cp-screen .cp-profile, .cp-screen .cp-block {
+  margin-top: 0; padding: 12px; border: 0; border-radius: 0; box-shadow: none;
+  background: transparent; border-bottom: 0;
+}
+/* 区块之间细线分隔（首块 profile 也带下边框），最后一块不留线 */
+.cp-screen .cp-profile, .cp-screen .cp-block:not(:last-child) { border-bottom: 1px solid var(--line); }
+.cp-screen .cp-body > :last-child { border-bottom: 0; }
+/* 抹平各模板骨架差异：头像统一方形左置、姓名区左对齐，抹掉居中/圆形/圆角/描边等专属形态 */
+.cp-screen .cp-profile { flex-direction: row; align-items: flex-start; text-align: left; }
+.cp-screen .cp-avatar { border-radius: 12px; border: 0; }
+.cp-screen .cp-ident { text-align: left; }
+.cp-screen .cp-name { letter-spacing: normal; }
+.cp-screen .cp-block h3 { text-align: left; }
+.cp-screen .cp-org { color: var(--t-muted); font-size: 10px; margin-top: 3px; line-height: 1.4; }
 </style>
