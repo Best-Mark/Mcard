@@ -34,20 +34,15 @@
           </button>
         </ScrollChips>
       </div>
-      <!-- 搜索范围：原点与半径合并成一组。不选地图点则以当前定位为原点；半径形成以原点为圆心的圆形范围 -->
+      <!-- 搜索范围：原点与范围压成一行。原点本身可点即地图选点（唯一入口），选点弹层内可一键回到原点；范围以原点为圆心。 -->
       <div class="mk-range-box">
-        <div class="mk-range-head">
-          <span>搜索范围<span class="mk-range-sub">{{ radiusKm > 0 ? `以原点为圆心 ${radiusKm} km 内` : '不选半径则按原点远近排序' }}</span></span>
-          <button class="mk-map-btn" :disabled="loading" @click="openMapPicker">⌖ 地图选点</button>
-        </div>
-        <div class="mk-range-row">
+        <button class="mk-origin-btn" :disabled="loading" title="点击在地图上选原点" @click="openMapPicker">
           <span class="mk-range-label">原点</span>
-          <b class="mk-origin">{{ originLabel }}</b>
-        </div>
-        <div class="mk-range-row">
-          <span class="mk-range-label">半径</span>
-          <BottomSelect v-model="radiusKm" :options="RADIUS_OPTIONS" title="选择范围" :disabled="!distanceMode" trigger-class="select select-sm" @change="applyFilter" />
-        </div>
+          <b class="mk-origin">⌖ {{ originLabel }}</b>
+        </button>
+        <span class="mk-range-sep"></span>
+        <span class="mk-range-label">范围</span>
+        <BottomSelect v-model="radiusKm" :options="RADIUS_OPTIONS" title="选择范围" :disabled="!distanceMode" trigger-class="select select-sm" @change="applyFilter" />
       </div>
       <div class="mk-sort-row">
         <span>排序：</span>
@@ -104,7 +99,7 @@
         <b>地图选点</b>
         <button @click="mapPickerOpen = false">×</button>
       </div>
-      <div v-if="mapPickerOpen" class="mp-sheet-body"><MapPicker @confirm="onMapPicked" /></div>
+      <div v-if="mapPickerOpen" class="mp-sheet-body"><MapPicker :lat="coords?.lat" :lng="coords?.lng" @confirm="onMapPicked" /></div>
     </BottomSheet>
     <CityPicker v-model:show="cityPickerOpen" :current="city || currentCity" :located-city="currentCity" :cities="meta.cities" :relocating="locating" @select="onCitySelected" @relocate="relocate" />
   </div>
@@ -323,14 +318,13 @@ onMounted(async () => {
 .mk-chips { margin-top: 12px; }
 .chip { flex-shrink: 0; font-size: 12px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line, #e8edf4); background: var(--bg-page, #f4f6fb); color: var(--muted, #6b7688); }
 .chip.on { background: var(--primary, #2563eb); border-color: var(--primary, #2563eb); color: #fff; font-weight: 700; }
-/* 搜索范围：原点与半径同组，视觉上是一张卡；半径以原点为圆心形成圆形范围 */
-.mk-range-box { margin-top: 13px; border: 1px solid var(--line, #e8edf4); border-radius: 10px; padding: 10px 12px; background: var(--bg-page, #f7f9fc); }
-.mk-range-head { display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 700; }
-.mk-range-sub { display: block; font-size: 11px; font-weight: 400; color: var(--muted, #6b7688); margin-top: 2px; }
-.mk-range-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 12px; }
-.mk-range-label { color: var(--muted, #6b7688); white-space: nowrap; flex-shrink: 0; width: 28px; }
-.mk-origin { color: var(--primary, #2563eb); font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mk-map-btn { font-size: 12px; font-weight: 600; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--primary, #2563eb); background: transparent; color: var(--primary, #2563eb); }
+/* 搜索范围：原点(可点=地图选点) + 范围下拉压成一行，尽量不占高度 */
+.mk-range-box { display: flex; align-items: center; gap: 8px; margin-top: 10px; border: 1px solid var(--line, #e8edf4); border-radius: 10px; padding: 6px 10px; background: var(--bg-page, #f7f9fc); font-size: 12px; }
+.mk-origin-btn { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; text-align: left; }
+.mk-origin-btn:disabled { opacity: .55; }
+.mk-range-sep { width: 1px; height: 16px; background: var(--line, #e8edf4); flex-shrink: 0; }
+.mk-range-label { color: var(--muted, #6b7688); white-space: nowrap; flex-shrink: 0; }
+.mk-origin { color: var(--primary, #2563eb); font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mk-sort-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 12px; flex-wrap: wrap; }
 .sort-btn { font-size: 12px; padding: 5px 11px; border-radius: 8px; border: 1px solid var(--line, #e8edf4); background: var(--bg-page, #f4f6fb); color: var(--muted, #6b7688); }
 .sort-btn.on { border-color: var(--primary, #2563eb); color: var(--primary, #2563eb); background: #eef2ff; background: color-mix(in srgb, var(--primary, #2563eb) 10%, transparent); font-weight: 700; }

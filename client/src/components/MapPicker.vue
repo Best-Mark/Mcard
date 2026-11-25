@@ -26,6 +26,7 @@
         </div>
         <div v-else-if="suggestOpen && searching" class="mp-suggest mp-suggest-loading">搜索中…</div>
       </div>
+      <button v-if="hasOrigin" class="btn btn-sm mp-back-btn" :disabled="loading" title="回到本次选点的出发点" @click="backToOrigin">⌖ 回到原点</button>
       <button class="btn btn-sm btn-primary" :disabled="loading" @click="useHere">用这里</button>
     </div>
     <div class="mp-map-wrap">
@@ -40,7 +41,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import api from '../api'
 import { getCurrentPosition } from '../utils/geo'
 
@@ -72,6 +73,17 @@ let suggestTimer = null
 let suggestSeq = 0     // 联想请求序号，防竞态（旧响应不得覆盖新结果）
 
 const CHINA_CENTER = { lat: 35.8617, lng: 104.1954, zoom: 4 }
+// 原点 = 调用方传入的坐标（集市=当前搜索原点；名片编辑=名片原坐标）。有原点才显示「回到原点」按钮。
+const hasOrigin = computed(() => Number.isFinite(props.lat) && Number.isFinite(props.lng))
+
+function backToOrigin() {
+  if (!map || !hasOrigin.value) return
+  map.flyTo([props.lat, props.lng], 15, { duration: 0.5 })
+  touched = false
+  centerHint.value = '已回到原点，可拖动微调后点「用这里」'
+  error.value = ''
+  closeSuggest()
+}
 
 async function resolveStartCenter() {
   // 1) 已填省市区优先：用户前面选了地区，选点就必须按地区进来（而不是沿用名片里可能错误的旧坐标）
@@ -205,6 +217,7 @@ onBeforeUnmount(() => {
 .mp-search-row { display: flex; gap: 8px; margin-bottom: 8px; }
 .mp-input-wrap { position: relative; flex: 1; min-width: 0; }
 .mp-search { width: 100%; }
+.mp-back-btn { white-space: nowrap; border: 1px solid var(--line, #e8edf4); background: var(--bg-card, #fff); color: var(--primary, #2563eb); font-weight: 600; }
 .mp-suggest { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 30; max-height: 240px; overflow-y: auto; background: var(--bg-card, #fff); border: 1px solid var(--line, #e8edf4); border-radius: 10px; box-shadow: 0 8px 24px rgba(15,23,42,.14); }
 .mp-suggest-item { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--line, #eef2f7); }
 .mp-suggest-item:last-child { border-bottom: 0; }
