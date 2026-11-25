@@ -104,8 +104,6 @@
       </router-link>
     </div>
 
-    <!-- 微信内打开即静默登录，退出后下一次进页面又会自动登录，故不摆退出按钮（后台管理员退出在 Admin.vue，不受影响） -->
-    <button v-if="!inWechat" class="pf-logout" @click="logoutNow">退出登录</button>
   </div>
 </template>
 
@@ -113,12 +111,10 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
-import { auth, logout, toggleDrawer, showToast } from '../store'
+import { auth, toggleDrawer, showToast } from '../store'
 import AppIcon from '../components/AppIcon.vue'
 import BottomSheet from '../components/BottomSheet.vue'
-import { isWeChat } from '../utils/save-image'
 
-const inWechat = isWeChat()
 const router = useRouter()
 const card = ref(null)
 const avatar = ref('')
@@ -205,7 +201,6 @@ function goQr() {
   if (!card.value?.slug) return showToast('还没有名片', 'error')
   router.push(`/c/${card.value.slug}?save=1`)
 }
-function logoutNow() { logout(); router.push('/') }
 </script>
 
 <style scoped>
@@ -289,7 +284,5 @@ function logoutNow() { logout(); router.push('/') }
 .pf-cell-badge { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: #ef4444; color: #fff; font-size: 11px; line-height: 18px; text-align: center; flex-shrink: 0; }
 .pf-cell.has-badge .pf-cell-arrow { display: none; }
 .pf-cell-muted { color: var(--muted); font-size: 13px; }
-.pf-logout { display: block; width: calc(100% - 24px); margin: 18px 12px 0; padding: 13px; border-radius: 10px; background: var(--card, #fff); border: 1px solid var(--line); color: var(--danger); font-size: 14px; font-weight: 600; }
-.pf-logout:active { background: #fef2f2; }
 .pf-error { margin-top: 14px; border-color: #fecaca; background: #fef2f2; }
 </style>

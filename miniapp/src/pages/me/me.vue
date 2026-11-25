@@ -73,8 +73,6 @@
           </view>
         </view>
       </view>
-
-      <button class="btn ghost block" style="margin-top:20rpx" @tap="logoutNow">退出登录</button>
     </view>
   </view>
 </template>
@@ -82,7 +80,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { api, baseUrl, isLogged, goLogin, logout, toast, getUnreadCount, isPromoterUser } from '../../utils/request'
+import { api, baseUrl, isLogged, goLogin, toast, getUnreadCount, isPromoterUser } from '../../utils/request'
 
 const logged = ref(false); const loading = ref(true); const card = ref(null); const isPromoter = ref(false)
 const stats = ref({}); const orders = ref([]); const newSlug = ref(''); const busy = ref(false)
@@ -119,7 +117,6 @@ async function create() {
   try { card.value = await api.post('/api/cards/mine', { slug: newSlug.value }); toast('名片已创建', 'success') }
   catch (e) { toast(e.message) } finally { busy.value = false }
 }
-function logoutNow() { logout(); logged.value = false; card.value = null; uni.navigateBack({ fail: () => uni.reLaunch({ url: '/pages/index/index' }) }) }
 </script>
 
 <style scoped>

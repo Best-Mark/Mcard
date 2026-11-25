@@ -23,7 +23,6 @@
                 <button @click="menuGo('/me/plans')">💎 套餐 / 续期</button>
                 <button @click="menuDo('public')">↗ 我的公开名片</button>
                 <button @click="menuDo('share')">⤴ 分享名片</button>
-                <button v-if="!inWechat" class="danger" @click="menuDo('logout')">⏻ 退出登录</button>
               </div>
             </div>
           </template>
@@ -40,7 +39,7 @@
 import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
-import { auth, logout, showToast } from '../store'
+import { auth, showToast } from '../store'
 import { shareOrCopy } from '../utils/share'
 import { isWeChat } from '../utils/save-image'
 import { setCardShare } from '../utils/wx-share'
@@ -48,8 +47,6 @@ import { setCardShare } from '../utils/wx-share'
 const route = useRoute()
 const router = useRouter()
 const logged = computed(() => !!auth.token)
-// 微信内打开即静默登录，退出按钮会出现「退出后又自动登录」的假死观感，故不展示。
-const inWechat = isWeChat()
 const unread = ref(0)
 const userMenuOpen = ref(false)
 let unreadTimer = null
@@ -85,12 +82,10 @@ async function doShare() {
   if (r === 'copied') showToast('链接已复制', 'success')
   else if (r === 'failed') showToast('复制失败，请手动复制地址栏链接', 'error')
 }
-function logoutNow() { logout(); router.push('/') }
 function menuDo(kind) {
   closeMenu()
   if (kind === 'public') goPublic('')
   else if (kind === 'share') doShare()
-  else if (kind === 'logout') logoutNow()
 }
 
 function onDocClick() { closeMenu() }
