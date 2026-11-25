@@ -143,10 +143,12 @@ const RADIUS_OPTIONS = [
 ]
 const radiusKm = ref(0)
 const originSource = ref('') // map=地图选点 / current=当前定位 / city=城市中心
+const originPlace = ref('') // 原点的具体位置（逆地理编码：省市区街道），选点后显示真实地名而非「地图选点」
 const distanceMode = computed(() => !!(coords.value || city.value))
-// 原点文案：地图选点 > 城市 > 当前定位 > 全国（未定位）
+// 原点文案：具体位置地名 > 城市 > 当前定位 > 全国（未定位）
+// 地图选点后 originPlace 由逆地理编码填入，显示选中的位置信息，不再是「地图选点」四个字。
 const originLabel = computed(() => {
-  if (originSource.value === 'map') return '地图选点'
+  if (originPlace.value) return originPlace.value
   if (city.value) return city.value
   if (coords.value) return currentCity.value ? `当前位置 · ${currentCity.value}` : '当前位置'
   return '全国'
@@ -188,6 +190,7 @@ function openCityPicker() { cityPickerOpen.value = true }
 function onCitySelected(c) {
   city.value = c.name
   originSource.value = 'city'
+  originPlace.value = ''  // 切城市后显示城市名，清掉上一次选点的具体地名
   // 常用城市有精确坐标→按距离排序；其余城市无坐标→服务端按城市名筛选+热度排序
   coords.value = (Number.isFinite(c.lat) && Number.isFinite(c.lng)) ? { lat: c.lat, lng: c.lng } : null
   if (coords.value && sort.value === 'views') sort.value = 'distance'
@@ -200,6 +203,19 @@ function setSort(s) {
   load()
 }
 function openMapPicker() { mapPickerOpen.value = true }
+// 逆地理编码回填原点地名：选点后原点行显示「濮阳市华龙区」这类真实位置，而不是「地图选点」。
+// 失败静默保留城市/定位兜底，不阻塞列表加载（外部依赖失败不拖垮主流程）。
+async function resolveOriginPlace(lat, lng) {
+  originPlace.value = ''
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
+  try {
+    const { data } = await api.get('/api/geo/reverse-geocode', { params: { lat, lng }, timeout: 5000 })
+    const a = data?.data
+    if (!a) return
+    const parts = [a.city, a.district, a.street].filter(Boolean)
+    originPlace.value = (parts.length ? parts.join(' · ') : a.address || '').slice(0, 40)
+  } catch { /* 逆编码不可用：回落城市/定位文案 */ }
+}
 function onMapPicked(p) {
   mapPickerOpen.value = false
   if (!p || !Number.isFinite(p.lat) || !Number.isFinite(p.lng)) return
@@ -208,6 +224,7 @@ function onMapPicked(p) {
   originSource.value = 'map'
   setManualPosition(p.lat, p.lng, '')
   sort.value = 'distance'
+  resolveOriginPlace(p.lat, p.lng)
   showToast('已按地图选点位置排序', 'success')
   load()
 }
@@ -244,6 +261,7 @@ async function relocate() {
     // 重新定位后以定位城市为原点（用户主动点的，覆盖手动选择）
     if (pos.city) city.value = pos.city
     originSource.value = 'current'
+    resolveOriginPlace(pos.lat, pos.lng)
     sort.value = 'distance'
     showToast(pos.source === 'default' ? '已用城市中心坐标排序，可点「重新定位」再试' : `已定位到 ${displayCity.value}，按附近距离排序`, pos.source === 'default' ? 'error' : 'success')
     cityPickerOpen.value = false
@@ -284,8 +302,11 @@ onMounted(async () => {
       positionMeta.value = getPositionQualityLabel()
       if (pos.city && pos.source !== 'default') currentCity.value = pos.city
       originSource.value = 'current' // 不选地图点则视为当前定位点
+      resolveOriginPlace(pos.lat, pos.lng)
     } catch {}
   }
+  // URL 带坐标（门户跳转的地图原点）同样回填地名
+  if (Number.isFinite(latQ) && Number.isFinite(lngQ)) resolveOriginPlace(latQ, lngQ)
   load()
 })
 </script>
