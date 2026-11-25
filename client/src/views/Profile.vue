@@ -13,20 +13,17 @@
       <button class="pf-gear" aria-label="设置" @click="toggleDrawer">⚙</button>
       <button v-if="card" class="pf-qr" aria-label="我的名片二维码" @click="goQr">▦</button>
 
-      <!-- 头像点击换头像（名片展示头像）；昵称点击进「账户资料」独立页——
-           账户昵称(auth.user.nickname) 与 名片姓名(card.name) 是两套东西，绝不混在一起（2026-11-25 用户定稿） -->
+      <!-- 个人中心只显示账户层信息（users）：头像=账户头像、昵称=账户昵称。
+           名片层的姓名/职位/公司/名片头像绝不在此展示（2026-11-25 用户定稿：CTO 不该出现在个人资料里）。 -->
       <div class="pf-user">
-        <button class="pf-ava" title="点击更换头像（从素材库选）" aria-label="更换头像" @click="openAvatarPicker">
-          <img v-if="avatar" :src="avatar" alt="名片头像" />
-          <span v-else>{{ (card?.name || auth.user?.phone || '名').slice(0, 1) }}</span>
+        <button class="pf-ava" title="点击更换账户头像" aria-label="更换账户头像" @click="openAvatarPicker">
+          <img v-if="avatar" :src="avatar" alt="账户头像" />
+          <span v-else>{{ (auth.user?.phone || '名').slice(0, 1) }}</span>
           <i class="pf-ava-cam"><AppIcon name="camera" :size="12" /></i>
         </button>
         <button class="pf-ident" title="点击编辑账户资料" aria-label="编辑账户资料" @click="router.push('/me/account')">
-          <div class="pf-name">
-            {{ auth.user?.nickname || auth.user?.phone || '我的账户' }}
-            <span v-if="card" class="pf-status" :class="card.active ? 'ok' : 'warn'">{{ card.active ? '已开通' : '未开通' }}</span>
-          </div>
-          <div class="pf-slogan">{{ card?.title || card?.company || '一张永不失效的二维码，让客户一键存下你' }}</div>
+          <div class="pf-name">{{ auth.user?.nickname || auth.user?.phone || '我的账户' }}</div>
+          <div class="pf-slogan">账户中心 · 管理你的登录资料</div>
         </button>
       </div>
       <!-- 隐藏的素材库实例：头像点击时 open() 唤起，单选即保存（avatarPick） -->
@@ -141,7 +138,7 @@ async function load() {
   loading.value = true
   loadError.value = ''
   try {
-    const [c, a] = await Promise.all([api.get('/api/cards/mine'), api.get('/api/cards/avatar')])
+    const [c, a] = await Promise.all([api.get('/api/cards/mine'), api.get('/api/auth/avatar')])
     card.value = c?.data?.data || null
     avatar.value = a?.data?.data?.avatar || ''
     loadUnread()
@@ -165,9 +162,9 @@ const avatarPick = computed({
 })
 async function saveAvatar(url) {
   if (!url) return
-  const { data } = await api.put('/api/cards/avatar', { avatar: url })
+  const { data } = await api.put('/api/auth/avatar', { avatar: url })
   avatar.value = data?.data?.avatar || url
-  if (card.value) card.value.avatar = avatar.value
+  // 不再回写 card.value.avatar：账户头像与名片头像严格分开
 }
 function goQr() {
   if (!card.value?.slug) return showToast('还没有名片', 'error')

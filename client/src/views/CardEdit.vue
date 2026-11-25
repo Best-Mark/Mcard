@@ -43,6 +43,15 @@
             </div>
 
             <div class="identity-block divided">
+              <!-- 名片头像属于名片资料(cards.avatar)，与个人中心的账户头像(users.avatar)相互独立 -->
+              <div class="block-title">👤 名片头像 <span class="muted small">展示在名片上的个人照片 · 与账户头像分开</span></div>
+              <div class="field">
+                <div v-if="form.avatar" class="logo-current"><img :src="form.avatar" alt="当前名片头像" /><span>当前名片头像 · 可到素材库替换</span></div>
+                <AssetPicker v-model="form.avatar" label="从素材库选" />
+              </div>
+            </div>
+
+            <div class="identity-block divided">
               <div class="block-title">✎ 姓名与职位</div>
             <div class="grid2">
               <div class="field"><label>姓名 *</label><input v-model="form.name" class="input" maxlength="30" /></div>
@@ -394,7 +403,7 @@ async function onMapPicked(p) {
 
 // 每类字段清单：保存时只提交当前分类，真正实现「填一类存一类」的渐进式完善
 const SECTION_FIELDS = {
-  identity: ['name', 'name_en', 'title', 'company', 'department', 'logo'],
+  identity: ['name', 'name_en', 'title', 'company', 'department', 'logo', 'avatar'],
   bio: ['bio', 'company_intro', 'tags'],
   // ⚠️ 坐标必须随联系方式一起保存：本页的「选地区/自动定位/地图选点」都会改 latitude/longitude，
   // 若只存省市文本不存坐标，就会出现「地址明明改了、集市距离却按旧坐标算」的错配。

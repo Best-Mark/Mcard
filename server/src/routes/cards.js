@@ -25,7 +25,8 @@ function cardLogo(row, asDataUrl = false) {
   return asDataUrl ? `data:image/png;base64,${fs.readFileSync(file).toString('base64')}` : file
 }
 
-const EDITABLE = ['name', 'name_en', 'title', 'company', 'company_intro', 'department', 'phone', 'mobile', 'email',
+// 名片头像 avatar 归名片层（cards 表），与账户头像 users.avatar 独立；编辑页在这里维护。
+const EDITABLE = ['name', 'name_en', 'title', 'company', 'company_intro', 'department', 'avatar', 'phone', 'mobile', 'email',
   'wechat', 'alipay', 'whatsapp', 'wechat_qr', 'alipay_qr', 'wechat_pay_qr', 'alipay_pay_qr',
   'address', 'address_detail', 'province', 'city', 'district', 'street',
   'website', 'shop_url', 'cover', 'logo', 'bio',
@@ -440,7 +441,7 @@ router.post('/mine', authRequired, wrap((req, res) => {
 }))
 
 const FIELD_LABELS = {
-  name: '姓名', name_en: '英文名', title: '职位', company: '公司', company_intro: '公司简介', department: '部门',
+  name: '姓名', name_en: '英文名', title: '职位', company: '公司', company_intro: '公司简介', department: '部门', avatar: '名片头像',
   mobile: '手机', phone: '座机', email: '邮箱', wechat: '微信', whatsapp: 'WhatsApp',
   address: '地址', address_detail: '门牌', province: '省', city: '城市', district: '区', street: '街道',
   website: '主页', shop_url: '店铺', bio: '简介', industry: '行业'

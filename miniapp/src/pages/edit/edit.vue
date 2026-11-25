@@ -5,7 +5,12 @@
     <view class="body">
       <view class="card">
         <view class="section">基本信息</view>
-        <view class="muted small" style="margin-bottom:16rpx">👤 个人头像属于账号资料，请在「我的 → 账号资料」中更换；这里只管理名片内容。</view>
+        <view class="muted small" style="margin-bottom:16rpx">名片头像与账号头像相互独立：这里设置的是名片上展示的照片；账号头像在「我的 → 账号资料」中更换。</view>
+        <view class="field">
+          <text class="label">名片头像</text>
+          <view v-if="form.avatar" class="logo-current"><image :src="form.avatar" mode="aspectFill" /><text class="muted small">当前名片头像 · 重新上传可替换</text></view>
+          <button class="btn tiny" :disabled="avatarBusy" @tap="chooseAvatar">{{ avatarBusy ? '上传中…' : '上传名片头像' }}</button>
+        </view>
         <view class="field">
           <text class="label">公司 LOGO（自动去透明底）</text>
           <view v-if="form.logo" class="logo-current">
@@ -210,6 +215,7 @@ const blank = {
 const form = ref({ ...blank })
 const tagsText = ref('')
 const saving = ref(false)
+const avatarBusy = ref(false)
 // 模板清单是静态数据：模块级缓存让二次进入瞬时渲染，随后静默刷新
 let templatesCache = []
 const templates = ref(templatesCache)
@@ -401,6 +407,17 @@ function chooseTemplate(key) {
   toast(`已应用「${currentTplLabel.value}」整套配色`, 'success')
 }
 
+function chooseAvatar() {
+  if (avatarBusy.value) return
+  uni.chooseImage({ count: 1, sizeType: ['compressed'], success: async res => {
+    avatarBusy.value = true
+    try {
+      form.value.avatar = await uploadImage(res.tempFilePaths[0])
+      toast('名片头像已选，保存资料后生效', 'success')
+    } catch (e) { toast(e.message || '上传失败') }
+    finally { avatarBusy.value = false }
+  } })
+}
 function chooseLogo() {
   uni.chooseImage({ count: 1, sizeType: ['original'], success: async res => {
     logoBusy.value = true
@@ -448,7 +465,7 @@ async function save() {
       links: form.value.links.filter(l => l.label || l.url)
     }
     delete payload.slug
-    delete payload.avatar // 账号头像在个人中心管理，名片资料不写此字段
+    // avatar 是名片资料(cards.avatar)，随资料一起保存；账号头像(users.avatar)在「账号资料」页单独管理
     await api.put('/api/cards/mine', payload)
     toast('资料已保存，二维码不变', 'success')
     setTimeout(() => uni.navigateBack(), 700)
