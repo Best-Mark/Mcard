@@ -149,17 +149,17 @@
            公开页：打电话 / 复制号码 / 存入通讯录 / 分享。2026-11-25 用户定稿。 -->
       <div v-if="full" class="cv-dock cv-dock-glass">
         <template v-if="owner">
-          <button class="btn btn-primary" @click="router.push('/me/card')">编辑名片</button>
-          <button class="btn btn-ghost" @click="router.push('/me/card/style')">配色风格</button>
-          <button class="btn btn-ghost" @click="router.push('/me/card/market')">名片集市</button>
-          <button class="btn btn-ghost" @click="doShare">分享</button>
+          <button class="btn btn-primary dock-btn" @click="router.push('/me/card')"><span class="dock-ico">✎</span>编辑名片</button>
+          <button class="btn btn-ghost dock-btn" @click="router.push('/me/card/style')"><span class="dock-ico">◐</span>配色风格</button>
+          <button class="btn btn-ghost dock-btn" @click="router.push('/me/card/market')"><span class="dock-ico">⌕</span>名片集市</button>
+          <button class="btn btn-ghost dock-btn" @click="doShare"><span class="dock-ico">↗</span>分享</button>
         </template>
         <template v-else>
-          <button class="btn btn-primary" :disabled="!contactPhone" @click="tel(contactPhone)">打电话</button>
-          <button class="btn btn-ghost" :disabled="!contactPhone" @click="copy(contactPhone, '号码')">复制号码</button>
-          <a v-if="contactNative" class="btn btn-ghost" :title="contactActionTip" :aria-label="contactActionLabel" :href="vcfApi">存入通讯录</a>
-          <button v-else class="btn btn-ghost" :title="contactActionTip" :aria-label="contactActionLabel" @click="saveContact">存入通讯录</button>
-          <button class="btn btn-ghost" @click="doShare">分享</button>
+          <button class="btn btn-primary dock-btn" :disabled="!contactPhone" @click="tel(contactPhone)"><span class="dock-ico dock-ico-phone"></span>打电话</button>
+          <button class="btn btn-ghost dock-btn" :disabled="!contactPhone" @click="copy(contactPhone, '号码')"><span class="dock-ico">⧉</span>复制号码</button>
+          <a v-if="contactNative" class="btn btn-ghost dock-btn" :title="contactActionTip" :aria-label="contactActionLabel" :href="vcfApi"><span class="dock-ico">◉</span>存入通讯录</a>
+          <button v-else class="btn btn-ghost dock-btn" :title="contactActionTip" :aria-label="contactActionLabel" @click="saveContact"><span class="dock-ico">◉</span>存入通讯录</button>
+          <button class="btn btn-ghost dock-btn" @click="doShare"><span class="dock-ico">↗</span>分享</button>
         </template>
       </div>
       <BottomSheet :show="mapOpen" @update:show="mapOpen = $event">
@@ -749,7 +749,9 @@ async function toggleFavorite() {
    纯 CSS 无 canvas 开销、微信老 WebView 也能渲染（radial-gradient 是字面量色）。
    仅覆盖深色系模板；极简白( minimal/paper )在下方单独恢复浅色，避免白底上压深玻璃违和。 */
 .cv-page .cv-dock.cv-dock-glass {
-  position: relative; overflow: hidden;
+  /* ⚠️ 必须保持 fixed 贴底：这里若写 position:relative 会让 dock 掉进内容流悬在半空（2026-11-25 实锤）。
+     粒子 ::before 用 absolute 相对 fixed 的 dock 定位即可，不需要改这里。 */
+  overflow: hidden;
   gap: 8px; padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
   background: rgba(12,22,38,.72);
   background: color-mix(in srgb, var(--ng-deep, #0c1a26) 82%, transparent);
@@ -767,9 +769,25 @@ async function toggleFavorite() {
     radial-gradient(circle at 84% 66%, rgba(139,211,255,.20) 0 2px, transparent 3px),
     radial-gradient(circle at 52% 88%, rgba(216,187,133,.14) 0 1px, transparent 2px);
 }
-.cv-page .cv-dock.cv-dock-glass .btn {
-  position: relative; min-height: 44px; font-size: 14px; font-weight: 700; letter-spacing: .02em;
-  border-radius: 12px; border-color: transparent;
+/* 苹果拨号那种圆润胶囊按钮：图标 + 文字横排、按压有回弹反馈（2026-11-25 用户定稿） */
+.cv-page .cv-dock.cv-dock-glass .dock-btn {
+  position: relative; min-height: 50px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 3px;
+  font-size: 12px; font-weight: 600; letter-spacing: .02em;
+  border-radius: 16px; border-color: transparent; padding: 6px 2px;
+  transition: transform .16s ease, filter .16s ease;
+}
+.cv-page .cv-dock.cv-dock-glass .dock-btn:active { transform: scale(.94); filter: brightness(1.08); }
+.cv-page .cv-dock.cv-dock-glass .dock-btn:disabled { opacity: .45; }
+.cv-page .cv-dock.cv-dock-glass .dock-ico {
+  display: block; height: 20px; line-height: 20px; font-size: 17px; font-family: inherit; font-style: normal;
+}
+/* 电话手柄：CSS 画，避免 emoji 跨端不一致；用 currentColor 跟按钮文字色 */
+.cv-page .cv-dock.cv-dock-glass .dock-ico-phone {
+  width: 18px; height: 18px; position: relative;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.2.4 2.4.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.4 0 .8-.2 1l-2.3 2.2z'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.2.4 2.4.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.4 0 .8-.2 1l-2.3 2.2z'/%3E%3C/svg%3E") center/contain no-repeat;
 }
 .cv-page .cv-dock.cv-dock-glass .btn-primary {
   background: #a8834a; background: linear-gradient(135deg, #c9a163, #a8834a); color: #fff;
@@ -788,6 +806,8 @@ async function toggleFavorite() {
 }
 .cv-page.cv-tpl-minimal .cv-dock.cv-dock-glass .btn-ghost,
 .cv-page.cv-clean.cv-tpl-paper .cv-dock.cv-dock-glass .btn-ghost { background: rgba(0,0,0,.05); color: #374151; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); }
+.cv-page.cv-tpl-minimal .cv-dock.cv-dock-glass .btn-primary,
+.cv-page.cv-clean.cv-tpl-paper .cv-dock.cv-dock-glass .btn-primary { background: var(--t-accent, #2563eb); color: #fff; box-shadow: none; }
 /* 悬浮次级入口：导航/收藏/交换名片收进这里；菜单用中性白底，任何主题都清晰 */
 .cv-fab { position: fixed; right: 14px; bottom: calc(72px + env(safe-area-inset-bottom)); z-index: 64; width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--t-accent, #2563eb); color: #fff; font-size: 24px; line-height: 1; box-shadow: 0 8px 24px rgba(15,23,42,.3); cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .cv-fab.on { transform: scale(.94); }
