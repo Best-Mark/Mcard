@@ -34,95 +34,74 @@
             </div>
           </div>
 
-          <div class="control-list">
-            <section class="card ctrl" :class="{ open: openSection === 'color' }">
-              <button class="ctrl-head" @click="toggleSection('color')">
-                <span class="ctrl-idx">1</span><span class="ctrl-name">印刷配色</span>
-                <span class="ctrl-val">{{ PRINT_THEMES.find(v => v.k === printTheme)?.label }}</span><i class="chev">⌄</i>
-              </button>
-              <div v-if="openSection === 'color'" class="ctrl-body">
-                <p class="small muted">仅影响实体名片配色，不改变电子名片主题。</p>
-                <div class="color-list">
-                  <button v-for="v in PRINT_THEMES" :key="v.k" class="color-item" :class="{ on: printTheme === v.k }" @click="printTheme = v.k">
-                    <i :style="{ background: v.accent }"></i><span>{{ v.label }}</span>
-                  </button>
-                </div>
-              </div>
-            </section>
+          <!-- 横向功能条：点一项下方只出这一项的内容，像抖音发布页；不堆成一长列 -->
+          <div class="control-tabs" role="tablist">
+            <button v-for="s in SECTIONS" :key="s.k" class="control-tab" :class="{ on: openSection === s.k }" role="tab" :aria-selected="openSection === s.k" @click="openSection = s.k">
+              <span class="tab-ico" :class="'ico-' + s.k"></span>
+              <span class="tab-txt">{{ s.label }}</span>
+              <span class="tab-dot" v-if="openSection === s.k"></span>
+            </button>
+          </div>
 
-            <section class="card ctrl" :class="{ open: openSection === 'front' }">
-              <button class="ctrl-head" @click="toggleSection('front')">
-                <span class="ctrl-idx">2</span><span class="ctrl-name">正面版式</span>
-                <span class="ctrl-val">{{ FRONT_TPLS.find(v => v.k === template)?.label }}</span><i class="chev">⌄</i>
-              </button>
-              <div v-if="openSection === 'front'" class="ctrl-body">
-                <div class="tpl-grid">
-                  <button v-for="v in FRONT_TPLS" :key="v.k" class="tpl-card" :class="{ on: template === v.k }" @click="template = v.k; side = 'front'">
-                    <span class="tpl-thumb" :style="{ background: v.cover }"><i :class="'th th-' + v.k"></i></span>
-                    <b>{{ v.label }}</b>
-                    <span class="tpl-desc">{{ v.desc }}</span>
-                    <span v-if="template === v.k" class="tpl-check">✓ 使用中</span>
-                  </button>
-                </div>
+          <div class="card card-pad control-panel">
+            <template v-if="openSection === 'color'">
+              <div class="section-title" style="margin-top:0">印刷配色</div>
+              <p class="small muted">仅影响实体名片配色，不改变电子名片主题。</p>
+              <div class="color-list">
+                <button v-for="v in PRINT_THEMES" :key="v.k" class="color-item" :class="{ on: printTheme === v.k }" @click="printTheme = v.k">
+                  <i :style="{ background: v.accent }"></i><span>{{ v.label }}</span>
+                </button>
               </div>
-            </section>
+            </template>
 
-            <section class="card ctrl" :class="{ open: openSection === 'back' }">
-              <button class="ctrl-head" @click="toggleSection('back')">
-                <span class="ctrl-idx">3</span><span class="ctrl-name">背面版式</span>
-                <span class="ctrl-val">{{ BACK_TPLS.find(v => v.k === printBack)?.label }}</span><i class="chev">⌄</i>
-              </button>
-              <div v-if="openSection === 'back'" class="ctrl-body">
-                <div class="tpl-grid">
-                  <button v-for="v in BACK_TPLS" :key="v.k" class="tpl-card" :class="{ on: printBack === v.k }" @click="printBack = v.k; side = 'back'">
-                    <span class="tpl-thumb" :style="{ background: v.cover }"><i :class="'th th-back-' + v.k"></i></span>
-                    <b>{{ v.label }}</b>
-                    <span class="tpl-desc">{{ v.desc }}</span>
-                    <span v-if="printBack === v.k" class="tpl-check">✓ 使用中</span>
-                  </button>
-                </div>
+            <template v-else-if="openSection === 'front'">
+              <div class="section-title" style="margin-top:0">正面版式</div>
+              <div class="tpl-grid">
+                <button v-for="v in FRONT_TPLS" :key="v.k" class="tpl-card" :class="{ on: template === v.k }" @click="template = v.k; side = 'front'">
+                  <span class="tpl-thumb" :style="{ background: v.cover }"><i :class="'th th-' + v.k"></i></span>
+                  <b>{{ v.label }}</b>
+                  <span class="tpl-desc">{{ v.desc }}</span>
+                  <span v-if="template === v.k" class="tpl-check">✓ 使用中</span>
+                </button>
               </div>
-            </section>
+            </template>
 
-            <section class="card ctrl" :class="{ open: openSection === 'detail' }">
-              <button class="ctrl-head" @click="toggleSection('detail')">
-                <span class="ctrl-idx">4</span><span class="ctrl-name">卡片细节</span>
-                <span class="ctrl-val">{{ brand || '品牌文字' }}</span><i class="chev">⌄</i>
-              </button>
-              <div v-if="openSection === 'detail'" class="ctrl-body">
-                <label class="check"><input type="checkbox" v-model="guides" /> 显示出血线与安全线（仅预览）</label>
-                <div class="field" style="margin-top:12px"><label>卡片上的品牌文字</label><input v-model="brand" class="input" maxlength="16" /></div>
+            <template v-else-if="openSection === 'back'">
+              <div class="section-title" style="margin-top:0">背面版式</div>
+              <div class="tpl-grid">
+                <button v-for="v in BACK_TPLS" :key="v.k" class="tpl-card" :class="{ on: printBack === v.k }" @click="printBack = v.k; side = 'back'">
+                  <span class="tpl-thumb" :style="{ background: v.cover }"><i :class="'th th-back-' + v.k"></i></span>
+                  <b>{{ v.label }}</b>
+                  <span class="tpl-desc">{{ v.desc }}</span>
+                  <span v-if="printBack === v.k" class="tpl-check">✓ 使用中</span>
+                </button>
               </div>
-            </section>
+            </template>
 
-            <section class="card ctrl" :class="{ open: openSection === 'download' }">
-              <button class="ctrl-head" @click="toggleSection('download')">
-                <span class="ctrl-idx">5</span><span class="ctrl-name">下载印刷文件</span>
-                <span class="ctrl-val">{{ side === 'front' ? '正面' : '背面' }} · {{ currentLabel }}</span><i class="chev">⌄</i>
-              </button>
-              <div v-if="openSection === 'download'" class="ctrl-body">
-                <div class="btn-row">
-                  <button class="btn btn-primary" :disabled="busy" @click="download('svg')">下载 SVG 矢量稿</button>
-                  <button class="btn btn-ghost" :disabled="busy" @click="download('png')">下载 300dpi PNG</button>
-                </div>
-                <p class="small muted" style="margin-top:10px">正/背面可分别选版式、分别下载，当前预览面即下载面。</p>
-              </div>
-            </section>
+            <template v-else-if="openSection === 'detail'">
+              <div class="section-title" style="margin-top:0">卡片细节</div>
+              <label class="check"><input type="checkbox" v-model="guides" /> 显示出血线与安全线（仅预览）</label>
+              <div class="field" style="margin-top:12px"><label>卡片上的品牌文字</label><input v-model="brand" class="input" maxlength="16" /></div>
+            </template>
 
-            <section class="card ctrl" :class="{ open: openSection === 'tips' }">
-              <button class="ctrl-head" @click="toggleSection('tips')">
-                <span class="ctrl-idx">6</span><span class="ctrl-name">印刷 & 延展用法</span>
-                <span class="ctrl-val">交印厂前先看</span><i class="chev">⌄</i>
-              </button>
-              <div v-if="openSection === 'tips'" class="ctrl-body">
-                <ol class="tips small">
-                  <li>裁切成品 90×54mm，文件含 3mm 出血，总尺寸 96×60mm；请按 1:1 输出，勿缩放。</li>
-                  <li>SVG 中文字体由印刷方转曲后再制版；PNG 已是 300dpi，可直接用于普通彩印。</li>
-                  <li>二维码纠错等级为 H（30%），局部磨损/覆膜后仍可识别；印刷时不要拉伸变形。</li>
-                  <li>可把同一二维码写入 NFC 标签贴在后背或工牌上，手机碰一碰即可打开电子名片。</li>
-                </ol>
+            <template v-else-if="openSection === 'download'">
+              <div class="section-title" style="margin-top:0">下载印刷文件</div>
+              <div class="btn-row">
+                <button class="btn btn-primary" :disabled="busy" @click="download('svg')">下载 SVG 矢量稿</button>
+                <button class="btn btn-ghost" :disabled="busy" @click="download('png')">下载 300dpi PNG</button>
               </div>
-            </section>
+              <p class="small muted" style="margin-top:10px">当前：{{ side === 'front' ? '正面' : '背面' }} · {{ currentLabel }}。正/背面可分别选版式、分别下载。</p>
+            </template>
+
+            <template v-else-if="openSection === 'tips'">
+              <div class="section-title" style="margin-top:0">印刷 & 延展用法</div>
+              <ol class="tips small">
+                <li>裁切成品 90×54mm，文件含 3mm 出血，总尺寸 96×60mm；请按 1:1 输出，勿缩放。</li>
+                <li>SVG 中文字体由印刷方转曲后再制版；PNG 已是 300dpi，可直接用于普通彩印。</li>
+                <li>二维码纠错等级为 H（30%），局部磨损/覆膜后仍可识别；印刷时不要拉伸变形。</li>
+                <li>可把同一二维码写入 NFC 标签贴在后背或工牌上，手机碰一碰即可打开电子名片。</li>
+              </ol>
+            </template>
           </div>
         </div>
       </template>
@@ -143,9 +122,16 @@ const template = ref('classic'); const printBack = ref('solid')
 const side = ref('front'); const guides = ref(false)
 const printTheme = ref('ocean')
 const brand = ref('MCard'); const svgHtml = ref(''); const busy = ref(false); const loadError = ref('')
-// 调节项一次只展开一项（抖音发布页同款），预览常驻顶部不受滚动影响
+// 横向功能条：6 项一次只显示一项内容，预览常驻顶部（抖音发布页同款）
+const SECTIONS = [
+  { k: 'color', label: '配色' },
+  { k: 'front', label: '正面' },
+  { k: 'back', label: '背面' },
+  { k: 'detail', label: '细节' },
+  { k: 'download', label: '下载' },
+  { k: 'tips', label: '说明' }
+]
 const openSection = ref('color')
-function toggleSection(k) { openSection.value = openSection.value === k ? '' : k }
 
 // 印刷配色复用主题唯一真相源 THEMES，不另建颜色定义（参数唯一真相源约束）
 const PRINT_THEMES = Object.entries(THEMES).map(([k, v]) => ({ k, label: v.label, accent: v.accent }))
@@ -225,17 +211,23 @@ async function download(kind) {
 .side-switch button { padding: 6px 18px; font-size: 12px; }
 .preview-cap { margin-top: 8px; }
 
-/* 下方调节项：一次展开一项，标题直接显示当前值，改完上方预览立刻同步 */
-.control-list { display: flex; flex-direction: column; gap: 10px; }
-.ctrl { overflow: hidden; }
-.ctrl-head { width: 100%; display: flex; align-items: center; gap: 10px; padding: 14px 16px; border: 0; background: transparent; text-align: left; font-size: 14px; font-weight: 700; }
-.ctrl-idx { flex: 0 0 22px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: #eff6ff; color: var(--primary, #2563eb); font-size: 11px; }
-.ctrl-name { flex: 1; }
-.ctrl-val { font-size: 12px; font-weight: 400; color: var(--muted, #6b7688); }
-.chev { font-style: normal; font-size: 16px; color: var(--muted, #6b7688); transition: transform .18s; }
-.ctrl.open .chev { transform: rotate(180deg); }
-.ctrl-body { padding: 0 16px 16px; }
-.ctrl-body > .small.muted { margin: 0 0 10px; }
+/* 横向功能条：6 项一行铺满，窄屏可横向滑动；选中项主题色高亮，下方只出该项内容 */
+.control-tabs { display: flex; gap: 4px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 2px 0 4px; scrollbar-width: none; }
+.control-tabs::-webkit-scrollbar { display: none; }
+.control-tab { position: relative; flex: 1 0 56px; min-width: 56px; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 4px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--muted, #6b7688); font-size: 12px; }
+.control-tab.on { background: rgba(37,99,235,.1); background: color-mix(in srgb, var(--t-accent, var(--primary, #2563eb)) 12%, transparent); color: var(--t-accent, var(--primary, #2563eb)); font-weight: 700; }
+.tab-ico { width: 22px; height: 22px; border-radius: 7px; background: currentColor; opacity: .75; position: relative; }
+.tab-ico::after { content: ''; position: absolute; inset: 6px 5px; border-radius: 3px; background: var(--bg-card, #fff); }
+.control-tab.on .tab-ico { opacity: 1; }
+.ico-color::after { border-radius: 50%; inset: 5px; }
+.ico-front::after { inset: 4px 5px 10px; }
+.ico-back::after { inset: 10px 5px 4px; }
+.ico-detail::after { inset: 9px 4px; border-radius: 50%; }
+.ico-download::after { inset: 4px 8px 9px; border-radius: 2px 2px 0 0; }
+.ico-tips::after { inset: 6px 5px; border-radius: 3px; }
+.tab-dot { position: absolute; bottom: 4px; width: 12px; height: 3px; border-radius: 2px; background: var(--t-accent, var(--primary, #2563eb)); }
+.control-panel { margin-top: 6px; }
+.control-panel .section-title { font-size: 15px; }
 @media (max-width: 900px) { .preview-panel { top: 62px; } }
 .tpl-list { display: flex; gap: 8px; flex-wrap: wrap; }
 .tpl-list button { padding: 8px 14px; border: 1px solid var(--line); border-radius: 9px; font-size: 12px; }
