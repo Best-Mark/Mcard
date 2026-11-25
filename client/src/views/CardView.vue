@@ -157,7 +157,7 @@
         <template v-else>
           <button class="btn btn-primary dock-btn" :disabled="!contactPhone" @click="tel(contactPhone)"><span class="dock-ico dock-ico-phone"></span>打电话</button>
           <button class="btn btn-ghost dock-btn" :disabled="!contactPhone" @click="copy(contactPhone, '号码')"><span class="dock-ico">⧉</span>复制号码</button>
-          <a v-if="contactNative" class="btn btn-ghost dock-btn" :title="contactActionTip" :aria-label="contactActionLabel" :href="vcfApi"><span class="dock-ico">◉</span>存入通讯录</a>
+          <a v-if="contactNative" class="btn btn-ghost dock-btn" :title="contactActionTip" :aria-label="contactActionLabel" :href="contactHref"><span class="dock-ico">◉</span>存入通讯录</a>
           <button v-else class="btn btn-ghost dock-btn" :title="contactActionTip" :aria-label="contactActionLabel" @click="saveContact"><span class="dock-ico">◉</span>存入通讯录</button>
           <button class="btn btn-ghost dock-btn" @click="doShare"><span class="dock-ico">↗</span>分享</button>
         </template>
@@ -260,7 +260,7 @@ const props = defineProps({
 import api from '../api'
 import { showToast, auth, siteConfig } from '../store'
 import { THEMES, themeOf, themeVars } from '../utils/themes'
-import { isWeChat, isIOS, saveImageUrl, prepareExternalOpen, openVcfInline, deviceEnv, SAVE_IMAGE_TIPS } from '../utils/save-image'
+import { isWeChat, isIOS, saveImageUrl, prepareExternalOpen, openVcfInline, androidContactIntent, deviceEnv, SAVE_IMAGE_TIPS } from '../utils/save-image'
 import { shareOrCopy, mapLinks } from '../utils/share'
 import { setCardShare } from '../utils/wx-share'
 import { buildAndUploadShareImage } from '../utils/shareCardImage'
@@ -382,6 +382,13 @@ const deviceEnvKey = deviceEnv()
 // Safari 只信任用户点击的顶层导航；Chrome/安卓对 text/vcard + 无 attachment 的直链同样会用通讯录应用打开。
 // JS location.href/fetch 下载在 iOS 上会被当下载拦截，所以 iOS/Android 都走 <a>。
 const contactNative = deviceEnvKey === 'ios' || deviceEnvKey === 'android'
+// iOS：.vcf 直链弹添加联系人；安卓：intent:// 直接拉起预填的添加联系人界面（收到 vcf 只会下载，必须走 intent）。
+// 安卓 intent 带 browser_fallback_url 指向强制下载的 vcf，通讯录不可用时自动降级为下载。
+const contactHref = computed(() => {
+  if (deviceEnvKey !== 'android') return vcfApi.value
+  const fallback = `${windowRef.location.origin}${vcfApi.value}?download=1`
+  return androidContactIntent(card.value, fallback)
+})
 const saveTip = SAVE_IMAGE_TIPS[deviceEnvKey] || SAVE_IMAGE_TIPS.other
 // 通讯录操作按环境出文案：iOS/Android 直接开系统界面、鸿蒙/其它下载 vcf、微信引导去浏览器
 const CONTACT_ACTION = {
@@ -407,9 +414,9 @@ const CONTACT_STEPS = {
     '点「完成」即保存到通讯录'
   ] },
   android: { title: '安卓 · 通常一步到位', lines: [
-    '点页面底部「存入通讯录」，直接拉起系统通讯录',
+    '点页面底部「存入通讯录」，直接拉起已填好资料的添加联系人界面',
     '确认姓名与号码无误',
-    '点「保存 / 完成」即存入通讯录'
+    '点「保存」即存入；若手机不支持会自动改为下载联系人文件'
   ] },
   harmony: { title: '鸿蒙 · 通常一步到位', lines: [
     '点页面底部「存入通讯录」，直接下载联系人文件',
@@ -579,9 +586,13 @@ async function saveQr() {
 async function saveContact() {
   if (!card.value) return
   if (isWeChat()) { await showGuide('contact'); return }
-  if (isIOS() || /Android|Adr/i.test(navigator.userAgent)) {
-    // 手机浏览器：直接跳 .vcf 顶层导航拉起系统「添加联系人」界面（服务端按 UA 去掉 attachment）。
-    // 若被定制浏览器拦截，用户可复制页面里的手机号手动新建联系人——不再主动弹窗打断。
+  if (/Android|Adr/i.test(navigator.userAgent)) {
+    // 安卓：走 intent 拉起预填的添加联系人界面，失败自动 fallback 到下载 vcf（见 androidContactIntent）。
+    window.location.href = contactHref.value
+    return
+  }
+  if (isIOS()) {
+    // iOS Safari：.vcf 直链弹系统「添加联系人」界面（服务端按 UA 去掉 attachment）。
     openVcfInline(vcfApi.value)
     return
   }

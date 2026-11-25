@@ -388,7 +388,9 @@ router.get('/public/:slug/card.vcf', wrap((req, res) => {
   const isIOS = /iPad|iPhone|iPod/.test(ua)
   const isAndroid = /Android/i.test(ua)
   const isWeChat = /MicroMessenger/i.test(ua)
-  const inline = String(req.query.inline) === '1' || ((isIOS || isAndroid) && !isWeChat)
+  // download=1：强制下载（安卓 intent 拉起通讯录失败时的 fallback 链接走这里，必须带 attachment 才是下载文件）
+  const forceDownload = String(req.query.download || '') === '1'
+  const inline = !forceDownload && (String(req.query.inline) === '1' || ((isIOS || isAndroid) && !isWeChat))
   if (inline) {
     // 不设 Content-Disposition：iOS Safari 按 MIME(text/vcard)+.vcf 后缀识别为联系人卡片，
     // 带 filename 的 inline 头会被 Safari 当下载请求 → 弹「无法下载此文件」。
