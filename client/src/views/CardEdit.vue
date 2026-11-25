@@ -30,9 +30,9 @@
         </nav>
 
         <div class="edit-content">
-          <!-- ① 身份信息 -->
+          <!-- 名片信息 -->
           <div v-show="active === 'identity'" class="card card-pad" id="focus-identity">
-            <div class="section-title" style="margin-top:0">基本信息</div>
+            <div class="section-title" style="margin-top:0">名片信息</div>
 
             <div class="identity-block">
               <div class="block-title">🏢 公司 / 品牌 LOGO <span class="muted small">代表企业或品牌 · 名片的视觉主体（自动去底成透明 PNG）</span></div>
@@ -56,13 +56,13 @@
             <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
           </div>
 
-          <!-- ② 简介与标签 -->
+          <!-- 标签简介：标签放在上面（用户 2026-11-25 定稿） -->
           <div v-show="active === 'bio'" class="card card-pad" id="focus-bio">
-            <div class="section-title" style="margin-top:0">简介与标签</div>
-            <p class="small muted" style="margin-bottom:12px">一句话介绍，让对方快速知道你是谁、做什么。</p>
+            <div class="section-title" style="margin-top:0">标签简介</div>
+            <p class="small muted" style="margin-bottom:12px">先用几个标签让人一眼记住你，再用简介补充说明。</p>
+            <div class="field"><label>标签（逗号分隔，最多 8 个）</label><input v-model="tagsText" class="input" placeholder="品牌顾问, 设计, 马拉松" /></div>
             <div class="field"><label>个人简介</label><textarea v-model="form.bio" class="textarea" maxlength="600" placeholder="一句话介绍自己，展示在名片首页"></textarea></div>
             <div class="field"><label>公司简介</label><textarea v-model="form.company_intro" class="textarea" maxlength="1000" placeholder="介绍公司业务、优势与服务，展示在名片「公司简介」区块，并写入通讯录备注"></textarea></div>
-            <div class="field"><label>标签（逗号分隔，最多 8 个）</label><input v-model="tagsText" class="input" placeholder="品牌顾问, 设计, 马拉松" /></div>
             <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
           </div>
 
@@ -124,9 +124,9 @@
             <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
           </div>
 
-          <!-- ④ 更多链接 -->
+          <!-- 更多信息 -->
           <div v-show="active === 'links'" class="card card-pad" id="focus-links">
-            <div class="section-title" style="margin-top:0">更多链接</div>
+            <div class="section-title" style="margin-top:0">更多信息</div>
             <p class="small muted" style="margin-bottom:10px">公司主页、店铺、作品集等，同时写入通讯录备注。</p>
             <div class="grid2">
               <div class="field"><label>公司主页 URL</label><input v-model="form.website" class="input" placeholder="https://" /></div>
@@ -141,9 +141,9 @@
             <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
           </div>
 
-          <!-- ⑧ 相册（内部字段名仍为 materials） -->
+          <!-- 公司相册（内部字段名仍为 materials） -->
           <div v-show="active === 'materials'" class="card card-pad" id="focus-materials">
-            <div class="section-title" style="margin-top:0">相册</div>
+            <div class="section-title" style="margin-top:0">公司相册</div>
             <p class="small muted" style="margin-bottom:12px">图片、产品册、作品集或链接，访客在名片上点开即看，无需跳转。</p>
             <div v-if="!materials.length" class="small muted" style="padding:12px 0">还没有内容，添加第一项吧。</div>
             <div v-for="(m, i) in materials" :key="m.id || m._k || i" class="material-row">
@@ -239,9 +239,12 @@
           <div class="done-bar">
             <span class="small muted">{{ autoSaveText }}</span>
             <div class="done-actions">
-              <button v-if="sectionIndex > 0" class="btn btn-sm btn-ghost" @click="goSection(sectionIndex - 1)">‹ 上一项</button>
-              <button v-if="sectionIndex < sections.length - 1" class="btn btn-sm btn-ghost" @click="goSection(sectionIndex + 1)">下一项 ›</button>
-              <button class="btn btn-sm btn-primary" :disabled="saving || loadError || !loaded" @click="finish">{{ sectionIndex === sections.length - 1 ? '完成，返回名片' : '返回名片' }}</button>
+              <!-- 外观/集市从导航移出、由 /me 直达（sectionIndex=-1），此时不显示上下项 -->
+              <template v-if="sectionIndex >= 0">
+                <button v-if="sectionIndex > 0" class="btn btn-sm btn-ghost" @click="goSection(sectionIndex - 1)">‹ 上一项</button>
+                <button v-if="sectionIndex < sections.length - 1" class="btn btn-sm btn-ghost" @click="goSection(sectionIndex + 1)">下一项 ›</button>
+              </template>
+              <button class="btn btn-sm btn-primary" :disabled="saving || loadError || !loaded" @click="finish">{{ sectionIndex === sections.length - 1 || sectionIndex < 0 ? '完成，返回名片' : '返回名片' }}</button>
             </div>
           </div>
         </div>
@@ -345,14 +348,15 @@ function applyQrPreset(p) {
 const form = ref({ ...blank })
 const active = ref('identity')
 const showPreview = ref(false)
+// 分类顺序按用户 2026-11-25 定稿：名片信息→联系方式→标签简介→公司相册→更多信息。
+// ⚠️ 外观风格不进导航（focus=appearance 仍可直达：由「我的名片→配色风格」按钮进入）；
+// 名片集市也不进导航（由「我的名片→名片集市」按钮进入），内容块保留、保存逻辑不变。
 const sections = computed(() => [
-  { key: 'identity', label: '身份信息', icon: '👤', done: !!(form.value.name && (form.value.title || form.value.company)) },
-  { key: 'bio', label: '简介与标签', icon: '📝', done: !!(form.value.bio || form.value.company_intro || tagList.value.length) },
+  { key: 'identity', label: '名片信息', icon: '👤', done: !!(form.value.name && (form.value.title || form.value.company)) },
   { key: 'contact', label: '联系方式', icon: '📞', done: !!(form.value.mobile || form.value.phone || form.value.email || form.value.wechat || form.value.address) },
-  { key: 'links', label: '更多链接', icon: '🔗', done: !!(form.value.website || form.value.shop_url || form.value.links?.length) },
-  { key: 'materials', label: '相册', icon: '📚', done: !!materials.value.length },
-  { key: 'market', label: '名片集市', icon: '🧭', done: !!form.value.market_opt_in },
-  { key: 'appearance', label: '外观风格', icon: '🎨', done: true }
+  { key: 'bio', label: '标签简介', icon: '📝', done: !!(form.value.bio || form.value.company_intro || tagList.value.length) },
+  { key: 'materials', label: '公司相册', icon: '📚', done: !!materials.value.length },
+  { key: 'links', label: '更多信息', icon: '🔗', done: !!(form.value.website || form.value.shop_url || form.value.links?.length) }
 ])
 const templates = ref([])
 const marketMeta = ref({ industries: [], cities: [] })

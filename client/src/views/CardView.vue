@@ -146,14 +146,22 @@
           <button @click="moreOpen = false; openExchange()">交换名片</button>
         </div>
       </div>
-      <!-- 主操作单排 4 个。与公开页唯一差异：持有者视角首按钮为「编辑名片」而非「打电话」。 -->
+      <!-- 主操作单排 4 个。持有者视角：编辑名片 / 配色风格 / 名片集市 / 分享；
+           公开页：打电话 / 复制号码 / 存入通讯录 / 分享。2026-11-25 用户定稿。 -->
       <div v-if="full" class="cv-dock">
-        <button v-if="owner" class="btn btn-primary" @click="router.push('/me/card')">编辑名片</button>
-        <button v-else class="btn btn-primary" :disabled="!contactPhone" @click="tel(contactPhone)">打电话</button>
-        <button class="btn btn-ghost" :disabled="!contactPhone" @click="copy(contactPhone, '号码')">复制号码</button>
-        <a v-if="contactNative" class="btn btn-ghost" :title="contactActionTip" :aria-label="contactActionLabel" :href="vcfApi">存入通讯录</a>
-        <button v-else class="btn btn-ghost" :title="contactActionTip" :aria-label="contactActionLabel" @click="saveContact">存入通讯录</button>
-        <button class="btn btn-ghost" @click="doShare">分享</button>
+        <template v-if="owner">
+          <button class="btn btn-primary" @click="router.push('/me/card')">编辑名片</button>
+          <button class="btn btn-ghost" @click="router.push({ path: '/me/card', query: { focus: 'appearance' } })">配色风格</button>
+          <button class="btn btn-ghost" @click="router.push({ path: '/me/card', query: { focus: 'market' } })">名片集市</button>
+          <button class="btn btn-ghost" @click="doShare">分享</button>
+        </template>
+        <template v-else>
+          <button class="btn btn-primary" :disabled="!contactPhone" @click="tel(contactPhone)">打电话</button>
+          <button class="btn btn-ghost" :disabled="!contactPhone" @click="copy(contactPhone, '号码')">复制号码</button>
+          <a v-if="contactNative" class="btn btn-ghost" :title="contactActionTip" :aria-label="contactActionLabel" :href="vcfApi">存入通讯录</a>
+          <button v-else class="btn btn-ghost" :title="contactActionTip" :aria-label="contactActionLabel" @click="saveContact">存入通讯录</button>
+          <button class="btn btn-ghost" @click="doShare">分享</button>
+        </template>
       </div>
       <BottomSheet :show="mapOpen" @update:show="mapOpen = $event">
         <div class="map-sheet-head"><b>选择导航地图</b><button @click="mapOpen = false">×</button></div>
@@ -240,8 +248,9 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 // embed：嵌入模式（只渲染封面+身份区，其余由宿主页呈现）；owner：持有者预览（/me 我的名片）。
-// ⚠️ owner 必须与公开页「同一套模板、同一套样式、同一屏内容」，唯一差异是 dock 首个按钮为「编辑名片」
-// 而不是「打电话」，且不设置微信分享/不查收藏/不上报访问（避免污染统计）。2026-11-25 用户定稿。
+// ⚠️ owner 与公开页「同一套模板、同一套样式、同一屏内容」；差异只在 dock（持有者=编辑名片/配色风格/名片集市/分享，
+// 公开页=打电话/复制号码/存入通讯录/分享）与封面左上的编辑入口，且不设置微信分享/不查收藏/不上报访问。
+// 2026-11-25 用户定稿。
 const props = defineProps({
   embed: { type: Boolean, default: false },
   embedSlug: { type: String, default: '' },
