@@ -270,7 +270,9 @@ async function performUpdate(cfg = getConfig()) {
     result.checkedAt = remember(result)
     if (restartRequired && process.env.pm_id) {
       result.restartScheduled = true
-      setProgress({ step: '服务即将重启', pct: 98, detail: '服务端有变更，2 秒后自动重启（页面会短暂断连，重启后自动恢复）' })
+      // 明确标记 restartScheduled：前端据此「等重启恢复再放行」，而不是拿到 done 就当可操作，
+      // 否则那 2 秒 + pm2 拉起窗口里的请求会撞 502（2026-11-25 用户截图实锤）。
+      setProgress({ step: '服务即将重启', pct: 98, restartScheduled: true, detail: '服务端有变更，2 秒后自动重启（页面会短暂断连，重启后自动恢复）' })
       setTimeout(() => process.exit(0), 2000)
     }
     return finishProgress(result)

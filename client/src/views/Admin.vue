@@ -963,10 +963,12 @@ function startPolling(kind, onDone) {
         if (doneCalled) return
         doneCalled = true
         clearInterval(pollTimer)
-        updBusy.value = false
-        onDone(d.progress)
-        // 完成后刷新版本/检查时间（apply 重启场景稍等再拉，避免又撞上重启窗口）
-        setTimeout(() => loadUpdate().catch(() => {}), kind === 'apply' ? 3500 : 200)
+        // onDone 返回 true = 它自己接管 busy（如 apply 排定重启后要等恢复），这里不提前释放
+        const keepBusy = onDone(d.progress) === true
+        if (!keepBusy) {
+          updBusy.value = false
+          setTimeout(() => loadUpdate().catch(() => {}), kind === 'apply' ? 3500 : 200)
+        }
       }
     } catch (e) {
       misses++
@@ -995,6 +997,26 @@ async function checkUpdate() {
     })
   } catch (e) { updBusy.value = false; showToast(e.message, 'error') }
 }
+// 等待重启恢复：进程退出→pm2 拉起有 1~3 秒 502 窗口，期间静默重试，恢复后再放行 UI。
+// updBusy 保持 true 直到确认恢复，避免用户在窗口期切 tab/点按钮撞断连弹错误。
+function waitAfterRestart(doneMsg) {
+  let retried = 0
+  const recheck = setInterval(async () => {
+    try {
+      const d = (await api.get('/api/admin/update/status')).data.data
+      updateInfo.value = d
+      if (!d.needsRestart && !d.progress?.restartScheduled) {
+        clearInterval(recheck); updBusy.value = false
+        showToast(doneMsg, 'success')
+        reconcileCheckResult(d)
+      }
+    } catch (e) {
+      // 断连属预期，交给请求层的 GET 重试兜底；这里只计数防永久卡死
+      if (++retried > 40) { clearInterval(recheck); updBusy.value = false; showToast('服务重启较慢，请刷新页面确认', 'error') }
+    }
+  }, 1500)
+}
+
 async function applyUpdate() {
   if (updBusy.value) return
   applyOpen.value = false
@@ -1005,8 +1027,15 @@ async function applyUpdate() {
     startPolling('apply', p => {
       if (p.error) showToast(`更新失败：${p.error}`, 'error')
       else {
-        // apply 成功即已追上远端：立刻清掉「发现新版本」缓存，不等重启后的 3.5s 轮询
+        // apply 成功即已追上远端：立刻清掉「发现新版本」缓存
         if (checkResult.value) checkResult.value = { ...checkResult.value, hasUpdate: false }
+        // 关键时序：服务端已排定重启时，不能拿到 done 就弹「更新完成」放行——
+        // 此时进程还没退出、随后有 502 窗口。先提示重启中，等恢复再给最终提示。
+        if (p.restartScheduled) {
+          showToast('更新完成，服务正在重启，请稍候…', 'success')
+          waitAfterRestart('服务已重启，新代码已生效')
+          return true // 接管 busy，等重启恢复再释放
+        }
         showToast('更新完成', 'success')
       }
     })
