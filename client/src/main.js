@@ -7,6 +7,9 @@ import './styles/global.css'
 import './styles/desktop.css'
 // 模板缩略图配色唯一真相源：CardEdit / CardStyle 共用；全局引入保证配色风格页打开就有色块
 import './styles/template-thumbs.css'
+// 名片 18 套模板配色唯一真相源：CardView（真实名片页）与 CardPreview（实时预览）共用 --cv-*
+// 必须在 global.css 之后加载（navygold 的 --cv-page-bg 依赖 global.css 的 --ng-*）
+import './styles/card-template-palettes.css'
 
 createApp(App).use(router).mount('#app')
 ensureSiteConfig(api)

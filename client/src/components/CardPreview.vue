@@ -1,6 +1,7 @@
 <template>
   <div class="cp-wrap">
-    <div ref="screen" class="cp-screen" :class="'cp-tpl-' + (card.template || 'classic')" :style="vars">
+    <!-- 预览与真实名片页共用 --cv-* 配色：挂同款 cv-clean / cv-tpl-*，配色由共享 card-template-palettes.css 注入 -->
+    <div ref="screen" class="cp-screen" :class="['cp-tpl-' + (card.template || 'classic'), 'cv-clean', 'cv-tpl-' + (card.template || 'classic')]" :style="vars">
       <div class="cp-cover">
         <div class="cp-brand">M<em>Card</em></div>
       </div>
@@ -167,92 +168,79 @@ watch(() => props.section, async () => {
 </script>
 
 <style scoped>
+/* 实时预览配色唯一真相源 = ../styles/card-template-palettes.css 的 --cv-*（与真实名片页 CardView 同一套）。
+   预览根节点挂同款 cv-clean / cv-tpl-<key>，共享 CSS 自动注入 18 套配色；组件内不再自建 --t-* 配色，
+   保证「配色风格页所见 = 公开名片页所得」。下方统一层只管结构（一张连续大卡）。 */
 .cp-wrap { display: flex; flex-direction: column; gap: 8px; }
-.cp-screen { height: min(72vh, 760px); overflow-y: auto; background: var(--t-bg); color: var(--t-text); border: 1px solid var(--line); border-radius: 14px; position: relative; scroll-behavior: smooth; }
-.cp-cover { height: 92px; position: relative; border-radius: 0 0 18px 18px; background: var(--t-cover); }
-.cp-brand { position: absolute; right: 12px; top: 12px; color: #fff; font-weight: 800; font-size: 13px; opacity: .9; }
+.cp-screen { height: min(72vh, 760px); overflow-y: auto; background: var(--cv-page-bg); color: var(--cv-ink); border: 1px solid var(--cv-line, var(--line)); border-radius: 14px; position: relative; scroll-behavior: smooth; }
+.cp-cover { height: 92px; position: relative; border-radius: 0 0 18px 18px; background: var(--cv-topbar-bg, var(--t-cover)); }
+.cp-brand { position: absolute; right: 12px; top: 12px; color: var(--cv-brand-color, #fff); font-weight: 800; font-size: 13px; opacity: .9; }
 .cp-brand em { font-style: normal; opacity: .75; }
 .cp-body { padding: 0 10px 14px; margin-top: -24px; position: relative; }
-.cp-profile { display: flex; gap: 10px; align-items: flex-start; padding: 12px; background: var(--t-surface); border-radius: 12px; border: 1px solid var(--line); }
-.cp-avatar { flex: 0 0 52px; width: 52px; height: 52px; border-radius: 12px; overflow: hidden; background: var(--t-accent); color: #fff; display: grid; place-items: center; font-size: 22px; font-weight: 800; }
+.cp-profile { display: flex; gap: 10px; align-items: flex-start; padding: 12px; background: var(--cv-card-bg); border-radius: 12px; border: 1px solid var(--cv-line, var(--line)); }
+.cp-avatar { flex: 0 0 52px; width: 52px; height: 52px; border-radius: 12px; overflow: hidden; background: var(--cv-btn-main-solid, var(--cv-btn-main-bg)); color: var(--cv-btn-main-color, #fff); display: grid; place-items: center; font-size: 22px; font-weight: 800; }
 .cp-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .cp-avatar.is-logo { background: #fff; padding: 4px; }
 .cp-avatar.is-logo img { object-fit: contain; }
 .cp-ident { flex: 1; min-width: 0; }
 .cp-name { font-size: 17px; font-weight: 800; line-height: 1.25; word-break: break-all; }
-.cp-en { display: block; font-size: 10px; color: var(--t-muted); font-weight: 500; }
-.cp-title { color: var(--t-accent); font-size: 11px; font-weight: 600; margin-top: 3px; line-height: 1.4; }
+.cp-en { display: block; font-size: 10px; color: var(--cv-ink-2); font-weight: 500; }
+.cp-title { color: var(--cv-role-color, var(--cv-block-title)); font-size: 11px; font-weight: 600; margin-top: 3px; line-height: 1.4; }
 .cp-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-.cp-tags span { font-size: 10px; padding: 2px 7px; border-radius: 999px; background: rgba(0,0,0,.05); background: color-mix(in srgb, var(--t-accent) 12%, transparent); color: var(--t-accent); font-weight: 600; }
-.cp-block { margin-top: 10px; padding: 12px; background: var(--t-surface); border-radius: 12px; border: 1px solid var(--line); }
-.cp-block h3 { font-size: 13px; margin: 0 0 8px; padding-left: 8px; border-left: 3px solid var(--t-accent); line-height: 1.3; }
-.cp-block h3 span { font-size: 10px; font-weight: 400; color: var(--t-muted); }
-.cp-contact-row { display: flex; align-items: center; gap: 6px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.cp-tags span { font-size: 10px; padding: 2px 7px; border-radius: var(--cv-tag-radius, 999px); background: var(--cv-tag-bg, rgba(0,0,0,.05)); color: var(--cv-tag-color, var(--cv-ink)); font-weight: 600; }
+.cp-block { margin-top: 10px; padding: 12px; background: var(--cv-panel-bg); border-radius: 12px; border: 1px solid var(--cv-line, var(--line)); }
+.cp-block h3 { font-size: 13px; margin: 0 0 8px; padding-left: 8px; border-left: 3px solid var(--cv-block-title); line-height: 1.3; }
+.cp-block h3 span { font-size: 10px; font-weight: 400; color: var(--cv-ink-2); }
+.cp-contact-row { display: flex; align-items: center; gap: 6px; padding: 7px 0; border-bottom: 1px solid var(--cv-line, var(--line)); }
 .cp-contact-row:last-child { border-bottom: 0; }
-.cp-contact-label { flex: 0 0 44px; font-size: 10px; color: var(--t-muted); }
+.cp-contact-label { flex: 0 0 44px; font-size: 10px; color: var(--cv-ink-2); }
 .cp-contact-value { flex: 1; min-width: 0; font-size: 11px; word-break: break-all; }
 .cp-contact-acts { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
-.cp-contact-acts i { font-style: normal; font-size: 9px; padding: 3px 5px; border-radius: 5px; background: rgba(0,0,0,.05); background: color-mix(in srgb, var(--t-accent) 12%, transparent); color: var(--t-accent); white-space: nowrap; }
-.cp-bio { color: var(--t-muted); font-size: 11px; white-space: pre-wrap; line-height: 1.55; margin: 0; }
+.cp-contact-acts i { font-style: normal; font-size: 9px; padding: 3px 5px; border-radius: 5px; background: var(--cv-mini-bg, rgba(0,0,0,.05)); color: var(--cv-mini-color, var(--cv-ink)); white-space: nowrap; }
+.cp-bio { color: var(--cv-ink-2); font-size: 11px; white-space: pre-wrap; line-height: 1.55; margin: 0; }
 .cp-links { display: grid; gap: 6px; }
-.cp-links div { border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; display: flex; flex-direction: column; background: var(--t-bg); }
+.cp-links div { border: 1px solid var(--cv-line, var(--line)); border-radius: 8px; padding: 7px 9px; display: flex; flex-direction: column; background: var(--cv-panel-bg); }
 .cp-links b { font-size: 11px; }
-.cp-links span { font-size: 9px; color: var(--t-muted); }
-.cp-site { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.cp-links span { font-size: 9px; color: var(--cv-ink-2); }
+.cp-site { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--cv-line, var(--line)); }
 .cp-site:last-child { border-bottom: 0; }
 .cp-site div { display: flex; flex-direction: column; min-width: 0; }
 .cp-site b { font-size: 11px; }
-.cp-site span { font-size: 9px; color: var(--t-muted); }
-.cp-material-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 11px; }
+.cp-site span { font-size: 9px; color: var(--cv-ink-2); }
+.cp-material-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--cv-line, var(--line)); font-size: 11px; }
 .cp-material-row:last-child { border-bottom: 0; }
 .cp-material-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cp-market-row { display: flex; gap: 8px; padding: 4px 0; font-size: 10px; }
-.cp-market-row > span { flex: 0 0 32px; color: var(--t-muted); }
+.cp-market-row > span { flex: 0 0 32px; color: var(--cv-ink-2); }
 .cp-market-row b { font-weight: 500; }
 .cp-market-row b.cp-on { color: #0f766e; font-weight: 700; }
-.cp-region-line { font-size: 11px; font-weight: 600; color: var(--t-accent); margin-bottom: 4px; }
+.cp-region-line { font-size: 11px; font-weight: 600; color: var(--cv-link-color, var(--cv-block-title)); margin-bottom: 4px; }
 .cp-address { font-size: 11px; line-height: 1.5; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.cp-map-btn { flex: 0 0 auto; padding: 4px 10px; border: 0; border-radius: 6px; background: var(--t-accent); color: #fff; font-size: 10px; }
+.cp-map-btn { flex: 0 0 auto; padding: 4px 10px; border: 0; border-radius: 6px; background: var(--cv-btn-main-solid, var(--cv-btn-main-bg)); color: var(--cv-btn-main-color, #fff); font-size: 10px; }
 .cp-center { text-align: center; }
 .cp-center h3 { text-align: left; }
-.cp-share-qr { width: 110px; height: 110px; object-fit: contain; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 4px; }
-.cp-foot { font-size: 9px; color: var(--t-muted); margin: 8px 0 0; }
+.cp-share-qr { width: 110px; height: 110px; object-fit: contain; background: #fff; border: 1px solid var(--cv-line, var(--line)); border-radius: 8px; padding: 4px; }
+.cp-foot { font-size: 9px; color: var(--cv-foot-color, var(--cv-ink-2)); margin: 8px 0 0; }
 
-/* 模板骨架差异（与公开名片页同口径），让换模板当场可见 */
-.cp-tpl-minimal .cp-cover { height: 40px; border-radius: 0; background: var(--t-surface); border-bottom: 1px solid var(--line); }
-.cp-tpl-minimal .cp-brand { color: var(--t-text); }
-.cp-tpl-minimal .cp-body { margin-top: 0; }
-.cp-tpl-minimal .cp-block, .cp-tpl-minimal .cp-profile, .cp-tpl-minimal .cp-actions { border-radius: 0; border: 0; border-bottom: 1px solid var(--line); box-shadow: none; }
-.cp-tpl-minimal .cp-avatar { border-radius: 50%; }
-.cp-tpl-elite .cp-profile { flex-direction: column; align-items: center; text-align: center; }
-.cp-tpl-elite .cp-avatar { border-radius: 50%; border: 2px solid var(--t-accent); }
-.cp-tpl-elite .cp-name { letter-spacing: 1px; }
-.cp-tpl-vivid .cp-cover { height: 108px; border-radius: 0 0 26px 26px; }
-.cp-tpl-vivid .cp-profile, .cp-tpl-vivid .cp-block { border-radius: 16px; }
-.cp-tpl-vivid .cp-avatar { border-radius: 16px; }
-.cp-tpl-seal .cp-cover { border-radius: 0; border-bottom: 3px solid #1e3a8a; }
-.cp-tpl-seal .cp-profile, .cp-tpl-seal .cp-block, .cp-tpl-seal .cp-actions { border-radius: 0; border: 1px solid #cbd5e1; }
-.cp-tpl-contact .cp-cover { border-radius: 0 0 12px 12px; }
-.cp-tpl-contact .cp-name { color: #0f2147; }
-
-/* ============ 预览统一层（2026-11-25，放在最后覆盖上面所有模板专属骨架）============
+/* ============ 预览统一层（放在最后覆盖上面的基础规则）============
    与公开名片页同口径：18 套模板预览都是「一张连续大卡」，区块间只用细线分隔，不再各自成卡断开。
-   预览仍按模板/主题换 --t-* 配色，所以切换模板当场能看到颜色变化；结构差异全部抹平。 */
+   配色统一来自共享 card-template-palettes.css 的 --cv-*，切换模板当场能看到颜色变化；结构差异全部抹平。 */
 /* 封面归零、正文卡一体化 */
 .cp-screen .cp-cover { height: 0; border-radius: 0; border-bottom: 0; background: transparent; }
-.cp-screen .cp-body { margin-top: 0; padding: 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: var(--t-surface); }
+.cp-screen .cp-body { margin-top: 0; padding: 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--cv-line, var(--line)); background: var(--cv-card-bg); }
 .cp-screen .cp-profile, .cp-screen .cp-block {
   margin-top: 0; padding: 12px; border: 0; border-radius: 0; box-shadow: none;
   background: transparent; border-bottom: 0;
 }
 /* 区块之间细线分隔（首块 profile 也带下边框），最后一块不留线 */
-.cp-screen .cp-profile, .cp-screen .cp-block:not(:last-child) { border-bottom: 1px solid var(--line); }
+.cp-screen .cp-profile, .cp-screen .cp-block:not(:last-child) { border-bottom: 1px solid var(--cv-line, var(--line)); }
 .cp-screen .cp-body > :last-child { border-bottom: 0; }
 /* 抹平各模板骨架差异：头像统一方形左置、姓名区左对齐，抹掉居中/圆形/圆角/描边等专属形态 */
 .cp-screen .cp-profile { flex-direction: row; align-items: flex-start; text-align: left; }
 .cp-screen .cp-avatar { border-radius: 12px; border: 0; }
 .cp-screen .cp-ident { text-align: left; }
-.cp-screen .cp-name { letter-spacing: normal; }
+/* 姓名字色固定取 --cv-ink：neon 的 --cv-name-color 是 transparent（渐变字），预览不复用渐变，避免隐身 */
+.cp-screen .cp-name { letter-spacing: normal; color: var(--cv-ink); }
 .cp-screen .cp-block h3 { text-align: left; }
-.cp-screen .cp-org { color: var(--t-muted); font-size: 10px; margin-top: 3px; line-height: 1.4; }
+.cp-screen .cp-org { color: var(--cv-org-color, var(--cv-ink-2)); font-size: 10px; margin-top: 3px; line-height: 1.4; }
 </style>
