@@ -35,18 +35,25 @@
           </button>
         </ScrollChips>
       </div>
-      <div class="mk-city-head">
-        <span>范围原点：<b>{{ city || (coords ? '地图选点' : '全国') }}</b></span>
-        <button class="mk-map-btn" :disabled="loading" @click="openMapPicker">⌖ 地图选点</button>
+      <!-- 搜索范围：原点与半径合并成一组。不选地图点则以当前定位为原点；半径形成以原点为圆心的圆形范围 -->
+      <div class="mk-range-box">
+        <div class="mk-range-head">
+          <span>搜索范围<span class="mk-range-sub">{{ radiusKm > 0 ? `以原点为圆心 ${radiusKm} km 内` : '不选半径则按原点远近排序' }}</span></span>
+          <button class="mk-map-btn" :disabled="loading" @click="openMapPicker">⌖ 地图选点</button>
+        </div>
+        <div class="mk-range-row">
+          <span class="mk-range-label">原点</span>
+          <b class="mk-origin">{{ originLabel }}</b>
+        </div>
+        <div class="mk-range-row">
+          <span class="mk-range-label">半径</span>
+          <BottomSelect v-model="radiusKm" :options="RADIUS_OPTIONS" title="选择范围" :disabled="!distanceMode" trigger-class="select select-sm" @change="applyFilter" />
+        </div>
       </div>
       <div class="mk-sort-row">
         <span>排序：</span>
         <button class="sort-btn" :class="{ on: sort === 'distance' }" :disabled="!distanceMode" @click="setSort('distance')">📍 离我最近</button>
         <button class="sort-btn" :class="{ on: sort === 'views' }" @click="setSort('views')">🔥 热度优先</button>
-      </div>
-      <div class="mk-radius-row">
-        <span class="mk-radius-label">范围：</span>
-        <BottomSelect v-model="radiusKm" :options="RADIUS_OPTIONS" title="选择范围" :disabled="!distanceMode" trigger-class="select select-sm" @change="applyFilter" />
       </div>
     </div>
 
@@ -141,7 +148,15 @@ const RADIUS_OPTIONS = [
   { value: 50, label: '50 km' }, { value: 100, label: '100 km' }, { value: 500, label: '500 km' }
 ]
 const radiusKm = ref(0)
+const originSource = ref('') // map=地图选点 / current=当前定位 / city=城市中心
 const distanceMode = computed(() => !!(coords.value || city.value))
+// 原点文案：地图选点 > 城市 > 当前定位 > 全国（未定位）
+const originLabel = computed(() => {
+  if (originSource.value === 'map') return '地图选点'
+  if (city.value) return city.value
+  if (coords.value) return currentCity.value ? `当前位置 · ${currentCity.value}` : '当前位置'
+  return '全国'
+})
 
 // 蓝卡始终显示一个城市：手动选择 > 定位城市 > 城市中心兜底
 const displayCity = computed(() => city.value || currentCity.value || '全国')
@@ -178,6 +193,7 @@ function openCityPicker() { cityPickerOpen.value = true }
 // 城市选择弹层选中：设为原点（城市中心坐标），立即按距离排序
 function onCitySelected(c) {
   city.value = c.name
+  originSource.value = 'city'
   // 常用城市有精确坐标→按距离排序；其余城市无坐标→服务端按城市名筛选+热度排序
   coords.value = (Number.isFinite(c.lat) && Number.isFinite(c.lng)) ? { lat: c.lat, lng: c.lng } : null
   if (coords.value && sort.value === 'views') sort.value = 'distance'
@@ -195,6 +211,7 @@ function onMapPicked(p) {
   if (!p || !Number.isFinite(p.lat) || !Number.isFinite(p.lng)) return
   coords.value = { lat: p.lat, lng: p.lng }
   city.value = ''  // 自定义原点不再按城市名过滤
+  originSource.value = 'map'
   setManualPosition(p.lat, p.lng, '')
   sort.value = 'distance'
   showToast('已按地图选点位置排序', 'success')
@@ -232,6 +249,7 @@ async function relocate() {
     if (pos.city && pos.source !== 'default') currentCity.value = pos.city
     // 重新定位后以定位城市为原点（用户主动点的，覆盖手动选择）
     if (pos.city) city.value = pos.city
+    originSource.value = 'current'
     sort.value = 'distance'
     showToast(pos.source === 'default' ? '已用城市中心坐标排序，可点「重新定位」再试' : `已定位到 ${displayCity.value}，按附近距离排序`, pos.source === 'default' ? 'error' : 'success')
     cityPickerOpen.value = false
@@ -250,11 +268,12 @@ onMounted(async () => {
   const cityQ = String(route.query.city || '').trim()
   const latQ = Number(route.query.lat)
   const lngQ = Number(route.query.lng)
-  if (Number.isFinite(latQ) && Number.isFinite(lngQ)) coords.value = { lat: latQ, lng: lngQ }
+  if (Number.isFinite(latQ) && Number.isFinite(lngQ)) { coords.value = { lat: latQ, lng: lngQ }; originSource.value = 'map' }
 
   await loadMeta()
   if (cityQ) {
     city.value = cityQ
+    if (!originSource.value) originSource.value = 'city'
     if (!coords.value) {
       const hit = cityOf(cityQ)
       if (hit) coords.value = { lat: hit.lat, lng: hit.lng }
@@ -270,6 +289,7 @@ onMounted(async () => {
       coords.value = { lat: pos.lat, lng: pos.lng }
       positionMeta.value = getPositionQualityLabel()
       if (pos.city && pos.source !== 'default') currentCity.value = pos.city
+      originSource.value = 'current' // 不选地图点则视为当前定位点
     } catch {}
   }
   load()
@@ -305,15 +325,18 @@ onMounted(async () => {
 .mk-chips { margin-top: 12px; }
 .chip { flex-shrink: 0; font-size: 12px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line, #e8edf4); background: var(--bg-page, #f4f6fb); color: var(--muted, #6b7688); }
 .chip.on { background: var(--primary, #2563eb); border-color: var(--primary, #2563eb); color: #fff; font-weight: 700; }
-.mk-city-head { display: flex; align-items: center; justify-content: space-between; margin-top: 13px; font-size: 13px; font-weight: 600; }
-.mk-city-head b { color: var(--primary, #2563eb); }
+/* 搜索范围：原点与半径同组，视觉上是一张卡；半径以原点为圆心形成圆形范围 */
+.mk-range-box { margin-top: 13px; border: 1px solid var(--line, #e8edf4); border-radius: 10px; padding: 10px 12px; background: var(--bg-page, #f7f9fc); }
+.mk-range-head { display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 700; }
+.mk-range-sub { display: block; font-size: 11px; font-weight: 400; color: var(--muted, #6b7688); margin-top: 2px; }
+.mk-range-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 12px; }
+.mk-range-label { color: var(--muted, #6b7688); white-space: nowrap; flex-shrink: 0; width: 28px; }
+.mk-origin { color: var(--primary, #2563eb); font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mk-map-btn { font-size: 12px; font-weight: 600; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--primary, #2563eb); background: transparent; color: var(--primary, #2563eb); }
 .mk-sort-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 12px; flex-wrap: wrap; }
 .sort-btn { font-size: 12px; padding: 5px 11px; border-radius: 8px; border: 1px solid var(--line, #e8edf4); background: var(--bg-page, #f4f6fb); color: var(--muted, #6b7688); }
 .sort-btn.on { border-color: var(--primary, #2563eb); color: var(--primary, #2563eb); background: color-mix(in srgb, var(--primary, #2563eb) 10%, transparent); font-weight: 700; }
 .sort-btn:disabled { opacity: .45; }
-.mk-radius-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; }
-.mk-radius-label { color: var(--muted, #6b7688); white-space: nowrap; flex-shrink: 0; }
 .select { border: 1px solid var(--line, #e8edf4); border-radius: 8px; padding: 6px 10px; background: var(--bg-card, #fff); color: var(--text, #0f172a); }
 .select-sm { padding: 4px 8px; font-size: 12px; }
 .mk-list { padding-top: 14px; }
