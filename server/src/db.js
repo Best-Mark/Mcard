@@ -123,7 +123,10 @@ for (const [col, def] of [
   ['avatar', "TEXT NOT NULL DEFAULT ''"],
   ['auth_source', "TEXT NOT NULL DEFAULT 'password'"],
   // 微信头像原值单独留存：用户自定义上传头像后仍可随时切回微信头像（不被覆盖）
-  ['wx_avatar', "TEXT NOT NULL DEFAULT ''"]
+  ['wx_avatar', "TEXT NOT NULL DEFAULT ''"],
+  // 收款账户（JSON，唯一真相源）：wechat/alipay/bank 各自一份，defaultType 记默认账户。
+  // 微信账户只存服务端授权拿到的 openid，绝不信任前端传值。
+  ['withdraw_accounts', "TEXT NOT NULL DEFAULT ''"]
 ]) addColumnIfMissing('users', col, def)
 db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_wx_openid ON users(wx_openid) WHERE wx_openid <> '';`)
 db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_wx_unionid ON users(wx_unionid) WHERE wx_unionid <> '';`)

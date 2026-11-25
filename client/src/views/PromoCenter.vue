@@ -77,10 +77,13 @@
       <div class="ws-body">
         <p class="small muted">可提现 ¥{{ ((summary.balanceCents || 0) / 100).toFixed(2) }} · 满 ¥{{ ((rules.withdrawMinCents || 0) / 100).toFixed(2) }} 可提</p>
         <div class="field"><label>提现金额（元）</label><input v-model.trim="wdAmount" class="input" inputmode="decimal" placeholder="如 100.00" /></div>
-        <div class="field"><label>收款方式</label><BottomSelect v-model="wdChannel" :options="CHANNELS" title="选择收款方式" placeholder="请选择" /></div>
-        <div class="field"><label>收款账号</label><input v-model.trim="wdAccount" class="input" placeholder="微信/支付宝账号或银行卡号" /></div>
+        <div class="field">
+          <label>收款账户</label>
+          <BottomSelect v-model="wdType" :options="boundChannelOptions" title="选择收款账户" placeholder="请选择已绑定账户" />
+          <button class="link-btn small" type="button" @click="withdrawOpen = false; router.push('/me/withdraw-account')">管理收款账户 ›</button>
+        </div>
         <button class="btn btn-primary btn-block" :disabled="wdBusy || withdrawing" @click="submitWithdraw">{{ wdBusy ? '提交中…' : '提交申请' }}</button>
-        <p class="small muted ws-tip">提交后由平台审核并线下打款，驳回金额会自动退回余额。</p>
+        <p class="small muted ws-tip">只能提现到已绑定账户（微信用授权身份），平台审核后线下打款，驳回金额自动退回余额。</p>
       </div>
     </BottomSheet>
 
@@ -99,7 +102,6 @@ import BottomSelect from '../components/BottomSelect.vue'
 
 const router = useRouter()
 const TABS = [{ k: 'commissions', label: '收益明细' }, { k: 'invitees', label: '邀请的人' }, { k: 'withdrawals', label: '提现记录' }]
-const CHANNELS = [{ value: 'wechat', label: '微信' }, { value: 'alipay', label: '支付宝' }, { value: 'bank', label: '银行卡' }]
 
 const loading = ref(true)
 const error = ref('')
@@ -109,6 +111,8 @@ const tab = ref('commissions')
 const commissions = ref([])
 const invitees = ref([])
 const withdrawals = ref([])
+const accounts = ref([])
+const boundChannelOptions = computed(() => accounts.value.filter(a => a.bound).map(a => ({ value: a.type, label: `${a.label} ${a.account}` })))
 let loadStarted = false
 
 async function load() {
@@ -120,6 +124,11 @@ async function load() {
     const { data } = await api.get('/api/promo/summary')
     summary.value = data.data || {}
     rules.value = data.data?.rules || {}
+    // 账户读取失败不拖垮推广页；提现时再拦住并引导去绑定
+    try {
+      const { data: ad } = await api.get('/api/promo/withdraw-accounts')
+      accounts.value = ad.data?.accounts || []
+    } catch { accounts.value = [] }
     await loadList()
   } catch (e) { error.value = e.message || '网络异常' }
   finally { loading.value = false }
@@ -140,27 +149,30 @@ onMounted(load)
 
 const withdrawOpen = ref(false)
 const wdAmount = ref('')
-const wdChannel = ref('')
-const wdAccount = ref('')
+const wdType = ref('')
 const wdBusy = ref(false)
 const withdrawing = ref(false)
 function openWithdraw() {
   if (withdrawing.value) return
-  wdAmount.value = ''; wdAccount.value = ''
+  const bound = accounts.value.filter(a => a.bound)
+  if (!bound.length) {
+    showToast('请先绑定收款账户', 'error')
+    router.push('/me/withdraw-account')
+    return
+  }
+  wdAmount.value = ''
+  wdType.value = (bound.find(a => a.default) || bound[0]).type
   withdrawOpen.value = true
 }
 async function submitWithdraw() {
   if (wdBusy.value || withdrawing.value) return
   const amount = Number(wdAmount.value)
   if (!Number.isFinite(amount) || amount <= 0) return showToast('请输入正确的提现金额', 'error')
-  if (!wdChannel.value) return showToast('请选择收款方式', 'error')
-  if (!wdAccount.value) return showToast('请填写收款账号', 'error')
+  if (!wdType.value) return showToast('请选择已绑定的收款账户', 'error')
   withdrawing.value = true
   wdBusy.value = true
   try {
-    await api.post('/api/promo/withdraw', {
-      amount_cents: Math.round(amount * 100), channel: wdChannel.value, account: wdAccount.value
-    })
+    await api.post('/api/promo/withdraw', { amount_cents: Math.round(amount * 100), type: wdType.value })
     showToast('提现申请已提交', 'success')
     withdrawOpen.value = false
     await load()
@@ -187,7 +199,7 @@ async function copy(v, label) {
 </script>
 
 <style scoped>
-.promo-page { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
+.promo-page { padding-bottom: calc(130px + env(safe-area-inset-bottom, 0px)); }
 .promo-body { margin-top: 12px; }
 .promo-hero { padding: 22px 20px; border-radius: 16px; color: #fff; background: linear-gradient(122deg, #7c5a12, #b8860b 52%, #d4a72c); box-shadow: 0 8px 24px rgba(184,134,11,.22); }
 .ph-label { font-size: 12px; opacity: .9; }
@@ -215,7 +227,9 @@ async function copy(v, label) {
 .badge.off { color: #94a3b8; background: #f1f5f9; }
 .badge.warn { color: #b45309; background: #fef3c7; }
 .empty { padding: 30px 0; text-align: center; color: var(--muted); }
-.promo-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 105; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: var(--bg-card, #fff); border-top: 1px solid var(--line); }
+/* 提现入口必须悬在底部 tabbar(z110) 之上；原来 bottom:0 + z105 被 tabbar 整块盖住，按钮“消失”。
+   四边定位不用 inset，老 WebView 兼容；安全区用 env 兜底值。 */
+.promo-dock { position: fixed; left: 0; right: 0; bottom: calc(58px + env(safe-area-inset-bottom, 0px)); z-index: 111; padding: 10px 16px; background: var(--bg-card, #fff); border-top: 1px solid var(--line); }
 @media (min-width: 900px) { .promo-dock { max-width: 560px; left: 50%; right: auto; transform: translateX(-50%); } }
 .ws-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--line); }
 .ws-body { padding: 16px; }
@@ -223,4 +237,5 @@ async function copy(v, label) {
 .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
 .input { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; }
 .ws-tip { margin-top: 12px; line-height: 1.6; }
+.link-btn { display: inline-block; margin-top: 6px; padding: 0; border: 0; background: transparent; color: var(--primary, #2563eb); cursor: pointer; }
 </style>

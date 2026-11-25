@@ -23,7 +23,7 @@ import { isPC } from './utils/device'
 const route = useRoute()
 // 独立设计/编辑页自带底部功能条与「完成」保存收敛，全局 tabbar 隐藏：
 // 配色风格 / 名片集市 / 资料编辑。其余 /me 子页靠底部 tab 导航，不显示返回。
-const hideMemberNav = computed(() => ['/me/card/style', '/me/card/market', '/me/card'].includes(route.path))
+const hideMemberNav = computed(() => ['/me/card/style', '/me/card/market', '/me/card', '/me/withdraw-account', '/me/withdraw-account-edit'].includes(route.path))
 // PC 首页用专属多栏概览（H5 的 /me 仍走原 Dashboard，路由表不变）
 const isDesktopHome = computed(() => route.path === '/me')
 // 桌面壳只套「工作台类」页面：/me 系列与 /market。

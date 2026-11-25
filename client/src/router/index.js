@@ -30,6 +30,8 @@ const MaterialView = () => import('../views/MaterialView.vue')
 const BatchScan = () => import('../views/BatchScan.vue')
 const Admin = () => import('../views/Admin.vue')
 const PromoCenter = () => import('../views/PromoCenter.vue')
+const WithdrawAccount = () => import('../views/WithdrawAccount.vue')
+const WithdrawAccountEdit = () => import('../views/WithdrawAccountEdit.vue')
 
 const routes = [
   // PC 门户首页；H5 访问 /portal 时也重定向回集市，避免移动端看到桌面宽屏布局
@@ -56,6 +58,8 @@ const routes = [
   { path: '/me/notifications', name: 'notifications', component: Notifications, meta: { auth: true } },
   { path: '/me/batch-scan', name: 'batch-scan', component: BatchScan, meta: { auth: true } },
   { path: '/me/promo', name: 'promo', component: PromoCenter, meta: { auth: true, promoter: true } },
+  { path: '/me/withdraw-account', name: 'withdraw-account', component: WithdrawAccount, meta: { auth: true, promoter: true } },
+  { path: '/me/withdraw-account-edit', name: 'withdraw-account-edit', component: WithdrawAccountEdit, meta: { auth: true, promoter: true } },
   { path: '/admin/login', name: 'admin-login', component: Admin },
   { path: '/admin', name: 'admin', component: Admin, meta: { admin: true } },
   { path: '/:pathMatch(.*)*', redirect: '/' }

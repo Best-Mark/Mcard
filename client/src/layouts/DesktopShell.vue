@@ -21,6 +21,7 @@
               <div v-if="userMenuOpen" class="ds-user-menu">
                 <button @click="menuGo('/me/profile')">◉ 账户信息</button>
                 <button @click="menuGo('/me/plans')">💎 套餐 / 续期</button>
+                <button v-if="auth.user?.is_promoter" @click="menuGo('/me/withdraw-account')">💰 收款账户</button>
                 <button @click="menuDo('public')">↗ 我的公开名片</button>
                 <button @click="menuDo('share')">⤴ 分享名片</button>
                 <button v-if="!inWechat" class="danger" @click="menuDo('logout')">⏻ 退出登录</button>

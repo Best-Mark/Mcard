@@ -14,6 +14,37 @@ function requirePromoter(req, res, next) {
   next()
 }
 
+// 收款账户（参考 MShop 口径）：一个用户可同时绑定微信/支付宝/银行卡，各自一份。
+// 唯一真相源 = users.withdraw_accounts（JSON）；微信只用服务端授权拿到的 openid，前端传值一律忽略。
+const ACCOUNT_TYPES = { wechat: '微信', alipay: '支付宝', bank: '银行卡' }
+function readAccounts(userId) {
+  const user = db.prepare('SELECT withdraw_accounts, nickname, wx_openid FROM users WHERE id = ?').get(userId)
+  let obj = {}
+  try { obj = JSON.parse(user?.withdraw_accounts || '{}') || {} } catch { obj = {} }
+  if (typeof obj !== 'object' || Array.isArray(obj)) obj = {}
+  return { user, obj }
+}
+function saveAccounts(userId, obj) {
+  db.prepare('UPDATE users SET withdraw_accounts = ? WHERE id = ?').run(JSON.stringify(obj || {}), userId)
+}
+function maskAccount(v) {
+  const s = String(v || '')
+  return s.length <= 6 ? s : `${s.slice(0, 3)}****${s.slice(-4)}`
+}
+function accountView(userId) {
+  const { user, obj } = readAccounts(userId)
+  const accounts = Object.keys(ACCOUNT_TYPES).map(k => {
+    const a = obj[k] || {}
+    const bound = !!(a.openid || a.account)
+    return {
+      type: k, label: ACCOUNT_TYPES[k], bound, default: obj.defaultType === k,
+      account: bound ? maskAccount(k === 'wechat' ? a.openid : a.account) : '',
+      name: String(a.name || ''), wxReady: !!user?.wx_openid
+    }
+  })
+  return { accounts, defaultType: obj.defaultType || '' }
+}
+
 // 登录后的邀请归因兜底绑定：前端所有登录方式统一在拿到 token 后调一次。
 // 只认「注册 24h 内 + 尚未有上级 + 新邀请码有效」的账号，防老用户挂靠刷注册奖。
 // 幂等：已有上级直接跳过；注册奖励靠 DB 唯一索引一人一次。
@@ -70,26 +101,65 @@ router.get('/withdrawals', authRequired, requirePromoter, wrap((req, res) => {
     FROM withdrawals WHERE user_id = ? ORDER BY id DESC LIMIT 100`).all(req.user.id)
   ok(res, rows.map(r => ({
     id: r.id, amountCents: r.amount_cents, status: r.status, channel: r.channel,
-    account: r.account, remark: r.remark, adminNote: r.admin_note,
+    account: maskAccount(r.account), remark: r.remark, adminNote: r.admin_note,
     createdAt: r.created_at, handledAt: r.handled_at
   })))
 }))
 
+// 收款账户列表：只回脱敏值，前端不接触完整 openid/账号
+router.get('/withdraw-accounts', authRequired, requirePromoter, wrap((req, res) => ok(res, accountView(req.user.id))))
+
+// 保存收款账户：微信只认服务端 openid；支付宝/银行卡必须填账号与姓名
+router.put('/withdraw-account', authRequired, requirePromoter, wrap((req, res) => {
+  const type = String(req.body?.type || '')
+  if (!ACCOUNT_TYPES[type]) return fail(res, 400, '收款方式不合法')
+  const { user, obj } = readAccounts(req.user.id)
+  const now = new Date().toISOString()
+  if (type === 'wechat') {
+    const openid = String(user?.wx_openid || '').trim().slice(0, 128)
+    if (!openid) return fail(res, 400, '请先完成微信授权，再绑定微信收款')
+    obj.wechat = { openid, name: String(user?.nickname || '微信用户').slice(0, 40), boundAt: now }
+  } else {
+    const account = String(req.body?.account || '').trim().slice(0, 100)
+    const name = String(req.body?.name || '').trim().slice(0, 40)
+    if (!account) return fail(res, 400, '请填写收款账号')
+    if (!name) return fail(res, 400, '请填写收款人姓名')
+    obj[type] = { account, name, bank: type === 'bank' ? String(req.body?.bank || '').trim().slice(0, 60) : '', boundAt: now }
+  }
+  if (!obj.defaultType || req.body?.setDefault === true) obj.defaultType = type
+  saveAccounts(req.user.id, obj)
+  ok(res, accountView(req.user.id))
+}))
+
+// 解绑：默认账户被解绑时自动改指向其它已绑账户
+router.delete('/withdraw-account/:type', authRequired, requirePromoter, wrap((req, res) => {
+  const type = String(req.params.type || '')
+  if (!ACCOUNT_TYPES[type]) return fail(res, 400, '收款方式不合法')
+  const { obj } = readAccounts(req.user.id)
+  delete obj[type]
+  if (obj.defaultType === type) obj.defaultType = Object.keys(ACCOUNT_TYPES).find(k => obj[k]?.openid || obj[k]?.account) || ''
+  saveAccounts(req.user.id, obj)
+  ok(res, accountView(req.user.id))
+}))
+
 // 申请提现：转出可提现余额，事务内扣余额 + 建提现单。同一笔余额不能重复提。
+// 收款账户只从服务端已绑定账户取，绝不信任前端传入的账号（参考 MShop）。
 router.post('/withdraw', authRequired, requirePromoter, wrap((req, res) => {
   const cfg = settings.promoConfig()
   const amount = Math.round(Number(req.body?.amount_cents))
-  const channel = String(req.body?.channel || '').slice(0, 20)
-  const account = String(req.body?.account || '').slice(0, 100)
   const remark = String(req.body?.remark || '').slice(0, 200)
   if (!Number.isFinite(amount) || amount < cfg.withdrawMinCents) return fail(res, 400, `最低提现 ${(cfg.withdrawMinCents / 100).toFixed(2)} 元`)
-  if (!channel || !account) return fail(res, 400, '请填写收款方式与账号')
+  const { obj } = readAccounts(req.user.id)
+  const type = String(req.body?.type || obj.defaultType || '')
+  const a = obj[type]
+  if (!ACCOUNT_TYPES[type] || !a || !(a.openid || a.account)) return fail(res, 400, '请先绑定收款账户')
+  const snapshot = type === 'wechat' ? `微信openid:${a.openid}` : `${a.name || ''} ${a.bank ? a.bank + ' ' : ''}${a.account}`.trim().slice(0, 200)
   const tx = db.transaction(() => {
     const u = db.prepare('SELECT balance_cents FROM users WHERE id = ?').get(req.user.id)
     if (!u || u.balance_cents < amount) return { ok: false }
     db.prepare('UPDATE users SET balance_cents = balance_cents - ? WHERE id = ?').run(amount, req.user.id)
     db.prepare("INSERT INTO withdrawals (user_id, amount_cents, channel, account, remark) VALUES (?,?,?,?,?)")
-      .run(req.user.id, amount, channel, account, remark)
+      .run(req.user.id, amount, type, snapshot, remark)
     return { ok: true }
   })
   const r = tx()

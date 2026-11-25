@@ -50,12 +50,12 @@
       <view class="sh-body">
         <view class="muted small">可提现 ¥{{ ((summary.balanceCents || 0) / 100).toFixed(2) }}</view>
         <view class="field"><text class="label">提现金额（元）</text><input v-model.trim="amount" class="input" inputmode="decimal" placeholder="如 100.00" /></view>
-        <view class="field"><text class="label">收款方式</text>
-          <picker :range="channelLabels" :value="channelIdx" @change="onChannelChange">
-            <view class="picker">{{ channelLabels[channelIdx] }} ›</view>
+        <view class="field"><text class="label">收款账户</text>
+          <picker :range="boundLabels" :value="boundIdx" @change="onBoundChange">
+            <view class="picker">{{ boundLabels[boundIdx] || '请先绑定收款账户' }} ›</view>
           </picker>
+          <text class="link" @tap="goAccounts">管理收款账户 ›</text>
         </view>
-        <view class="field"><text class="label">收款账号</text><input v-model.trim="account" class="input" placeholder="微信/支付宝账号或银行卡号" /></view>
         <button class="btn primary block" :disabled="busy" @tap="submitWithdraw">{{ busy ? '提交中…' : '提交申请' }}</button>
       </view>
     </view>
@@ -68,18 +68,21 @@ import { onShow } from '@dcloudio/uni-app'
 import { api, toast, copyText } from '../../utils/request'
 
 const tabs = [{ k: 'commissions', label: '收益明细' }, { k: 'invitees', label: '邀请的人' }, { k: 'withdrawals', label: '提现记录' }]
-const channels = [{ value: 'wechat', label: '微信' }, { value: 'alipay', label: '支付宝' }, { value: 'bank', label: '银行卡' }]
-const channelLabels = channels.map(c => c.label)
 
 const loading = ref(true); const error = ref('')
 const summary = ref({}); const rules = ref({})
 const tab = ref('commissions'); const rows = ref([])
+const accounts = ref([])
+const boundOptions = computed(() => accounts.value.filter(a => a.bound).map(a => ({ value: a.type, label: `${a.label} ${a.account}` })))
+const boundLabels = computed(() => boundOptions.value.map(a => a.label))
 
 async function load() {
   loading.value = true; error.value = ''
   try {
     const s = await api.get('/api/promo/summary')
     summary.value = s || {}; rules.value = s?.rules || {}
+    try { accounts.value = (await api.get('/api/promo/withdraw-accounts'))?.accounts || [] }
+    catch { accounts.value = [] }
     await loadList()
   } catch (e) { error.value = e.message || '网络异常' }
   finally { loading.value = false }
@@ -113,22 +116,27 @@ function rowRight(r) {
 
 function copy(v, label) { copyText(v, `${label}已复制`) }
 
-const sheetOpen = ref(false); const amount = ref(''); const account = ref('')
-const channelIdx = ref(0); const busy = ref(false)
+const sheetOpen = ref(false); const amount = ref('')
+const boundIdx = ref(0); const busy = ref(false)
+function goAccounts() { sheetOpen.value = false; uni.navigateTo({ url: '/pages/promo/withdraw-account' }) }
 function openWithdraw() {
   if (busy.value) return
-  amount.value = ''; account.value = ''; channelIdx.value = 0
+  if (!boundOptions.value.length) { toast('请先绑定收款账户'); uni.navigateTo({ url: '/pages/promo/withdraw-account' }); return }
+  amount.value = ''
+  const def = accounts.value.find(a => a.bound && a.default) || accounts.value.find(a => a.bound)
+  boundIdx.value = Math.max(0, boundOptions.value.findIndex(a => a.value === def?.type))
   sheetOpen.value = true
 }
-function onChannelChange(e) { channelIdx.value = Number(e.detail.value) || 0 }
+function onBoundChange(e) { boundIdx.value = Number(e.detail.value) || 0 }
 async function submitWithdraw() {
   if (busy.value) return
   const n = Number(amount.value)
   if (!Number.isFinite(n) || n <= 0) return toast('请输入正确的金额')
-  if (!account.value) return toast('请填写收款账号')
+  const chosen = boundOptions.value[boundIdx.value]
+  if (!chosen) return toast('请先绑定收款账户')
   busy.value = true
   try {
-    await api.post('/api/promo/withdraw', { amount_cents: Math.round(n * 100), channel: channels[channelIdx.value].value, account: account.value })
+    await api.post('/api/promo/withdraw', { amount_cents: Math.round(n * 100), type: chosen.value })
     toast('提现申请已提交', 'success')
     sheetOpen.value = false
     await load()
@@ -171,6 +179,7 @@ async function submitWithdraw() {
 .field { margin-top: 24rpx; }
 .label { display: block; font-size: 24rpx; color: #6b7688; margin-bottom: 10rpx; font-weight: 600; }
 .input, .picker { width: 100%; box-sizing: border-box; border: 2rpx solid #e8edf4; border-radius: 14rpx; padding: 18rpx 20rpx; font-size: 28rpx; }
+.link { display: block; margin-top: 12rpx; color: #2563eb; font-size: 24rpx; }
 .btn { font-size: 28rpx; padding: 20rpx 0; border-radius: 14rpx; }
 .btn.sm { flex: 1; font-size: 26rpx; padding: 16rpx 0; }
 .btn.primary { background: #2563eb; color: #fff; }

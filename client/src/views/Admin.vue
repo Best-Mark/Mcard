@@ -236,7 +236,7 @@
             <div class="table-wrap"><table><thead><tr><th>ID</th><th>推广员</th><th>金额</th><th>收款方式</th><th>账号</th><th>备注</th><th>状态</th><th>操作</th></tr></thead>
               <tbody><tr v-for="w in withdrawals" :key="w.id">
                 <td>#{{ w.id }}</td><td>{{ w.nickname }} <span class="small muted">{{ w.phone }}</span></td>
-                <td><b>¥{{ (w.amount_cents / 100).toFixed(2) }}</b></td><td>{{ w.channel }}</td><td class="small">{{ w.account }}</td>
+                <td><b>¥{{ (w.amount_cents / 100).toFixed(2) }}</b></td><td>{{ wdChannelText(w.channel) }}</td><td class="small">{{ w.account }}</td>
                 <td class="small muted">{{ w.remark || '-' }}</td>
                 <td><span class="badge" :class="w.status === 'paid' ? 'ok' : w.status === 'rejected' ? 'off' : 'warn'">{{ w.status }}</span></td>
                 <td><template v-if="w.status === 'pending'"><button class="btn btn-sm btn-primary" :disabled="busy" @click="reviewWithdrawal(w, true)">通过</button> <button class="btn btn-sm btn-ghost" :disabled="busy" @click="reviewWithdrawal(w, false)">驳回</button></template><span v-else class="small muted">{{ w.handled_at || '-' }}</span></td>
@@ -613,6 +613,7 @@ const phone = ref(''); const password = ref(''); const busy = ref(false); const 
 const tab = ref('overview'); const stats = ref({}); const packages = ref([]); const cards = ref([])
 const orders = ref([]); const users = ref([]); const cfg = ref({}); const cfgGroups = ref([])
 const promoOverview = ref({}); const withdrawals = ref([]); const wdStatus = ref('')
+const wdChannelText = c => ({ wechat: '微信', alipay: '支付宝', bank: '银行卡' })[c] || c
 const activeGroup = ref('site'); const revealed = ref({}); const manualSecrets = ref({}); const pendingSecrets = ref({})
 const smsPhone = ref(''); const smsBusy = ref(false)
 const regions = ref([]); const regionLevel = ref(0); const regionBusy = ref(false)

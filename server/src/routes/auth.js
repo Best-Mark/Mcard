@@ -25,9 +25,9 @@ function enabled() { return settings.wechatLoginEnabled() }
 // 用户在微信授权流程中拿到的 state 若只存内存会丢失，回调误判 err=state。
 // 用 site_config 持久化（带 createdAt）；消费走「删除时确认命中」保证一次性防重放。
 const STATE_PREFIX = 'wx_oauth_state_'
-function saveState(state) {
+function saveState(state, meta = {}) {
   db.prepare("INSERT INTO site_config (key, value, updated_at) VALUES (?,?,datetime('now')) ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=datetime('now')")
-    .run(STATE_PREFIX + state, JSON.stringify({ createdAt: Date.now() }))
+    .run(STATE_PREFIX + state, JSON.stringify({ createdAt: Date.now(), ...meta }))
 }
 function consumeState(state) {
   if (!state) return false
@@ -37,7 +37,7 @@ function consumeState(state) {
   db.prepare('DELETE FROM site_config WHERE key = ?').run(key) // 先删 = 原子消费，防重放
   try {
     const v = JSON.parse(row.value)
-    return !!v && Date.now() - v.createdAt <= STATE_TTL
+    return v && Date.now() - v.createdAt <= STATE_TTL ? v : false
   } catch { return false }
 }
 function cleanStates() {
@@ -221,6 +221,20 @@ router.get('/wechat/url', wrap((req, res) => {
   ok(res, { url })
 }))
 
+// 提现账户绑定专用授权：给「当前已登录账号」补 wx_openid，绝不新建/切换账号。
+// state 绑定 userId 且落库持久化（重启不丢），回调只回写身份不签 token。
+router.get('/wechat-bind/url', authRequired, wrap((req, res) => {
+  if (!enabled()) return fail(res, 400, '微信快捷登录未配置或数据源不全')
+  cleanStates()
+  const c = wxa()
+  const target = safeReturnPath(req.query.redirect || '/me/withdraw-account-edit')
+  const state = `bind_${req.user.id}_${crypto.randomBytes(8).toString('hex')}`
+  saveState(state, { kind: 'bind', userId: req.user.id, redirect: target })
+  const redirectUri = requestUrl(req, '/api/auth/wechat/callback')
+  const url = `${OAUTH_PAGE}/connect/oauth2/authorize?appid=${encodeURIComponent(c.appId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=snsapi_userinfo&state=${encodeURIComponent(state)}#wechat_redirect`
+  ok(res, { url })
+}))
+
 // 微信回调：校验 state → code 换 openid + 昵称头像 → 建号/登录 → 302 回前端（token 走 hash）
 // 扫码登录（state 带 qr_<sid>_）：不把 token 塞进微信内 URL，而是写回 sid 会话，
 // 手机端只显示「扫码成功，回电脑完成登录」，凭证由电脑端轮询一次性兑换。
@@ -247,7 +261,11 @@ router.get('/wechat/callback', wrap(async (req, res) => {
   }
   if (!valid) return failBack('state')
   const code = String(req.query.code || '')
-  if (!code) return failBack('denied')
+  const bindBack = (msg, okFlag) => {
+    const target = valid?.kind === 'bind' ? safeReturnPath(valid.redirect || '/me/withdraw-account-edit') : (autoTarget || '/login')
+    return res.redirect(withQuery(requestUrl(req, target), okFlag || 'wx_bind_err', msg))
+  }
+  if (!code) return valid?.kind === 'bind' ? bindBack('denied') : failBack('denied')
   // 会话在授权途中过期：不能再跳「扫码成功」骗手机端，电脑端也会读到 expired
   if (qrSid && !loadQrSession(qrSid)) return qrFail('expired')
 
@@ -262,6 +280,18 @@ router.get('/wechat/callback', wrap(async (req, res) => {
     const unionid = String(token.unionid || info.unionid || '').slice(0, 128)
     const nickname = String(info.nickname || '').slice(0, 30)
     const avatar = String(info.headimgurl || '').slice(0, 500)
+
+    // 提现账户绑定：只给 state 里记录的当前账号补微信身份，不签新 token、不新建账号。
+    if (valid?.kind === 'bind') {
+      const uid = Number(valid.userId)
+      const owner = db.prepare('SELECT id FROM users WHERE id = ?').get(uid)
+      if (!owner) return bindBack('account')
+      const occupied = db.prepare('SELECT id FROM users WHERE wx_openid = ? AND id <> ?').get(openid, uid)
+      if (occupied) return bindBack('occupied')
+      db.prepare("UPDATE users SET wx_openid=?, wx_unionid=COALESCE(wx_unionid,?), wx_avatar=COALESCE(NULLIF(wx_avatar,''),?), avatar=COALESCE(NULLIF(avatar,''),?), auth_source='wechat', updated_at=datetime('now') WHERE id=?")
+        .run(openid, unionid, avatar, avatar, uid)
+      return bindBack('bound', 'wx_bound')
+    }
 
     let user = db.prepare('SELECT * FROM users WHERE wx_openid = ?').get(openid)
     if (!user && unionid) user = db.prepare('SELECT * FROM users WHERE wx_unionid = ? AND wx_unionid IS NOT NULL').get(unionid) // unionid 兜底：同开放平台下换公众号仍认同一人
@@ -306,6 +336,7 @@ router.get('/wechat/callback', wrap(async (req, res) => {
     return res.redirect(`${requestUrl(req, '/wechat/callback')}#token=${encodeURIComponent(jwt)}&user=${encodeURIComponent(JSON.stringify(pub))}`)
   } catch (e) {
     console.error('[WechatOAuth]', e.message)
+    if (valid?.kind === 'bind') return bindBack('oauth')
     return failBack('oauth')
   }
 }))

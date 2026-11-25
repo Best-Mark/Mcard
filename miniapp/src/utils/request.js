@@ -35,7 +35,8 @@ export function request(url, { method = 'GET', data = {}, auth = false, admin = 
 export const api = {
   get: (url, auth = false) => request(url, { auth }),
   post: (url, data = {}, auth = true) => request(url, { method: 'POST', data, auth }),
-  put: (url, data = {}, auth = true) => request(url, { method: 'PUT', data, auth })
+  put: (url, data = {}, auth = true) => request(url, { method: 'PUT', data, auth }),
+  delete: (url, auth = true) => request(url, { method: 'DELETE', auth })
 }
 
 export function setAuth(token, user) {
