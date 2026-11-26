@@ -250,9 +250,11 @@ router.put('/config', superRequired, wrap((req, res) => {
     if (k === 'pay_mode' && !['mock', 'wechat', 'alipay', 'both'].includes(String(v))) return fail(res, 400, '支付模式只能是 mock、wechat、alipay 或 both')
     if (k === 'map_provider' && !['amap', 'osm'].includes(String(v))) return fail(res, 400, '地图服务商只能是 amap 或 osm')
     if (k === 'oss_provider' && !['local', 'aliyun', 'tencent'].includes(String(v))) return fail(res, 400, '存储方式只能是 local / aliyun / tencent')
-    if (['sms_enabled', 'wechat_oauth_enabled', 'wechat_oauth_bind_phone'].includes(k) && !['true', 'false'].includes(String(v))) {
+    if (['sms_enabled', 'wechat_oauth_enabled', 'wechat_oauth_bind_phone', 'promo_enabled'].includes(k) && !['true', 'false'].includes(String(v))) {
       return fail(res, 400, `${k} 只能是 true 或 false`)
     }
+    // 分销层级：只接受 1/2/3（超过三级不做，链上限死，防止脏值放大计佣链）
+    if (k === 'promo_levels' && !['1', '2', '3'].includes(String(v))) return fail(res, 400, '分销层级只能是 1、2 或 3')
     if (k === 'wechat_oauth_scope' && String(v) !== 'snsapi_userinfo') return fail(res, 400, '授权范围固定为 snsapi_userinfo')
     // 域名校验文件列表：JSON 数组 [{name,content}]，文件名只拦路径穿越/非 .txt，不强制 MP_verify_ 前缀
     if (k === 'wechat_verify_files') {
@@ -266,7 +268,7 @@ router.put('/config', superRequired, wrap((req, res) => {
       }
     }
     // 分销比例：0~100 的百分比，拒绝负数/超范围/非数字，避免脏值运行时静默回落误导运营
-    if (k === 'promo_first_order_rate' || k === 'promo_order_rate') {
+    if (k === 'promo_first_order_rate' || k === 'promo_order_rate' || k === 'promo_rate_lv2' || k === 'promo_rate_lv3') {
       const n = Number(v)
       if (String(v) === '' || !Number.isFinite(n) || n < 0 || n > 100) return fail(res, 400, `${k} 必须是 0~100 的百分比`)
     }

@@ -376,7 +376,8 @@
             <div class="config-main card panel" v-if="currentGroup">
               <div class="panel-head inner"><h3>{{ currentGroup.label }}</h3><span class="small muted">{{ groupMeta(activeGroup).desc }}</span></div>
               <div class="cfg-fields">
-                <div class="field" v-for="f in currentGroup.fields" :key="f.key">
+                <template v-for="f in currentGroup.fields" :key="f.key">
+                <div class="field" v-if="!f.showIfLevel || Number(cfg.promo_levels || '1') >= f.showIfLevel">
                   <label>
                     {{ f.label }}
                     <span v-if="f.type === 'secret' && cfg[f.key + '_fp']" class="badge ok small">已配置 · 指纹 {{ cfg[f.key + '_fp'] }}</span>
@@ -396,6 +397,12 @@
                   <select v-else-if="optionsFor(f.key)" v-model="cfg[f.key]" class="select">
                     <option v-for="op in optionsFor(f.key)" :key="op[0]" :value="op[0]">{{ op[1] }}</option>
                   </select>
+                  <!-- 布尔开关：左右滑动开关（与套餐上架/推广员身份同款 .switch），存字符串 'true'/'false' 与服务端枚举校验对齐 -->
+                  <label v-else-if="f.type === 'boolean'" class="cfg-boolean">
+                    <button type="button" class="switch" :class="{ on: cfg[f.key] === 'true' }" role="switch" :aria-checked="cfg[f.key] === 'true'"
+                            :title="cfg[f.key] === 'true' ? '点击关闭' : '点击开启'" @click="cfg[f.key] = cfg[f.key] === 'true' ? 'false' : 'true'"><i></i></button>
+                    <span class="switch-label">{{ cfg[f.key] === 'true' ? '已开启' : '已关闭' }}</span>
+                  </label>
                   <div v-else-if="f.type === 'hidden'" class="cfg-static">{{ cfg[f.key] ? cfg[f.key] : '未上传' }}</div>
                   <!-- 域名校验文件：可一次选多个（公众号/小程序各一个），微信改名或带 (1) 后缀也能传 -->
                   <div v-else-if="f.type === 'files'" class="cfg-file">
@@ -453,6 +460,7 @@
                   <!-- 非文件类字段的补充说明：图片字段自带 hint，文件类走 fileHint，这里只服务手工输入项 -->
                   <span v-if="f.hint && f.type !== 'image' && !f.upload" class="small muted cfg-hint">{{ f.hint }}</span>
                 </div>
+                </template>
               </div>
 
               <div v-if="activeGroup === 'sms'" class="sms-test">
@@ -753,7 +761,8 @@ const OPTIONS = {
   wechat_oauth_bind_phone: [['true', '必须绑定手机号'], ['false', '直接建号（无手机号）']],
   wechat_oauth_scope: [['snsapi_userinfo', 'snsapi_userinfo · 取昵称头像']],
   map_provider: [['amap', '高德地图'], ['osm', 'OpenStreetMap（免费兜底）']],
-  oss_provider: [['local', 'local · 本地存储'], ['aliyun', 'aliyun · 阿里云 OSS'], ['tencent', 'tencent · 腾讯云 COS']]
+  oss_provider: [['local', 'local · 本地存储'], ['aliyun', 'aliyun · 阿里云 OSS'], ['tencent', 'tencent · 腾讯云 COS']],
+  promo_levels: [['1', '一级 · 仅直接推广员'], ['2', '二级 · 加上上级'], ['3', '三级 · 再上一级']]
 }
 const groupMeta = k => GROUP_META[k] || { i: 'config', desc: '保存后立即生效。' }
 const optionsFor = k => OPTIONS[k] || null
@@ -1550,6 +1559,8 @@ async function saveUpdateConfig() {
 .cfg-manual-link { width: fit-content; color: var(--muted); font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
 .cfg-manual-link:hover { color: var(--primary); }
 .cfg-hint { display: block; margin-top: 6px; line-height: 1.5; }
+/* 布尔滑块开关（推广分销开关等 type=boolean 字段）：与 .switch 按钮同行，高度对齐普通输入框 */
+.cfg-boolean { display: flex; align-items: center; gap: 10px; min-height: 38px; }
 .cfg-actions { display: flex; align-items: center; gap: 14px; justify-content: flex-end; padding-top: 16px; margin-top: 6px; border-top: 1px solid var(--line); }
 .sms-test { margin-top: 18px; padding-top: 6px; border-top: 1px dashed var(--line); }
 .sms-row { display: flex; gap: 10px; max-width: 520px; }

@@ -218,11 +218,17 @@ const GROUPS = {
   promo: {
     label: '推广分销',
     fields: [
-      { key: 'promo_enabled', label: '启用推广分销（true / false）', type: 'text' },
-      // 首单奖与消费返佣都是百分比（唯一真相源）：首单奖=被邀请人首次开通套餐时按订单金额额外给，与每单返佣叠加。
+      // 开关用 boolean 类型：后台渲染成左右滑动开关（与套餐上架/推广员身份同款交互），不再手输 true/false。
+      { key: 'promo_enabled', label: '启用推广分销', type: 'boolean' },
+      // 多级分销（2026-11-27）：层级=邀请链向上计佣的层数；一级沿用 promo_order_rate，
+      // 二级/三级比例独立可配。showIfLevel：层级不足时后台隐藏该输入框（选 2 才出二级比例）。
+      { key: 'promo_levels', label: '分销层级（每笔订单沿邀请链向上计佣的层数）', type: 'text' },
+      // 首单奖与消费返佣都是百分比（唯一真相源）：首单奖=被邀请人首次开通套餐时按订单金额额外给，
+      // 只发给直接推广员（一生一次）；多级只作用于每单消费返佣。
       // 旧 promo_register_reward_cents（固定金额）已废弃，存量库残留键无害、不再读取也不再下发。
-      { key: 'promo_first_order_rate', label: '首单奖励比例（%，被邀请人首次开通套餐时按订单金额额外给推广员，如 10 表示 10%）', type: 'text' },
-      { key: 'promo_order_rate', label: '消费返佣比例（%，每笔订单给推广员，如 10 表示订单金额的 10%）', type: 'text' },
+      { key: 'promo_order_rate', label: '一级返佣比例（%，每笔订单给直接推广员，如 10 表示 10%）', type: 'text' },
+      { key: 'promo_rate_lv2', label: '二级返佣比例（%，给直接推广员的上级）', type: 'text', showIfLevel: 2 },
+      { key: 'promo_rate_lv3', label: '三级返佣比例（%，给二级推广员的上级）', type: 'text', showIfLevel: 3 },
       { key: 'promo_withdraw_min_cents', label: '最低提现额（分）', type: 'text' },
       { key: 'promo_invite_base_url', label: '邀请链接前缀（留空=自动用当前站点域名，如 https://card.example.com）', type: 'text' }
     ]
@@ -389,8 +395,8 @@ function mapConfig() {
   }
 }
 
-// 推广分销规则（唯一真相源）：首单奖比例/每单返佣比例/提现门槛后台可改，服务端结算时直读。
-// 两个比例都限制 0~100（百分比），提现门槛为非负整数分；脏值一律回落默认，绝不因配置异常给负数或超高返佣。
+// 推广分销规则（唯一真相源）：层级/各级返佣比例/首单奖比例/提现门槛后台可改，服务端结算时直读。
+// 比例都限制 0~100（百分比），提现门槛为非负整数分；脏值一律回落默认，绝不因配置异常给负数或超高返佣。
 function promoConfig() {
   // 空值（未种子/后台清空）一律回落默认，不能让 Number('')=0 变成「0% 返佣」。
   const num = (k, def) => {
@@ -403,10 +409,15 @@ function promoConfig() {
     const raw = get(k, null)
     return raw === null || raw === '' ? def : (Number.isFinite(Number(raw)) && Number(raw) >= 0 && Number(raw) <= 100 ? Number(raw) : def)
   }
+  // 层级钳制 1~3：脏值/超界不放大也不缩没，防「层级 0 = 直发全链」或「层级 99 = 超长链」
+  const levels = Math.min(3, Math.max(1, num('promo_levels', 1)))
   return {
     enabled: String(get('promo_enabled', '')) === 'true',
+    levels,
     firstOrderRate: rate('promo_first_order_rate', 10),
     orderRate: rate('promo_order_rate', 10),
+    rateLv2: rate('promo_rate_lv2', 0),
+    rateLv3: rate('promo_rate_lv3', 0),
     withdrawMinCents: num('promo_withdraw_min_cents', 1000),
     inviteBaseUrl: String(get('promo_invite_base_url', '') || '').trim()
   }
@@ -567,8 +578,11 @@ function seedDefaults() {
     share_desc: SHARE_POOL_DEFAULTS.share_desc.join('\n'),
     share_image: '',
     promo_enabled: 'false',
+    promo_levels: '1',
     promo_first_order_rate: '10',
     promo_order_rate: '10',
+    promo_rate_lv2: '0',
+    promo_rate_lv3: '0',
     promo_withdraw_min_cents: '1000',
     promo_invite_base_url: '',
     ...NOTIFY_TEMPLATE_DEFAULTS

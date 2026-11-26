@@ -275,7 +275,11 @@ CREATE TABLE IF NOT EXISTS commissions (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_comm_promoter ON commissions(promoter_id, id);
-CREATE UNIQUE INDEX IF NOT EXISTS uniq_promo_order ON commissions(order_id) WHERE order_id IS NOT NULL;
+-- 【2026-11-27 多级分销迁移】唯一键从 (order_id) 放宽为 (order_id, promoter_id)：
+-- 多级分销下同一订单要给邀请链上 2~3 个不同上级各记一笔（每级一行），同订单同推广员仍只允许一笔，
+-- 重入（支付回调/补单/查单）幂等性不变。旧索引必须显式 DROP 再重建，IF NOT EXISTS 不会改已有索引结构。
+DROP INDEX IF EXISTS uniq_promo_order;
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_promo_order ON commissions(order_id, promoter_id) WHERE order_id IS NOT NULL;
 -- 首单奖幂等：每个被邀请人一生只发一次首单奖（重复支付/回调重入不会重复发）。
 -- 首单奖 order_id 为 NULL（与旧注册奖同构），避免与同一订单的每单返佣共撞 uniq_promo_order；
 -- 触发订单号记在 balance_logs.note，可追溯。金额按首笔成功订单金额 × 首单奖比例结算。

@@ -1,9 +1,10 @@
-// 推广分销服务：邀请码、归因绑定、首单奖、消费返佣的唯一实现。
+// 推广分销服务：邀请码、归因绑定、首单奖、消费返佣（多级）的唯一实现。
 // 铁律：① 邀请码是全站唯一短码（users.invite_code 唯一索引兜底）；
 // ② 归因 invited_by 注册后一次性绑定、永不更改（邀请归因零丢失）；
 // ③ 每笔佣金在事务内发放，靠 DB 唯一索引（uniq_promo_order / uniq_promo_first_order）幂等；
-// ④ 给推广员本人、自邀请、非推广员的码一律不发佣金（防自刷）。
-// ⑤ 两档佣金都是「订单金额 × 百分比」：首单奖（被邀请人首次开通套餐，一生一次）+ 每单返佣（每笔都算，可叠加）。
+// ④ 给推广员本人、自邀请、非推广员的码一律不发佣金（防自刷）；多级链上任何一级不合格即断链。
+// ⑤ 佣金都是「订单金额 × 百分比」：首单奖（被邀请人首次开通套餐，一生一次，只给直接推广员）
+//    + 每单返佣（每笔都算，沿邀请链向上发 1~3 级，层级与各级比例后台可配，可叠加）。
 //    旧的固定金额注册奖励已废弃（register 类型仅作历史记录展示，不再新发）。
 const db = require('../db')
 const settings = require('../utils/settings')
@@ -71,6 +72,27 @@ function orderPromoterId(order) {
   return promoter && promoter.is_promoter && promoter.status === 'active' ? promoterId : null
 }
 
+// 多级分销（2026-11-27）：沿邀请链（invited_by）向上追溯，返回拿每单返佣的推广员链
+// （[一级=直接推广员, 二级=一级的上级, 三级=二级的上级]，最长 maxLevels 层）。
+// 资格规则与单级口径完全一致：链上每一级都必须「推广员身份 + 启用状态」，任何一级不满足即断链，
+// 该级及更上层全不发（防自刷/防躺赚）。自邀归因在 bindInvite 已挡，这里再兜底防环（同一人绝不拿两级）。
+function orderPromoterChain(order, maxLevels = 1) {
+  const chain = []
+  if (!order || !order.user_id || maxLevels <= 0) return chain
+  const seen = new Set([order.user_id])
+  let cur = order.user_id
+  for (let i = 0; i < maxLevels; i++) {
+    const up = db.prepare('SELECT invited_by FROM users WHERE id = ?').get(cur)?.invited_by
+    if (!up || seen.has(up)) break // 无上级 / 成环兜底
+    const p = db.prepare('SELECT id, is_promoter, status FROM users WHERE id = ?').get(up)
+    if (!p || !p.is_promoter || p.status !== 'active') break // 断链：该级不合格，后面全不发
+    chain.push(p.id)
+    seen.add(p.id)
+    cur = p.id
+  }
+  return chain
+}
+
 // 发放首单奖：被邀请人「首次开通套餐」（第一笔支付成功的订单）时按订单金额百分比额外给推广员。
 // 与每单消费返佣叠加、各记一笔；一生一次靠 DB 唯一索引 uniq_promo_first_order(invitee_id) 幂等，
 // 支付回调/查单/补单重入都只发一次。注册时不再发任何固定金额奖励。
@@ -102,25 +124,33 @@ function grantFirstOrderReward(order, enabledOverride) {
   }
 }
 
-// 消费返佣：订单支付成功（activateOrder 事务内）调用。同一订单只返一次（uniq_promo_order）。
-// 受 promo_enabled 与 orderRate 控制；无上级 / 自买 / 非推广员上线一律不返。
+// 消费返佣（多级）：订单支付成功（activateOrder 事务内）调用。沿邀请链向上发 1~3 级，
+// 一级=promo_order_rate、二级=promo_rate_lv2、三级=promo_rate_lv3，比例 0 的层级跳过不发。
+// 幂等：uniq_promo_order(order_id, promoter_id)——同一订单同一推广员只发一笔，重入安全；
+// 比例为 0 的层级不落库（同订单链上只发非零层级）。无上级 / 自买 / 断链一律不返。
 function grantOrderCommission(order, enabledOverride) {
-  const promoterId = orderPromoterId(order)
-  if (!promoterId) return 0
   const cfg = settings.promoConfig()
   const enabled = typeof enabledOverride === 'boolean' ? enabledOverride : cfg.enabled
-  if (!enabled || cfg.orderRate <= 0) return 0
-  const amount = Math.floor(Number(order.amount_cents) * cfg.orderRate / 100)
-  if (amount <= 0) return 0
+  if (!enabled) return 0
+  const chain = orderPromoterChain(order, cfg.levels)
+  if (!chain.length) return 0
+  const rates = [cfg.orderRate, cfg.rateLv2, cfg.rateLv3]
+  const levelName = ['一级', '二级', '三级']
+  let total = 0
   try {
     const tx = db.transaction(() => {
-      const ins = db.prepare("INSERT INTO commissions (promoter_id, invitee_id, type, order_id, amount_cents) VALUES (?,?, 'order', ?, ?)")
-        .run(promoterId, order.user_id, order.id, amount)
-      db.prepare('UPDATE users SET balance_cents = balance_cents + ? WHERE id = ?').run(amount, promoterId)
-      logBalance(promoterId, 'commission', amount, 'commission_order', ins.lastInsertRowid, `订单 ${order.order_no} 返佣`)
+      chain.forEach((promoterId, idx) => {
+        const amount = Math.floor(Number(order.amount_cents) * (rates[idx] || 0) / 100)
+        if (amount <= 0) return
+        const ins = db.prepare("INSERT INTO commissions (promoter_id, invitee_id, type, order_id, amount_cents) VALUES (?,?, 'order', ?, ?)")
+          .run(promoterId, order.user_id, order.id, amount)
+        db.prepare('UPDATE users SET balance_cents = balance_cents + ? WHERE id = ?').run(amount, promoterId)
+        logBalance(promoterId, 'commission', amount, 'commission_order', ins.lastInsertRowid, `订单 ${order.order_no} ${levelName[idx]}返佣`)
+        total += amount
+      })
     })
     tx()
-    return amount
+    return total
   } catch (e) {
     if (String(e.message || '').includes('UNIQUE')) return 0
     console.error('[Promo] 消费返佣发放失败', e.message)
