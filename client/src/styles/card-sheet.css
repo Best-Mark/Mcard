@@ -14,13 +14,21 @@
 /* padding-top 用页面背景色给出与顶栏的间距（不用 margin，避免透出 body 白色） */
 .cv-page.cv-owner { padding-top: 12px; padding-bottom: 148px; }
 .cv-owner .cv-dock { bottom: 56px; }
-/* dock 翻转态行（owner「配色」/「二维码」键，2026-11-26 与小程序 me 页终稿同款交互）：
-   main 三键 ↔ 模板缩略行 / 二维码风格预设行，整行覆盖 dock 区域，行首「<」收起；
+/* 二维码调节态（2026-11-26 用户定稿）：名片本体让位，顶部只留当前二维码大图直视（调样式即时可见）；
+   大图与卡片右上角小码同源（qr.png 不带 scan=1，保留美化样式），v=qrStamp 击穿服务端缓存。
+   信息层只有码图 + 一句说明，所有操作在底部翻转行，↙ 收起才回到整张名片。 */
+.cv-qr-tune { padding: 22px 16px 8px; text-align: center; }
+.cv-qr-tune-card { display: inline-block; padding: 12px; background: #fff; border-radius: 16px; box-shadow: 0 8px 28px rgba(15,23,42,.14); }
+.cv-qr-tune-card img { display: block; width: 66vw; max-width: 300px; height: auto; }
+.cv-qr-tune-tip { margin-top: 12px; }
+/* dock 翻转态行（owner「配色」/「二维码」键）：
+   main 三键 ↔ 模板缩略行 / 二维码风格预设行，整行覆盖 dock 区域，行首「↙」收起回整张名片；
    缩略用 template-thumbs.css 的迷你名片卡（与配色风格页同一份）。
    ⚠️ dock 底色跟 24 套模板走（深玻璃/浅玻璃都有），行首键与名称一律用「深色半透明胶囊 + 白字」
    自带对比，不能写死白字白描边——浅色 dock 底上会整体隐身（2026-11-26 用户截图实锤）。 */
 .cv-dock.cv-dock-flip { display: flex; align-items: flex-start; gap: 10px; --ng-gold: #d8bb85; }
-/* 行首收起键「<」：与缩略同尺寸（54px）同顶线，看起来就是行里的第一项 */
+/* 行首收起键「↙」：与缩略同尺寸（54px）同顶线，看起来就是行里的第一项；
+   向下箭头 = 收起翻转行、退回整体名片（2026-11-26 用户定） */
 .cv-dock.cv-dock-flip .dock-back { flex: 0 0 54px; height: 54px; margin-top: 2px; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 600; line-height: 1; border-radius: 9px; background: rgba(15,23,42,.55); color: #fff; border: 1px solid rgba(255,255,255,.28); cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .cv-dock.cv-dock-flip .dock-scroll { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
 .cv-dock.cv-dock-flip .dock-scroll::-webkit-scrollbar { display: none; }

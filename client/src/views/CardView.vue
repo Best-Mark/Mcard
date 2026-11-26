@@ -24,7 +24,15 @@
     </div>
 
     <template v-else-if="card">
+      <!-- 二维码调节态（2026-11-26 用户定稿）：不再显示整张名片，把当前二维码放最上面直视；
+           大图与卡片右上角小码同源（qr.png 不带 scan=1，保留美化样式），qrStamp 击穿缓存，点选样式即时生效。
+           信息层只有码图+一句说明，所有操作留在底部翻转行，点行首↙退出才回到整体名片 -->
+      <div v-if="dockMode === 'qr'" class="cv-qr-tune">
+        <div class="cv-qr-tune-card"><img :src="qrApi + '/qr.png?size=560&v=' + qrStamp" alt="当前名片二维码" /></div>
+        <p class="small muted cv-qr-tune-tip">当前二维码 · 调整下方样式即时生效</p>
+      </div>
       <CardSheet
+        v-else
         :card="card" :tags="card.tags || []" :materials="materialsList" :site-name="siteConfig.site_name"
         :qr-url="full ? (qrApi + '/qr.png?size=200&v=' + qrStamp) : ''"
         :full="full" :interactive="full && !embed" :show-edit="!!owner"
@@ -61,10 +69,10 @@
           <button @click="moreOpen = false; openExchange()">交换名片</button>
         </div>
       </div>
-      <!-- dock 三态翻转（2026-11-26 用户终稿，与小程序 me 页完全一致）：main=编辑/配色/二维码；
+      <!-- dock 三态翻转（2026-11-26 用户终稿）：main=编辑/配色/二维码；
            点「配色」整行翻转成模板缩略行（H5 同款 template-thumbs 缩略，点中即换、页面实时预览、可连着试）；
-           点「二维码」翻转成二维码风格预设调节行（改的是二维码本身，不是弹码；弹码走身份卡小码）；
-           行首 ✕ 收起。公开页 dock 不变：打电话 / 复制号码 / 存入通讯录 / 分享 -->
+           点「二维码」名片本体让位给顶部二维码大图，整行翻成码型调节行（点中即改、大图即时刷新）；
+           行首 ↙ 收起回到整体名片。公开页 dock 不变：打电话 / 复制号码 / 存入通讯录 / 分享 -->
       <div v-if="full && owner" :class="['cv-dock cv-dock-glass', { 'cv-dock-flip': dockMode !== 'main' }]">
         <template v-if="dockMode === 'main'">
           <button class="btn btn-primary dock-btn" @click="router.push('/me/card')"><span class="dock-ico">✎</span>编辑</button>
@@ -73,7 +81,7 @@
         </template>
         <!-- 模板行：左右滑动点中即应用整套配色并保存，页面即实时预览 -->
         <template v-else-if="dockMode === 'tpl'">
-          <button class="dock-back" @click="dockMode = 'main'">&lt;</button>
+          <button class="dock-back" @click="closeDock" aria-label="收起配色行，返回名片">↙</button>
           <div class="dock-scroll">
             <div class="dock-flow">
               <button v-for="t in tpls" :key="t.key" :class="['dock-tpl', { on: card.template === t.key, busy: tplBusy }]" @click="chooseTpl(t)">
@@ -85,9 +93,10 @@
           </div>
         </template>
         <!-- 二维码调节行（2026-11-26 用户定稿）：一键风格预设 + 码型细调（码点形状/定位角），
-             同一行点选即保存实时生效，卡片右上小码实时跟着变（上方就是名片二维码，一调就能看到） -->
+             同一行点选即保存实时生效；此时名片本体让位给顶部二维码大图，一调就能直视变化。
+             ↙ 收起才回到整体名片 -->
         <template v-else>
-          <button class="dock-back" @click="dockMode = 'main'">&lt;</button>
+          <button class="dock-back" @click="closeDock" aria-label="收起二维码调节行，返回名片">↙</button>
           <div class="dock-scroll">
             <div class="dock-flow">
               <button v-for="p in QR_PRESETS" :key="p.key" :class="['dock-tpl', { on: qrPresetActive(p), busy: qrBusy }]" @click="applyQrStyle({ dot: p.dot, eye: p.eye, gradTo: p.gradTo })">
@@ -284,16 +293,21 @@ const vcfApi = computed(() => `${qrApi.value}/card.vcf`)
 // 调码型时上面实时可见；要绝对稳妥的扫码用弹层大码（点小码即开，scanOptions 硬化）。
 const card = ref(null); const loading = ref(true); const error = ref('')
 
-// dock 三态翻转（owner「配色」/「二维码」键，与小程序 me 页终稿完全一致）：
-// main（编辑/配色/二维码）→ tpl（模板缩略行）/ qr（二维码风格预设行），✕ 收起。
+// dock 三态翻转（owner「配色」/「二维码」键）：
+// main（编辑/配色/二维码）→ tpl（模板缩略行，整张名片实时预览）/ qr（名片本体让位，顶部直视二维码大图 + 码型调节行），↙ 收起。
 // 模板清单来自公开接口（与 CardStyle/CardEdit 同源，缓存一次）；
 // 点中即 PUT /api/cards/mine 应用整套配色（与 CardStyle done 同口径），card 就地合并 → 页面实时预览；
 // 条保持打开可连续切换对比。未开通由服务端套餐闸门拦（403 → toast）。
 const dockMode = ref('main')
 const tpls = ref([]); const tplBusy = ref(false)
 let tplsLoaded = false
+// 进入二维码调节态：名片本体让位，顶部直视大码；从任意滚动位置点底部 dock 都要先回页顶，
+// 否则用户下滑后点「二维码」只见调节行、看不到上方大码（2026-11-26 用户截图实锤）。
+function scrollPageTop() { try { windowRef.scrollTo?.(0, 0) } catch { /* 老 WebView 无 scrollTo 选项时忽略 */ } }
+function closeDock() { dockMode.value = 'main'; scrollPageTop() }
 function toggleDock(m) {
   dockMode.value = dockMode.value === m ? 'main' : m
+  if (dockMode.value === 'qr') scrollPageTop()
   if (dockMode.value === 'tpl' && !tplsLoaded) {
     api.get(`/api/cards/public/templates?t=${Date.now()}`).then(({ data }) => {
       const list = data?.data?.templates || []
