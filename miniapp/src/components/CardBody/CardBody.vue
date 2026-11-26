@@ -109,20 +109,6 @@
         </view>
       </view>
 
-      <!-- 模板横条（dock「配色」键唤起，2026-11-26 用户定稿）：dock 上方固定一横排模板缩略，左右滑动，
-           点中即应用整套配色并保存（条保持打开可连续试）；页面本身即实时预览；未开通由服务端套餐闸门拦 -->
-      <view v-if="tplBar" class="tpl-bar" :style="{ bottom: barBottom }">
-        <scroll-view scroll-x class="tpl-bar-scroll" :show-scrollbar="false">
-          <view class="tpl-bar-row">
-            <button v-for="t in tpls" :key="t.key" :class="['tpl-bar-item', { on: card.template === t.key, busy: tplBusy }]" @tap="chooseTpl(t)">
-              <view class="tpl-thumb" :style="{ background: thumbBg(t.key) }"></view>
-              <text class="tpl-bar-label">{{ t.label }}</text>
-            </button>
-          </view>
-          <view v-if="!tpls.length" class="muted small" style="text-align:center;padding:16rpx 0">模板清单加载中…</view>
-        </scroll-view>
-      </view>
-
       <!-- 自己看自己名片时不显示「交换名片」（与 H5 owner 隐藏悬浮菜单同口径） -->
       <view v-if="!isSelf" class="card block">
         <view class="section">交换名片</view>
@@ -158,9 +144,7 @@ const props = defineProps({
   selfCheckDone: { type: Boolean, default: true },
   // 顶部内嵌（px）：custom 导航页传右上角胶囊 rect.top，品牌位（LOGO+站名）与胶囊同排（MShop 同款做法）；
   // 原生导航页传 0，品牌位贴封面顶端
-  topInset: { type: Number, default: 0 },
-  // 模板横条 bottom 位置：默认对齐 me 页 dock 顶（dock 110rpx 起 + 自身高度），其它页面可传覆盖
-  barBottom: { type: String, default: 'calc(232rpx + env(safe-area-inset-bottom, 0px))' }
+  topInset: { type: Number, default: 0 }
 })
 // edit：身份卡 ✎（仅本人显示）；activate：未开通时「立即开通」；update：配色循环成功后回传补丁，页面合并进 card
 const emit = defineEmits(['edit', 'activate', 'update'])
@@ -179,10 +163,9 @@ const mySlug = ref('')
 const exchanging = ref(false)
 const qrOpen = ref(false)
 const qrMode = ref('vcard')
-// dock「二维码」键 / 身份卡右上小码共用这一个弹层；页面经 defineExpose 的 openQr 唤起
+// 二维码弹层：身份卡右上小码唤起（me 页 dock「二维码」键已改为翻转成二维码调节行，不再走这里）
 function openQr() { qrOpen.value = true }
-// dock「配色」键切换模板横条
-defineExpose({ openQr, toggleTpl })
+defineExpose({ openQr })
 
 // 联系方式行（与 H5 CardSheet contactFields 同构）：手机/座机可拨打，其余点行复制
 const contactRows = computed(() => {
@@ -217,72 +200,6 @@ const THEMES = {
   alas: { label: '阿拉斯红', accent: '#a01722' }
 }
 const THEME_ORDER = Object.keys(THEMES)
-
-// 模板弹层（dock「模板」键唤起，页面即实时预览）：模板清单来自公开接口（与 edit.vue 同源），
-// 选中即 PUT /api/cards/mine 应用整套配色（template+theme+accent+二维码色，与 edit.vue chooseTemplate 同口径），
-// 未开通由服务端套餐闸门拦（403 → toast）。⚠️ TEMPLATE_PALETTES 与 edit.vue / client/src/utils/themes.js 三端同步。
-const TEMPLATE_PALETTES = {
-  tang: { theme: 'tang', qrFg: '#7a1e15', qrBg: '#f7ecd9' },
-  vanna: { theme: 'vanna', qrFg: '#0c2a4d', qrBg: '#eaf2f9' },
-  phantom: { theme: 'phantom', qrFg: '#052e1c', qrBg: '#e8f5ee' },
-  lava: { theme: 'lava', qrFg: '#1a1a1e', qrBg: '#f1f1f2' },
-  star: { theme: 'star', qrFg: '#8a8aa0', qrBg: '#12121a' },
-  alas: { theme: 'alas', qrFg: '#4a0d14', qrBg: '#f9eaea' },
-  classic: { theme: 'ocean', qrFg: '#12306b', qrBg: '#f2f7ff' },
-  minimal: { theme: 'ocean', qrFg: '#2b2118', qrBg: '#ffffff' },
-  elite: { theme: 'ink', qrFg: '#b99355', qrBg: '#15171c' },
-  vivid: { theme: 'royal', qrFg: '#7c3aed', qrBg: '#fff7ed' },
-  seal: { theme: 'ocean', qrFg: '#2b2118', qrBg: '#ffffff' },
-  contact: { theme: 'ink', qrFg: '#12202e', qrBg: '#ffffff' },
-  navygold: { theme: 'ink', qrFg: '#1d3a55', qrBg: '#f7f1e3' },
-  paper: { theme: 'ocean', qrFg: '#3f4a5a', qrBg: '#f7f6f3' },
-  glass: { theme: 'mint', qrFg: '#0b2e2a', qrBg: '#eaf8f4' },
-  wood: { theme: 'sunset', qrFg: '#5b3a1f', qrBg: '#f6eee1' },
-  neon: { theme: 'royal', qrFg: '#3d1a72', qrBg: '#f3e9ff' },
-  acid: { theme: 'mint', qrFg: '#0a0a0a', qrBg: '#dfff5e' },
-  pop: { theme: 'sunset', qrFg: '#1a1a1a', qrBg: '#fff4e8' },
-  magazine: { theme: 'sunset', qrFg: '#b91c1c', qrBg: '#f7f3ec' },
-  poster: { theme: 'ink', qrFg: '#1d3a55', qrBg: '#ffffff' },
-  ticket: { theme: 'ocean', qrFg: '#1f2937', qrBg: '#f7f5ee' },
-  horizontal: { theme: 'ocean', qrFg: '#1d3a55', qrBg: '#eef1f4' },
-  sidebar: { theme: 'sunset', qrFg: '#44291a', qrBg: '#f7f3ec' }
-}
-const tplBar = ref(false)
-const tpls = ref([])
-const tplBusy = ref(false)
-let tplsLoaded = false
-// dock「配色」键切换横条开关；首次打开拉模板清单（与 edit.vue 同源，缓存）
-function toggleTpl() {
-  tplBar.value = !tplBar.value
-  if (tplBar.value && !tplsLoaded) {
-    api.get('/api/cards/public/templates?t=' + Date.now(), false).then(r => {
-      if (r?.templates?.length) { tpls.value = r.templates; tplsLoaded = true }
-    }).catch(() => { /* 清单拉取失败静默，条内显示「加载中」可再点重试 */ })
-  }
-}
-// 缩略色块：用该模板主题的强调色（视觉上即可区分 24 套，无需搬 edit.vue 的 24 份缩略样式）
-function thumbBg(key) {
-  const pal = TEMPLATE_PALETTES[key]
-  return pal ? (THEMES[pal.theme] || THEMES.ocean).accent : '#2b2118'
-}
-async function chooseTpl(t) {
-  if (tplBusy.value || card.value.template === t.key) return
-  const pal = TEMPLATE_PALETTES[t.key] || { theme: 'ocean', qrFg: '#2b2118', qrBg: '#ffffff' }
-  const patch = {
-    template: t.key,
-    theme: pal.theme,
-    accent: (THEMES[pal.theme] || THEMES.ocean).accent,
-    qr_fg: pal.qrFg,
-    qr_bg: pal.qrBg
-  }
-  tplBusy.value = true
-  try {
-    await api.put('/api/cards/mine', patch)
-    toast(`已应用「${t.label}」整套配色`, 'success')
-    emit('update', patch)
-  } catch (e) { toast(e.message) } finally { tplBusy.value = false }
-}
-
 const themeBusy = ref(false)
 async function cycleTheme() {
   if (!isSelf.value || themeBusy.value) return
@@ -476,17 +393,6 @@ async function exchange() {
 .qr-tab::after { border: 0; }
 .qr-tab.on { background: #a62b2b; border-color: #a62b2b; color: #fff; }
 .qr-big { width: 400rpx; height: 400rpx; margin: 0 auto 16rpx; display: block; background: #fff; }
-/* 模板横条：dock 上方固定一横排（bottom 由页面传 barBottom 对齐 dock 顶），左右滑动点选即换 */
-.tpl-bar { position: fixed; left: 0; right: 0; z-index: 60; background: rgba(255,255,255,.97); box-shadow: 0 -4rpx 20rpx rgba(15,23,42,.08); padding: 16rpx 20rpx; }
-.tpl-bar-scroll { width: 100%; white-space: nowrap; }
-.tpl-bar-row { display: flex; gap: 20rpx; }
-.tpl-bar-item { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 8rpx; background: transparent; padding: 0; margin: 0; line-height: 1.2; }
-.tpl-bar-item::after { border: 0; }
-.tpl-bar-item.busy { opacity: .5; }
-.tpl-thumb { width: 88rpx; height: 56rpx; border-radius: 10rpx; border: 3rpx solid rgba(15,23,42,.08); box-sizing: border-box; box-shadow: 0 2rpx 8rpx rgba(15,23,42,.12); }
-.tpl-bar-item.on .tpl-thumb { border: 4rpx solid #a62b2b; box-shadow: 0 0 0 4rpx rgba(166,43,43,.15); }
-.tpl-bar-label { font-size: 20rpx; color: #8a7355; max-width: 120rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tpl-bar-item.on .tpl-bar-label { color: #a62b2b; font-weight: 700; }
 .btn-row { display: flex; gap: 12rpx; margin-top: 16rpx; }
 .btn { font-size: 24rpx; padding: 16rpx 0; border-radius: 12rpx; background: #f0e7d2; color: #2b2118; }
 .btn::after { border: 0; }
