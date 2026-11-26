@@ -450,6 +450,8 @@
                   <input v-else v-model="cfg[f.key]" class="input" :type="f.type === 'secret' && !revealed[f.key] ? 'password' : 'text'"
                          :placeholder="f.type === 'secret' ? (cfg[f.key] ? '•••••• 已配置，留空不改' : '未配置') : ''" />
                   <button v-if="f.type === 'secret' && f.upload && manualSecrets[f.key]" class="cfg-manual-link" @click="backToFileMode(f)">改用文件上传</button>
+                  <!-- 非文件类字段的补充说明：图片字段自带 hint，文件类走 fileHint，这里只服务手工输入项 -->
+                  <span v-if="f.hint && f.type !== 'image' && !f.upload" class="small muted cfg-hint">{{ f.hint }}</span>
                 </div>
               </div>
 
@@ -1547,6 +1549,7 @@ async function saveUpdateConfig() {
 .verify-file-row a { color: var(--primary); word-break: break-all; }
 .cfg-manual-link { width: fit-content; color: var(--muted); font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
 .cfg-manual-link:hover { color: var(--primary); }
+.cfg-hint { display: block; margin-top: 6px; line-height: 1.5; }
 .cfg-actions { display: flex; align-items: center; gap: 14px; justify-content: flex-end; padding-top: 16px; margin-top: 6px; border-top: 1px solid var(--line); }
 .sms-test { margin-top: 18px; padding-top: 6px; border-top: 1px dashed var(--line); }
 .sms-row { display: flex; gap: 10px; max-width: 520px; }

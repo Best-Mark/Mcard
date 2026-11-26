@@ -128,9 +128,14 @@ const GROUPS = {
       { key: 'pay_mode', label: '支付模式（mock / wechat / alipay / both）', type: 'text' },
       { key: 'wechat_mch_id', label: '微信商户号 MCH ID', type: 'text' },
       { key: 'wechat_app_id', label: '微信 AppID（公众号/PC 扫码用）', type: 'text' },
-      // 密钥类改用本地文件选择：前端 FileReader 读原文填进配置，随分组 PUT，不产生公开上传地址。
-      // accept/maxBytes 是前后端共用的唯一真相源；type 仍是 secret，掩码+指纹机制完全不变。
-      { key: 'wechat_api_v3_key', label: 'API v3 密钥', type: 'secret', upload: true, accept: '.txt', fileHint: '选择从微信商户平台下载的 API v3 密钥文本文件', maxBytes: 1000 },
+      // 密钥类分两种，别混用交互：
+      // ① 文件型（商户私钥 apiclient_key.pem / 平台证书 / 支付宝公私钥）：平台确实提供文件下载，
+      //    走本地文件选择（FileReader 读原文随分组 PUT，不产生公开上传地址）；accept/maxBytes 前后端共用唯一真相源。
+      // ② 字符串型（API v3 密钥）：商户在微信商户平台「账户中心 → API 安全」自行设置的 32 位字符，
+      //    微信不提供任何密钥文件、设置后也不再明文展示，只能手工填写/粘贴。旧版误做成「选择密钥文件」
+      //    且文案写着「下载 API v3 密钥文本文件」——那个文件根本不存在，纯误导，现改回手工输入框。
+      // type 仍是 secret，掩码+指纹机制完全不变。
+      { key: 'wechat_api_v3_key', label: 'API v3 密钥', type: 'secret', hint: '商户平台「账户中心 → API 安全」自行设置的 32 位字符串，微信不提供文件下载，请手工填写；设置后仅显示一次，请自行留存' },
       { key: 'wechat_cert_serial_no', label: '商户证书序列号', type: 'text' },
       { key: 'wechat_private_key', label: '商户私钥 PEM', type: 'secret', large: true, upload: true, accept: '.pem,.key,.txt', fileHint: '选择商户 API 私钥文件 apiclient_key.pem', maxBytes: 20000 },
       { key: 'wechat_notify_url', label: '微信支付回调 URL（留空=按当前域名自动生成，禁止写死域名）', type: 'text' },
