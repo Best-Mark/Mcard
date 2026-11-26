@@ -261,29 +261,19 @@ router.get('/public/:slug', wrap((req, res) => {
   ok(res, publicView(row, originOf(req)))
 }))
 
-// 易扫模式（?scan=1）：客户扫码主场景（弹层大图/保存二维码/分享图/引导图）统一走这里。
-// 【2026-11-26 口径修正】用户调整码点/码眼后弹层大码必须跟着变——原实现强制 SCAN_STYLE（方点方角），
-// 把用户选的美化样式全抹掉，用户反馈「调完风格这两处怎么没变」。现改为：码点/码眼保留用户选择，
-// 只硬化真正伤识别率的三项——渐变/背景图清空、无中心 LOGO（避免 H 纠错变密+遮挡数据区）、静音区 4。
-// 圆点/圆角码眼等草料式样式微信可正常识别，视觉跟随用户的诉求优先；底色仍做高对比兜底防深色底扫不出。
-function scanOptions({ fg, bg, style }) {
-  const lum = hex => {
-    const m = /^#([0-9a-f]{6})$/i.exec(String(hex || ''))
-    if (!m) return 0
-    const n = parseInt(m[1], 16)
-    return 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)
-  }
-  const s = normalizeStyle(style)
+// 易扫模式（?scan=1）/ vCard 码统一渲染参数。
+// 【2026-11-26 用户终稿】弹层两个 tab 的码 = 用户最终保存的完整风格，与卡片右上角小码一致：
+// 码点/码眼/渐变/中心 LOGO/码色全部沿用 cards.qr_style + qr_fg/qr_bg + qr_logo，不再做硬化覆盖。
+// 只保留静音区 4（QR 规范要求，苹果相机/微信扫一扫对静音区不足敏感，不影响观感）。
+// ⚠️ 不要为「易扫」再强制方点/去 LOGO/改色——用户明确要求视觉与设置一致，改回会被再次指出。
+function scanOptions({ fg, bg, style, logo, logoImage }) {
   return {
-    // 高对比：码色太浅改纯黑，底色太深改纯白（深色主题配浅色码的自定义色也覆盖掉）
-    fg: lum(fg) > 110 ? '#0f172a' : (fg || '#0f172a'),
-    bg: lum(bg) < 200 ? '#ffffff' : (bg || '#ffffff'),
-    // 静音区（quiet zone）≥4 模块：QR 规范要求，苹果原生相机/微信扫一扫对不足的静音区极敏感
+    fg: fg || '#0f172a',
+    bg: bg || '#ffffff',
     margin: 4,
-    logo: false,
-    logoImage: '',
-    // 码点/码眼跟随用户（唯一真相源 cards.qr_style）；渐变/背景图/X5 难识别项清空
-    style: { ...s, gradTo: '', bgImage: '', logoShape: 'none' }
+    logo: !!logo,
+    logoImage: logoImage || '',
+    style: normalizeStyle(style)
   }
 }
 
@@ -301,8 +291,8 @@ router.get('/public/:slug/qr.svg', wrap(async (req, res) => {
   if (req.query.style) { try { style = normalizeStyle(JSON.parse(String(req.query.style).slice(0, 4000))) } catch {} }
   let opts = { size, fg, bg, logo: logoOn, brand, logoImage, style }
   const isScan = String(req.query.scan || '') === '1'
-  if (isScan) opts = { ...opts, ...scanOptions({ fg, bg, logoOn, logoImage, style }) }
-  // 扫码主场景只缓存 60s：渲染逻辑（纠错/静音区/去 LOGO）升级后最多 1 分钟即可全网生效，
+  if (isScan) opts = { ...opts, ...scanOptions({ fg, bg, logo: logoOn, logoImage, style }) }
+  // 扫码主场景只缓存 60s：渲染逻辑升级后最多 1 分钟即可全网生效，
   // 不再像以前 max-age=3600 卡一小时旧码。装饰码仍在编辑预览里高频改色，走长缓存无意义但也无害。
   res.type('image/svg+xml').set('Cache-Control', isScan ? 'public, max-age=60' : 'public, max-age=3600')
     .send(qr.svg(requestUrl(req, `/c/${row.slug}`), opts))
@@ -316,7 +306,7 @@ router.get('/public/:slug/qr.png', wrap(async (req, res) => {
   const style = normalizeStyle(parseJson(row.qr_style, {}))
   let opts = { size, fg: row.qr_fg, bg: row.qr_bg, logoImage, logo: !!row.qr_logo, brand: 'M', style }
   const isScan = String(req.query.scan || '') === '1'
-  if (isScan) opts = { ...opts, ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg, logoOn: !!row.qr_logo, logoImage, style }) }
+  if (isScan) opts = { ...opts, ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg, logo: !!row.qr_logo, logoImage, style }) }
   const buf = await qr.png(requestUrl(req, `/c/${row.slug}`), opts)
   res.type('png').set('Cache-Control', isScan ? 'public, max-age=60' : 'public, max-age=3600').send(buf)
 }))
@@ -348,16 +338,17 @@ router.get('/public/:slug/vcard.txt', wrap((req, res) => {
 // 【2026-11-26 口径修正】码点/码眼跟随用户 qr_style（弹层两个 tab 调完风格要立刻可见），
 // 仍走 scanOptions 硬化：高对比 + 静音区4 + 无 LOGO + 清渐变/背景图，微信扫一扫可正常识别。
 // 渲染逻辑升级会改同 URL 图案：缓存只给 60s（与 scan 模式一致），前端另带 qv 击穿缓存。
-router.get('/public/:slug/vcard.svg', wrap((req, res) => {
+router.get('/public/:slug/vcard.svg', wrap(async (req, res) => {
   const row = db.prepare('SELECT * FROM cards WHERE slug = ?').get(req.params.slug)
   if (!row) return fail(res, 404, '名片不存在')
   const origin = originOf(req)
-  // 二维码用瘦身版 vCard（只放主流联系人字段，2026-11-26 用户定稿：保证可扫性）
+  // 二维码用瘦身版 vCard（只放主流联系人字段，2026-11-26 用户定稿：码点不过密）
   const text = vcard.build(publicView(row, origin), origin, { slim: true })
   const size = Math.min(2000, Math.max(256, Number(req.query.size) || 520))
   const style = normalizeStyle(parseJson(row.qr_style, {}))
+  const logoImage = row.qr_logo ? await qrCenterImage(row) : ''
   res.type('image/svg+xml').set('Cache-Control', 'public, max-age=60')
-    .send(qr.svg(text, { size, ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg, style }) }))
+    .send(qr.svg(text, { size, brand: 'M', ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg, style, logo: !!row.qr_logo, logoImage }) }))
 }))
 
 // vCard 高清 PNG（保存用）：与 vcard.svg 同款，码点/码眼跟随用户风格，前端长按/保存一律用 PNG（微信「识别图中二维码」不认 SVG）
@@ -369,7 +360,8 @@ router.get('/public/:slug/vcard.png', wrap(async (req, res) => {
   const text = vcard.build(publicView(row, origin), origin, { slim: true })
   const size = Math.min(1600, Math.max(256, Number(req.query.size) || 720))
   const style = normalizeStyle(parseJson(row.qr_style, {}))
-  const buf = await qr.png(text, { size, ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg, style }) })
+  const logoImage = row.qr_logo ? await qrCenterImage(row) : ''
+  const buf = await qr.png(text, { size, brand: 'M', ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg, style, logo: !!row.qr_logo, logoImage }) })
   res.type('png').set('Cache-Control', 'public, max-age=60').send(buf)
 }))
 
