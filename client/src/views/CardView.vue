@@ -47,7 +47,7 @@
               <b>也想拥有这样一张名片？</b>
               <p class="small muted">二维码终身不变、资料随时改，免费创建</p>
             </div>
-            <router-link to="/login?redirect=/me/card" class="btn btn-primary">免费创建我的名片 →</router-link>
+            <router-link :to="auth.token ? '/me/card' : '/login?redirect=/me/card'" class="btn btn-primary">免费创建我的名片 →</router-link>
           </div>
         </template>
       </CardSheet>
@@ -372,8 +372,9 @@ function hexToRgb(hex) {
   return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`
 }
 const vars = computed(() => ({ ...themeVars(t.value), '--glow-rgb': hexToRgb(t.value.accent) }))
-// 扫码进来的访客多为未登录：只在未登录且非本人时展示建卡引导，避免打扰名片主人
-const showCreateOwn = computed(() => !owner && !auth.token && !isOwner.value)
+// 访客点开分享的名片必须先看到名片本身；「我也要创建」只作为名片下方的次要入口（对所有非持有者显示，含已登录），
+// 绝不能反过来一进来就拦去创建页——那会完全忽视「先看名片」的场景需要。
+const showCreateOwn = computed(() => !owner && !isOwner.value)
 const fullAddress = computed(() => {
   const c = card.value || {}
   return [c.province, c.city, c.district, c.street, c.address, c.address_detail].filter(Boolean).join('')

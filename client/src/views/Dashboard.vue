@@ -33,6 +33,8 @@
           <button class="btn btn-primary btn-block" :disabled="busy" @click="createCard">
             {{ busy ? '创建中…' : '立即创建我的名片' }}
           </button>
+          <!-- 不强推创建：给「先看看别人怎么做」的出口，避免一进来就只剩创建一条路 -->
+          <router-link to="/market" class="btn btn-ghost btn-block" style="margin-top:10px">先去逛逛名片集市</router-link>
         </div>
       </div>
     </div>

@@ -106,6 +106,16 @@
           </button>
         </view>
 
+        <!-- 访客打开分享的名片：先看到名片本身，「我也要创建」只作为下方次要入口（对所有非持有者显示），
+             绝不反过来一进来就拦去创建页——那会完全忽视「先看名片」的场景需要。 -->
+        <view v-if="selfCheckDone && !isSelf" class="card block create-own">
+          <view class="create-own-copy">
+            <text class="b">也想拥有这样一张名片？</text>
+            <text class="muted small">二维码终身不变、资料随时改，免费创建</text>
+          </view>
+          <button class="btn primary block" @tap="goCreate">免费创建我的名片 →</button>
+        </view>
+
         <view class="foot">由 唐笺 提供技术支持</view>
       </view>
 
@@ -229,6 +239,14 @@ async function load() {
   if (src) traceVisit(slug.value, src)
 }
 const go = url => uni.navigateTo({ url })
+// 访客「我也要创建」：未登录先去登录（带回跳），已登录直达建卡页
+function goCreate() {
+  if (!uni.getStorageSync('mcard_token')) {
+    uni.setStorageSync('mcard_login_redirect', '/pages/me/me')
+    return uni.navigateTo({ url: '/pages/login/login' })
+  }
+  uni.reLaunch({ url: '/pages/me/me' })
+}
 const entrySrc = ref('')
 onLoad(options => {
   slug.value = parseSlug(options.slug || options.scene || '') || 'zhangsan'
@@ -418,6 +436,9 @@ onShareAppMessage(() => {
 .btn.tiny { padding: 8rpx 18rpx; font-size: 22rpx; flex-shrink: 0; }
 .btn.block { width: 100%; }
 .input { width: 100%; height: 84rpx; line-height: 84rpx; box-sizing: border-box; border: 2rpx solid #e8dcc2; border-radius: 12rpx; padding: 0 20rpx; font-size: 26rpx; }
+.create-own { text-align: center; }
+.create-own-copy { display: flex; flex-direction: column; gap: 8rpx; margin-bottom: 20rpx; }
+.create-own-copy .b { font-size: 30rpx; font-weight: 700; }
 .foot { text-align: center; font-size: 22rpx; color: #b09a72; padding: 30rpx 0 280rpx; }
 .dock { position: fixed; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12rpx 16rpx; padding: 16rpx 24rpx 16rpx; padding-bottom: calc(16rpx + env(safe-area-inset-bottom, 0px)); background: rgba(255,255,255,.96); box-shadow: 0 -4rpx 20rpx rgba(15,23,42,.06); z-index: 50; }
 .dock-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4rpx; min-height: 96rpx; padding: 8rpx 0; border-radius: 14rpx; background: #f0e7d2; color: #2b2118; font-size: 22rpx; line-height: 1.2; }
