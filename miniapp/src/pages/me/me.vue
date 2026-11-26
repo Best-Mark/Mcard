@@ -11,9 +11,8 @@
       <view class="create-ico">▤</view>
       <view class="create-title">还没有名片</view>
       <view class="create-desc">创建后即可获得永久二维码，之后换资料不用换码。</view>
-      <input v-model.trim="newSlug" class="input" placeholder="自定义短码（选填，如 zhangsan）" />
       <button class="btn primary block" :disabled="busy" @tap="create">{{ busy ? '创建中…' : '立即创建我的名片' }}</button>
-      <view class="create-tip">短码留空会自动生成，之后可在「编辑名片」里改</view>
+      <view class="create-tip">短码将自动生成，之后可在「编辑名片」里改</view>
     </view>
 
     <view v-else class="body">
@@ -87,7 +86,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { api, baseUrl, isLogged, goLogin, toast, getUnreadCount, isPromoterUser } from '../../utils/request'
 
 const logged = ref(false); const loading = ref(true); const card = ref(null); const isPromoter = ref(false)
-const stats = ref({}); const orders = ref([]); const newSlug = ref(''); const busy = ref(false)
+const stats = ref({}); const orders = ref([]); const busy = ref(false)
 const unread = ref(0)
 const go = url => uni.navigateTo({ url })
 const days = computed(() => card.value?.expires_at
@@ -118,7 +117,7 @@ onShow(load)
 
 async function create() {
   busy.value = true
-  try { card.value = await api.post('/api/cards/mine', { slug: newSlug.value }); toast('名片已创建', 'success') }
+  try { card.value = await api.post('/api/cards/mine', {}); toast('名片已创建', 'success') }
   catch (e) { toast(e.message) } finally { busy.value = false }
 }
 </script>

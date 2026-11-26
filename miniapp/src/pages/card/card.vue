@@ -66,10 +66,10 @@
         <view v-if="fullAddress" class="card block">
           <view class="section">地址</view>
           <view v-if="regionLine" class="region-line">{{ regionLine }}</view>
-          <view class="addr" @tap="copyText(fullAddress, '地址已复制，可粘贴到地图')">
+          <view class="addr" @tap="canNavigate ? openNavigation() : copyText(fullAddress, '地址已复制，可粘贴到地图')">
             <text class="content">地址：{{ detailAddress }}</text>
+            <text class="nav-mini" v-if="canNavigate">导航 ›</text>
           </view>
-          <view class="hint">小程序内无法直接唤起所有地图，地址复制后打开高德/百度/Apple 地图粘贴即可导航。</view>
         </view>
 
         <view v-if="materials.length" class="card block">
@@ -109,10 +109,14 @@
         <view class="foot">由 MCard 提供技术支持</view>
       </view>
 
+      <!-- 底部操作 dock：对齐 H5 名片页的完整操作（打电话/复制号码/存通讯录/导航/收藏/分享） -->
       <view class="dock">
-        <button class="btn primary" open-type="share">分享名片</button>
-        <button v-if="!isSelf" class="btn" @tap="savePhoneContact">存入通讯录</button>
-        <button class="btn" @tap="copyContact">复制名片信息</button>
+        <button class="dock-btn" :disabled="!contactPhone" @tap="callPhone(contactPhone)"><text class="dico">✆</text><text>打电话</text></button>
+        <button class="dock-btn" :disabled="!contactPhone" @tap="copyText(contactPhone, '号码已复制')"><text class="dico">⧉</text><text>复制号码</text></button>
+        <button v-if="!isSelf" class="dock-btn" @tap="savePhoneContact"><text class="dico">▣</text><text>存通讯录</text></button>
+        <button v-if="canNavigate" class="dock-btn" @tap="openNavigation"><text class="dico">⌖</text><text>导航</text></button>
+        <button v-if="!isSelf" class="dock-btn" @tap="toggleFavorite"><text class="dico">{{ favorited ? '★' : '☆' }}</text><text>{{ favorited ? '已收藏' : '收藏' }}</text></button>
+        <button class="dock-btn primary" open-type="share"><text class="dico">↗</text><text>分享</text></button>
       </view>
     </block>
   </view>
@@ -132,6 +136,7 @@ const exchanging = ref(false)
 const tpl = ref('classic')
 const materials = ref([])
 const isSelf = ref(false)
+const favorited = ref(false)
 
 // 动态光效用主题强调色，#rrggbb → rgb 分量
 const glowRgb = computed(() => {
@@ -165,6 +170,14 @@ const detailAddress = computed(() => {
   return [c.address, c.address_detail].filter(Boolean).join(' ')
 })
 const fullAddress = computed(() => [regionLine.value.replace(/ · /g, ''), detailAddress.value].filter(Boolean).join(' '))
+// 拨号/复制号码统一口径：手机优先、座机兜底（与 H5 contactPhone 一致）
+const contactPhone = computed(() => card.value?.mobile || card.value?.phone || '')
+// 有坐标才能唤起原生地图；无坐标时 dock 不显示导航，地址点击仍复制
+const canNavigate = computed(() => {
+  const c = card.value || {}
+  return Number.isFinite(Number(c.latitude)) && Number.isFinite(Number(c.longitude))
+    && String(c.latitude) !== '' && String(c.longitude) !== ''
+})
 // 简介唯一真相源：bio，存量 company_intro 回落（与 H5 CardView 同口径）
 const introText = computed(() => card.value?.bio || card.value?.company_intro || '')
 const siteLinks = computed(() => {
@@ -185,8 +198,12 @@ async function load() {
   // 本人视角判定（与 H5 owner 同口径）：自己看自己名片时隐藏「交换名片/存入通讯录」，
   // 否则就是自己跟自己交换、把自己存通讯录。未登录/失败一律当访客，不影响公开浏览。
   isSelf.value = false
+  favorited.value = false
   if (uni.getStorageSync('mcard_token')) {
     api.get('/api/cards/mine', true).then(mine => { isSelf.value = !!mine && mine.slug === slug.value }).catch(() => {})
+    // 收藏态：未登录当未收藏（按钮仍显示，点了提示登录），失败静默不误标
+    api.get(`/api/cards/public/${slug.value}/favorite`, true)
+      .then(d => { favorited.value = !!d?.favorite }).catch(() => {})
   }
   // 资料夹 + 来源上报（扫码进入 scene 记为 qr），失败静默
   getPublicMaterials(slug.value).then(d => { materials.value = d.list || [] }).catch(() => {})
@@ -240,6 +257,34 @@ function copyContact() {
   copyText(text, '名片信息已复制')
 }
 
+// 导航到此处：用名片坐标唤起系统地图（微信内置地图），无坐标时 dock 不显示该按钮。
+function openNavigation() {
+  const c = card.value
+  if (!c || !canNavigate.value) return toast('该名片未设置坐标，请复制地址到地图导航')
+  uni.openLocation({
+    latitude: Number(c.latitude),
+    longitude: Number(c.longitude),
+    name: c.name || c.company || '名片地址',
+    address: fullAddress.value || c.city || '',
+    scale: 18,
+    fail: () => copyText(fullAddress.value, '无法唤起地图，地址已复制，可粘贴到地图')
+  })
+}
+
+// 收藏/取消收藏：需登录；未登录引导去登录，成功后回来 onShow 不会重跑（这是 onLoad 页），就地更新按钮态。
+async function toggleFavorite() {
+  if (!uni.getStorageSync('mcard_token')) {
+    toast('请先登录再收藏名片')
+    setTimeout(() => uni.navigateTo({ url: '/pages/login/login' }), 500)
+    return
+  }
+  try {
+    const d = await api.post(`/api/cards/public/${slug.value}/favorite`, {}, true)
+    favorited.value = !!d?.favorite
+    toast(favorited.value ? '已收藏' : '已取消收藏', 'success')
+  } catch (e) { toast(e?.message || '操作失败') }
+}
+
 // 存入系统通讯录：拉起微信原生添加联系人界面，预填当前名片资料。
 // 注意：这是系统通讯录写入，与「交换名片/名片夹」无关；无法静默保存，用户须在界面里确认。
 function savePhoneContact() {
@@ -282,7 +327,7 @@ async function exchange() {
 }
 
 // 分享口径：标题「XXX的名片」；描述首选简介；
-// 缩略图严格按 公司LOGO → 用户头像 → 项目LOGO → 分享池（getShareCardImage 内），绝不用二维码；
+// 缩略图 公司LOGO → 用户头像 → 项目LOGO → 站点LOGO → 分享池（getShareCardImage 内）；不用纯二维码缩略图，
 // 滤掉 svg/webp（微信解析不出会变灰块）。webp 头像自动落到下一候选，不会出错。
 onShareAppMessage(() => {
   const c = card.value
@@ -354,9 +399,14 @@ onShareAppMessage(() => {
 .btn.tiny { padding: 8rpx 18rpx; font-size: 22rpx; flex-shrink: 0; }
 .btn.block { width: 100%; }
 .input { width: 100%; height: 84rpx; line-height: 84rpx; box-sizing: border-box; border: 2rpx solid #e8edf4; border-radius: 12rpx; padding: 0 20rpx; font-size: 26rpx; }
-.foot { text-align: center; font-size: 22rpx; color: #94a3b8; padding: 30rpx 0 180rpx; }
-.dock { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 16rpx; padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom)); background: rgba(255,255,255,.96); box-shadow: 0 -4rpx 20rpx rgba(15,23,42,.06); }
-.dock .btn { flex: 1; padding: 20rpx 0; font-size: 28rpx; }
+.foot { text-align: center; font-size: 22rpx; color: #94a3b8; padding: 30rpx 0 280rpx; }
+.dock { position: fixed; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12rpx 16rpx; padding: 16rpx 24rpx 16rpx; padding-bottom: calc(16rpx + env(safe-area-inset-bottom, 0px)); background: rgba(255,255,255,.96); box-shadow: 0 -4rpx 20rpx rgba(15,23,42,.06); z-index: 50; }
+.dock-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4rpx; min-height: 96rpx; padding: 8rpx 0; border-radius: 14rpx; background: #eef2f7; color: #162033; font-size: 22rpx; line-height: 1.2; }
+.dock-btn::after { border: 0; }
+.dock-btn.primary { background: #2563eb; color: #fff; }
+.dock-btn[disabled] { opacity: .45; }
+.dico { font-size: 34rpx; line-height: 1.1; }
+.nav-mini { color: #2563eb; font-size: 22rpx; flex-shrink: 0; }
 .muted { color: #6b7688; }
 .small { font-size: 22rpx; }
 

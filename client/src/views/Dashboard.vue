@@ -28,11 +28,12 @@
         <div style="font-size:46px;opacity:.25">▤</div>
         <h2 style="margin:10px 0">还没有名片</h2>
         <p class="muted small">创建后即可获得永久二维码，之后换资料不用换码。</p>
+        <!-- 短码由系统随机生成（后端 makeSlug），无需用户输入；创建后可在「编辑名片」里自定义 -->
         <div style="max-width:320px;margin:20px auto 0">
-          <input v-model.trim="newSlug" class="input" placeholder="自定义短码（选填，如 zhangsan）" />
-          <button class="btn btn-primary btn-block" style="margin-top:10px" :disabled="busy" @click="createCard">
+          <button class="btn btn-primary btn-block" :disabled="busy" @click="createCard">
             {{ busy ? '创建中…' : '立即创建我的名片' }}
           </button>
+          <p class="muted small" style="margin-top:10px">短码将自动生成，之后可在编辑名片里修改</p>
         </div>
       </div>
     </div>
@@ -56,7 +57,6 @@ const router = useRouter()
 const card = ref(null)
 const loading = ref(true)
 const busy = ref(false)
-const newSlug = ref('')
 const loadError = ref('')
 let loadStarted = false
 
@@ -104,7 +104,7 @@ async function createCard() {
   if (busy.value) return
   busy.value = true
   try {
-    const { data } = await api.post('/api/cards/mine', { slug: newSlug.value })
+    const { data } = await api.post('/api/cards/mine', {})
     card.value = data.data
     showToast('名片已创建，开始完善资料吧', 'success')
   } catch (e) { showToast(e.message, 'error') } finally { busy.value = false }
