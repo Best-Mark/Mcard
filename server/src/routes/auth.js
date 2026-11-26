@@ -388,8 +388,14 @@ router.post('/miniapp-login', wrap(async (req, res) => {
   try {
     openid = await require('../services/payment').miniOpenidByCode(code)
   } catch (e) {
+    // invalid code 绝大多数是「拿 code 的小程序」与「后端配的 AppID」不是同一个。
+    // 回显后端 AppID 前 8 位供对照（不泄露 Secret），让排查不用去翻服务器配置。
+    const configured = String(settings.get('miniapp_wx_appid', '') || '')
+    const hint = /invalid code/i.test(e.message) && configured
+      ? `（后端配置的小程序 AppID：${configured.slice(0, 8)}…，须与开发者工具/当前小程序的 AppID 完全一致）`
+      : ''
     // code 已消费/过期必须让前端重新 uni.login，不能重试同一个 code
-    return fail(res, 400, `微信登录失败：${e.message}。请重新点击快捷登录`)
+    return fail(res, 400, `微信登录失败：${e.message}${hint}。请确认 AppID 一致后重新点击快捷登录`)
   }
   let user = db.prepare('SELECT * FROM users WHERE wx_openid = ?').get(openid)
   let created = false
