@@ -7,6 +7,14 @@
     </header>
 
     <div class="container" style="margin-top:16px">
+      <!-- 套餐闸门：展会连扫（批量收名片）需有效套餐；单张收藏仍为基本功能 -->
+      <div v-if="needPlan" class="card card-pad" style="text-align:center;padding:36px 16px">
+        <div style="font-size:46px;opacity:.3">▣</div>
+        <h3 style="margin:10px 0">展会连扫需要开通套餐</h3>
+        <p class="small muted">开通后可一次扫一批名片，统一打标存进名片夹。单张收藏仍可正常使用。</p>
+        <router-link to="/me/plans" class="btn btn-primary" style="margin-top:14px;display:inline-block">去开通 / 续期</router-link>
+      </div>
+      <template v-else>
       <div class="card card-pad intro">
         <b>一次参会，批量收名片</b>
         <p class="small muted">连续扫描对方的名片二维码（或粘贴名片链接），全部收集后统一打标签、写备注，一次性存进名片夹。比扫一张存一张快得多。</p>
@@ -43,12 +51,13 @@
           {{ saving ? '保存中…' : `保存到名片夹（${collected.length} 张）` }}
         </button>
       </div>
+      </template>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
 import { toggleDrawer, showToast } from '../store'
@@ -63,6 +72,16 @@ const tagsText = ref('')
 const note = ref('')
 const scanning = ref(false)
 const saving = ref(false)
+const needPlan = ref(false)
+
+// 套餐闸门：拉自己的名片判 active；查不到/请求失败按未开通处理（不阻断页面，给引导）
+async function loadPlan() {
+  try {
+    const { data } = await api.get('/api/cards/mine')
+    needPlan.value = !data?.data?.active
+  } catch { needPlan.value = true }
+}
+onMounted(loadPlan)
 
 // 从任意文本里提取名片短码：支持 /c/xxx、完整 URL、纯短码
 function extractSlug(text) {

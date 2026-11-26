@@ -428,7 +428,9 @@ router.post('/mine/contacts/batch', authRequired, wrap((req, res) => {
   const tags = Array.isArray(req.body?.tags) ? JSON.stringify(req.body.tags.slice(0, 8).map(x => String(x).slice(0, 20))) : '[]'
   const note = String(req.body?.note || '').trim().slice(0, 200)
   if (!slugs.length) return fail(res, 400, '没有可保存的名片')
-  const mine = db.prepare('SELECT id FROM cards WHERE user_id = ?').get(req.user.id)
+  const mine = db.prepare('SELECT * FROM cards WHERE user_id = ?').get(req.user.id)
+  // 套餐闸门：展会连扫（批量收名片）需有效套餐；单张收藏/交换属基本功能不卡。
+  if (!cardPlanActive(mine)) return fail(res, 403, '展会连扫需要开通套餐，请先开通或续期')
   const myId = mine?.id || -1
   let added = 0, updated = 0, skipped = 0
   db.transaction(() => {

@@ -5,6 +5,14 @@
       <text class="title">展会连扫收名片</text>
     </view>
 
+    <!-- 套餐闸门：展会连扫（批量收名片）需有效套餐；单张收藏为基本功能不卡 -->
+    <view v-if="needPlan" class="plan-gate">
+      <view class="pg-ico">▣</view>
+      <view class="pg-title">展会连扫需要开通套餐</view>
+      <view class="pg-sub">开通后可一次扫一批名片，统一打标存进名片夹。单张收藏仍可正常使用。</view>
+      <button class="btn primary" style="margin-top:28rpx" @tap="goPlans">去开通 / 续期</button>
+    </view>
+    <block v-else>
     <view class="intro card">
       <text class="b">一次参会，批量收名片</text>
       <text class="muted small">连续扫描对方名片二维码或粘贴链接，统一打标签写备注，一次存进名片夹。</text>
@@ -24,16 +32,24 @@
       <view class="field"><text class="lbl">统一备注</text><input v-model="note" class="input" maxlength="200" placeholder="如：2026 上海展会认识" /></view>
       <button class="btn primary block" style="margin-top:16rpx" :disabled="saving || !collected.length" @tap="submit">{{ saving ? '保存中…' : '保存到名片夹（' + collected.length + ' 张）' }}</button>
     </view>
+    </block>
   </view>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { parseSlug, batchSaveContacts, toast, ensureLogin } from '../../utils/request'
+import { api, parseSlug, batchSaveContacts, toast, ensureLogin, isLogged } from '../../utils/request'
 
-// 展会连扫保存进名片夹需要登录：进页面就拦，不让用户扫一堆再在保存时 401 全丢
-onLoad(() => { ensureLogin('/pages/batch-scan/batch-scan') })
+// 展会连扫：登录 + 套餐两道闸门。进页面就拦，不让用户扫一堆再在保存时失败。
+const needPlan = ref(false)
+async function loadPlan() {
+  if (!isLogged()) return
+  try { needPlan.value = !(await api.get('/api/cards/mine', true))?.active }
+  catch { needPlan.value = true }
+}
+function goPlans() { uni.navigateTo({ url: '/pages/plans/plans' }) }
+onLoad(() => { if (ensureLogin('/pages/batch-scan/batch-scan')) loadPlan() })
 
 const collected = ref([])
 const manual = ref('')
@@ -77,6 +93,10 @@ function back() { uni.navigateBack() }
 
 <style scoped>
 .page { min-height: 100vh; background: #f5f7fb; padding-bottom: 60rpx; }
+.plan-gate { margin: 120rpx 40rpx 0; text-align: center; color: #6b7688; }
+.pg-ico { font-size: 90rpx; opacity: .25; }
+.pg-title { font-size: 34rpx; font-weight: 800; color: #162033; margin: 20rpx 0 10rpx; }
+.pg-sub { font-size: 24rpx; line-height: 1.6; }
 .bar { height: 88rpx; display: flex; align-items: center; gap: 20rpx; padding: 0 28rpx; background: #fff; border-bottom: 1rpx solid #e8edf4; }
 .back { font-size: 48rpx; color: #2563eb; }
 .title { font-size: 30rpx; font-weight: 700; }
