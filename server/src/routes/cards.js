@@ -262,26 +262,28 @@ router.get('/public/:slug', wrap((req, res) => {
 }))
 
 // 易扫模式（?scan=1）：客户扫码主场景（弹层大图/保存二维码/分享图/引导图）统一走这里。
-// 圆点/圆形定位角/渐变/背景图会显著降低微信「扫一扫」识别率，这里强制收敛成标准方点+方角+纯色。
-// 【关键】彻底去掉中心 LOGO：LOGO 会强制 H 纠错（码点更密），还遮挡中心数据区——这正是「难扫」主因。
-// 无 LOGO 走 M 纠错，模块更少、码点更大更疏；卡片上的装饰性小码不带 scan 参数，保留用户选的美化样式。
-function scanOptions({ fg, bg }) {
+// 【2026-11-26 口径修正】用户调整码点/码眼后弹层大码必须跟着变——原实现强制 SCAN_STYLE（方点方角），
+// 把用户选的美化样式全抹掉，用户反馈「调完风格这两处怎么没变」。现改为：码点/码眼保留用户选择，
+// 只硬化真正伤识别率的三项——渐变/背景图清空、无中心 LOGO（避免 H 纠错变密+遮挡数据区）、静音区 4。
+// 圆点/圆角码眼等草料式样式微信可正常识别，视觉跟随用户的诉求优先；底色仍做高对比兜底防深色底扫不出。
+function scanOptions({ fg, bg, style }) {
   const lum = hex => {
     const m = /^#([0-9a-f]{6})$/i.exec(String(hex || ''))
     if (!m) return 0
     const n = parseInt(m[1], 16)
     return 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)
   }
+  const s = normalizeStyle(style)
   return {
     // 高对比：码色太浅改纯黑，底色太深改纯白（深色主题配浅色码的自定义色也覆盖掉）
     fg: lum(fg) > 110 ? '#0f172a' : (fg || '#0f172a'),
     bg: lum(bg) < 200 ? '#ffffff' : (bg || '#ffffff'),
-    // 静音区（quiet zone）≥4 模块：QR 规范要求，苹果原生相机/微信扫一扫对不足的静音区极敏感，
-    // 2 模块是历史默认值，客户主扫码场景统一扩到 4，宁可码点略小也要一次扫开。
+    // 静音区（quiet zone）≥4 模块：QR 规范要求，苹果原生相机/微信扫一扫对不足的静音区极敏感
     margin: 4,
     logo: false,
     logoImage: '',
-    style: qr.SCAN_STYLE
+    // 码点/码眼跟随用户（唯一真相源 cards.qr_style）；渐变/背景图/X5 难识别项清空
+    style: { ...s, gradTo: '', bgImage: '', logoShape: 'none' }
   }
 }
 
@@ -342,8 +344,9 @@ router.get('/public/:slug/vcard.txt', wrap((req, res) => {
 
 // vCard 内容二维码：扫码得到的是完整联系人数据（BEGIN:VCARD...），
 // iOS/Android 相机扫一扫会直接弹出「添加到通讯录」——2026-11-26 用户定稿：名片码唯一职责就是存联系人
-// （打开名片靠分享链接点击即可，不需要二维码承担）。内容较长码点密，必须按扫码主场景硬化：
-// scanOptions 强制高对比+标准方点+静音区4+无 LOGO，与 /qr.png?scan=1 同规。
+// （打开名片靠分享链接点击即可，不需要二维码承担）。用瘦身版 vCard 保证码点不过密。
+// 【2026-11-26 口径修正】码点/码眼跟随用户 qr_style（弹层两个 tab 调完风格要立刻可见），
+// 仍走 scanOptions 硬化：高对比 + 静音区4 + 无 LOGO + 清渐变/背景图，微信扫一扫可正常识别。
 // 渲染逻辑升级会改同 URL 图案：缓存只给 60s（与 scan 模式一致），前端另带 qv 击穿缓存。
 router.get('/public/:slug/vcard.svg', wrap((req, res) => {
   const row = db.prepare('SELECT * FROM cards WHERE slug = ?').get(req.params.slug)
@@ -352,11 +355,12 @@ router.get('/public/:slug/vcard.svg', wrap((req, res) => {
   // 二维码用瘦身版 vCard（只放主流联系人字段，2026-11-26 用户定稿：保证可扫性）
   const text = vcard.build(publicView(row, origin), origin, { slim: true })
   const size = Math.min(2000, Math.max(256, Number(req.query.size) || 520))
+  const style = normalizeStyle(parseJson(row.qr_style, {}))
   res.type('image/svg+xml').set('Cache-Control', 'public, max-age=60')
-    .send(qr.svg(text, { size, ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg }) }))
+    .send(qr.svg(text, { size, ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg, style }) }))
 }))
 
-// vCard 高清 PNG（保存用）：与 vcard.svg 同款硬化，前端长按/保存一律用 PNG（微信「识别图中二维码」不认 SVG）
+// vCard 高清 PNG（保存用）：与 vcard.svg 同款，码点/码眼跟随用户风格，前端长按/保存一律用 PNG（微信「识别图中二维码」不认 SVG）
 router.get('/public/:slug/vcard.png', wrap(async (req, res) => {
   const row = db.prepare('SELECT * FROM cards WHERE slug = ?').get(req.params.slug)
   if (!row) return fail(res, 404, '名片不存在')
@@ -364,7 +368,8 @@ router.get('/public/:slug/vcard.png', wrap(async (req, res) => {
   // 二维码用瘦身版 vCard（只放主流联系人字段，2026-11-26 用户定稿：保证可扫性）
   const text = vcard.build(publicView(row, origin), origin, { slim: true })
   const size = Math.min(1600, Math.max(256, Number(req.query.size) || 720))
-  const buf = await qr.png(text, { size, ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg }) })
+  const style = normalizeStyle(parseJson(row.qr_style, {}))
+  const buf = await qr.png(text, { size, ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg, style }) })
   res.type('png').set('Cache-Control', 'public, max-age=60').send(buf)
 }))
 
