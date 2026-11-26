@@ -1,5 +1,12 @@
 <template>
   <view class="page">
+    <view v-if="needLogin" class="login-gate">
+      <view class="lg-ico">👤</view>
+      <view class="lg-title">登录查看我的资料</view>
+      <view class="lg-sub">账户资料、套餐状态与名片入口登录后可用</view>
+      <button class="btn primary" style="margin-top:28rpx" @tap="goLogin">去登录</button>
+    </view>
+    <block v-else>
     <!-- 账户层信息（users）：头像/昵称/套餐，卡片层的姓名/职位/名片头像一律不在此展示 -->
     <view class="hero">
       <view class="user" @tap="go('/pages/account/account')">
@@ -34,7 +41,7 @@
         <text class="ci">◎</text><text class="ct">查看我的名片</text><text class="ce">二维码 · 链接</text><text class="ca">›</text>
       </view>
       <view v-else class="cell muted">还没有名片，在「名片」栏创建</view>
-      <view class="cell" @tap="go('/pages/edit/edit')"><text class="ci">✎</text><text class="ct">编辑名片资料</text><text class="ca">›</text></view>
+      <view v-if="card" class="cell" @tap="go('/pages/edit/edit')"><text class="ci">✎</text><text class="ct">编辑名片资料</text><text class="ca">›</text></view>
     </view>
 
     <view v-if="isPromoter" class="group">
@@ -49,6 +56,7 @@
     </view>
 
     <view class="version">MCard 电子名片</view>
+    </block>
 
     <TabBar active="profile" />
   </view>
@@ -57,9 +65,10 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { api, toast, getUnreadCount, isPromoterUser } from '../../utils/request'
+import { api, toast, getUnreadCount, isPromoterUser, isLogged, ensureLogin } from '../../utils/request'
 import TabBar from '../../components/TabBar/TabBar.vue'
 
+const needLogin = ref(false)
 const user = ref(uni.getStorageSync('mcard_user') || {})
 const avatar = ref('')
 const card = ref(null)
@@ -69,8 +78,12 @@ const go = url => uni.navigateTo({ url })
 const switchTab = url => uni.reLaunch({ url })
 
 const planInfo = computed(() => {
-  const exp = card.value?.expires_at
-  if (!exp) return { dateText: '未开通', subText: '开通后名片长期有效', expired: true }
+  if (!card.value) return { dateText: '未开通', subText: '在「名片」栏创建后可开通', expired: true }
+  const exp = card.value.expires_at || card.value.expiresAt
+  if (card.value.active === false) {
+    return { dateText: exp ? '已到期 / 未开通' : '未开通', subText: '续期后恢复展示与配色/上架能力', expired: true }
+  }
+  if (!exp) return { dateText: '永久有效', subText: '当前套餐长期可用', expired: false }
   const d = new Date(String(exp).replace(' ', 'T') + 'Z')
   const days = Math.max(0, Math.ceil((d.getTime() - Date.now()) / 86400000))
   return {
@@ -80,10 +93,13 @@ const planInfo = computed(() => {
   }
 })
 
+function goLogin() { ensureLogin('/pages/profile/profile') }
+
 async function load() {
+  needLogin.value = !isLogged()
   user.value = uni.getStorageSync('mcard_user') || {}
   isPromoter.value = isPromoterUser()
-  if (!uni.getStorageSync('mcard_token')) return
+  if (needLogin.value) return
   try { avatar.value = (await api.get('/api/auth/avatar', true))?.avatar || '' } catch {}
   try { card.value = await api.get('/api/cards/mine', true) } catch { card.value = null }
   getUnreadCount().then(n => { unread.value = n }).catch(() => {})
@@ -101,6 +117,10 @@ onShow(load)
 
 <style scoped>
 .page { min-height: 100vh; background: #f5f7fb; padding-bottom: 160rpx; }
+.login-gate { padding: 160rpx 48rpx; text-align: center; color: #6b7688; }
+.lg-ico { font-size: 96rpx; opacity: .25; }
+.lg-title { font-size: 34rpx; font-weight: 800; color: #162033; margin: 20rpx 0 8rpx; }
+.lg-sub { font-size: 24rpx; line-height: 1.6; }
 .hero { background: linear-gradient(135deg,#17357c,#2563eb 60%,#3b82f6); color: #fff; padding: 40rpx 28rpx 90rpx; border-radius: 0 0 40rpx 40rpx; }
 .user { display: flex; align-items: center; gap: 20rpx; }
 .avatar { width: 96rpx; height: 96rpx; border-radius: 50%; background: rgba(255,255,255,.2); flex-shrink: 0; }

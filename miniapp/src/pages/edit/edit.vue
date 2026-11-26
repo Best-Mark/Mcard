@@ -79,6 +79,7 @@
 
       <view class="card" id="market-card">
         <view class="section">名片集市 <text class="muted small"> · 让客户主动找到你，获取更多业务流量</text></view>
+        <view v-if="!planActive" class="gate-tip" @tap="goPlans">上架集市需要开通套餐 · 点此去开通 / 续期 ›</view>
         <view class="muted small" style="margin-bottom:16rpx">开启后名片会出现在集市，附近及同行业的人可按距离/行业/关键词找到你，点开即可存入通讯录——相当于一个 7×24 小时的获客入口。仅展示姓名、职位、公司、行业、城市与简介，联系方式不公开；可随时关闭下架。</view>
         <view class="field"><text class="label">加入名片集市（主动上架）</text><switch :checked="form.market_opt_in" @change="e => form.market_opt_in = e.detail.value" /></view>
         <view class="field"><text class="label">所属行业</text>
@@ -101,6 +102,7 @@
 
       <view class="card">
         <view class="section">展示模板</view>
+        <view v-if="!planActive" class="gate-tip" @tap="goPlans">配色方案需要开通套餐 · 点此去开通 / 续期 ›</view>
         <view class="muted small" style="margin-bottom:16rpx">选模板即应用整套配色（含二维码色），无需逐项调；想微调可在下方「高级配色」里改。</view>
         <view class="tpl-list">
           <view v-for="tpl in templates" :key="tpl.key" class="tpl-item" :class="{ on: form.template === tpl.key }" @tap="chooseTemplate(tpl.key)">
@@ -215,6 +217,11 @@ const blank = {
 const form = ref({ ...blank })
 const tagsText = ref('')
 const saving = ref(false)
+// 套餐闸门：配色方案 + 上架集市需要有效套餐；加载时记录原值，保存时只在「改了」时拦截。
+const planActive = ref(true)
+const PLAN_GATED_KEYS = ['template', 'theme', 'accent', 'qr_fg', 'qr_bg', 'qr_logo', 'qr_style', 'market_opt_in']
+const gatedOriginal = ref({})
+const norm = v => typeof v === 'object' ? JSON.stringify(v || {}) : String(v ?? '')
 const avatarBusy = ref(false)
 // 模板清单是静态数据：模块级缓存让二次进入瞬时渲染，随后静默刷新
 let templatesCache = []
@@ -266,6 +273,8 @@ onLoad(async options => {
     const c = await api.get('/api/cards/mine')
     if (!c) return uni.redirectTo({ url: '/pages/me/me' })
     form.value = { ...blank, ...c, qr_logo: !!c.qr_logo, qr_style: { ...blank.qr_style, ...(c.qr_style || {}) } }
+    planActive.value = !!c.active
+    gatedOriginal.value = Object.fromEntries(PLAN_GATED_KEYS.map(k => [k, norm(form.value[k])]))
     // 存量兼容（与 H5 CardEdit 同口径）：只填过 company_intro 的老名片归一到 bio，保存时写回 bio
     if (!form.value.bio && c.company_intro) form.value.bio = c.company_intro
     form.value.company_intro = ''
@@ -467,8 +476,21 @@ function applyLogo() {
   toast('LOGO 已应用，保存资料后生效', 'success')
 }
 
+function goPlans() { uni.navigateTo({ url: '/pages/plans/plans' }) }
+
 async function save() {
   if (!form.value.name) return toast('请填写姓名')
+  // 套餐闸门：未开通/过期时改配色或开启上架，引导续期（关闭下架放行，与后端同口径）
+  if (!planActive.value) {
+    const gatedChanged = PLAN_GATED_KEYS.some(k => k === 'market_opt_in'
+      ? (form.value[k] && norm(form.value[k]) !== gatedOriginal.value[k])
+      : norm(form.value[k]) !== gatedOriginal.value[k])
+    if (gatedChanged) {
+      toast('配色方案与上架集市需要开通套餐')
+      setTimeout(() => uni.navigateTo({ url: '/pages/plans/plans' }), 800)
+      return
+    }
+  }
   saving.value = true
   try {
     const payload = {
@@ -495,6 +517,7 @@ async function save() {
 .body { padding: 24rpx; }
 .card { background: #fff; border-radius: 24rpx; padding: 26rpx; margin-bottom: 18rpx; box-shadow: 0 8rpx 28rpx rgba(15,23,42,.05); }
 .section { font-size: 30rpx; font-weight: 700; margin-bottom: 16rpx; }
+.gate-tip { background: #fff7ed; border: 2rpx solid #fde68a; color: #b45309; font-size: 23rpx; padding: 14rpx 18rpx; border-radius: 12rpx; margin-bottom: 16rpx; }
 .avatar-row { display: flex; align-items: center; gap: 20rpx; margin-bottom: 20rpx; }
 .logo-current { display: flex; align-items: center; gap: 14rpx; margin-bottom: 14rpx; }
 .logo-current image { width: 80rpx; height: 80rpx; background: #f1f5f9; border-radius: 12rpx; padding: 6rpx; box-sizing: border-box; }

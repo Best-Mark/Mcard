@@ -127,9 +127,14 @@ const loadError = ref('')
 const unread = ref(0)
 let loadStarted = false
 
-// 套餐有效期：expires_at 兼容旧字段；duration_days=0/无到期视为永久
+// 套餐有效期：active 是权威（status active 且未过期），expires_at 兼容旧字段；无到期视为永久。
+// 关键：必须先判 active——active=false 但 expires_at 还在未来时，不能再显示「剩余 N 天」误导用户。
 const planInfo = computed(() => {
-  const raw = card.value?.expiresAt || card.value?.expires_at
+  if (!card.value) return { dateText: '未开通', subText: '开通后名片长期有效', expired: true }
+  const raw = card.value.expiresAt || card.value.expires_at
+  if (card.value.active === false) {
+    return { dateText: raw ? '已到期 / 未开通' : '未开通', subText: '续期后恢复展示与配色/上架能力', expired: true }
+  }
   if (!raw) return { dateText: '永久有效', subText: '当前套餐长期可用', expired: false }
   const d = new Date(String(raw).replace(' ', 'T') + (/Z|[+-]\d\d:\d\d$/.test(String(raw)) ? '' : 'Z'))
   if (isNaN(d.getTime())) return { dateText: '永久有效', subText: '当前套餐长期可用', expired: false }

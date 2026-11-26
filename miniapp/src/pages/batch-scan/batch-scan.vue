@@ -29,7 +29,11 @@
 
 <script setup>
 import { ref } from 'vue'
-import { parseSlug, batchSaveContacts, toast } from '../../utils/request'
+import { onLoad } from '@dcloudio/uni-app'
+import { parseSlug, batchSaveContacts, toast, ensureLogin } from '../../utils/request'
+
+// 展会连扫保存进名片夹需要登录：进页面就拦，不让用户扫一堆再在保存时 401 全丢
+onLoad(() => { ensureLogin('/pages/batch-scan/batch-scan') })
 
 const collected = ref([])
 const manual = ref('')

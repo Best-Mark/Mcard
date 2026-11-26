@@ -53,7 +53,7 @@ const tabs = BOTTOM_TABS
 // 菜单真相源仍在 config/nav.js，这里只按环境过滤展示，不复制一份菜单定义。
 const inWechat = isWeChat()
 const visibleGroups = computed(() => DRAWER_GROUPS
-  .map(g => ({ ...g, items: g.items.filter(it => !(it.kind === 'logout' && inWechat)) }))
+  .map(g => ({ ...g, items: g.items.filter(it => !(it.kind === 'logout' && inWechat) && !(it.promoter && !auth.isPromoter)) }))
   .filter(g => g.items.length))
 const slug = ref('')
 const myCard = ref(null)

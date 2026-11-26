@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import api from '../api'
-import { setAuth, showToast, siteConfig, ensureSiteConfig, bindPendingInvite, auth } from '../store'
+import { setAuth, showToast, siteConfig, ensureSiteConfig, bindPendingInvite, auth, authReady } from '../store'
 import { isWeChat } from '../utils/save-image'
 import { scheduleDefaultShare } from '../utils/wx-share'
 import { isPC } from '../utils/device'
@@ -142,6 +142,8 @@ router.beforeEach(async (to, _from, next) => {
   }
   if (await maybeWechatSilentLogin(to)) return next(false) // 已整页跳微信授权，当前导航取消
   if (to.meta.auth && !localStorage.getItem('mcard_token')) return next({ path: '/login', query: { redirect: to.fullPath } })
+  // 推广员身份可能由后台变更：刷新后等 /api/auth/me 权威身份落地再判，避免误弹推广员。
+  if (to.meta.promoter && auth.token) await authReady
   if (to.meta.promoter && !auth.isPromoter) return next('/me')
   if (to.meta.admin && !localStorage.getItem('mcard_admin_token')) return next('/admin/login')
   next()

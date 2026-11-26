@@ -14,7 +14,7 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
-import { getUnreadCount } from '../../utils/request'
+import { getUnreadCount, ensureLogin } from '../../utils/request'
 
 // 与 H5 BOTTOM_TABS 完全同项同序；改这里必须同步 client/src/config/nav.js。
 // path 用小程序原生页：名片=工作台(me)、名片夹=contacts、集市=market、消息=notifications、我的=profile(账户中心)。
@@ -37,8 +37,9 @@ onMounted(() => { loadUnread(); timer = setInterval(loadUnread, 60000) })
 onBeforeUnmount(() => { if (timer) clearInterval(timer) })
 
 function go(t) {
-  // reLaunch 切 tab：关掉当前所有页面再打开目标，页面栈不会越积越深；
-  // 不判断是否同页——即便同页重开一次也只有一次请求，代价小于维护路由监听。
+  // 集市匿名可逛；其余四个 tab 都要登录，未登录跳登录页并记住回跳目标。
+  if (!t.feature && !ensureLogin(t.path)) return
+  // reLaunch 切 tab：关掉当前所有页面再打开目标，页面栈不会越积越深。
   uni.reLaunch({ url: t.path })
 }
 </script>

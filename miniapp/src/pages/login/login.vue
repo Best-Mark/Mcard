@@ -33,16 +33,18 @@
 
 <script setup>
 import { ref } from 'vue'
-import { api, setAuth, toast, bindPendingInvite } from '../../utils/request'
+import { api, setAuth, toast, bindPendingInvite, takeLoginRedirect } from '../../utils/request'
 
 const mode = ref('login')
 const phone = ref(''); const password = ref(''); const nickname = ref(''); const busy = ref(false)
 const wxBusy = ref(false)
 
-// 登录后去向（与 H5 一致）：回到集市主界面，底部 tabbar 可进名片夹/名片/消息/我的。
+// 登录后去向：优先回跳登录前想去的页面（如未登录点名片夹/消息/我的），否则与 H5 一致回集市。
 // reLaunch 替换登录页、不留返回栈（登录页不能留在返回链里）。
 function goAfterLogin(delay = 500) {
-  setTimeout(() => uni.reLaunch({ url: '/pages/market/market' }), delay)
+  const redirect = takeLoginRedirect()
+  const url = redirect && redirect.startsWith('/pages/') ? redirect : '/pages/market/market'
+  setTimeout(() => uni.reLaunch({ url }), delay)
 }
 
 // 微信快捷登录：uni.login 一次性 code → 服务端 code2session → 建号/登录。

@@ -35,7 +35,13 @@
               <b>🚀 上架 = 多一个 7×24 小时的获客入口</b>
               <p>附近及同行业的人可按「距离 / 行业 / 关键词」搜到你，点开名片即可保存。只展示姓名、职位、公司、行业、城市与简介，联系方式不会公开；随时可关闭下架。</p>
             </div>
-            <div class="field"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" v-model="card.market_opt_in" /> 加入名片集市（主动上架）</label></div>
+            <!-- 套餐闸门：上架集市需有效套餐；未开通/过期只允许下架，不允许上架 -->
+            <div v-if="!planActive" class="plan-gate-tip">
+              <b>上架集市需要开通套餐</b>
+              <span>{{ card.market_opt_in ? '当前套餐已到期，名片已从集市隐藏；可先关闭下架。' : '开通后即可让附近客户在集市找到你。' }}</span>
+              <router-link to="/me/plans" class="btn btn-sm btn-primary">去开通 / 续期</router-link>
+            </div>
+            <div class="field"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" v-model="card.market_opt_in" :disabled="!planActive && !card.market_opt_in" /> 加入名片集市（主动上架）</label></div>
             <div class="field">
               <label>所属行业（同行按行业精确搜到你）</label>
               <BottomSelect v-model="card.industry" :options="industryOptions" title="选择行业" placeholder="未选择行业" />
@@ -87,6 +93,8 @@ const busyLoad = ref(false)
 const loading = ref(false)
 const loadError = ref('')
 const sheetOpen = ref(false)
+// 套餐是否有效（与后端 publicView.active 同口径：status active 且未过期）
+const planActive = computed(() => !!card.value?.active)
 // 弹层打开锁页面滚动，避免上拖时带动背后的页
 let bodyOverflowBefore = ''
 watch(sheetOpen, on => {
@@ -126,8 +134,13 @@ onMounted(async () => { await load(); loadMeta() })
 
 async function done() {
   if (saving.value || !card.value) return
-  saving.value = true
   const c = card.value
+  // 套餐闸门前端兜底：未开通却要上架时不发请求，避免生硬 403
+  if (c.market_opt_in && !planActive.value) {
+    showToast('上架集市需要先开通套餐', 'error')
+    return
+  }
+  saving.value = true
   try {
     await api.put('/api/cards/mine', {
       market_opt_in: !!c.market_opt_in, industry: c.industry || '',
@@ -166,6 +179,10 @@ async function done() {
 @media (min-width: 900px) { .bottom-launcher { max-width: 560px; left: 50%; right: auto; transform: translateX(-50%); border-radius: 14px 14px 0 0; } }
 .market-value { background: var(--bg-page); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
 .market-value p { margin: 4px 0 0; line-height: 1.6; }
+.plan-gate-tip { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; background: #fff7ed; background: color-mix(in srgb, #f59e0b 10%, transparent); border: 1px solid #fde68a; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+.plan-gate-tip b { color: #b45309; font-size: 13px; }
+.plan-gate-tip span { font-size: 12px; line-height: 1.5; color: var(--muted); }
+.plan-gate-tip .btn { margin-top: 2px; }
 .market-checks { display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px; color: var(--muted); margin-top: 10px; }
 .market-checks .ok { color: var(--primary); }
 .region-line { margin-top: 10px; }

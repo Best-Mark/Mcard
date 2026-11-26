@@ -5,7 +5,13 @@
       <view class="sub">收藏或交换过的名片，点开即可查看完整资料</view>
     </view>
 
-    <view v-if="loading" class="state">加载中…</view>
+    <view v-if="needLogin" class="state">
+      <view class="empty">▦</view>
+      <view class="b">登录后可查看我的名片夹</view>
+      <view class="hint">收藏和交换过的名片会存到这里</view>
+      <button class="btn primary" style="margin-top:24rpx" @tap="goLogin">去登录</button>
+    </view>
+    <view v-else-if="loading" class="state">加载中…</view>
     <view v-else-if="error" class="state">
       <view>加载失败：{{ error }}</view>
       <button class="btn tiny primary" style="margin-top:20rpx" @tap="load">重新加载</button>
@@ -63,11 +69,12 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { api, toast, callPhone } from '../../utils/request'
+import { api, toast, callPhone, isLogged, ensureLogin } from '../../utils/request'
 import TabBar from '../../components/TabBar/TabBar.vue'
 
 const list = ref([])
 const loading = ref(true)
+const needLogin = ref(false)
 const error = ref('')
 const filter = ref('all')
 const editOpen = ref(false)
@@ -80,11 +87,14 @@ const exCount = computed(() => list.value.filter(c => c.source === 'exchange').l
 const filtered = computed(() => filter.value === 'all' ? list.value : list.value.filter(c => c.source === filter.value))
 
 async function load() {
+  needLogin.value = !isLogged()
+  if (needLogin.value) { loading.value = false; return }
   loading.value = true; error.value = ''
   try { list.value = (await api.get('/api/cards/mine/contacts', true))?.contacts || [] }
   catch (e) { error.value = e.message || '网络异常' }
   finally { loading.value = false }
 }
+function goLogin() { ensureLogin('/pages/contacts/contacts') }
 onShow(load)
 
 function openCard(slug) { uni.navigateTo({ url: '/pages/card/card?slug=' + slug }) }

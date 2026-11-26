@@ -5,7 +5,16 @@
       <text v-if="unread" class="mark" @tap="markAll">全部已读</text>
     </view>
 
-    <view v-if="loading" class="state">加载中…</view>
+    <view v-if="needLogin" class="state">
+      <view style="font-size:72rpx;opacity:.3">🔔</view>
+      <view>登录后可查看消息通知</view>
+      <button class="btn tiny primary" style="margin-top:24rpx" @tap="goLogin">去登录</button>
+    </view>
+    <view v-else-if="loading" class="state">加载中…</view>
+    <view v-else-if="error" class="state">
+      <view>加载失败：{{ error }}</view>
+      <button class="btn tiny primary" style="margin-top:20rpx" @tap="load">重试</button>
+    </view>
     <view v-else-if="!list.length" class="state">
       <view style="font-size:72rpx;opacity:.3">🔔</view>
       <view>暂无通知</view>
@@ -28,22 +37,28 @@
 <script setup>
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { getNotifications, markNotificationRead } from '../../utils/request'
+import { api, markNotificationRead, isLogged, ensureLogin } from '../../utils/request'
 import TabBar from '../../components/TabBar/TabBar.vue'
 
 const list = ref([])
 const unread = ref(0)
 const loading = ref(true)
+const needLogin = ref(false)
+const error = ref('')
 const busy = ref(false)
 
 async function load() {
-  loading.value = true
+  needLogin.value = !isLogged()
+  if (needLogin.value) { loading.value = false; return }
+  loading.value = true; error.value = ''
   try {
-    const d = await getNotifications()
+    const d = await api.get('/api/notifications', true)
     list.value = d.list || []
     unread.value = d.unread || 0
-  } finally { loading.value = false }
+  } catch (e) { error.value = e.message || '加载失败' }
+  finally { loading.value = false }
 }
+function goLogin() { ensureLogin('/pages/notifications/notifications') }
 onLoad(load)
 async function open(n) {
   if (busy.value) return

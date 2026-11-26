@@ -13,6 +13,13 @@
       </div>
       <div v-else-if="loading" class="card card-pad">加载中…</div>
       <div v-else-if="!card" class="card card-pad">请先创建名片 <router-link to="/me" style="color:var(--primary)">去创建</router-link></div>
+      <!-- 套餐闸门：配色风格（模板/主题/二维码配色）需要有效套餐，未开通只给引导 -->
+      <div v-else-if="!planActive" class="card card-pad" style="text-align:center;padding:36px 16px">
+        <div style="font-size:46px;opacity:.3">◐</div>
+        <h3 style="margin:10px 0">配色风格需要开通套餐</h3>
+        <p class="small muted">开通后可自由切换展示模板、主题色与二维码配色。</p>
+        <router-link to="/me/plans" class="btn btn-primary" style="margin-top:14px;display:inline-block">去开通 / 续期</router-link>
+      </div>
 
       <template v-else>
         <!-- 顶部常显预览：真实模板的编辑预览组件，改配色/模板即时反映（未保存也能看到） -->
@@ -115,6 +122,8 @@ const busyLoad = ref(false)
 const loading = ref(false)
 const loadError = ref('')
 const sheetOpen = ref(false)
+// 套餐是否有效（与后端 publicView.active 同口径）
+const planActive = computed(() => !!card.value?.active)
 // 模板 / 二维码两个分区：弹层内 tab 与底部入口共用这份清单（强调色已精简掉，不再回来）
 const SECTIONS = [
   { k: 'template', label: '模板' },
@@ -190,6 +199,7 @@ onMounted(async () => { await load(); loadTemplates() })
 
 async function done() {
   if (saving.value || !card.value) return
+  if (!planActive.value) { showToast('配色风格需要先开通套餐', 'error'); return }
   saving.value = true
   const c = card.value
   try {

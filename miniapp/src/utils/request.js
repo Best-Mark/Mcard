@@ -10,6 +10,23 @@ export function toast(title, icon = 'none') {
   uni.showToast({ title, icon, duration: 2200 })
 }
 
+// 401 跳登录必须有防抖（项目铁律）：并发多个 401 只跳一次；登录/注册接口自身的 401 不跳。
+let authRedirecting = false
+function handleUnauthorized(url) {
+  if (authRedirecting) return
+  if (/\/auth\/(login|register|miniapp-login|wechat)/.test(url)) return
+  const pages = getCurrentPages?.() || []
+  const cur = pages.length ? pages[pages.length - 1] : null
+  const route = cur ? '/' + cur.route : ''
+  if (route && route !== '/pages/login/login') uni.setStorageSync('mcard_login_redirect', route)
+  authRedirecting = true
+  uni.navigateTo({
+    url: '/pages/login/login',
+    fail: () => uni.reLaunch({ url: '/pages/login/login' }),
+    complete: () => setTimeout(() => { authRedirecting = false }, 800)
+  })
+}
+
 export function request(url, { method = 'GET', data = {}, auth = false, admin = false } = {}) {
   return new Promise((resolve, reject) => {
     if (!API_BASE) return reject(new Error('API 域名未配置：构建前请设置 VITE_API_BASE'))
@@ -25,6 +42,7 @@ export function request(url, { method = 'GET', data = {}, auth = false, admin = 
       success: res => {
         const d = res.data
         if (res.statusCode >= 200 && res.statusCode < 300 && d && d.code === 0) return resolve(d.data)
+        if (res.statusCode === 401 && !admin) handleUnauthorized(url)
         reject(new Error(d?.msg || `请求失败（${res.statusCode}）`))
       },
       fail: err => reject(new Error(err.errMsg || '网络异常'))
@@ -102,6 +120,20 @@ export function withInvite(path, code = null) {
 
 export function goLogin() {
   uni.navigateTo({ url: '/pages/login/login' })
+}
+
+// 需要登录的功能入口统一走这里：记下回跳目标再跳登录页，登录后回原页面而不是丢到集市。
+// 与 H5 的 /login?redirect= 同口径；redirect 存本地，登录成功由 login.vue 消费清除。
+export function ensureLogin(redirectUrl) {
+  if (isLogged()) return true
+  if (redirectUrl) uni.setStorageSync('mcard_login_redirect', redirectUrl)
+  goLogin()
+  return false
+}
+export function takeLoginRedirect() {
+  const url = uni.getStorageSync('mcard_login_redirect') || ''
+  uni.removeStorageSync('mcard_login_redirect')
+  return url
 }
 
 export function parseSlug(text) {

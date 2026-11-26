@@ -40,6 +40,17 @@ const EDITABLE = ['name', 'name_en', 'title', 'company', 'company_intro', 'depar
 const parseJson = (v, fallback) => { try { const x = JSON.parse(v); return x ?? fallback } catch { return fallback } }
 const isColor = v => /^#[0-9a-fA-F]{6}$/.test(String(v || ''))
 
+// 套餐是否有效：与 publicView 的 active 同口径（status='active' 且 expires_at 为空或未过期）。
+// 唯一真相源：套餐只作为两个功能的硬闸门——配色方案、上架集市；其它能力不受限。
+function cardPlanActive(row) {
+  if (!row || row.status !== 'active') return false
+  if (!row.expires_at) return true
+  return new Date(String(row.expires_at).replace(' ', 'T') + 'Z') >= new Date()
+}
+// 需要有效套餐才能修改的字段：配色方案 + 上架集市。
+const PLAN_GATED_FIELDS = ['template', 'theme', 'accent', 'qr_fg', 'qr_bg', 'qr_logo', 'qr_style', 'market_opt_in']
+const PLAN_GATE_MSG = '配色方案与上架集市需要开通套餐，请先开通或续期'
+
 // 访客来源：优先显式 query.src（分享/集市链接携带，不改二维码本身），再按 referer 兜底推断。
 // 二维码内容恒为 /c/{slug}（微信可扫），扫码进入的 src 由前端在 hash/首次跳转时补，兜底记 direct。
 function detectSource(req) {
@@ -62,8 +73,6 @@ function materialView(r) {
 }
 
 function publicView(row, origin) {
-  const now = new Date()
-  const expired = row.expires_at && new Date(String(row.expires_at).replace(' ', 'T') + 'Z') < now
   return {
     slug: row.slug,
     url: `${origin}/c/${row.slug}`,
@@ -84,7 +93,7 @@ function publicView(row, origin) {
     latitude: row.latitude ?? null, longitude: row.longitude ?? null, market_opt_in: !!row.market_opt_in,
     theme: row.theme, accent: row.accent, qr_fg: row.qr_fg, qr_bg: row.qr_bg, qr_logo: !!row.qr_logo,
     qr_style: normalizeStyle(parseJson(row.qr_style, {})),
-    active: row.status === 'active' && !expired,
+    active: cardPlanActive(row),
     expiresAt: row.expires_at, views: row.views
   }
 }
@@ -595,20 +604,21 @@ router.put('/mine', authRequired, wrap((req, res) => {
     if (key === 'website' || key === 'shop_url') v = normalizeFieldValue(key, v)
     const formatError = validateFieldFormat(key, v)
     if (formatError) return fail(res, 400, `${FIELD_LABELS[key] || key}${formatError}`)
-    if (CARD_WATCH_FIELDS.includes(key) && String(row[key] ?? '') !== String(v ?? '')) {
+    const valueChanged = String(row[key] ?? '') !== String(v ?? '')
+    // 套餐闸门：配色方案 + 上架集市需要套餐有效。传同值（编辑页保存全表单带原值）不拦。
+    // 上架 market_opt_in 只在「开启」时拦，关闭（下架）永远放行——过期用户应能主动下架。
+    // 配色字段在值真正变化时拦，避免未开通用户正常改资料被误伤。
+    const planGateHit = PLAN_GATED_FIELDS.includes(key) && valueChanged && !cardPlanActive(row)
+      && !(key === 'market_opt_in' && !v)
+    if (planGateHit) return fail(res, 403, PLAN_GATE_MSG)
+    if (CARD_WATCH_FIELDS.includes(key) && valueChanged) {
       changedLabels.push(FIELD_LABELS[key] || key)
     }
     sets.push(`${key} = ?`)
     values.push(v)
   }
-  // 自愈：主动开启集市上架时，若名片仍停留在 draft，同步激活为 active。
-  // 否则前端显示「已上架」但集市 SQL（status='active'）永远查不到，用户困惑。
-  // 注意：仅限 draft→active，绝不动其它 status（如 expired/pending），也不改二维码。
-  let activateOnMarket = false
-  if (req.body && 'market_opt_in' in req.body && Number(req.body.market_opt_in) && row.status === 'draft') {
-    sets.push("status = 'active'")
-    activateOnMarket = true
-  }
+  // 注：曾有一段「开启上架时把 draft 自愈为 active」的逻辑，已移除——
+  // 那等于免费用户零付费绕过套餐闸门自我激活。是否开通只由订单激活链路写 status/expires_at。
   if (!sets.length) return fail(res, 400, '没有需要更新的字段')
   // 铁律：slug / expires_at / views 绝不在更新白名单内 —— 改资料不动二维码
   sets.push("updated_at = datetime('now')")

@@ -109,8 +109,9 @@
         <view class="foot">由 MCard 提供技术支持</view>
       </view>
 
-      <!-- 底部操作 dock：owner 对齐 H5（编辑/配色/集市/分享/管理），访客是联系操作（打电话/复制/存通讯录/导航/收藏/分享） -->
-      <view class="dock">
+      <!-- 底部操作 dock：owner 对齐 H5（编辑/配色/集市/分享/管理），访客是联系操作（打电话/复制/存通讯录/导航/收藏/分享）。
+           selfCheckDone 前不渲染，避免本人打开自己名片时先闪一下「收藏自己/打电话给自己」的访客 dock。 -->
+      <view class="dock" v-if="selfCheckDone">
         <template v-if="isSelf">
           <button class="dock-btn" @tap="go('/pages/edit/edit')"><text class="dico">✎</text><text>编辑名片</text></button>
           <button class="dock-btn" @tap="go('/pages/edit/edit?focus=theme')"><text class="dico">◐</text><text>配色风格</text></button>
@@ -145,6 +146,7 @@ const exchanging = ref(false)
 const tpl = ref('classic')
 const materials = ref([])
 const isSelf = ref(false)
+const selfCheckDone = ref(false)
 const favorited = ref(false)
 
 // 动态光效用主题强调色，#rrggbb → rgb 分量
@@ -207,12 +209,19 @@ async function load() {
   // 本人视角判定（与 H5 owner 同口径）：自己看自己名片时隐藏「交换名片/存入通讯录」，
   // 否则就是自己跟自己交换、把自己存通讯录。未登录/失败一律当访客，不影响公开浏览。
   isSelf.value = false
+  selfCheckDone.value = false
   favorited.value = false
   if (uni.getStorageSync('mcard_token')) {
-    api.get('/api/cards/mine', true).then(mine => { isSelf.value = !!mine && mine.slug === slug.value }).catch(() => {})
+    // 本人身份必须等判定完成再渲染 dock，否则访客操作会闪现一下
+    api.get('/api/cards/mine', true)
+      .then(mine => { isSelf.value = !!mine && mine.slug === slug.value })
+      .catch(() => {})
+      .finally(() => { selfCheckDone.value = true })
     // 收藏态：未登录当未收藏（按钮仍显示，点了提示登录），失败静默不误标
     api.get(`/api/cards/public/${slug.value}/favorite`, true)
       .then(d => { favorited.value = !!d?.favorite }).catch(() => {})
+  } else {
+    selfCheckDone.value = true
   }
   // 资料夹 + 来源上报（扫码进入 scene 记为 qr），失败静默
   getPublicMaterials(slug.value).then(d => { materials.value = d.list || [] }).catch(() => {})

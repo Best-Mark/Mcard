@@ -36,7 +36,12 @@ api.interceptors.response.use(
       else setAuth('', null)
       if (!redirecting) {
         redirecting = true
-        router.push(admin ? '/admin/login' : '/login').catch(() => {}).finally(() => { setTimeout(() => { redirecting = false }, 800) })
+        // 带回跳地址：正在编辑长表单时被踢登录，登录后回原页面；避免丢用户上下文。
+        const from = router.currentRoute?.value
+        const redirect = from && !['/login', '/admin/login'].includes(from.path) ? from.fullPath : ''
+        const target = admin ? '/admin/login' : '/login'
+        router.push(redirect && !admin ? { path: target, query: { redirect } } : target)
+          .catch(() => {}).finally(() => { setTimeout(() => { redirecting = false }, 800) })
       }
     }
     // 重启窗口自愈：仅 GET 重试（POST 不重试防重复提交），递增间隔覆盖典型 pm2 拉起时间。

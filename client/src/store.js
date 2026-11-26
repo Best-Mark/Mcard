@@ -1,12 +1,19 @@
 import { reactive } from 'vue'
 
 const read = key => { try { return JSON.parse(localStorage.getItem(key) || 'null') } catch { return null } }
+const cachedUser = read('mcard_user')
+
+// 身份是否恢复完成：刷新后 /api/auth/me 异步拉取推广员等后台可变身份，
+// 路由守卫的 promoter 判断必须等它落地，否则推广员刷新深链会被误判弹回 /me。
+let resolveAuthReady = null
+export const authReady = new Promise(resolve => { resolveAuthReady = resolve })
+export function markAuthReady() { if (resolveAuthReady) { resolveAuthReady(); resolveAuthReady = null } }
 
 export const auth = reactive({
   token: localStorage.getItem('mcard_token') || '',
-  user: read('mcard_user'),
-  isAdmin: false,
-  isPromoter: false
+  user: cachedUser,
+  isAdmin: !!cachedUser && ['admin', 'super_admin'].includes(cachedUser.role),
+  isPromoter: !!cachedUser && !!cachedUser.is_promoter
 })
 
 export const adminAuth = reactive({
