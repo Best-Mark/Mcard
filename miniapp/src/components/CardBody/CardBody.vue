@@ -89,18 +89,22 @@
         </view>
       </view>
 
-      <!-- 名片联系人二维码（vCard）弹层：正文不摆大块二维码卡（对齐 H5 约定①），保存/复制都在弹层里。
-           2026-11-26 用户定稿：名片码唯一职责=存联系人（手机相机/微信扫一扫直接弹「添加到通讯录」），
-           打开名片靠分享链接点击即可，不需要二维码承担；一律 PNG（微信长按识别不认 SVG） -->
+      <!-- 名片二维码双码弹层（2026-11-26 用户定稿：两个都要）：联系人码=vCard 瘦身版（只放主流字段，
+           扫一扫直接弹「添加到通讯录」）；名片链接码=地址短链（扫了打开名片页）。默认联系人码，
+           正文不摆大块二维码卡（对齐 H5 约定①）；一律 PNG（微信长按识别不认 SVG） -->
       <view v-if="qrOpen" class="mask" @tap="qrOpen = false">
         <view class="qr-modal" @tap.stop>
           <view class="qr-modal-title">我的名片</view>
-          <image class="qr-big" :src="scanQrUrl(card.slug, 'vcard.png', 640)" mode="aspectFit" />
+          <view class="qr-tabs">
+            <button :class="['qr-tab', { on: qrMode === 'vcard' }]" @tap="qrMode = 'vcard'">联系人码</button>
+            <button :class="['qr-tab', { on: qrMode === 'link' }]" @tap="qrMode = 'link'">名片链接码</button>
+          </view>
+          <image class="qr-big" :src="scanQrUrl(card.slug, qrMode === 'vcard' ? 'vcard.png' : 'qr.png', 640)" mode="aspectFit" />
           <view class="qr-url" @tap="copyText(linkUrl, '名片链接已复制')">{{ linkUrl }}</view>
-          <view class="muted small" style="text-align:center">手机相机/微信扫一扫，直接把名片存入通讯录；分享链接点开即看，无需二维码</view>
+          <view class="muted small" style="text-align:center">{{ qrMode === 'vcard' ? '手机相机/微信扫一扫，直接把名片存入通讯录（已瘦身只含主流字段，保证可扫）' : '扫一扫打开名片页，名片里的资料随时更新、链接永久不变' }}</view>
           <view class="btn-row qr-modal-btns">
             <button class="btn primary" @tap="copyText(linkUrl, '名片链接已复制')">复制名片链接</button>
-            <button class="btn" @tap="saveQrImage(card.slug)">保存二维码</button>
+            <button class="btn" @tap="saveQrImage(card.slug, qrMode === 'vcard' ? 'vcard.png' : 'qr.png')">保存二维码</button>
             <button class="btn" @tap="qrOpen = false">关闭</button>
           </view>
         </view>
@@ -152,6 +156,7 @@ const selfCheckDone = computed(() => !!props.selfCheckDone)
 const mySlug = ref('')
 const exchanging = ref(false)
 const qrOpen = ref(false)
+const qrMode = ref('vcard')
 const linkUrl = computed(() => card.value.url || (baseUrl + '/c/' + card.value.slug))
 
 // 联系方式行（与 H5 CardSheet contactFields 同构）：手机/座机可拨打，其余点行复制
@@ -339,6 +344,11 @@ async function exchange() {
 .mask { position: fixed; left: 0; right: 0; top: 0; bottom: 0; background: rgba(15,23,42,.55); z-index: 120; display: flex; align-items: center; justify-content: center; padding: 40rpx; }
 .qr-modal { width: 100%; max-width: 560rpx; background: #fff; border-radius: 24rpx; padding: 36rpx 30rpx; }
 .qr-modal-title { font-size: 32rpx; font-weight: 800; text-align: center; margin-bottom: 20rpx; }
+/* 双码切换（联系人码/名片链接码）：胶囊分段控件，button 重置 */
+.qr-tabs { display: flex; justify-content: center; gap: 12rpx; margin-bottom: 20rpx; }
+.qr-tab { font-size: 24rpx; font-weight: 600; padding: 12rpx 30rpx; border-radius: 999rpx; line-height: 1.2; border: 2rpx solid #e8dcc2; background: #f7f1e3; color: #8a7355; }
+.qr-tab::after { border: 0; }
+.qr-tab.on { background: #a62b2b; border-color: #a62b2b; color: #fff; }
 .qr-big { width: 400rpx; height: 400rpx; margin: 0 auto 16rpx; display: block; background: #fff; }
 .qr-url { font-size: 22rpx; color: #8a7355; text-align: center; word-break: break-all; margin-bottom: 8rpx; }
 .qr-modal-btns { justify-content: center; flex-wrap: wrap; }

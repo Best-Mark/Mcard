@@ -345,7 +345,8 @@ router.get('/public/:slug/vcard.svg', wrap((req, res) => {
   const row = db.prepare('SELECT * FROM cards WHERE slug = ?').get(req.params.slug)
   if (!row) return fail(res, 404, '名片不存在')
   const origin = originOf(req)
-  const text = vcard.build(publicView(row, origin), origin)
+  // 二维码用瘦身版 vCard（只放主流联系人字段，2026-11-26 用户定稿：保证可扫性）
+  const text = vcard.build(publicView(row, origin), origin, { slim: true })
   const size = Math.min(2000, Math.max(256, Number(req.query.size) || 520))
   res.type('image/svg+xml').set('Cache-Control', 'public, max-age=60')
     .send(qr.svg(text, { size, ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg }) }))
@@ -356,7 +357,8 @@ router.get('/public/:slug/vcard.png', wrap(async (req, res) => {
   const row = db.prepare('SELECT * FROM cards WHERE slug = ?').get(req.params.slug)
   if (!row) return fail(res, 404, '名片不存在')
   const origin = originOf(req)
-  const text = vcard.build(publicView(row, origin), origin)
+  // 二维码用瘦身版 vCard（只放主流联系人字段，2026-11-26 用户定稿：保证可扫性）
+  const text = vcard.build(publicView(row, origin), origin, { slim: true })
   const size = Math.min(1600, Math.max(256, Number(req.query.size) || 720))
   const buf = await qr.png(text, { size, ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg }) })
   res.type('png').set('Cache-Control', 'public, max-age=60').send(buf)

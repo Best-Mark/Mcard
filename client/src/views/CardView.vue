@@ -97,16 +97,20 @@
       </BottomSheet>
     </template>
 
-    <!-- 名片联系人二维码（vCard）：2026-11-26 用户定稿——名片码唯一职责就是存联系人，
-         手机相机/微信扫一扫直接弹「添加到通讯录」；打开名片靠分享链接点击即可，不需要二维码承担。
+    <!-- 名片二维码双码弹层（2026-11-26 用户定稿：两个都要）：联系人码=vCard 瘦身版（只放主流字段，
+         扫一扫直接弹「添加到通讯录」）；名片链接码=地址短链（扫了打开名片页）。默认联系人码。
          一律 PNG（微信「识别图中二维码」不认 SVG），链接仅作文案可复制 -->
     <div v-if="qrModal" class="modal-mask" @click.self="qrModal = false">
       <div class="modal center">
         <h3>我的名片</h3>
-        <img :src="scanQrUrl(slug, 'vcard.png', 640)" style="width:264px;height:264px;margin:4px auto 10px;display:block" alt="名片联系人二维码" />
+        <div class="qr-mode-tabs">
+          <button :class="['qr-mode-tab', { on: qrMode === 'vcard' }]" @click="qrMode = 'vcard'">联系人码</button>
+          <button :class="['qr-mode-tab', { on: qrMode === 'link' }]" @click="qrMode = 'link'">名片链接码</button>
+        </div>
+        <img :src="scanQrUrl(slug, qrMode === 'vcard' ? 'vcard.png' : 'qr.png', 640)" style="width:264px;height:264px;margin:4px auto 10px;display:block" :alt="qrMode === 'vcard' ? '名片联系人二维码' : '名片地址二维码'" />
         <p class="cv-qr-url" @click="copy(publicLink, '名片链接')" title="点击复制名片链接">{{ publicLink }}</p>
-        <p class="small muted center">手机相机/微信扫一扫，直接把名片存入通讯录；分享链接点开即看，无需二维码</p>
-        <!-- 一个入口承载三件事：存联系人的码、复制链接、公开页（关闭弹层即当前公开页） -->
+        <p class="small muted center">{{ qrMode === 'vcard' ? '手机相机/微信扫一扫，直接把名片存入通讯录（已瘦身只含主流字段，保证可扫）' : '扫一扫打开名片页，名片里的资料随时更新、链接永久不变' }}</p>
+        <!-- 一个入口承载三件事：存联系人的码/打开名片的码、复制链接、公开页（关闭弹层即当前公开页） -->
         <div class="btn-row" style="justify-content:center;margin-top:14px;flex-wrap:wrap">
           <button class="btn btn-primary" @click="copy(publicLink, '名片链接')">复制名片链接</button>
           <button class="btn btn-ghost" @click="saveQr">保存二维码</button>
@@ -245,7 +249,7 @@ const template = ref('contact')
 // 旧版 6 套（classic/minimal/elite/vivid/seal/navygold）原先是分开的多张卡，现在也走 cv-clean 骨架，
 // 配色在样式表末尾「全模板统一层」里给出；原模板专属结构规则被该统一层按特异性覆盖，不逐条删除以便回滚。
 const isCleanTpl = computed(() => true)
-const qrModal = ref(false); const guide = ref(''); const guideImage = ref(''); const exchangeOpen = ref(false)
+const qrModal = ref(false); const qrMode = ref('vcard'); const guide = ref(''); const guideImage = ref(''); const exchangeOpen = ref(false)
 const contactFallbackOpen = ref(false) // 安卓 intent 拉不起通讯录时的兜底：复制基本信息卡片（全程不下载）
 const mapOpen = ref(false); const moreOpen = ref(false)
 const mySlug = ref(''); const exchanging = ref(false)
@@ -576,8 +580,12 @@ async function copy(v, label) {
 }
 async function saveQr() {
   guideImage.value = ''
-  // 保存的也是联系人码（vCard），与弹层展示一致；扫这张码=直接存通讯录
-  const r = await saveImageUrl(scanQrUrl(slug.value, 'vcard.png', 900), `${slug.value}-名片码.png`)
+  // 保存当前切换到的码：联系人码（vCard 瘦身版，扫=直接存通讯录）或名片链接码
+  const isVcard = qrMode.value === 'vcard'
+  const r = await saveImageUrl(
+    scanQrUrl(slug.value, isVcard ? 'vcard.png' : 'qr.png', 900),
+    `${slug.value}-${isVcard ? '名片码' : '二维码'}.png`
+  )
   if (r.kind === 'longpress') { await showGuide('qr'); return }
   showToast(r.kind === 'downloaded' ? '二维码已开始下载' : '已打开二维码，请长按保存', 'success')
 }

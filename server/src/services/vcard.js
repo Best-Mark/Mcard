@@ -19,7 +19,10 @@ function splitName(name) {
   return ['', n, n]
 }
 
-function build(card, baseUrl) {
+// opts.slim = true：二维码专用瘦身版——只保留主流联系人字段（姓名/公司/部门/职位/手机/座机/邮箱），
+// 砍掉简介/地址/微信支付宝/标签/URL/NOTE 等拉长内容（2026-11-26 用户定稿：vCard 码只放主流字段保证可扫性）。
+// 完整版仍用于 card.vcf 下载与 vcard.txt（这两个不走二维码，信息越全越好）。
+function build(card, baseUrl, opts = {}) {
   const [family, given, formatted] = splitName(card.name || card.name_en)
   const url = `${baseUrl}/c/${card.slug}`
   const notes = []
@@ -39,6 +42,23 @@ function build(card, baseUrl) {
   // 不再把名片网址塞进 NOTE：上方已有标准 URL: 字段，重复内容会拉长二维码、降低扫码成功率，
   // 且 iOS Safari 对 NOTE 里的长 URL 文本解析更脆弱。通讯录「主页」始终取 URL: 字段。
   // 下面 join 用真实换行符，esc 会统一转成 vCard 的 \n 转义，避免出现双反斜杠
+
+  if (opts.slim) {
+    // 瘦身版：仅主流联系人字段。手机/座机同时有才两行；邮箱只写合法值（同下方校验）。
+    const lines = [
+      'BEGIN:VCARD',
+      'VERSION:3.0',
+      `N:${esc(family)};${esc(given)};;;`,
+      `FN:${esc(formatted || '名片')}`,
+      card.company || card.department ? `ORG:${esc(card.company)};${esc(card.department)}` : '',
+      card.title ? `TITLE:${esc(card.title)}` : '',
+      card.mobile ? `TEL;TYPE=CELL,VOICE:${esc(card.mobile)}` : '',
+      card.phone ? `TEL;TYPE=WORK,VOICE:${esc(card.phone)}` : '',
+      card.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(card.email).trim()) ? `EMAIL;TYPE=INTERNET,WORK:${esc(card.email)}` : '',
+      'END:VCARD'
+    ].filter(Boolean)
+    return lines.join('\r\n') + '\r\n'
+  }
 
   const lines = [
     'BEGIN:VCARD',

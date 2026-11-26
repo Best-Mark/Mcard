@@ -235,9 +235,9 @@ export function scanQrUrl(slug, ext, size) {
   return `${API_BASE}/api/cards/public/${slug}/${ext}?size=${size}&scan=1&qv=${SCAN_V}`
 }
 
-export function saveQrImage(slug) {
-  // 保存的也是联系人码（vCard，2026-11-26 用户定稿）：扫这张码=直接存通讯录，与弹层展示一致
-  const url = scanQrUrl(slug, 'vcard.png', 720)
+export function saveQrImage(slug, ext = 'vcard.png') {
+  // 默认保存联系人码（vCard 瘦身版，扫=直接存通讯录）；链接码由调用方传 'qr.png'，与弹层当前切换一致
+  const url = scanQrUrl(slug, ext, 720)
   uni.downloadFile({
     url,
     success: res => {
