@@ -1,5 +1,12 @@
 <template>
   <view class="page">
+    <!-- 后台配了启动图就整页显示图片（点击进入集市），不显示内置推广页；图片加载失败自愈回退 -->
+    <view v-if="launchImage && launchImageOk" class="launch" @tap="enterMarket">
+      <image class="launch-img" :src="launchImage" mode="widthFix" @error="launchImageOk = false" />
+      <view class="launch-hint">点击进入</view>
+    </view>
+
+    <block v-else>
     <view class="hero">
       <view class="brand">M<text class="em">Card</text></view>
       <view class="slogan">一扫即存 · 永久有效的电子名片</view>
@@ -56,8 +63,9 @@
         <view class="feature"><text class="ico">▤</text><view><b>实体名片版式</b><view class="muted small">90×54mm 印刷稿与海报保存</view></view></view>
       </view>
     </view>
+    </block>
 
-    <TabBar active="" />
+    <TabBar v-if="!(launchImage && launchImageOk)" active="" />
   </view>
 </template>
 
@@ -70,6 +78,19 @@ import TabBar from '../../components/TabBar/TabBar.vue'
 const logged = ref(false)
 const myCard = ref(null)
 const keyword = ref('')
+const launchImage = ref('')
+const launchImageOk = ref(true)
+
+// 启动图：后台「站点基础 → 小程序启动图」配了就整页显示该图，点击进入集市；空则走内置推广页。
+// 图片是构建期注入域名下的 /uploads/ 相对路径或完整 URL，统一归一化后加载。
+async function loadLaunchImage() {
+  try {
+    const cfg = await api.get('/api/public/config', false)
+    const raw = String(cfg?.miniapp_launch_image || '').trim()
+    launchImage.value = raw ? (/^https?:\/\//i.test(raw) ? raw : raw.startsWith('/') ? baseUrl + raw : '') : ''
+  } catch { launchImage.value = '' } // 配置拉取失败自愈回退内置推广页
+}
+function enterMarket() { uni.reLaunch({ url: '/pages/market/market' }) }
 
 const go = url => uni.navigateTo({ url })
 async function refresh() {
@@ -77,7 +98,7 @@ async function refresh() {
   if (!logged.value) { myCard.value = null; return }
   try { myCard.value = await api.get('/api/cards/mine') } catch { myCard.value = null }
 }
-onLoad(refresh)
+onLoad(() => { loadLaunchImage(); refresh() })
 onShow(refresh)
 
 function openKeyword() {
@@ -98,6 +119,9 @@ function scan() {
 </script>
 
 <style scoped>
+.launch { position: relative; min-height: 100vh; background: #fff; display: flex; align-items: flex-start; justify-content: center; }
+.launch-img { width: 100%; }
+.launch-hint { position: fixed; left: 0; right: 0; bottom: calc(60rpx + env(safe-area-inset-bottom, 0px)); text-align: center; font-size: 24rpx; color: #64748b; letter-spacing: 2rpx; }
 .hero { background: linear-gradient(135deg,#17357c,#2563eb 55%,#38bdf8); padding: 60rpx 32rpx 90rpx; color: #fff; border-radius: 0 0 40rpx 40rpx; }
 .brand { font-size: 44rpx; font-weight: 800; }
 .em { opacity: .8; }

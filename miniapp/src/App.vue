@@ -24,7 +24,7 @@ export default {
   // 全局分享兜底：未单独配 onShareAppMessage 的页面用素材池随机标题/缩略图，避免裸链接
   onShareAppMessage() {
     // 全面邀请：分享自动带当前推广员邀请码（非推广员无码，原样返回）
-    const card = { title: getShareCardTitle(), path: withInvite('/pages/market/market') }
+    const card = { title: getShareCardTitle(), path: withInvite('/pages/index/index') }
     const imageUrl = getShareCardImage()
     if (imageUrl) card.imageUrl = imageUrl
     return card
@@ -32,7 +32,7 @@ export default {
   onShareTimeline() {
     const card = { title: getShareCardTitle() }
     // 朋友圈分享 query 只接受参数串（无前导 ?）
-    const withCode = withInvite('/pages/market/market')
+    const withCode = withInvite('/pages/index/index')
     const qi = withCode.indexOf('?')
     if (qi >= 0) card.query = withCode.slice(qi + 1)
     const imageUrl = getShareCardImage()

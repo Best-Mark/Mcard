@@ -7,7 +7,7 @@ const config = require('../config')
 // 公开键：匿名接口 /api/public/config 仅下发这些
 // share_* 是分享素材池（标题/描述/图片，每行一条），匿名可读——对齐 MShop 的 share_config 白名单口径
 const SHARE_KEYS = ['share_title', 'share_desc', 'share_image']
-const PUBLIC_KEYS = ['site_name', 'site_logo', 'site_desc', 'contact', 'notice', 'qr_brand', ...SHARE_KEYS]
+const PUBLIC_KEYS = ['site_name', 'site_logo', 'site_desc', 'contact', 'notice', 'qr_brand', 'miniapp_launch_image', ...SHARE_KEYS]
 // 公开派生键：由后端算好后下发，前端据此决定是否显示微信快捷登录入口（不下发任何 key/secret）
 const PUBLIC_DERIVED_KEYS = ['wechat_login_enabled']
 
@@ -21,7 +21,9 @@ const GROUPS = {
       { key: 'site_desc', label: '站点简介', type: 'text' },
       { key: 'contact', label: '联系方式', type: 'text' },
       { key: 'notice', label: '公告', type: 'textarea' },
-      { key: 'qr_brand', label: '二维码水印', type: 'text' }
+      { key: 'qr_brand', label: '二维码水印', type: 'text' },
+      // 小程序启动图：配置后小程序启动页直接展示这张图（点击进入），不再显示内置推广页；留空走内置推广页。
+      { key: 'miniapp_launch_image', label: '小程序启动图（图片地址，绝对路径 /uploads/... 或完整 URL；留空用内置推广页）', type: 'text' }
     ]
   },
   payment: {
