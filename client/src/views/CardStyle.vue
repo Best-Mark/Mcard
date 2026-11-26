@@ -64,7 +64,7 @@
             </template>
             <template v-else>
               <div class="section-title" style="margin-top:0">二维码</div>
-              <p class="small muted">中心 LOGO 固定居中常显，这里只挑码点风格。</p>
+              <p class="small muted">形状只保留易扫款式；中心 LOGO 默认关（更易于识别），需要可自行开启。</p>
               <div class="field"><label>一键预设</label>
                 <div class="qr-presets">
                   <button v-for="p in qrPresets" :key="p.key" class="qr-preset" :class="{ on: qrPresetActive(p) }" @click="applyQrPreset(p)">
@@ -82,6 +82,11 @@
               </div>
               <div class="field"><label>码色（深码浅底成对，保证可扫）</label>
                 <BottomSelect v-model="colorKey" :options="colorKeyOptions" title="码色" />
+              </div>
+              <div class="field"><label>中心 LOGO</label>
+                <button type="button" class="btn btn-ghost btn-block" @click="card.qr_logo = !card.qr_logo">
+                  {{ card.qr_logo ? '已开启（点此关闭，更易扫）' : '已关闭（点此开启）' }}
+                </button>
               </div>
             </template>
             <!-- 只收起面板，不保存；保存统一走页面底部唯一「完成」按钮 -->
@@ -142,7 +147,9 @@ watch(sheetOpen, on => {
 })
 onBeforeUnmount(() => { document.body.style.overflow = bodyOverflowBefore })
 
-// 二维码可调：预设 + 码色 + 码点 + 定位角。中心 LOGO 固定居中常显（logoShape 锁 rounded、qr_logo 锁 true）。
+// 二维码可调：预设 + 码色 + 码点 + 定位角 + 中心 LOGO 开关。
+// 【2026-11-26 易扫收敛】中心 LOGO 默认关（最伤识别率），用户可自行开；码点/码眼选项由服务端 meta 下发，
+// 已剔除花哨形状，渐变/背景图也下线，故任意组合均可扫。
 // 选项清单由服务端 /api/cards/public/meta 下发（唯一真相源），本页不再硬编码取值。
 const dotOptions = ref([]); const eyeOptions = ref([]); const qrPresets = ref([]); const colorOptions = ref([])
 // 码色是 fg/bg 成对字段（cards.qr_fg / qr_bg），BottomSelect 单值用 key 代理，watch 写回两个字段。
@@ -154,14 +161,14 @@ const colorKey = computed({
     if (c && card.value) { card.value.qr_fg = c.fg; card.value.qr_bg = c.bg }
   }
 })
-// LOGO 永远居中常显：底板固定圆角方（qrcode.js 里居中绘制），开关强制开
-const FIXED_LOGO_SHAPE = 'rounded'
+// 中心 LOGO 默认关；用户可开（开关值来自 card.qr_logo，服务端已迁移存量关）。
 const currentTplLabel = computed(() => templates.value.find(t => t.key === card.value?.template)?.label || card.value?.template || '默认')
 const previewQr = computed(() => {
   const c = card.value
   if (!c?.slug) return ''
   const st = encodeURIComponent(JSON.stringify(c.qr_style || {}))
-  return `/api/cards/public/${c.slug}/qr.svg?size=320&brand=M&fg=${encodeURIComponent(c.qr_fg || '#0f172a')}&bg=${encodeURIComponent(c.qr_bg || '#ffffff')}&logo=1&style=${st}`
+  const logo = c.qr_logo ? '1' : '0'
+  return `/api/cards/public/${c.slug}/qr.svg?size=320&brand=M&fg=${encodeURIComponent(c.qr_fg || '#0f172a')}&bg=${encodeURIComponent(c.qr_bg || '#ffffff')}&logo=${logo}&style=${st}`
 })
 
 function qrPresetActive(p) {
@@ -191,9 +198,9 @@ async function load() {
     if (!data.data) return router.replace('/me')
     card.value = {
       ...data.data,
-      // 中心 LOGO 永远居中常显：存量关掉/异形底板的也在这里归一，保存时一并落库
-      qr_logo: true,
-      qr_style: { dot: 'square', eye: 'square', gradTo: '', bgImage: '', ...(data.data.qr_style || {}), logoShape: FIXED_LOGO_SHAPE }
+      // 中心 LOGO 尊重用户开关（服务端已把存量统一迁到关）；qr_style 由服务端 normalizeStyle 归一，
+      // 渐变/背景图已下线、花哨码点码眼已回落，这里只补缺省值。
+      qr_style: { dot: 'square', eye: 'square', gradTo: '', bgImage: '', ...(data.data.qr_style || {}) }
     }
     tags.value = data.data.tags || []
   } catch (e) { loadError.value = e.message || '网络异常' } finally { loading.value = false; busyLoad.value = false }

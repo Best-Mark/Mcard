@@ -24,9 +24,12 @@ function escapeXml(s) {
 }
 
 // 草料式样式默认值：dot 码点 / eye 码眼 / gradTo 渐变终点 / logoShape Logo 底板 / bgImage 背景图
+// 【2026-11-26 易扫收敛】gradTo/bgImage 不再提供（渐变与背景图显著降低识别率）：
+// normalizeStyle 对二者一律回落到空，存量已写入的值在读取时自愈为空，无需 DB 迁移。
+// dot/eye 白名单来自 qrStyles（已剔除花哨形状），存量难扫值自动回落 square。
 const DEFAULT_STYLE = { dot: 'square', eye: 'square', gradTo: '', logoShape: 'rounded', bgImage: '' }
-// 易扫模式（scan=1）：客户扫码主场景专用。圆点/圆角定位角/渐变/背景图都会显著降低微信「扫一扫」识别率，
-// 这里统一收敛成标准方点+方定位角+纯色，牺牲装饰性换「一次扫开」。卡片上的美化小码不受影响。
+// SCAN_STYLE 保留供其它调用方引用；scan=1 现在走「跟随用户风格」（见 routes/cards.js scanOptions），
+// 由于DOT/EYE白名单已收敛+渐变背景为空，用户可选的组合本身就是易扫的。
 const SCAN_STYLE = { dot: 'square', eye: 'square', gradTo: '', logoShape: 'rounded', bgImage: '' }
 function normalizeStyle(s) {
   const o = s && typeof s === 'object' ? s : {}
@@ -34,9 +37,9 @@ function normalizeStyle(s) {
   return {
     dot: inSet(o.dot, DOT_VALUES, DEFAULT_STYLE.dot),
     eye: inSet(o.eye, EYE_VALUES, DEFAULT_STYLE.eye),
-    gradTo: /^#[0-9a-fA-F]{6}$/.test(o.gradTo || '') ? o.gradTo : '',
+    gradTo: '', // 渐变已下线：无论存量写的是什么都归一为空（纯色码），自愈
     logoShape: inSet(o.logoShape, ['rounded', 'circle', 'none'], DEFAULT_STYLE.logoShape),
-    bgImage: typeof o.bgImage === 'string' && /^(data:image\/|\/uploads\/|https?:\/\/)/.test(o.bgImage) ? o.bgImage.slice(0, 200000) : ''
+    bgImage: '' // 背景图已下线：归一为空（纯色底），自愈
   }
 }
 

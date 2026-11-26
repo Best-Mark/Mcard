@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS cards (
   accent TEXT NOT NULL DEFAULT '#2563eb',
   qr_fg TEXT NOT NULL DEFAULT '#0f172a',
   qr_bg TEXT NOT NULL DEFAULT '#ffffff',
-  qr_logo INTEGER NOT NULL DEFAULT 1,
+  qr_logo INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'draft',
   expires_at TEXT,
   views INTEGER NOT NULL DEFAULT 0,
@@ -345,6 +345,17 @@ const seedPackages = [
 // 自愈但幂等：用标记键做种子，避免运营删光套餐/降级管理员后下次启动被「复活」
 const insertSeedFlag = db.prepare("INSERT OR IGNORE INTO site_config (key, value) VALUES (?, ?)")
 const seeded = key => !!db.prepare('SELECT 1 FROM site_config WHERE key = ?').get(key)
+
+// 一次性迁移（2026-11-26）：中心 LOGO 由「固定常显」改为「默认关、可选开」。
+// 旧版 qr_logo 从不允许用户关（卡片设置页强制开），存量全是 1；真机实测中心 LOGO 强制 H 纠错+
+// 遮挡数据区是识别率头号杀手。用标记键只跑一次，把存量统一关掉；此后用户主动开不会再被重置。
+if (!seeded('qr_logo_default_off_v1')) {
+  db.transaction(() => {
+    db.prepare('UPDATE cards SET qr_logo = 0').run()
+    insertSeedFlag.run('qr_logo_default_off_v1', '1')
+  })()
+}
+
 if (!seeded('seed_packages_v1')) {
   const insert = db.prepare('INSERT INTO packages (name, description, price_cents, duration_days, features, sort) VALUES (@name,@description,@price_cents,@duration_days,@features,@sort)')
   db.transaction(rows => { rows.forEach(r => insert.run(r)); insertSeedFlag.run('seed_packages_v1', '1') })(seedPackages)

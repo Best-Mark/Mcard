@@ -230,7 +230,7 @@ export function currentPlatform() {
 
 // 扫码主场景 URL 版本：与 client/src/utils/qr.js 的 SCAN_V 约定同号。
 // 渲染逻辑（纠错/静音区/去 LOGO/码点码眼跟随用户风格）升级时两端一起 +1，用新 query 击穿 CDN 旧图案缓存。
-const SCAN_V = 4
+const SCAN_V = 5
 export function scanQrUrl(slug, ext, size) {
   return `${API_BASE}/api/cards/public/${slug}/${ext}?size=${size}&scan=1&qv=${SCAN_V}`
 }

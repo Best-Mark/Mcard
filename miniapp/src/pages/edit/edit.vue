@@ -155,9 +155,7 @@
           <view class="field"><text class="label">定位角样式</text>
             <picker :range="eyeLabels" :value="eyeIdx" @change="e => form.qr_style.eye = eyeValues[e.detail.value]"><view class="picker">{{ eyeLabels[eyeIdx] }} ▾</view></picker>
           </view>
-          <view class="field"><text class="label">渐变终点色（留空=纯色）</text><input v-model="form.qr_style.gradTo" class="input" placeholder="#06b6d4，留空纯色" /></view>
-          <button class="btn tiny" :disabled="qrBgBusy" @tap="chooseQrBg">{{ qrBgBusy ? '上传中…' : '上传二维码背景图' }}</button>
-          <view v-if="form.qr_style.bgImage" class="muted small" style="margin-top:8rpx">已设置背景图 · <text @tap="form.qr_style.bgImage = ''">移除</text></view>
+          <view class="muted small" style="margin-top:8rpx">仅保留易扫形状；渐变与背景图已下线。</view>
         </view>
         </view>
       </view>
@@ -237,7 +235,7 @@ const blank = {
   website: '', shop_url: '',
   bio: '', tags: [], links: [], avatar: '', logo: '', mobile: '', phone: '', email: '', wechat: '', alipay: '', whatsapp: '',
   address: '', address_detail: '', province: '', city: '', district: '', street: '',
-  template: 'tang', theme: DEFAULT_PAL.theme, accent: themes[DEFAULT_PAL.theme].accent, qr_fg: DEFAULT_PAL.qrFg, qr_bg: DEFAULT_PAL.qrBg, qr_logo: true,
+  template: 'tang', theme: DEFAULT_PAL.theme, accent: themes[DEFAULT_PAL.theme].accent, qr_fg: DEFAULT_PAL.qrFg, qr_bg: DEFAULT_PAL.qrBg, qr_logo: false,
   qr_style: { dot: 'square', eye: 'square', gradTo: '', logoShape: 'rounded', bgImage: '' },
   industry: '', latitude: null, longitude: null, market_opt_in: false
 }
@@ -334,28 +332,7 @@ onLoad(async options => {
   }
   uni.$on('map-picked', onMapPicked)
 })
-// 二维码背景图：独立上传（不走素材库），成对防重入（disabled + busy 守卫）
-const qrBgBusy = ref(false)
-async function chooseQrBg() {
-  if (qrBgBusy.value) return
-  // 隐私守卫：选图属隐私接口，微信端先弹官方隐私授权（MShop 同款口径）
-  if (!(await ensurePrivacy())) return toast('需要同意隐私授权才能选择图片')
-  qrBgBusy.value = true
-  uni.chooseImage({
-    count: 1,
-    sizeType: ['compressed'],
-    success: async res => {
-      try {
-        const url = res.tempFilePaths?.[0]
-        if (!url) throw new Error('未选择图片')
-        form.value.qr_style.bgImage = await uploadImage(url)
-        toast('背景图已设置，保存资料后生效', 'success')
-      } catch (e) { toast(e.message || '上传失败') }
-      finally { qrBgBusy.value = false }
-    },
-    fail: err => { toast(err.errMsg || '选择图片失败'); qrBgBusy.value = false }
-  })
-}
+// 二维码背景图上传已下线（渐变/背景图降低识别率，2026-11-26 收敛）
 onUnmounted(() => { uni.$off('map-picked', onMapPicked) })
 
 async function loadTemplates() {
