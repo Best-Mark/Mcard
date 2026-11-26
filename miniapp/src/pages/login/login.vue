@@ -39,6 +39,19 @@ const mode = ref('login')
 const phone = ref(''); const password = ref(''); const nickname = ref(''); const busy = ref(false)
 const wxBusy = ref(false)
 
+// 登录后去向（与 H5 一致）：已有名片直接看名片页，没名片才去建卡页。
+// redirectTo 替换登录页、不留返回栈；查卡失败按无名片处理，保证一定能进到可操作的页面。
+async function goAfterLogin(delay = 500) {
+  setTimeout(async () => {
+    let url = '/pages/me/me'
+    try {
+      const mine = await api.get('/api/cards/mine', true)
+      if (mine?.slug) url = `/pages/card/card?slug=${mine.slug}`
+    } catch { /* 查卡失败 → 建卡页兜底 */ }
+    uni.redirectTo({ url, fail: () => uni.navigateBack() })
+  }, delay)
+}
+
 // 微信快捷登录：uni.login 一次性 code → 服务端 code2session → 建号/登录。
 // 铁律：busy 守卫 + 按钮 disabled 成对防重入；code 只消费一次，失败必须重新 login 取新 code；
 // uni.login 无回调时用超时兜底恢复 busy，绝不能永久停在「正在登录…」。
@@ -62,8 +75,7 @@ function wechatLogin() {
           setAuth(data.token, data.user)
           bindPendingInvite().catch(() => {})
           toast(data.created ? '已为你创建账号' : '登录成功', 'success')
-          // 登录后直接进入「我的名片」页（那里有建卡入口），不回首页、也不把登录页留在返回栈。
-          setTimeout(() => uni.redirectTo({ url: '/pages/me/me', fail: () => uni.navigateBack() }), 500)
+          goAfterLogin(500)
         })
         .catch((e) => { clearTimeout(guard); done(); toast(e?.message || '微信登录失败，请重试') })
     },
@@ -84,8 +96,7 @@ async function submit() {
     setAuth(data.token, data.user)
     await bindPendingInvite()
     toast('登录成功', 'success')
-    // 登录后直接进入「我的名片」页（那里有建卡入口），不回首页、也不把登录页留在返回栈。
-    setTimeout(() => uni.redirectTo({ url: '/pages/me/me', fail: () => uni.navigateBack() }), 600)
+    goAfterLogin(600)
   } catch (e) { toast(e.message) } finally { busy.value = false }
 }
 </script>

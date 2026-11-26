@@ -109,14 +109,23 @@
         <view class="foot">由 MCard 提供技术支持</view>
       </view>
 
-      <!-- 底部操作 dock：对齐 H5 名片页的完整操作（打电话/复制号码/存通讯录/导航/收藏/分享） -->
+      <!-- 底部操作 dock：owner 对齐 H5（编辑/配色/集市/分享/管理），访客是联系操作（打电话/复制/存通讯录/导航/收藏/分享） -->
       <view class="dock">
-        <button class="dock-btn" :disabled="!contactPhone" @tap="callPhone(contactPhone)"><text class="dico">✆</text><text>打电话</text></button>
-        <button class="dock-btn" :disabled="!contactPhone" @tap="copyText(contactPhone, '号码已复制')"><text class="dico">⧉</text><text>复制号码</text></button>
-        <button v-if="!isSelf" class="dock-btn" @tap="savePhoneContact"><text class="dico">▣</text><text>存通讯录</text></button>
-        <button v-if="canNavigate" class="dock-btn" @tap="openNavigation"><text class="dico">⌖</text><text>导航</text></button>
-        <button v-if="!isSelf" class="dock-btn" @tap="toggleFavorite"><text class="dico">{{ favorited ? '★' : '☆' }}</text><text>{{ favorited ? '已收藏' : '收藏' }}</text></button>
-        <button class="dock-btn primary" open-type="share"><text class="dico">↗</text><text>分享</text></button>
+        <template v-if="isSelf">
+          <button class="dock-btn" @tap="go('/pages/edit/edit')"><text class="dico">✎</text><text>编辑名片</text></button>
+          <button class="dock-btn" @tap="go('/pages/edit/edit?focus=theme')"><text class="dico">◐</text><text>配色风格</text></button>
+          <button class="dock-btn" @tap="go('/pages/market/market')"><text class="dico">⌕</text><text>名片集市</text></button>
+          <button class="dock-btn" @tap="go('/pages/me/me')"><text class="dico">▤</text><text>管理</text></button>
+          <button class="dock-btn primary" open-type="share"><text class="dico">↗</text><text>分享</text></button>
+        </template>
+        <template v-else>
+          <button class="dock-btn" :disabled="!contactPhone" @tap="callPhone(contactPhone)"><text class="dico">✆</text><text>打电话</text></button>
+          <button class="dock-btn" :disabled="!contactPhone" @tap="copyText(contactPhone, '号码已复制')"><text class="dico">⧉</text><text>复制号码</text></button>
+          <button class="dock-btn" @tap="savePhoneContact"><text class="dico">▣</text><text>存通讯录</text></button>
+          <button v-if="canNavigate" class="dock-btn" @tap="openNavigation"><text class="dico">⌖</text><text>导航</text></button>
+          <button class="dock-btn" @tap="toggleFavorite"><text class="dico">{{ favorited ? '★' : '☆' }}</text><text>{{ favorited ? '已收藏' : '收藏' }}</text></button>
+          <button class="dock-btn primary" open-type="share"><text class="dico">↗</text><text>分享</text></button>
+        </template>
       </view>
     </block>
   </view>
@@ -210,6 +219,7 @@ async function load() {
   const src = String(entrySrc.value || '')
   if (src) traceVisit(slug.value, src)
 }
+const go = url => uni.navigateTo({ url })
 const entrySrc = ref('')
 onLoad(options => {
   slug.value = parseSlug(options.slug || options.scene || '') || 'zhangsan'

@@ -32,9 +32,9 @@
         </view>
       </view>
       <view v-else class="card center-pad">
-        <view class="muted">还没有名片？登录后一键创建</view>
+        <view class="muted">{{ logged ? '还没有名片，创建后即可获得永久二维码' : '还没有名片？登录后一键创建' }}</view>
         <button class="btn primary block" style="margin-top:20rpx" @tap="logged ? go('/pages/me/me') : goLogin()">
-          {{ logged ? '进入我的名片' : '登录 / 注册' }}
+          {{ logged ? '创建我的名片' : '登录 / 注册' }}
         </button>
       </view>
 

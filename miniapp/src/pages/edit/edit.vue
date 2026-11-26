@@ -114,7 +114,7 @@
         </view>
       </view>
 
-      <view class="card">
+      <view class="card" id="theme-card">
         <view class="adv-toggle" @tap="showAdvanced = !showAdvanced">
           <text>⚙️ 高级配色（选模板已自动配好，一般无需修改）</text>
           <text>{{ showAdvanced ? '▴' : '▾' }}</text>
@@ -276,6 +276,13 @@ onLoad(async options => {
     setTimeout(() => uni.createSelectorQuery().select('#market-card').boundingClientRect(rect => {
       if (rect) uni.pageScrollTo({ scrollTop: (rect.top || 0) - 20, duration: 300 })
     }).exec(), 120)
+  }
+  // 从名片页「配色风格」入口进来：展开高级区并滚到配色卡片
+  if (options?.focus === 'theme') {
+    showAdvanced.value = true
+    setTimeout(() => uni.createSelectorQuery().select('#theme-card').boundingClientRect(rect => {
+      if (rect) uni.pageScrollTo({ scrollTop: (rect.top || 0) - 20, duration: 300 })
+    }).exec(), 150)
   }
   uni.$on('map-picked', onMapPicked)
 })

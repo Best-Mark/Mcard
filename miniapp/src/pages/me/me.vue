@@ -116,7 +116,13 @@ onShow(load)
 
 async function create() {
   busy.value = true
-  try { card.value = await api.post('/api/cards/mine', {}); toast('名片已创建', 'success') }
+  try {
+    const c = await api.post('/api/cards/mine', {})
+    card.value = c
+    toast('名片已创建，开始完善资料吧', 'success')
+    // 建完卡直接进名片页（与 H5 一致），管理入口在名片页 dock 里，不把用户丢回管理面板。
+    if (c?.slug) setTimeout(() => uni.redirectTo({ url: `/pages/card/card?slug=${c.slug}`, fail: () => uni.navigateBack() }), 600)
+  }
   catch (e) { toast(e.message) } finally { busy.value = false }
 }
 </script>
