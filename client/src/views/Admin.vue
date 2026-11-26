@@ -453,7 +453,22 @@
                     </div>
                     <span v-if="f.hint" class="small muted">{{ f.hint }}</span>
                   </div>
-                  <textarea v-else-if="f.large" v-model="cfg[f.key]" class="textarea" rows="5" :placeholder="f.type === 'secret' ? (cfg[f.key] ? '留空则不修改已保存的密钥' : '粘贴 PEM 全文') : ''"></textarea>
+                  <!-- 多图字段（分享图片池 type=images）：逐张上传+裁剪，缩略图网格可删。
+                       存储仍是换行分隔 URL 文本（与旧手填数据兼容），上传成功≠已保存，点「保存分组」才落库 -->
+                  <div v-else-if="f.type === 'images'" class="cfg-images">
+                    <div class="cfg-images-grid">
+                      <div v-for="(url, i) in imageList(f.key)" :key="url" class="cfg-images-item">
+                        <img :src="url" :alt="`分享图 ${i + 1}`" />
+                        <button type="button" class="cfg-images-del" :aria-label="`删除分享图 ${i + 1}`" @click="removeImage(f.key, i)">×</button>
+                      </div>
+                      <div v-if="imageList(f.key).length < 10" class="cfg-image-box add" @click="openImageCropper(f)">
+                        <span class="cfg-image-plus">＋</span>
+                        <span class="cfg-image-text">上传图片</span>
+                      </div>
+                    </div>
+                    <span class="small muted cfg-hint">最多 10 张，仅 jpg/png/gif/webp，分享时随机取用一张</span>
+                  </div>
+                  <textarea v-else-if="f.large" v-model="cfg[f.key]" class="textarea" rows="5" :placeholder="f.type === 'secret' ? (cfg[f.key] ? '留空则不修改已保存的密钥' : '粘贴 PEM 全文') : (f.placeholder || '')"></textarea>
                   <input v-else v-model="cfg[f.key]" class="input" :type="f.type === 'secret' && !revealed[f.key] ? 'password' : 'text'"
                          :placeholder="f.type === 'secret' ? (cfg[f.key] ? '•••••• 已配置，留空不改' : '未配置') : ''" />
                   <button v-if="f.type === 'secret' && f.upload && manualSecrets[f.key]" class="cfg-manual-link" @click="backToFileMode(f)">改用文件上传</button>
@@ -1136,6 +1151,13 @@ function backToFileMode(f) {
 }
 
 // ---------- 图片字段：上传 + 裁剪（站点 LOGO） ----------
+// 多图字段（分享图片池）的存储口径：cfg 里仍是换行分隔 URL 文本，与旧手填数据/服务端 normalizePool 直接兼容
+const imageList = k => String(cfg.value[k] || '').split('\n').map(s => s.trim()).filter(Boolean)
+function removeImage(k, i) {
+  const arr = imageList(k)
+  arr.splice(i, 1)
+  cfg.value[k] = arr.join('\n')
+}
 function openImageCropper(f) {
   cropperField.value = f.key
   cropperShow.value = true
@@ -1157,7 +1179,15 @@ async function onImageCropped(blob, resolve, reject) {
     })
     const url = data?.data?.url
     if (!url) throw new Error('上传未返回图片地址')
-    cfg.value[cropperField.value] = url
+    // 多图字段追加而非覆盖；单图字段直接回填
+    const field = (currentGroup.value?.fields || []).find(x => x.key === cropperField.value)
+    if (field && field.type === 'images') {
+      const arr = imageList(cropperField.value)
+      if (arr.length >= 10) { showToast('最多 10 张', 'error'); reject(new Error('最多 10 张')); return }
+      cfg.value[cropperField.value] = [...arr, url].join('\n')
+    } else {
+      cfg.value[cropperField.value] = url
+    }
     showToast('图片已上传，点「保存分组」后生效', 'success')
     resolve()
   } catch (e) {
@@ -1561,6 +1591,12 @@ async function saveUpdateConfig() {
 .cfg-hint { display: block; margin-top: 6px; line-height: 1.5; }
 /* 布尔滑块开关（推广分销开关等 type=boolean 字段）：与 .switch 按钮同行，高度对齐普通输入框 */
 .cfg-boolean { display: flex; align-items: center; gap: 10px; min-height: 38px; }
+/* 多图字段（分享图片池）：缩略图网格，与上传框同行流式排列 */
+.cfg-images-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.cfg-images-item { position: relative; width: 86px; height: 86px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
+.cfg-images-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cfg-images-del { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; border-radius: 50%; background: rgba(0,0,0,.55); color: #fff; font-size: 14px; line-height: 1; display: flex; align-items: center; justify-content: center; }
+.cfg-images-del:hover { background: var(--danger, #e5484d); }
 .cfg-actions { display: flex; align-items: center; gap: 14px; justify-content: flex-end; padding-top: 16px; margin-top: 6px; border-top: 1px solid var(--line); }
 .sms-test { margin-top: 18px; padding-top: 6px; border-top: 1px dashed var(--line); }
 .sms-row { display: flex; gap: 10px; max-width: 520px; }

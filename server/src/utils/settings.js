@@ -210,9 +210,11 @@ const GROUPS = {
   share: {
     label: '分享素材池',
     fields: [
-      { key: 'share_title', label: '分享标题池（每行一条，随机取用）', type: 'textarea', large: true },
-      { key: 'share_desc', label: '分享描述池（每行一条，随机取用）', type: 'textarea', large: true },
-      { key: 'share_image', label: '分享图片池（每行一个绝对 URL，仅 jpg/png/gif 生效）', type: 'textarea', large: true }
+      { key: 'share_title', label: '分享标题池（随机取用）', type: 'textarea', large: true, placeholder: '每行一条，最多 10 条' },
+      { key: 'share_desc', label: '分享描述池（随机取用）', type: 'textarea', large: true, placeholder: '每行一条，最多 10 条' },
+      // 图片池 2026-11-27 起改为多图上传（type=images）：不再手填 URL 路径。
+      // 存储不变（换行分隔 URL 文本），旧的手填数据直接兼容展示/删除；服务端 normalizePool 清洗口径不变。
+      { key: 'share_image', label: '分享图片池（上传，随机取用）', type: 'images' }
     ]
   },
   promo: {
