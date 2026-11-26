@@ -1,15 +1,20 @@
 :root {
-  --bg: #f5f7fb;
-  --card: #ffffff;
-  --text: #162033;
-  --muted: #6b7688;
-  --line: #e8edf4;
-  --primary: #2563eb;
-  --primary-2: #4338ca;
+  --bg: #f7f2e7;
+  --card: #fffdf8;
+  --text: #2b2118;
+  --muted: #8a7355;
+  --line: #e8dcc2;
+  /* 唐笺默认风格（2026-11-26 用户定）：古美 + 唐红 + 鎏金，融入现代商务 */
+  --primary: #a62b2b;
+  --primary-2: #7a1e15;
   --danger: #dc2626;
   --ok: #059669;
   --radius: 16px;
-  --shadow: 0 6px 24px rgba(15, 23, 42, .06);
+  --shadow: 0 6px 24px rgba(60, 10, 6, .06);
+  /* 唐红鎏金辅助色：烫金边/点缀 */
+  --gold: #c9a227;
+  --gold-2: #d4af37;
+  --paper: #f7ecd9;
   /* 深蓝鎏金模板：从参考名片提取的配色，Web 端各页共用这一份（小程序在 card.vue 内同口径） */
   --ng-ink: #12202e;
   --ng-ink-2: #4a5b6e;
@@ -93,10 +98,10 @@ img { display: block; max-width: 100%; }
 .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 /* ⚠️ 渐变前必须写纯色 fallback：微信老 WebView 解析不了「渐变里嵌 var()」，
    整条 background 失效会露白底，配合白字就是「按钮文字消失」（2026-11-25 实锤）。 */
-.btn-primary { background: var(--primary, #2563eb); background: linear-gradient(135deg, var(--primary), var(--primary-2)); color: #fff; box-shadow: 0 4px 14px rgba(37,99,235,.24); }
+.btn-primary { background: var(--primary, #a62b2b); background: linear-gradient(135deg, var(--primary), var(--primary-2)); color: #fff; box-shadow: 0 4px 14px rgba(166,43,43,.24); }
 /* 独立设计页唯一保存按钮：纯色、无渐变、无写死蓝色光晕（避免与名片主题撞色）。
    弹层里只收起面板的按钮用 btn-ghost，不再和「完成」抢同一视觉权重。 */
-.btn-finish { background: var(--primary, #2563eb); color: #fff; border-color: transparent; box-shadow: none; }
+.btn-finish { background: var(--primary, #a62b2b); color: #fff; border-color: transparent; box-shadow: none; }
 .design-done-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; padding: 14px 16px; background: var(--bg-card, #fff); border-top: 1px solid var(--line); }
 .btn-ok { background: var(--ok); color: #fff; }
 .btn-warn { background: #ea580c; color: #fff; }
@@ -113,7 +118,7 @@ img { display: block; max-width: 100%; }
   width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px;
   background: #fff; outline: none; transition: .18s;
 }
-.input:focus, .textarea:focus, .select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+.input:focus, .textarea:focus, .select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(166,43,43,.1); }
 .textarea { min-height: 84px; resize: vertical; }
 .grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 @media (max-width: 560px) { .grid2 { grid-template-columns: 1fr; } }
@@ -157,8 +162,8 @@ tr:last-child td { border-bottom: 0; }
 
 /* 会员区底部三栏 + 右抽屉：页面底部留白由 body.member-shell 统一抬高，避免被导航遮住 */
 .member-shell .page, .member-shell .dash-page, .member-shell .market-page { padding-bottom: 140px; }
-.nav-menu-btn { width: 34px; height: 34px; border-radius: 10px; background: rgba(37,99,235,.1); color: var(--primary); display: grid; place-items: center; position: relative; }
-.nav-menu-btn:active { background: rgba(37,99,235,.2); }
+.nav-menu-btn { width: 34px; height: 34px; border-radius: 10px; background: rgba(166,43,43,.1); color: var(--primary); display: grid; place-items: center; position: relative; }
+.nav-menu-btn:active { background: rgba(166,43,43,.2); }
 /* 菜单图标：三横 ↔ 三竖（右抽屉打开时），带状态体现。用 background 画三条，跨主题用 currentColor。 */
 .menu-glyph { display: block; width: 16px; height: 14px; border-radius: 2px; background: linear-gradient(currentColor, currentColor) 0 0/100% 2px no-repeat,
   linear-gradient(currentColor, currentColor) 0 6px/100% 2px no-repeat,

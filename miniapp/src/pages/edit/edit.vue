@@ -158,7 +158,8 @@ import { api, toast, uploadImage, uploadLogo, processLogo, geoLocate, reverseGeo
 
 // ⚠️ 与 client/src/utils/themes.js 保持同步（小程序独立渲染，无 web-view）
 const themes = {
-  ocean: { label: '经典蓝', accent: '#a62b2b' },
+  tang: { label: '唐红鎏金', accent: '#a62b2b' },
+  ocean: { label: '经典蓝', accent: '#2563eb' },
   ink: { label: '曜石黑金', accent: '#b99355' },
   sunset: { label: '活力橙', accent: '#ea580c' },
   mint: { label: '翡翠绿', accent: '#0f766e' },
@@ -166,6 +167,7 @@ const themes = {
 }
 // ⚠️ 与 client/src/utils/themes.js 的 TEMPLATE_PALETTES 保持同步
 const TEMPLATE_PALETTES = {
+  tang: { theme: 'tang', qrFg: '#7a1e15', qrBg: '#f7ecd9' },
   classic: { theme: 'ocean', qrFg: '#12306b', qrBg: '#f2f7ff' },
   minimal: { theme: 'ocean', qrFg: '#2b2118', qrBg: '#ffffff' },
   elite: { theme: 'ink', qrFg: '#b99355', qrBg: '#15171c' },
@@ -186,7 +188,7 @@ const TEMPLATE_PALETTES = {
   sidebar: { theme: 'sunset', qrFg: '#44291a', qrBg: '#f7f3ec' }
 }
 const paletteOf = key => TEMPLATE_PALETTES[key] || { theme: 'ocean', qrFg: '#2b2118', qrBg: '#ffffff' }
-const DEFAULT_PAL = paletteOf('contact')
+const DEFAULT_PAL = paletteOf('tang')
 const QR_PRESETS = [
   { key: 'classic', label: '经典', dot: 'square', eye: 'square', gradTo: '' },
   { key: 'dots', label: '圆点', dot: 'dots', eye: 'rounded', gradTo: '' },
@@ -210,7 +212,7 @@ const blank = {
   website: '', shop_url: '',
   bio: '', tags: [], links: [], avatar: '', logo: '', mobile: '', phone: '', email: '', wechat: '', alipay: '', whatsapp: '',
   address: '', address_detail: '', province: '', city: '', district: '', street: '',
-  template: 'contact', theme: DEFAULT_PAL.theme, accent: themes[DEFAULT_PAL.theme].accent, qr_fg: DEFAULT_PAL.qrFg, qr_bg: DEFAULT_PAL.qrBg, qr_logo: true,
+  template: 'tang', theme: DEFAULT_PAL.theme, accent: themes[DEFAULT_PAL.theme].accent, qr_fg: DEFAULT_PAL.qrFg, qr_bg: DEFAULT_PAL.qrBg, qr_logo: true,
   qr_style: { dot: 'square', eye: 'square', gradTo: '', logoShape: 'rounded', bgImage: '' },
   industry: '', latitude: null, longitude: null, market_opt_in: false
 }

@@ -172,6 +172,7 @@ const coverBg = computed(() => {
   if (tpl.value === 'elite') return 'linear-gradient(135deg,#18181b 0%,#27272a 55%,#0c0c0f 100%)'
   if (tpl.value === 'vivid') return `linear-gradient(135deg, ${c}, #db2777 60%, #f59e0b)`
   if (tpl.value === 'seal') return '#111827'
+  if (tpl.value === 'tang') return 'linear-gradient(135deg,#7a1e15 0%,#a62b2b 55%,#c9a227 100%)'
   if (tpl.value === 'contact') return `linear-gradient(135deg, #2b2118 0%, ${c} 100%)`
   if (tpl.value === 'navygold') return 'linear-gradient(135deg,#1d3a55 0%,#2f5a7d 40%,#d8bb85 78%,#b99355 100%)'
   return `linear-gradient(135deg, ${c}, #2b2118)`
@@ -516,6 +517,26 @@ onShareAppMessage(() => {
 .tpl-seal .foot { color: #8a7355; letter-spacing: 2rpx; }
 
 /* ⑤ 联络卡 contact：深蓝封面 + 居中身份 + 业务标签 */
+/* ⓪ 唐红鎏金 tang（默认）：唐红渐变底 + 烫金边象牙白卡 + 鎏金点缀，古美融入现代商务 */
+.tpl-tang { background: radial-gradient(1200rpx 520rpx at 50% -12%, #7a1e15 0%, #a62b2b 42%, #8c2318 74%, #5f160f 100%); min-height: 100vh; }
+.tpl-tang .cover { height: 210rpx; border-radius: 0 0 40rpx 40rpx; position: relative; }
+.tpl-tang .cover::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 8rpx; background: linear-gradient(90deg, #7a1e15, #a62b2b 38%, #c9a227 78%, #d4af37); }
+.tpl-tang .brand { color: #f3e2b3; letter-spacing: 4rpx; }
+.tpl-tang .body { margin-top: -44rpx; }
+.tpl-tang .card { border-radius: 22rpx; border: 2rpx solid rgba(201,162,39,.55); box-shadow: 0 26rpx 60rpx -22rpx rgba(60,10,6,.6); background: #fffdf8; }
+.tpl-tang .profile { position: relative; overflow: hidden; padding: 34rpx 26rpx 24rpx; border-radius: 18rpx; }
+.tpl-tang .profile::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 10rpx; background: linear-gradient(90deg, #7a1e15, #a62b2b 38%, #c9a227 78%, #d4af37); }
+.tpl-tang .avatar { width: 116rpx; height: 116rpx; border-radius: 16rpx; background: linear-gradient(145deg, #a62b2b, #7a1e15); box-shadow: inset 0 0 0 4rpx rgba(212,175,55,.6), 0 8rpx 18rpx -8rpx rgba(92,22,15,.6); }
+.tpl-tang .name { color: #7a1e15; font-size: 48rpx; font-weight: 900; letter-spacing: 2rpx; }
+.tpl-tang .title { color: #8a7355; font-size: 24rpx; letter-spacing: 1rpx; }
+.tpl-tang .tags text { border-radius: 999rpx; background: #f7ecd9; color: #8a5a1e; box-shadow: inset 0 0 0 2rpx rgba(201,162,39,.35); }
+.tpl-tang .actions { border-radius: 18rpx; border: 2rpx solid rgba(201,162,39,.35); }
+.tpl-tang .act:first-child { background: linear-gradient(135deg, #a62b2b, #7a1e15); }
+.tpl-tang .ico { border-radius: 14rpx; }
+.tpl-tang .section { color: #8c2318; border-left: 6rpx solid #c9a227; }
+.tpl-tang .btn.primary { background: linear-gradient(135deg, #d4af37, #c9a227); color: #fff; }
+.tpl-tang .qr { border: 4rpx solid rgba(201,162,39,.5); }
+
 .tpl-contact .cover { height: 200rpx; border-radius: 0 0 28rpx 28rpx; }
 .tpl-contact .body { margin-top: -40rpx; }
 .tpl-contact .profile { border-radius: 18rpx; border: 2rpx solid #e8dcc2; padding: 28rpx 20rpx; }

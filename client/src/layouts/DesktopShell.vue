@@ -111,7 +111,7 @@ onBeforeUnmount(() => {
 .ds-nav { position: sticky; top: 0; z-index: 40; background: rgba(255,255,255,.96); backdrop-filter: blur(14px); border-bottom: 1px solid #eef1f6; }
 .ds-nav-in { max-width: 1440px; margin: 0 auto; height: 72px; padding: 0 40px; display: flex; align-items: center; gap: 40px; }
 .ds-brand { display: flex; align-items: center; gap: 11px; cursor: pointer; flex: 0 0 auto; }
-.ds-logo { width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: #fff; display: grid; place-items: center; font-size: 21px; font-weight: 800; box-shadow: 0 6px 16px rgba(37,99,235,.25); }
+.ds-logo { width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, #a62b2b, #7a1e15); color: #fff; display: grid; place-items: center; font-size: 21px; font-weight: 800; box-shadow: 0 6px 16px rgba(166,43,43,.25); }
 .ds-brand-txt b { display: block; font-size: 17px; color: #162033; letter-spacing: .02em; }
 .ds-brand-txt small { display: block; font-size: 10px; color: #94a3b8; }
 .ds-main-links { display: flex; align-items: center; gap: 28px; flex: 1; }
@@ -119,17 +119,17 @@ onBeforeUnmount(() => {
 .ds-main-links button:hover, .ds-main-links button.on { color: #1d4ed8; font-weight: 700; }
 .ds-actions { display: flex; align-items: center; gap: 10px; }
 .ds-search { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 14px; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc; color: #94a3b8; font-size: 13px; cursor: pointer; }
-.ds-search:hover { border-color: #93c5fd; color: #2563eb; }
+.ds-search:hover { border-color: #c9a227; color: #a62b2b; }
 .ds-icon { position: relative; width: 38px; height: 38px; border-radius: 10px; border: 1px solid #e8edf4; background: #fff; font-size: 15px; cursor: pointer; }
 .ds-dot { position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: #ef4444; }
 .ds-user-wrap { position: relative; }
-.ds-user { display: flex; align-items: center; gap: 6px; height: 38px; padding: 0 12px; border-radius: 19px; border: 0; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: #fff; font-weight: 700; font-size: 13px; cursor: pointer; }
+.ds-user { display: flex; align-items: center; gap: 6px; height: 38px; padding: 0 12px; border-radius: 19px; border: 0; background: linear-gradient(135deg, #a62b2b, #7a1e15); color: #fff; font-weight: 700; font-size: 13px; cursor: pointer; }
 .ds-caret { font-size: 11px; opacity: .8; }
 .ds-user-menu { position: absolute; top: 46px; right: 0; z-index: 50; width: 174px; padding: 6px; border: 1px solid #e8edf4; border-radius: 12px; background: #fff; box-shadow: 0 14px 36px rgba(15,23,42,.14); }
 .ds-user-menu button { display: block; width: 100%; text-align: left; padding: 10px 12px; border: 0; border-radius: 8px; background: transparent; color: #334155; font-size: 13px; cursor: pointer; }
 .ds-user-menu button:hover { background: #f1f5f9; color: #1d4ed8; }
 .ds-user-menu button.danger { color: #dc2626; }
 .ds-user-menu button.danger:hover { background: #fef2f2; }
-.ds-login { padding: 9px 16px; border-radius: 10px; border: 0; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
+.ds-login { padding: 9px 16px; border-radius: 10px; border: 0; background: linear-gradient(135deg, #a62b2b, #7a1e15); color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
 .ds-content { max-width: 1440px; margin: 0 auto; padding: 28px 40px 64px; }
 </style>

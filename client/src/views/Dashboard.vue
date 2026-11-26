@@ -125,7 +125,7 @@ async function doShare() {
 /* 工作台头部：中性品牌蓝，不随名片模板变化（它是工作台 chrome，不属于名片本身） */
 /* 沉浸式顶到物理屏幕最上：状态栏区域也绘制品牌蓝，左右统一 16px。
    fixed + 滚动方向收起：往下推收起、往上拉出现；根 div 的 padding-top 补偿 fixed 脱离的文档流。 */
-.dash-top { position: fixed; top: 0; left: 0; right: 0; z-index: 50; height: calc(50px + var(--safe-top)); display: flex; align-items: center; gap: 8px; padding: var(--safe-top) 16px 0; background: linear-gradient(90deg,#143b8f,#2563eb 60%,#06b6d4); color: #fff; transition: transform .26s ease; }
+.dash-top { position: fixed; top: 0; left: 0; right: 0; z-index: 50; height: calc(50px + var(--safe-top)); display: flex; align-items: center; gap: 8px; padding: var(--safe-top) 16px 0; background: linear-gradient(90deg,#7a1e15,#a62b2b 58%,#c9a227); color: #fff; transition: transform .26s ease; }
 .dash-collapsed .dash-top { transform: translateY(-105%); }
 .dash-brand { font-weight: 800; font-size: 18px; }
 .dash-brand em { font-style: normal; opacity: .75; }

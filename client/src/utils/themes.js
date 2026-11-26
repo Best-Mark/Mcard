@@ -3,6 +3,11 @@
 // 主题只定义颜色变量（--t-*），排版骨架由 template 决定，两者正交。
 // ⚠️ 改这里必须同步 miniapp/src/pages/edit/edit.vue 的 themes 常量（小程序无 web-view，独立渲染）。
 export const THEMES = {
+  tang: {
+    label: '唐红鎏金', accent: '#a62b2b', surface: '#fffdf8', bg: '#f7f2e7',
+    text: '#2b2118', muted: '#8a7355',
+    cover: 'linear-gradient(135deg,#7a1e15 0%,#a62b2b 55%,#c9a227 100%)'
+  },
   ocean: {
     label: '经典蓝', accent: '#2563eb', surface: '#ffffff', bg: '#f2f7ff',
     text: '#0f172a', muted: '#64748b',
@@ -34,6 +39,7 @@ export const THEMES = {
 // key = cardTemplates.js 的模板 key；二维码色遵循「深码 + 浅底」保证可扫。
 // ⚠️ 新增模板或调整模板配色时，需同步 miniapp/src/pages/edit/edit.vue 的 TEMPLATE_PALETTES。
 export const TEMPLATE_PALETTES = {
+  tang: { theme: 'tang', qrFg: '#7a1e15', qrBg: '#f7ecd9' },
   classic: { theme: 'ocean', qrFg: '#12306b', qrBg: '#f2f7ff' },
   minimal: { theme: 'ocean', qrFg: '#0f172a', qrBg: '#ffffff' },
   elite: { theme: 'ink', qrFg: '#b99355', qrBg: '#15171c' },

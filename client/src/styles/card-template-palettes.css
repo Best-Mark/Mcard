@@ -278,12 +278,41 @@
 .cv-tpl-vivid { --cv-page-bg:#faf5ff; --cv-panel-bg:#fff; --cv-card-bg:#fff; --cv-card-shadow:0 22px 48px -30px rgba(76,29,149,.5); --cv-ink:#2e1065; --cv-ink-2:#7c6a9c; --cv-line:#ede9fe; --cv-name-color:#2e1065; --cv-role-color:#7c3aed; --cv-org-color:#6d28d9; --cv-tag-bg:#f5f3ff; --cv-tag-color:#7c3aed; --cv-topbar-bg:linear-gradient(90deg,#5b21b6,#7c3aed,#a78bfa); --cv-logo-bg:#7c3aed; --cv-logo-bg-solid:#7c3aed; --cv-btn-main-solid:#6d28d9; --cv-btn-main-bg:linear-gradient(135deg,#7c3aed,#6d28d9); --cv-btn-main-color:#fff; --cv-btn-ghost-bg:#f5f3ff; --cv-btn-ghost-color:#6d28d9; --cv-btn-save-bg:#7c3aed; --cv-btn-save-color:#fff; --cv-mini-bg:#f5f3ff; --cv-mini-color:#6d28d9; --cv-block-title:#7c3aed; --cv-link-color:#6d28d9; --cv-foot-color:#a78bfa; --cv-foot-b:#7c3aed; --cv-wm-color:#2e1065; --cv-back-color:#7c3aed; --cv-back-bg:rgba(255,255,255,.8); --cv-brand-color:#6d28d9; }
 /* 杂志方格 seal：深蓝白高对比 */
 .cv-tpl-seal { --cv-page-bg:#eef2f9; --cv-panel-bg:#fff; --cv-card-bg:#fff; --cv-card-shadow:4px 4px 0 rgba(30,58,138,.12); --cv-ink:#12213c; --cv-ink-2:#475569; --cv-line:#cbd5e1; --cv-name-color:#12213c; --cv-role-color:#1e3a8a; --cv-org-color:#1e3a8a; --cv-tag-bg:#fff; --cv-tag-color:#1e3a8a; --cv-tag-shadow:inset 0 0 0 1px #1e3a8a; --cv-topbar-bg:#1e3a8a; --cv-logo-bg:#12213c; --cv-logo-bg-solid:#12213c; --cv-btn-main-solid:#12213c; --cv-btn-main-bg:#12213c; --cv-btn-main-color:#fff; --cv-btn-ghost-bg:#fff; --cv-btn-ghost-color:#12213c; --cv-btn-save-bg:#1e3a8a; --cv-btn-save-color:#fff; --cv-mini-bg:#fff; --cv-mini-color:#12213c; --cv-block-title:#12213c; --cv-link-color:#1e3a8a; --cv-foot-color:#64748b; --cv-foot-b:#12213c; --cv-wm-color:#12213c; --cv-back-color:#fff; --cv-back-bg:rgba(18,33,60,.6); --cv-brand-color:#fff; }
+/* 唐红鎏金 tang（默认）：唐红渐变底 + 烫金边象牙白卡 + 鎏金点缀，古美融入现代商务。
+   渐变内色值写字面量（老 WebView 不解析渐变里嵌 var()）；使用处带纯色 fallback。 */
+.cv-tpl-tang {
+  --cv-page-bg: radial-gradient(1200px 520px at 50% -12%,#7a1e15 0%,#a62b2b 42%,#8c2318 74%,#5f160f 100%);
+  --cv-ink: #2b2118; --cv-ink-2: #8a7355; --cv-line: #efe4cf;
+  --cv-panel-bg: #fffdf8; --cv-card-bg: #fffdf8;
+  --cv-card-border: 2px solid rgba(201,162,39,.55); /* 烫金边 */
+  --cv-card-radius: 22px; --cv-card-x: 22px; --cv-card-pad: 32px 26px 24px;
+  --cv-card-shadow: 0 26px 60px -22px rgba(60,10,6,.6), 0 0 0 1px rgba(201,162,39,.18);
+  --cv-card-blur: none; --cv-topbar-h: 6px; --cv-topbar-x: 0;
+  --cv-topbar-bg: linear-gradient(90deg,#7a1e15,#a62b2b 38%,#c9a227 78%,#d4af37);
+  --cv-logo-bg-solid: #8c2318; --cv-logo-bg: linear-gradient(145deg,#a62b2b,#7a1e15); --cv-logo-radius: 14px;
+  --cv-logo-shadow: inset 0 0 0 2px rgba(212,175,55,.6), 0 8px 18px -8px rgba(92,22,15,.6);
+  --cv-name-size: 28px; --cv-name-weight: 900; --cv-name-spacing: .05em; --cv-name-color: #7a1e15; --cv-name-font: inherit;
+  --cv-role-color: #8a7355; --cv-role-size: 12.5px; --cv-role-spacing: .06em;
+  --cv-org-color: #8c2318; --cv-org-border: 1px dashed #e6d7b8;
+  --cv-tag-bg: #f7ecd9; --cv-tag-color: #8a5a1e; --cv-tag-shadow: inset 0 0 0 1px rgba(201,162,39,.35); --cv-tag-radius: 99px;
+  --cv-btn-radius: 13px; --cv-btn-font: inherit; --cv-btn-spacing: .02em;
+  --cv-btn-main-solid: #a62b2b; --cv-btn-main-bg: linear-gradient(135deg,#a62b2b,#7a1e15); --cv-btn-main-color: #fff; --cv-btn-main-shadow: 0 10px 22px -12px rgba(140,35,24,.85);
+  --cv-btn-ghost-bg: #f7ecd9; --cv-btn-ghost-color: #8c2318; --cv-btn-ghost-shadow: inset 0 0 0 1px #e6d7b8;
+  --cv-btn-save-solid: #c9a227; --cv-btn-save-bg: linear-gradient(135deg,#d4af37,#c9a227); --cv-btn-save-color: #fff; --cv-btn-save-shadow: 0 12px 24px -14px rgba(184,134,11,.9);
+  --cv-steps-bg: #faf6ec; --cv-steps-color: #8a7355; --cv-steps-shadow: inset 0 0 0 1px #efe4cf; --cv-steps-radius: 12px; --cv-steps-title: #c9a227; --cv-steps-b: #8c2318;
+  --cv-mini-bg: #f7ecd9; --cv-mini-color: #8c2318; --cv-mini-shadow: inset 0 0 0 1px rgba(201,162,39,.35); --cv-mini-on-solid: #c9a227; --cv-mini-on-bg: linear-gradient(135deg,#d4af37,#c9a227); --cv-mini-on-color: #fff;
+  --cv-block-title: #c9a227; --cv-link-color: #8c2318;
+  --cv-foot-color: #b09a72; --cv-foot-b: #c9a227; --cv-hint-color: #b09a72;
+  --cv-wm-color: #d4af37; --cv-wm-opacity: .1;
+  --cv-back-color: #f3e2b3; --cv-back-bg: rgba(92,22,15,.5); --cv-brand-color: rgba(255,255,255,.9);
+}
 /* 深蓝鎏金 navygold：沿用已有 --ng-* 色系 */
 .cv-tpl-navygold { --cv-page-bg:var(--ng-page-bg); --cv-panel-bg:#fff; --cv-card-bg:#fff; --cv-ink:var(--ng-ink); --cv-ink-2:var(--ng-ink-2); --cv-line:var(--ng-line); --cv-name-color:var(--ng-ink); --cv-role-color:var(--ng-ink-2); --cv-org-color:var(--ng-navy); --cv-tag-bg:var(--ng-paper); --cv-tag-color:#6b5a3c; --cv-topbar-bg:linear-gradient(90deg,var(--ng-navy),var(--ng-navy-2) 40%,var(--ng-gold-2) 78%,var(--ng-gold)); --cv-logo-bg:linear-gradient(145deg,#1d3a55,#0e2233); --cv-logo-bg-solid:#1d3a55; --cv-btn-main-solid:#1d3a55; --cv-btn-main-bg:linear-gradient(135deg,#1d3a55,#0f2739); --cv-btn-main-color:#fff; --cv-btn-ghost-bg:#f7f5f0; --cv-btn-ghost-color:#1d3a55; --cv-btn-save-bg:linear-gradient(135deg,#c9a163,#a8834a); --cv-btn-save-color:#fff; --cv-mini-bg:#f4f1ea; --cv-mini-color:#1d3a55; --cv-block-title:var(--ng-navy); --cv-link-color:var(--ng-navy); --cv-foot-color:#a9b1ba; --cv-foot-b:var(--ng-gold); --cv-back-color:var(--ng-gold-2); --cv-back-bg:rgba(12,26,38,.5); --cv-brand-color:rgba(255,255,255,.85); }
 
 /* 18 套模板的深色身份头：每套只换深底与点缀色，保持各自辨识度；
    信息区仍用各自的 --cv-panel-bg（浅色模板白卡、暗色模板沿用暗卡），原则一致但不强行同色。
    变量唯一真相源在这里，card-sheet.css 只负责使用。 */
+.cv-clean.cv-tpl-tang       { --cv-header-solid:#7a1e15; --cv-header-bg:linear-gradient(135deg,#7a1e15 0%,#a62b2b 58%,#8c2318 100%); --cv-header-accent:#e8c86a; }
 .cv-clean.cv-tpl-classic    { --cv-header-solid:#1e3a8a; --cv-header-bg:linear-gradient(135deg,#1e3a8a 0%,#122455 100%); --cv-header-accent:#93c5fd; }
 .cv-clean.cv-tpl-minimal    { --cv-header-solid:#111827; --cv-header-bg:linear-gradient(135deg,#111827 0%,#030712 100%); --cv-header-accent:#fff; }
 .cv-clean.cv-tpl-elite      { --cv-header-solid:#0b0d12; --cv-header-bg:linear-gradient(135deg,#0b0d12 0%,#1c1408 100%); --cv-header-accent:#d8bb85; }

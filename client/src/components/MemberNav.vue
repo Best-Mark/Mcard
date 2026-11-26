@@ -138,7 +138,7 @@ onBeforeUnmount(() => {
   transform: translateX(100%); transition: transform .22s ease; box-shadow: -12px 0 40px rgba(0,0,0,.22);
 }
 .m-drawer.open { transform: translateX(0); }
-.m-drawer-head { display: flex; align-items: center; gap: 10px; padding: 18px 16px; background: linear-gradient(135deg, #17357c, #2563eb); color: #fff; flex: 0 0 auto; }
+.m-drawer-head { display: flex; align-items: center; gap: 10px; padding: 18px 16px; background: linear-gradient(135deg, #7a1e15, #a62b2b 58%, #c9a227); color: #fff; flex: 0 0 auto; }
 .m-drawer-ava { width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,.18); display: grid; place-items: center; font-weight: 700; }
 .m-drawer-who { flex: 1; min-width: 0; }
 .m-drawer-who b { display: block; font-size: 13px; }
@@ -165,8 +165,8 @@ onBeforeUnmount(() => {
 /* 名片集市为重点入口：中间凸起圆钮，不随页面主题变化 */
 .m-tabs button.feature i {
   width: 42px; height: 42px; margin-top: -16px; border-radius: 50%; display: grid; place-items: center;
-  background: #2563eb; background: linear-gradient(135deg, var(--primary), #4338ca); color: #fff; font-size: 22px;
-  box-shadow: 0 6px 18px rgba(37,99,235,.42); border: 3px solid #fff; box-sizing: border-box;
+  background: #a62b2b; background: linear-gradient(135deg, var(--primary), var(--primary-2)); color: #fff; font-size: 22px;
+  box-shadow: 0 6px 18px rgba(166,43,43,.42); border: 3px solid #fff; box-sizing: border-box;
 }
 .m-tabs button.feature span { margin-top: -2px; }
 .m-tabs button.feature.on span { color: var(--primary); }

@@ -7,6 +7,12 @@
 // 而不是只换颜色——换主题配色请选 theme，不要在这里堆相似模板。
 const CARD_TEMPLATES = [
   {
+    key: 'tang',
+    label: '唐红鎏金',
+    desc: '唐红渐变底 + 烫金边象牙白卡 + 鎏金点缀，古美融入现代商务（默认）',
+    cover: 'linear-gradient(135deg,#7a1e15 0%,#a62b2b 55%,#c9a227 100%)'
+  },
+  {
     key: 'classic',
     label: '经典商务',
     desc: '渐变封面 + 头像信息卡，最通用稳重的商务范式',
@@ -117,8 +123,8 @@ const CARD_TEMPLATES = [
 ]
 
 const TEMPLATE_KEYS = CARD_TEMPLATES.map(t => t.key)
-// 默认模板：简洁大气联络卡（单张白卡内聚信息 + 卡内核号/存档，扫码即联系）
-const DEFAULT_TEMPLATE = 'contact'
+// 默认模板：唐红鎏金烫金（古美融入现代商务，用户定为品牌默认风格）
+const DEFAULT_TEMPLATE = 'tang'
 const isTemplate = key => TEMPLATE_KEYS.includes(key)
 const normalizeTemplate = key => (isTemplate(key) ? key : DEFAULT_TEMPLATE)
 
