@@ -92,7 +92,7 @@
             <view class="muted small">二维码永久固定，资料更新也不失效</view>
             <view class="btn-row">
               <button class="btn primary" @tap="saveQrImage(card.slug)">保存二维码</button>
-              <button class="btn" @tap="copyText(card.url || (baseUrl + '/c/' + card.slug), '名片链接已复制')">复制链接</button>
+              <button class="btn" @tap="copyText(withInvite(card.url || (baseUrl + '/c/' + card.slug)), '名片链接已复制')">复制链接</button>
             </view>
           </view>
         </view>
@@ -121,7 +121,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad, onShareAppMessage } from '@dcloudio/uni-app'
-import { api, baseUrl, toast, copyText, callPhone, saveQrImage, parseSlug, getPublicMaterials, traceVisit, getShareCardImage, scanQrUrl } from '../../utils/request'
+import { api, baseUrl, toast, copyText, callPhone, saveQrImage, parseSlug, getPublicMaterials, traceVisit, getShareCardImage, scanQrUrl, withInvite } from '../../utils/request'
 
 const slug = ref('')
 const card = ref(null)
@@ -290,7 +290,7 @@ onShareAppMessage(() => {
   return {
     title: c ? `${c.name}的名片` : 'MCard 电子名片',
     desc: introText.value,
-    path: `/pages/card/card?slug=${slug.value}`,
+    path: withInvite(`/pages/card/card?slug=${slug.value}`),
     imageUrl
   }
 })

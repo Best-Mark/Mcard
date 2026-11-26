@@ -18,23 +18,22 @@
     </div>
 
     <div v-else class="container promo-body">
-      <!-- 信息层：收益概览（只读展示，不夹杂操作按钮） -->
+      <!-- 收益概览 + 提现入口同卡：提现是这个数字唯一对应的操作，放卡内才不会被误认为无关动作 -->
       <div class="promo-hero">
-        <div class="ph-label">可提现佣金</div>
-        <div class="ph-amount"><span>¥</span>{{ ((summary.balanceCents || 0) / 100).toFixed(2) }}</div>
-        <div class="ph-sub">累计收益 ¥{{ ((summary.totalEarnedCents || 0) / 100).toFixed(2) }} · 已邀请 {{ summary.invitees || 0 }} 人</div>
+        <div class="ph-main">
+          <div class="ph-label">可提现佣金</div>
+          <div class="ph-amount"><span>¥</span>{{ ((summary.balanceCents || 0) / 100).toFixed(2) }}</div>
+          <div class="ph-sub">累计收益 ¥{{ ((summary.totalEarnedCents || 0) / 100).toFixed(2) }} · 已邀请 {{ summary.invitees || 0 }} 人</div>
+        </div>
+        <button class="ph-withdraw" :disabled="loading || !!error" @click="openWithdraw">申请提现</button>
       </div>
 
-      <!-- 操作层：邀请码/链接统一放在一个操作卡里，信息区不铺按钮 -->
+      <!-- 全面邀请：不再单独发邀请链接——任何分享都自动带你的邀请码（仅推广员身份计入）。
+           这里只做规则说明，避免用户误以为要复制某个专用链接才生效。 -->
       <div class="card card-pad invite-card">
-        <div class="ic-title">我的邀请码</div>
-        <div class="ic-code">{{ summary.inviteCode || '-' }}</div>
-        <div class="ic-link" :title="summary.inviteUrl">{{ summary.inviteUrl || '-' }}</div>
-        <div class="ic-actions">
-          <button class="btn btn-sm btn-primary" :disabled="!summary.inviteUrl" @click="copy(summary.inviteUrl, '邀请链接')">复制邀请链接</button>
-          <button class="btn btn-sm btn-ghost" :disabled="!summary.inviteCode" @click="copy(summary.inviteCode, '邀请码')">复制邀请码</button>
-        </div>
-        <p class="ic-tip small muted">好友通过链接注册后即与你绑定；之后他每次开通/续费套餐，你都可获得返佣。</p>
+        <div class="ic-title">邀请方式</div>
+        <p class="ic-tip small muted">直接分享你的名片或任意页面即可，系统会自动带上你的邀请码；好友注册后与你绑定，之后每次开通/续费套餐你都能获得返佣。</p>
+        <p class="ic-tip small muted">仅推广员身份计入推广收益；取消推广员身份后分享不再计佣。</p>
       </div>
 
       <!-- 规则说明：一行静态说明，不做多步骤常驻指引 -->
@@ -86,9 +85,6 @@
         <p class="small muted ws-tip">只能提现到已绑定账户（微信用授权身份），平台审核后线下打款，驳回金额自动退回余额。</p>
       </div>
     </BottomSheet>
-
-    <!-- 常驻提现入口：放在底部，不铺在信息区 -->
-    <div class="promo-dock"><button class="btn btn-primary" :disabled="loading || !!error" @click="openWithdraw">申请提现</button></div>
   </div>
 </template>
 
@@ -181,36 +177,21 @@ async function submitWithdraw() {
 }
 
 const statusText = s => ({ pending: '审核中', paid: '已打款', rejected: '已驳回' })[s] || s
-
-async function copy(v, label) {
-  if (!v) return showToast(`尚未获取${label}`)
-  try {
-    if (navigator.clipboard?.writeText && window.isSecureContext) await navigator.clipboard.writeText(v)
-    else {
-      const ta = document.createElement('textarea')
-      ta.value = v; ta.style.cssText = 'position:fixed;left:-9999px;opacity:0'
-      document.body.appendChild(ta); ta.select()
-      const ok = document.execCommand('copy'); document.body.removeChild(ta)
-      if (!ok) throw new Error('copy failed')
-    }
-    showToast(`${label}已复制`, 'success')
-  } catch { showToast('复制失败，请长按文字手动复制', 'error') }
-}
 </script>
 
 <style scoped>
-.promo-page { padding-bottom: calc(130px + env(safe-area-inset-bottom, 0px)); }
+.promo-page { padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
 .promo-body { margin-top: 12px; }
-.promo-hero { padding: 22px 20px; border-radius: 16px; color: #fff; background: linear-gradient(122deg, #7c5a12, #b8860b 52%, #d4a72c); box-shadow: 0 8px 24px rgba(184,134,11,.22); }
+.promo-hero { display: flex; align-items: center; gap: 14px; padding: 22px 20px; border-radius: 16px; color: #fff; background: linear-gradient(122deg, #7c5a12, #b8860b 52%, #d4a72c); box-shadow: 0 8px 24px rgba(184,134,11,.22); }
+.ph-main { flex: 1; min-width: 0; }
+.ph-withdraw { flex: 0 0 auto; padding: 10px 16px; border: 0; border-radius: 10px; font-size: 13px; font-weight: 700; color: #7c5a12; background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,.12); }
+.ph-withdraw:disabled { opacity: .6; }
 .ph-label { font-size: 12px; opacity: .9; }
 .ph-amount { font-size: 34px; font-weight: 800; letter-spacing: -.5px; margin-top: 4px; }
 .ph-amount span { font-size: 18px; margin-right: 2px; }
 .ph-sub { font-size: 12px; opacity: .92; margin-top: 6px; }
 .invite-card { margin-top: 12px; }
 .ic-title { font-size: 12px; color: var(--muted); }
-.ic-code { font-size: 22px; font-weight: 800; letter-spacing: 2px; margin-top: 4px; }
-.ic-link { font-size: 12px; color: var(--primary); word-break: break-all; margin-top: 6px; }
-.ic-actions { display: flex; gap: 10px; margin-top: 12px; }
 .ic-tip { margin-top: 10px; line-height: 1.6; }
 .rule-line { margin: 10px 2px 2px; line-height: 1.5; }
 .seg { display: flex; gap: 6px; margin: 14px 0 8px; }
@@ -227,10 +208,6 @@ async function copy(v, label) {
 .badge.off { color: #94a3b8; background: #f1f5f9; }
 .badge.warn { color: #b45309; background: #fef3c7; }
 .empty { padding: 30px 0; text-align: center; color: var(--muted); }
-/* 提现入口必须悬在底部 tabbar(z110) 之上；原来 bottom:0 + z105 被 tabbar 整块盖住，按钮“消失”。
-   四边定位不用 inset，老 WebView 兼容；安全区用 env 兜底值。 */
-.promo-dock { position: fixed; left: 0; right: 0; bottom: calc(58px + env(safe-area-inset-bottom, 0px)); z-index: 111; padding: 10px 16px; background: var(--bg-card, #fff); border-top: 1px solid var(--line); }
-@media (min-width: 900px) { .promo-dock { max-width: 560px; left: 50%; right: auto; transform: translateX(-50%); } }
 .ws-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--line); }
 .ws-body { padding: 16px; }
 .field { margin-top: 12px; }

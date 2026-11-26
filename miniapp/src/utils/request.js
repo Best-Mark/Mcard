@@ -42,10 +42,13 @@ export const api = {
 export function setAuth(token, user) {
   uni.setStorageSync('mcard_token', token || '')
   uni.setStorageSync('mcard_user', user || null)
+  clearMyInvite() // 账号切换后邀请码可能变化，下次分享重新拉取
+  loadMyInvite().catch(() => {}) // 登录完成即预热，分享回调同步取缓存即可带码
 }
 export function logout() {
   uni.removeStorageSync('mcard_token')
   uni.removeStorageSync('mcard_user')
+  clearMyInvite()
 }
 export function isLogged() {
   return !!uni.getStorageSync('mcard_token')
@@ -69,6 +72,34 @@ export async function bindPendingInvite() {
     uni.removeStorageSync('mcard_invite')
   } catch { /* 忽略 */ }
 }
+// 全面邀请唯一真相源（小程序）：分享出口统一用 withInvite() 拼当前推广员邀请码。
+// 与 H5 同口径：/api/promo/my-code 对非推广员返回空；已带码不覆盖；取码失败静默降级。
+const INVITE_STORAGE_KEY = 'mcard_my_invite'
+let inviteFetching = null
+export function clearMyInvite() { uni.removeStorageSync(INVITE_STORAGE_KEY) }
+export async function loadMyInvite() {
+  if (!isLogged()) { uni.removeStorageSync(INVITE_STORAGE_KEY); return '' }
+  const cached = uni.getStorageSync(INVITE_STORAGE_KEY)
+  if (cached || cached === '') return String(cached)
+  if (inviteFetching) return inviteFetching
+  inviteFetching = (async () => {
+    let code = ''
+    try { code = String((await request('/api/promo/my-code'))?.inviteCode || '') } catch { code = '' }
+    uni.setStorageSync(INVITE_STORAGE_KEY, code) // 空串也存：非推广员明确无码，避免每次分享都请求
+    inviteFetching = null
+    return code
+  })()
+  return inviteFetching
+}
+// 同步拼码（分享回调是同步的）：读本地缓存，未预热时返回原链，预热后自动生效
+export function withInvite(path, code = null) {
+  const s = String(path || '')
+  const c = code === null ? String(uni.getStorageSync(INVITE_STORAGE_KEY) || '') : code
+  if (!c || !s) return s
+  if (/[?&]invite=/.test(s)) return s // 已带码不覆盖（含上游转发透传）
+  return `${s}${s.includes('?') ? '&' : '?'}invite=${encodeURIComponent(c)}`
+}
+
 export function goLogin() {
   uni.navigateTo({ url: '/pages/login/login' })
 }

@@ -45,6 +45,13 @@ function accountView(userId) {
   return { accounts, defaultType: obj.defaultType || '' }
 }
 
+// 当前登录用户的邀请码（全面邀请的唯一真相源）：只有推广员才有码，非推广员返回空。
+// 分享工具据此给每个分享出口自动拼 ?invite=；用独立轻量接口，避免 /auth/me 形状变动影响既有缓存。
+router.get('/my-code', authRequired, wrap((req, res) => {
+  const u = db.prepare('SELECT is_promoter, invite_code FROM users WHERE id = ?').get(req.user.id)
+  ok(res, { inviteCode: u?.is_promoter ? (u.invite_code || '') : '' })
+}))
+
 // 登录后的邀请归因兜底绑定：前端所有登录方式统一在拿到 token 后调一次。
 // 只认「注册 24h 内 + 尚未有上级 + 新邀请码有效」的账号，防老用户挂靠刷注册奖。
 // 幂等：已有上级直接跳过；注册奖励靠 DB 唯一索引一人一次。

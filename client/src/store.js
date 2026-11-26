@@ -21,6 +21,8 @@ export function closeDrawer() { ui.drawerOpen = false }
 export function toggleDrawer() { ui.drawerOpen = !ui.drawerOpen }
 
 export function setAuth(token, user) {
+  // 切换账号后邀请码可能变化（含非推广员→空码），清缓存让下次分享重新拉取
+  import('./utils/invite').then(m => m.clearInviteCache()).catch(() => {})
   auth.token = token || ''
   auth.user = user || null
   auth.isAdmin = !!user && ['admin', 'super_admin'].includes(user.role)

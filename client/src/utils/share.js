@@ -1,18 +1,22 @@
+import { withInviteAsync } from './invite'
+
 export async function shareOrCopy({ title, text, url }) {
+  // 全面邀请：系统分享/复制链接同样自动带当前用户邀请码（仅推广员有码）
+  const shareUrl = await withInviteAsync(url)
   if (navigator.share) {
     try {
-      await navigator.share({ title, text, url })
+      await navigator.share({ title, text, url: shareUrl })
       return 'shared'
     } catch (e) {
       if (e?.name === 'AbortError') return 'cancelled'
     }
   }
   try {
-    await navigator.clipboard.writeText(url)
+    await navigator.clipboard.writeText(shareUrl)
     return 'copied'
   } catch {
     const el = document.createElement('textarea')
-    el.value = url
+    el.value = shareUrl
     el.style.position = 'fixed'
     el.style.opacity = '0'
     document.body.appendChild(el)

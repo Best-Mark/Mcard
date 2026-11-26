@@ -1,6 +1,7 @@
 import { isWeChat, configWx } from './wx-sdk'
 import { sharePools, pick } from '../config/shareConfig'
 import { siteConfig } from '../store'
+import { loadMyInviteCode, withInvite } from './invite'
 
 // 微信 JS-SDK 分享卡片：让转发到微信好友/朋友圈显示成一张像样的卡片（标题+描述+缩略图）。
 // 签名与 config 统一走 wx-sdk.js（一次 config 配齐分享+定位+扫码接口，避免 jsApiList 互相覆盖）。
@@ -89,12 +90,16 @@ export function markShareSet() { customShareSet = true }
  */
 export async function setupWechatShare(api, opts = {}, { fromDefault = false } = {}) {
   if (!fromDefault) customShareSet = true
+  // 全面邀请：先拿当前用户邀请码（推广员才有），再算最终分享链接；首次调用也能带码。
+  // 失败/非推广员返回空码，分享照常进行。
+  let inviteCode = ''
+  try { inviteCode = await loadMyInviteCode() } catch { inviteCode = '' }
   const pools = sharePools()
   const title = opts.title || pick(pools.titles)
   const desc = opts.desc || pick(pools.descs)
   const candidates = Array.isArray(opts.imgCandidates) ? opts.imgCandidates : [opts.imgUrl]
   const imgUrl = candidates.map(cardImage).find(Boolean) || pick(pools.images)
-  const link = cleanShareLink(opts.link)
+  const link = cleanShareLink(withInvite(opts.link, inviteCode))
   setShareMeta({ title, desc, img: imgUrl })
   if (!isWeChat()) return false
   const key = `${window.location.href.split('#')[0]}|${link}|${title || ''}|${imgUrl}`
@@ -104,7 +109,6 @@ export async function setupWechatShare(api, opts = {}, { fromDefault = false } =
     link,
     imgUrl: cardImage(imgUrl) || ''
   }
-  // 同步调用栈内设置：部分 iOS 内核只认 wx.ready 调用栈内的设置，await 之后就失效
   const apply = wx => {
     if (!wx?.config) return
     wx.updateAppMessageShareData?.(card)
@@ -115,7 +119,6 @@ export async function setupWechatShare(api, opts = {}, { fromDefault = false } =
   }
   try {
     // 缓存命中：签名已完成，不再重复请求，但仍要重设一次分享数据
-    // （工作台会为同一 path 调多次 setCardShare，早先的 return true 会让卡片停在旧值/空值）
     if (configuredKey === key && configuredWx?.config) {
       apply(configuredWx)
       setTimeout(() => apply(configuredWx), 300)
@@ -124,8 +127,7 @@ export async function setupWechatShare(api, opts = {}, { fromDefault = false } =
     const { wx, ok } = await configWx(api)
     if (!ok || !wx?.config) return false
     apply(wx)
-    // 容错：微信权限离线校验窗口（首次 config 后异步校验 jsApiList），分档重设直到生效。
-    // 单靠 300ms 一次不够——真机上首帧常落在校验窗口内，转发出去就是裸链接。
+    // 容错：微信权限离线校验窗口，分档重设直到生效
     setTimeout(() => apply(wx), 300)
     setTimeout(() => apply(wx), 900)
     setTimeout(() => apply(wx), 1800)

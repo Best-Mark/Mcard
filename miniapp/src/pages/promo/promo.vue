@@ -8,20 +8,19 @@
     </view>
     <view v-else class="body">
       <view class="hero">
-        <view class="h-label">可提现佣金</view>
-        <view class="h-amount">¥{{ ((summary.balanceCents || 0) / 100).toFixed(2) }}</view>
-        <view class="h-sub">累计 ¥{{ ((summary.totalEarnedCents || 0) / 100).toFixed(2) }} · 邀请 {{ summary.invitees || 0 }} 人</view>
+        <view class="h-main">
+          <view class="h-label">可提现佣金</view>
+          <view class="h-amount">¥{{ ((summary.balanceCents || 0) / 100).toFixed(2) }}</view>
+          <view class="h-sub">累计 ¥{{ ((summary.totalEarnedCents || 0) / 100).toFixed(2) }} · 邀请 {{ summary.invitees || 0 }} 人</view>
+        </view>
+        <button class="h-withdraw" :disabled="busy" @tap="openWithdraw">申请提现</button>
       </view>
 
+      <!-- 全面邀请：分享名片或任意页面即自动带邀请码，无需单独复制邀请链接 -->
       <view class="card invite">
-        <view class="i-title">我的邀请码</view>
-        <view class="i-code">{{ summary.inviteCode || '-' }}</view>
-        <view class="i-link">{{ summary.inviteUrl || '-' }}</view>
-        <view class="i-actions">
-          <button class="btn primary sm" :disabled="!summary.inviteUrl" @tap="copy(summary.inviteUrl, '邀请链接')">复制邀请链接</button>
-          <button class="btn ghost sm" :disabled="!summary.inviteCode" @tap="copy(summary.inviteCode, '邀请码')">复制邀请码</button>
-        </view>
-        <view class="muted small i-tip">好友通过链接注册并消费，你即可获得返佣。</view>
+        <view class="i-title">邀请方式</view>
+        <view class="muted small i-tip">直接分享你的名片或任意页面即可，系统会自动带上你的邀请码；好友注册后与你绑定，之后每次开通/续费套餐你都能获得返佣。</view>
+        <view class="muted small i-tip">仅推广员身份计入推广收益。</view>
       </view>
 
       <view class="rule muted small">注册奖 ¥{{ ((rules.registerRewardCents || 0) / 100).toFixed(2) }} · 消费返佣 {{ rules.orderRate || 0 }}% · 满 ¥{{ ((rules.withdrawMinCents || 0) / 100).toFixed(2) }} 可提现</view>
@@ -39,8 +38,6 @@
           <view class="it-right">{{ rowRight(r) }}</view>
         </view>
       </view>
-
-      <button class="btn primary block dock" :disabled="busy" @tap="openWithdraw">申请提现</button>
     </view>
 
     <!-- 提现弹层：原生 picker 选收款方式（小程序统一用 picker，不用 web select） -->
@@ -65,7 +62,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { api, toast, copyText } from '../../utils/request'
+import { api, toast } from '../../utils/request'
 
 const tabs = [{ k: 'commissions', label: '收益明细' }, { k: 'invitees', label: '邀请的人' }, { k: 'withdrawals', label: '提现记录' }]
 
@@ -114,8 +111,6 @@ function rowRight(r) {
   return statusText(r.status)
 }
 
-function copy(v, label) { copyText(v, `${label}已复制`) }
-
 const sheetOpen = ref(false); const amount = ref('')
 const boundIdx = ref(0); const busy = ref(false)
 function goAccounts() { sheetOpen.value = false; uni.navigateTo({ url: '/pages/promo/withdraw-account' }) }
@@ -147,16 +142,16 @@ async function submitWithdraw() {
 
 <style scoped>
 .state { padding: 140rpx 40rpx; text-align: center; color: #6b7688; }
-.body { padding: 24rpx; padding-bottom: 140rpx; }
-.hero { padding: 36rpx 30rpx; border-radius: 24rpx; color: #fff; background: linear-gradient(122deg,#7c5a12,#b8860b 52%,#d4a72c); box-shadow: 0 10rpx 28rpx rgba(184,134,11,.22); }
+.body { padding: 24rpx; padding-bottom: 40rpx; }
+.hero { display: flex; align-items: center; gap: 20rpx; padding: 36rpx 30rpx; border-radius: 24rpx; color: #fff; background: linear-gradient(122deg,#7c5a12,#b8860b 52%,#d4a72c); box-shadow: 0 10rpx 28rpx rgba(184,134,11,.22); }
+.h-main { flex: 1; min-width: 0; }
+.h-withdraw { flex: 0 0 auto; margin: 0; padding: 18rpx 26rpx; border: 0; border-radius: 16rpx; font-size: 26rpx; font-weight: 700; color: #7c5a12; background: #fff; box-shadow: 0 4rpx 16rpx rgba(0,0,0,.12); }
+.h-withdraw::after { border: 0; }
 .h-label { font-size: 24rpx; opacity: .9; }
 .h-amount { font-size: 68rpx; font-weight: 800; margin-top: 6rpx; }
 .h-sub { font-size: 24rpx; opacity: .92; margin-top: 8rpx; }
 .card { background: #fff; border-radius: 24rpx; padding: 26rpx; margin-top: 18rpx; box-shadow: 0 8rpx 28rpx rgba(15,23,42,.05); }
 .i-title { font-size: 24rpx; color: #94a3b8; }
-.i-code { font-size: 44rpx; font-weight: 800; letter-spacing: 4rpx; margin-top: 8rpx; }
-.i-link { font-size: 22rpx; color: #2563eb; word-break: break-all; margin-top: 10rpx; }
-.i-actions { display: flex; gap: 16rpx; margin-top: 20rpx; }
 .i-tip { margin-top: 18rpx; line-height: 1.6; }
 .rule { margin: 18rpx 6rpx 0; line-height: 1.5; font-size: 22rpx; }
 .seg { display: flex; gap: 10rpx; margin-top: 24rpx; }
@@ -169,7 +164,6 @@ async function submitWithdraw() {
 .it-main .b { font-size: 26rpx; }
 .it-right { font-weight: 700; color: #b8860b; flex-shrink: 0; font-size: 26rpx; }
 .empty { padding: 50rpx 0; text-align: center; }
-.dock { position: fixed; left: 24rpx; right: 24rpx; bottom: calc(20rpx + env(safe-area-inset-bottom)); }
 .sheet-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 120; background: rgba(15,23,42,.45); }
 .sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 121; background: #fff; border-radius: 28rpx 28rpx 0 0; transform: translateY(105%); transition: transform .24s ease; padding-bottom: env(safe-area-inset-bottom); }
 .sheet.show { transform: translateY(0); }

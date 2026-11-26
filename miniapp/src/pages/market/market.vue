@@ -87,7 +87,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad, onPullDownRefresh, onShareAppMessage } from '@dcloudio/uni-app'
-import { api, toast, geoLocate } from '../../utils/request'
+import { api, toast, geoLocate, withInvite } from '../../utils/request'
 
 const meta = ref({ industries: [], cities: [], hotCities: [] })
 const list = ref([])
@@ -206,7 +206,7 @@ onLoad(async () => {
   load()
 })
 onPullDownRefresh(async () => { await Promise.all([loadMeta(), load()]); uni.stopPullDownRefresh() })
-onShareAppMessage(() => ({ title: '名片集市 · 发现附近业务对口伙伴', path: '/pages/market/market' }))
+onShareAppMessage(() => ({ title: '名片集市 · 发现附近业务对口伙伴', path: withInvite('/pages/market/market') }))
 </script>
 
 <style scoped>
