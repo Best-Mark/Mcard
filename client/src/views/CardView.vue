@@ -26,7 +26,7 @@
     <template v-else-if="card">
       <CardSheet
         :card="card" :tags="card.tags || []" :materials="materialsList" :site-name="siteConfig.site_name"
-        :qr-url="full ? (qrApi + '/qr.svg?size=200') : ''"
+        :qr-url="full ? (qrApi + '/qr.png?size=200&scan=1') : ''"
         :full="full" :interactive="full && !embed" :show-edit="!!owner"
         @edit="router.push('/me/card')" @qr="qrModal = true"
         @copy="copy" @tel="tel" @sms="sms" @mailto="mailto"
@@ -101,7 +101,7 @@
     <div v-if="qrModal" class="modal-mask" @click.self="qrModal = false">
       <div class="modal center">
         <h3>我的名片</h3>
-        <img :src="scanQrUrl(slug, 'qr.svg', 640)" style="width:264px;height:264px;margin:4px auto 10px;display:block" alt="名片地址二维码" />
+        <img :src="scanQrUrl(slug, 'qr.png', 640)" style="width:264px;height:264px;margin:4px auto 10px;display:block" alt="名片地址二维码" />
         <p class="cv-qr-url" @click="copy(publicLink, '名片链接')" title="点击复制名片链接">{{ publicLink }}</p>
         <p class="small muted center">客户扫一扫即可打开名片、存入通讯录；链接永久不变</p>
         <!-- 一个入口承载三件事：看二维码、复制链接、公开页（关闭弹层即当前公开页） -->
@@ -170,7 +170,7 @@
         <template v-else>
           <p v-html="saveTip"></p>
         </template>
-        <img v-if="guide !== 'contact'" :src="guideImage || scanQrUrl(slug, 'qr.svg', 520)" style="width:200px;height:200px;margin:10px auto;object-fit:contain" alt="二维码" />
+        <img v-if="guide !== 'contact'" :src="guideImage || scanQrUrl(slug, 'qr.png', 520)" style="width:200px;height:200px;margin:10px auto;object-fit:contain" alt="二维码" />
         <div class="btn-row">
           <button class="btn btn-ghost" @click="closeGuide">知道了</button>
         </div>
