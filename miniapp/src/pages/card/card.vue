@@ -12,7 +12,7 @@
 
     <block v-else-if="card">
       <CardBody :card="card" :materials="materials" :is-self="isSelf" :self-check-done="selfCheckDone"
-        @edit="go('/pages/edit/edit')" @activate="go('/pages/plans/plans')" />
+        @edit="go('/pages/edit/edit')" @activate="go('/pages/plans/plans')" @update="onCardPatch" />
 
       <!-- 底部操作 dock：owner 对齐 H5（编辑/配色/集市/分享/管理），访客是联系操作（打电话/复制/存通讯录/导航/收藏/分享）。
            selfCheckDone 前不渲染，避免本人打开自己名片时先闪一下「收藏自己/打电话给自己」的访客 dock。 -->
@@ -39,7 +39,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { onLoad, onShareAppMessage } from '@dcloudio/uni-app'
+import { onLoad, onReady, onShareAppMessage } from '@dcloudio/uni-app'
 import { api, baseUrl, toast, copyText, callPhone, parseSlug, getPublicMaterials, traceVisit, getShareCardImage, withInvite } from '../../utils/request'
 import CardBody from '../../components/CardBody/CardBody.vue'
 
@@ -103,6 +103,10 @@ async function load() {
   if (src) traceVisit(slug.value, src)
 }
 const go = url => uni.navigateTo({ url })
+// 配色循环成功后的补丁合并（CardBody 点封面品牌位切换主题，回传 {theme, accent} 就地更新）
+function onCardPatch(p) { if (p && typeof p === 'object') card.value = { ...(card.value || {}), ...p } }
+// 隐藏微信原生「返回首页」标（分享/扫码直进本页时栈只有一页非首页，微信自动画 ⌂ 压在封面上）；失败静默
+onReady(() => { try { uni.hideHomeButton && uni.hideHomeButton({ fail: () => {} }) } catch { /* 老基础库 */ } })
 const entrySrc = ref('')
 onLoad(options => {
   slug.value = parseSlug(options.slug || options.scene || '') || 'zhangsan'

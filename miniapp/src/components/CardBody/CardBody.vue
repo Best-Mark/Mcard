@@ -6,7 +6,13 @@
 <template>
   <view class="cv-root" :class="'tpl-' + tpl" :style="{ '--t-accent': accent, '--glow-rgb': glowRgb }">
     <view class="cover" :style="{ background: coverBg }">
-      <view class="brand">M<text class="em">Card</text></view>
+      <!-- 品牌位 = 站点LOGO + 站点名称（对齐 MShop 首页 LOGO 形态；站点名/LOGO 来自匿名站点配置）。
+           本人点击 = 循环切换名片配色方案（取自名片模板配色表 11 套主题）；访客点击无动作 -->
+      <view class="brand" @tap="cycleTheme">
+        <image v-if="siteLogo" class="brand-logo" :src="siteLogo" mode="aspectFill" />
+        <view v-else class="brand-logo brand-logo-fb">M</view>
+        <text class="brand-name">{{ siteName }}</text>
+      </view>
     </view>
 
     <view class="body">
@@ -134,23 +140,27 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
-import { api, baseUrl, toast, copyText, callPhone, saveQrImage, parseSlug, scanQrUrl } from '../../utils/request'
+import { computed, ref, onMounted } from 'vue'
+import { api, baseUrl, toast, copyText, callPhone, saveQrImage, parseSlug, scanQrUrl, getSiteInfo } from '../../utils/request'
 
 const props = defineProps({
   card: { type: Object, required: true },
   materials: { type: Array, default: () => [] },
   isSelf: { type: Boolean, default: false },
-  selfCheckDone: { type: Boolean, default: true },
-  siteName: { type: String, default: '唐笺' }
+  selfCheckDone: { type: Boolean, default: true }
 })
-// edit：身份卡 ✎（仅本人显示，页面接去编辑页）；activate：未开通时「立即开通」（页面接去套餐页）
-const emit = defineEmits(['edit', 'activate'])
+// edit：身份卡 ✎（仅本人显示）；activate：未开通时「立即开通」；update：配色循环成功后回传补丁，页面合并进 card
+const emit = defineEmits(['edit', 'activate', 'update'])
 
 const card = computed(() => props.card || {})
 const materials = computed(() => props.materials || [])
 const isSelf = computed(() => !!props.isSelf)
 const selfCheckDone = computed(() => !!props.selfCheckDone)
+
+// 站点 LOGO + 站点名称（匿名站点配置，进程内缓存；留空回落默认名）
+const siteName = ref('MCard')
+const siteLogo = ref('')
+onMounted(() => { getSiteInfo().then(s => { siteName.value = s.name; siteLogo.value = s.logo }) })
 
 const mySlug = ref('')
 const exchanging = ref(false)
@@ -173,6 +183,37 @@ const contactRows = computed(() => {
 
 const tpl = computed(() => card.value.template || 'classic')
 const accent = computed(() => card.value.accent || '#a62b2b')
+
+// 配色方案循环（点击封面左上品牌位）：11 套主题取自名片模板配色表，
+// ⚠️ 与 edit.vue 的 themes / client/src/utils/themes.js 保持三端同步。每次切到下一套并保存 theme+accent，
+// 套餐闸门由服务端拦（未开通改配色 403 → toast 提示）；成功后 emit('update') 由页面合并进 card。
+const THEMES = {
+  tang: { label: '唐红鎏金', accent: '#a62b2b' },
+  ocean: { label: '经典蓝', accent: '#2563eb' },
+  ink: { label: '曜石黑金', accent: '#b99355' },
+  sunset: { label: '活力橙', accent: '#ea580c' },
+  mint: { label: '翡翠绿', accent: '#0f766e' },
+  royal: { label: '皇家紫', accent: '#7c3aed' },
+  vanna: { label: '瓦纳蓝', accent: '#155a96' },
+  phantom: { label: '幻影绿', accent: '#0f6b3f' },
+  lava: { label: '熔岩灰', accent: '#c2410c' },
+  star: { label: '星钻黑', accent: '#8a8aa0' },
+  alas: { label: '阿拉斯红', accent: '#a01722' }
+}
+const THEME_ORDER = Object.keys(THEMES)
+const themeBusy = ref(false)
+async function cycleTheme() {
+  if (!isSelf.value || themeBusy.value) return
+  const cur = THEME_ORDER.indexOf(card.value.theme || '')
+  const next = THEME_ORDER[(cur + 1) % THEME_ORDER.length]
+  const patch = { theme: next, accent: THEMES[next].accent }
+  themeBusy.value = true
+  try {
+    await api.put('/api/cards/mine', patch)
+    toast(`配色已切换「${THEMES[next].label}」`, 'success')
+    emit('update', patch)
+  } catch (e) { toast(e.message) } finally { themeBusy.value = false }
+}
 // 动态光效用主题强调色，#rrggbb → rgb 分量
 const glowRgb = computed(() => {
   const h = /^#?([0-9a-f]{6})$/i.exec(String(card.value.accent || ''))
@@ -291,9 +332,12 @@ async function exchange() {
 /* WXSS 不支持 * 通配选择器（编译报 error at token '*'），显式列出 cover 的两个子元素 */
 .cover .brand, .cover .inactive { position: relative; z-index: 1; }
 @keyframes cvGlow { 0% { opacity: .4; } 100% { opacity: 1; } }
-.brand { font-size: 36rpx; font-weight: 800; }
-.em { opacity: .8; }
-.inactive { position: absolute; right: 30rpx; top: 34rpx; font-size: 22rpx; background: rgba(255,255,255,.22); padding: 6rpx 16rpx; border-radius: 999rpx; }
+/* 品牌位 = 站点LOGO + 站点名称（横向排布；LOGO 白底圆角方块在深浅色封面上都清晰） */
+.brand { display: flex; align-items: center; gap: 12rpx; font-size: 36rpx; font-weight: 800; }
+.brand-logo { width: 48rpx; height: 48rpx; border-radius: 12rpx; background: #fff; box-shadow: 0 2rpx 10rpx rgba(15,23,42,.18); }
+.brand-logo-fb { display: flex; align-items: center; justify-content: center; font-size: 26rpx; color: #a62b2b; box-sizing: border-box; }
+.brand-name { font-size: 30rpx; font-weight: 700; letter-spacing: 1rpx; }
+.em { opacity: .8; }.inactive { position: absolute; right: 30rpx; top: 34rpx; font-size: 22rpx; background: rgba(255,255,255,.22); padding: 6rpx 16rpx; border-radius: 999rpx; }
 .body { padding: 22rpx; margin-top: -56rpx; }
 .card { background: #fff; border-radius: 24rpx; padding: 26rpx; margin-bottom: 18rpx; box-shadow: 0 8rpx 28rpx rgba(15,23,42,.05); }
 .profile { display: flex; flex-wrap: wrap; align-items: center; gap: 20rpx; position: relative; overflow: hidden; }

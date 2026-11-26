@@ -28,7 +28,7 @@
     <!-- 有名片：整页就是名片本身 + owner 编辑 dock（四键与 H5 Dashboard 完全一致；相册管理在「编辑名片」页内的公司相册分节） -->
     <block v-else>
       <CardBody :card="card" :materials="materials" :is-self="true" :self-check-done="true"
-        @edit="go('/pages/edit/edit')" @activate="go('/pages/plans/plans')" />
+        @edit="go('/pages/edit/edit')" @activate="go('/pages/plans/plans')" @update="onCardPatch" />
       <view class="dock">
         <button class="dock-btn primary" @tap="go('/pages/edit/edit')"><text class="dico">✎</text><text>编辑名片</text></button>
         <button class="dock-btn" @tap="go('/pages/edit/edit?focus=theme')"><text class="dico">◐</text><text>配色风格</text></button>
@@ -43,7 +43,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { onShow, onShareAppMessage } from '@dcloudio/uni-app'
+import { onShow, onReady, onShareAppMessage } from '@dcloudio/uni-app'
 import { api, baseUrl, isLogged, goLogin, toast, getPublicMaterials, getShareCardImage, withInvite } from '../../utils/request'
 import CardBody from '../../components/CardBody/CardBody.vue'
 import TabBar from '../../components/TabBar/TabBar.vue'
@@ -64,6 +64,13 @@ const glowRgb = computed(() => {
 })
 
 const go = url => uni.navigateTo({ url })
+
+// 配色循环成功后的补丁合并：CardBody 点封面品牌位切换主题，回传 {theme, accent} 就地更新
+function onCardPatch(p) { if (p && typeof p === 'object') card.value = { ...(card.value || {}), ...p } }
+
+// 隐藏微信原生「返回首页」标：reLaunch 切 tab 后页面栈只有一页且非首页，微信会自动在左上角画 ⌂，
+// 压在名片封面上很突兀；导航有底部 TabBar 承担，此标无存在必要。onReady 调（避开启动窗口），失败静默（老基础库无此 API）
+onReady(() => { try { uni.hideHomeButton && uni.hideHomeButton({ fail: () => {} }) } catch { /* 老基础库 */ } })
 
 async function load() {
   logged.value = isLogged()

@@ -467,6 +467,20 @@ function toShareImageUrl(u) {
   return s.startsWith('/') ? API_BASE + s : ''
 }
 
+// 站点公开信息（LOGO+站名）：匿名 /api/public/config，进程内缓存一次。
+// CardBody 封面左上品牌位（点击循环配色方案）与落款共用；失败回落默认名，不打扰用户。
+let siteInfoCache = null
+export function getSiteInfo() {
+  if (siteInfoCache) return Promise.resolve(siteInfoCache)
+  return request('/api/public/config').then(d => {
+    siteInfoCache = {
+      name: String(d?.site_name || '').trim() || 'MCard',
+      logo: toShareImageUrl(d?.site_logo) || ''
+    }
+    return siteInfoCache
+  }).catch(() => ({ name: 'MCard', logo: '' }))
+}
+
 /** 预热图片池前 5 张 + 站点LOGO到本地临时路径，避免微信分享面板首次打开时缩略图转圈（失败静默） */
 function warmShareImages() {
   const urls = (sharePool.siteLogo ? [sharePool.siteLogo] : []).concat(sharePool.images.slice(0, 5))
