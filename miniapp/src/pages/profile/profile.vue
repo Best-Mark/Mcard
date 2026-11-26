@@ -52,7 +52,7 @@
     <view class="group">
       <view class="g-title">账号与服务</view>
       <view class="cell" @tap="switchTab('/pages/notifications/notifications')"><text class="ci">♢</text><text class="ct">消息通知</text><text v-if="unread" class="badge">{{ unread > 99 ? '99+' : unread }}</text><text class="ca">›</text></view>
-      <view class="cell" @tap="go('/pages/account/account')"><text class="ci">👤</text><text class="ct">账号资料</text><text class="ce">头像 · 昵称</text><text class="ca">›</text></view>
+      <view class="cell" @tap="go('/pages/account/account')"><image class="ci-gear" src="/static/icons/gear.png" mode="aspectFit" /><text class="ct">账号资料</text><text class="ce">头像 · 昵称</text><text class="ca">›</text></view>
     </view>
 
     <view class="version">唐笺 电子名片</view>
@@ -143,6 +143,8 @@ onShow(load)
 .cell { display: flex; align-items: center; gap: 18rpx; min-height: 96rpx; padding: 0 28rpx; border-top: 2rpx solid #f1f5f9; }
 .cell:first-of-type { border-top: 0; }
 .ci { width: 44rpx; text-align: center; font-size: 32rpx; color: #a62b2b; }
+/* 设置图标用齿轮 PNG（WXSS 不支持 conic-gradient/mask 画齿轮，跨端用图片更稳） */
+.ci-gear { width: 36rpx; height: 36rpx; margin: 4rpx 4rpx 0; flex-shrink: 0; }
 .ct { font-size: 28rpx; }
 .ce { margin-left: auto; font-size: 22rpx; color: #b09a72; }
 .ca { font-size: 34rpx; color: #d8c9a8; }
