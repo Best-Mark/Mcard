@@ -23,7 +23,7 @@
           <div class="price"><small>¥</small>{{ (p.price_cents / 100).toFixed(p.price_cents % 100 ? 2 : 0) }}<span>/ {{ p.duration_days === 0 ? '永久' : p.duration_days + ' 天' }}</span></div>
           <ul><li v-for="f in p.features" :key="f">✓ {{ f }}</li></ul>
           <button class="btn btn-block" :class="p.sort === 3 ? 'btn-primary' : 'btn-ghost'" :disabled="busy === p.id" @click="buy(p)">
-            {{ busy === p.id ? '下单中…' : '立即开通' }}
+            {{ busy === p.id ? '下单中…' : (p.price_cents <= 0 ? '免费开通' : '立即开通') }}
           </button>
         </div>
       </div>
@@ -84,9 +84,16 @@ async function buy(p) {
   try {
     const pref = payPreference()
     const { data } = await api.post('/api/orders', { package_id: p.id, ...pref })
-    const pay = data.data.pay || {}
+    // 0 元套餐：服务端已直接免费开通，不再跳支付页（否则会看到「等待支付」误导）
+    const body = data.data
+    if (body.free || body.pay?.mode === 'free' || body.order?.status === 'paid') {
+      showToast(`「${p.name}」已免费开通`, 'success')
+      await loadOrders()
+      return
+    }
+    const pay = body.pay || {}
     router.push({
-      path: `/me/pay/${data.data.order.id}`,
+      path: `/me/pay/${body.order.id}`,
       query: { pay: pay.payText || '', payType: pay.payType || pay.mode || '', payParams: pay.payParams ? JSON.stringify(pay.payParams) : '' }
     })
   } catch (e) { showToast(e.message, 'error') } finally { busy.value = 0 }

@@ -8,7 +8,7 @@
         <view class="muted small">{{ p.description }}</view>
         <view class="price"><text class="sym">¥</text>{{ (p.price_cents / 100).toFixed(p.price_cents % 100 ? 2 : 0) }}<text class="unit"> / {{ p.duration_days }} 天</text></view>
         <view class="feat"><text v-for="f in p.features" :key="f">✓ {{ f }}</text></view>
-        <button class="btn primary block" :disabled="busy === p.id" @tap="buy(p)">{{ busy === p.id ? '下单中…' : '立即开通' }}</button>
+        <button class="btn primary block" :disabled="busy === p.id" @tap="buy(p)">{{ busy === p.id ? '下单中…' : (p.price_cents <= 0 ? '免费开通' : '立即开通') }}</button>
       </view>
       <view class="muted small center" style="margin:24rpx 0">资金直达商户号，本系统不经手、不沉淀资金。</view>
 
@@ -91,6 +91,12 @@ async function buy(p) {
     const code = env.platform === 'wechat' ? await loginCode() : ''
     if (env.platform === 'wechat' && !code) throw new Error('微信登录失败，请重试')
     const data = await api.post('/api/orders', { package_id: p.id, ...env, code })
+    // 0 元套餐：服务端已直接免费开通，不再跳支付页
+    if (data.free || data.pay?.mode === 'free' || data.order?.status === 'paid') {
+      toast(`「${p.name}」已免费开通`, 'success')
+      await loadOrders()
+      return
+    }
     const pay = data.pay || {}
     uni.navigateTo({
       url: `/pages/pay/pay?id=${data.order.id}&pay=${encodeURIComponent(pay.payText || '')}&payType=${encodeURIComponent(pay.payType || pay.mode || '')}&payParams=${encodeURIComponent(pay.payParams ? JSON.stringify(pay.payParams) : '')}`

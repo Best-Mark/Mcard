@@ -608,7 +608,7 @@
         <h3>{{ pkgForm.id ? '编辑套餐' : '新建套餐' }}</h3>
         <div class="grid2">
           <div class="field"><label>名称</label><input v-model="pkgForm.name" class="input" /></div>
-          <div class="field"><label>价格（元）</label><input v-model.number="pkgPrice" class="input" type="number" min="0" step="0.01" /></div>
+          <div class="field"><label>价格（元）</label><input v-model.number="pkgPrice" class="input" type="number" min="0" step="0.01" /><div class="small muted">填 0 = 免费套餐，用户点击「免费开通」即直接开通，不经过微信/支付宝（三方支付要求金额 ≥ 1 分）</div></div>
           <div class="field"><label>有效天数（填 0 表示终身套餐）</label><input v-model.number="pkgForm.duration_days" class="input" type="number" min="0" /></div>
           <div class="field"><label>排序</label><input v-model.number="pkgForm.sort" class="input" type="number" /></div>
         </div>

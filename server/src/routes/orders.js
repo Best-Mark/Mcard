@@ -58,14 +58,27 @@ router.post('/', authRequired, wrap(async (req, res) => {
   if (pref.scene && !SCENES.includes(pref.scene)) return fail(res, 400, '支付场景不合法')
 
   const channels = settings.payChannels()
-  const method = pref.method || channels[0]
-  if (!channels.includes(method)) return fail(res, 400, '该支付方式未启用')
+  // 0 元套餐与支付通道配置无关：不校验 method、payment_method 标为 free。
+  // 必须早于通道校验，否则 mock 模式/未启用 wechat 时免费体验卡会被「该支付方式未启用」误拦。
+  const free = Number(pkg.price_cents) <= 0
+  const method = free ? 'free' : (pref.method || channels[0])
+  if (!free && !channels.includes(method)) return fail(res, 400, '该支付方式未启用')
 
-  const card = db.prepare('SELECT id FROM cards WHERE user_id = ?').get(req.user.id)
+  const card = db.prepare('SELECT id, slug FROM cards WHERE user_id = ?').get(req.user.id)
   const result = db.prepare(`INSERT INTO orders (order_no, user_id, card_id, package_id, amount_cents, payment_method)
     VALUES (?,?,?,?,?,?)`).run(orderNo(), req.user.id, card?.id || null, pkg.id, pkg.price_cents, method)
   const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(result.lastInsertRowid)
   try {
+    // 0 元套餐（免费体验卡）：微信/支付宝均要求金额 ≥ 1 分，直接免费开通，绝不发支付网关。
+    // 走同一个 activateOrder：时长叠加、终身防降级、分销佣金口径与付费订单完全一致。
+    if (free) {
+      const r = activateOrder(order.id, 'FREE')
+      return ok(res, {
+        order: view({ ...(r.order || order), status: 'paid', package_name: pkg.name, duration_days: pkg.duration_days, slug: card?.slug }),
+        pay: { mode: 'free', payType: 'free', payText: '' },
+        free: true
+      })
+    }
     const openid = await resolveOpenid(pref, req)
     const pay = await payment.createPayment(order, pkg, {
       ...pref, req, openid,
@@ -87,6 +100,17 @@ router.post('/:id/pay', authRequired, wrap(async (req, res) => {
   if (row.status === 'cancelled') return fail(res, 400, '订单已取消，请重新下单')
   const pkg = db.prepare('SELECT * FROM packages WHERE id = ?').get(row.package_id)
   if (!pkg) return fail(res, 404, '套餐不存在')
+  // 0 元订单（含升级前遗留的 pending 免费体验卡）：直接开通，不校验支付通道、不发网关。
+  // 必须放在支付方式/场景校验之前——mock 模式下 channels 不含 wechat，免费订单不该被拦。
+  if (Number(row.amount_cents) <= 0) {
+    const slug = db.prepare('SELECT slug FROM cards WHERE user_id = ?').get(req.user.id)?.slug
+    const r = activateOrder(row.id, 'FREE')
+    return ok(res, {
+      order: view({ ...(r.order || row), status: 'paid', package_name: pkg.name, duration_days: pkg.duration_days, slug }),
+      pay: { mode: 'free', payType: 'free', payText: '' },
+      free: true
+    })
+  }
 
   const pref = normalizePay(req.body)
   if (pref.method && !METHODS.includes(pref.method)) return fail(res, 400, '支付方式不合法')

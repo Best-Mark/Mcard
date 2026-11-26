@@ -391,6 +391,8 @@ function miniOpenidByCode(code, p = settings.payConfig()) {
 // ---------------- 统一出口 ----------------
 // method: wechat | alipay（mock 由上层判定）；scene: pc | h5 | wechat | miniapp | alipay-mini
 async function createPayment(order, pkg, opts = {}) {
+  // 防御：三方支付要求金额 ≥ 1 分；0 元订单必须由 orders.js 走免费开通，任何漏网调用都不发到网关
+  if (!(Number(order?.amount_cents) > 0)) throw new Error('0 元订单无需支付，请走免费开通')
   const p = settings.payConfig()
   const channels = settings.payChannels(p)
   const method = opts.method || (channels.includes('wechat') ? 'wechat' : channels.includes('alipay') ? 'alipay' : 'mock')
