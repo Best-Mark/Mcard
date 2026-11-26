@@ -100,7 +100,6 @@
             <button :class="['qr-tab', { on: qrMode === 'link' }]" @tap="qrMode = 'link'">名片链接码</button>
           </view>
           <image class="qr-big" :src="scanQrUrl(card.slug, qrMode === 'vcard' ? 'vcard.png' : 'qr.png', 640)" mode="aspectFit" />
-          <view class="qr-url" @tap="copyText(linkUrl, '名片链接已复制')">{{ linkUrl }}</view>
           <view class="muted small" style="text-align:center">{{ qrMode === 'vcard' ? '手机相机/微信扫一扫，直接把名片存入通讯录（已瘦身只含主流字段，保证可扫）' : '扫一扫打开名片页，名片里的资料随时更新、链接永久不变' }}</view>
           <view class="btn-row qr-modal-btns">
             <button class="btn primary" @tap="copyText(linkUrl, '名片链接已复制')">复制名片链接</button>
@@ -350,7 +349,6 @@ async function exchange() {
 .qr-tab::after { border: 0; }
 .qr-tab.on { background: #a62b2b; border-color: #a62b2b; color: #fff; }
 .qr-big { width: 400rpx; height: 400rpx; margin: 0 auto 16rpx; display: block; background: #fff; }
-.qr-url { font-size: 22rpx; color: #8a7355; text-align: center; word-break: break-all; margin-bottom: 8rpx; }
 .qr-modal-btns { justify-content: center; flex-wrap: wrap; }
 .btn-row { display: flex; gap: 12rpx; margin-top: 16rpx; }
 .btn { font-size: 24rpx; padding: 16rpx 0; border-radius: 12rpx; background: #f0e7d2; color: #2b2118; }

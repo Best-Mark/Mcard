@@ -108,7 +108,6 @@
           <button :class="['qr-mode-tab', { on: qrMode === 'link' }]" @click="qrMode = 'link'">名片链接码</button>
         </div>
         <img :src="scanQrUrl(slug, qrMode === 'vcard' ? 'vcard.png' : 'qr.png', 640)" style="width:264px;height:264px;margin:4px auto 10px;display:block" :alt="qrMode === 'vcard' ? '名片联系人二维码' : '名片地址二维码'" />
-        <p class="cv-qr-url" @click="copy(publicLink, '名片链接')" title="点击复制名片链接">{{ publicLink }}</p>
         <p class="small muted center">{{ qrMode === 'vcard' ? '手机相机/微信扫一扫，直接把名片存入通讯录（已瘦身只含主流字段，保证可扫）' : '扫一扫打开名片页，名片里的资料随时更新、链接永久不变' }}</p>
         <!-- 一个入口承载三件事：存联系人的码/打开名片的码、复制链接、公开页（关闭弹层即当前公开页） -->
         <div class="btn-row" style="justify-content:center;margin-top:14px;flex-wrap:wrap">
