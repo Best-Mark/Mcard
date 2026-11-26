@@ -73,7 +73,7 @@
         </template>
         <!-- 模板行：左右滑动点中即应用整套配色并保存，页面即实时预览 -->
         <template v-else-if="dockMode === 'tpl'">
-          <button class="dock-back" @click="dockMode = 'main'">✕</button>
+          <button class="dock-back" @click="dockMode = 'main'">&lt;</button>
           <div class="dock-scroll">
             <div class="dock-flow">
               <button v-for="t in tpls" :key="t.key" :class="['dock-tpl', { on: card.template === t.key, busy: tplBusy }]" @click="chooseTpl(t)">
@@ -86,7 +86,7 @@
         </template>
         <!-- 二维码调节行：一键风格预设（码点/定位角/渐变，与配色风格页同款 4 个），点中即保存实时生效 -->
         <template v-else>
-          <button class="dock-back" @click="dockMode = 'main'">✕</button>
+          <button class="dock-back" @click="dockMode = 'main'">&lt;</button>
           <div class="dock-scroll">
             <div class="dock-flow">
               <button v-for="p in QR_PRESETS" :key="p.key" :class="['dock-tpl', { on: qrPresetActive(p), busy: qrBusy }]" @click="applyQrPreset(p)">
@@ -301,7 +301,7 @@ async function chooseTpl(t) {
   tplBusy.value = true
   try {
     await api.put('/api/cards/mine', patch)
-    showToast(`已应用「${t.label}」整套配色`, 'success')
+    // 不弹成功 toast：名片本体实时变化 + 缩略高亮即是反馈，弹层反而挡行打断「连着试」（2026-11-26 用户定）
     card.value = { ...card.value, ...patch }
     // ⚠️ 名片本体的模板类名/主题色变量由独立 ref 派生（load() 时赋值，根类名 cv-tpl-{template}、vars 走 currentTheme）：
     // 必须与 card 合并同步更新，否则只有缩略高亮变、上面名片不跟着换（2026-11-26 用户截图实锤）。
@@ -333,7 +333,7 @@ async function applyQrPreset(p) {
   qrBusy.value = true
   try {
     await api.put('/api/cards/mine', { qr_style })
-    showToast(`二维码风格「${p.label}」已应用`, 'success')
+    // 同模板切换：选中高亮 + 二维码实时刷新即反馈，不弹成功 toast
     card.value = { ...card.value, qr_style }
     qrStamp.value = Date.now()
   } catch (e) { showToast(e.message, 'error') } finally { qrBusy.value = false }
