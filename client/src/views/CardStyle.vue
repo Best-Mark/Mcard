@@ -168,7 +168,7 @@ const previewQr = computed(() => {
   if (!c?.slug) return ''
   const st = encodeURIComponent(JSON.stringify(c.qr_style || {}))
   const logo = c.qr_logo ? '1' : '0'
-  return `/api/cards/public/${c.slug}/qr.svg?size=320&brand=M&fg=${encodeURIComponent(c.qr_fg || '#0f172a')}&bg=${encodeURIComponent(c.qr_bg || '#ffffff')}&logo=${logo}&style=${st}`
+  return `/api/cards/public/${c.slug}/qr.svg?size=320&fg=${encodeURIComponent(c.qr_fg || '#0f172a')}&bg=${encodeURIComponent(c.qr_bg || '#ffffff')}&logo=${logo}&style=${st}`
 })
 
 function qrPresetActive(p) {

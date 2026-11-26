@@ -14,7 +14,8 @@
   <div class="cv-page" :class="['cv-tpl-' + template, { 'cv-clean': isCleanTpl, 'cv-embed': embed, 'cv-owner': owner }]" :style="vars">
     <div class="cv-cover">
       <button v-if="!owner && full" class="cv-back" @click="goBack" aria-label="返回">‹</button>
-      <div class="cv-brand">M<em>Card</em></div>
+      <!-- 硬编码 MCard 品牌角标已移除（2026-11-26）：封面高度收窄后与右上角二维码重叠，
+           只露出「rd」半截字（用户实际把它误认为二维码水印）。中心品牌字统一走后台「二维码水印」设置 -->
     </div>
 
     <div v-if="loading" class="container cv-loading">名片加载中…</div>

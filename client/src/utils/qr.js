@@ -6,7 +6,7 @@
 // 【铁律 2026-11-26】给用户长按识别/保存的二维码一律用 png，禁止用 svg：
 // 微信「识别图中二维码」只识别 PNG/JPG 位图，SVG 在长按菜单里根本不出现该选项（截图实锤），
 // 这正是用户觉得「微信不容易扫」的观感来源。编辑预览的小装饰码（改色即时生效）才允许 SVG。
-export const SCAN_V = 5
+export const SCAN_V = 6
 
 export function scanQrUrl(slug, ext, size) {
   return `/api/cards/public/${slug}/${ext}?size=${size}&scan=1&qv=${SCAN_V}`

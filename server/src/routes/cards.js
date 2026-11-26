@@ -12,6 +12,7 @@ const { INDUSTRIES, CITIES, HOT_CITIES, cityCoords, isIndustry, normalizeIndustr
 const { MATERIAL_TYPES, VISIT_SOURCES, isMaterialType, isVisitSource, CARD_WATCH_FIELDS, NOTIFY_TYPES } = require('../utils/constants')
 const { DOT_STYLES, EYE_STYLES, QR_PRESETS, QR_COLORS } = require('../utils/qrStyles')
 const { tokenize: tokenizeQuery, score: relevanceScore } = require('../utils/search')
+const settings = require('../utils/settings')
 const notify = require('../services/notify')
 
 const router = express.Router()
@@ -277,11 +278,16 @@ function scanOptions({ fg, bg, style, logo, logoImage }) {
   }
 }
 
+// 二维码中心品牌字（唯一真相源 = settings.qr_brand，后台「二维码水印」）：query 可覆盖（编辑页预览）。
+// 【2026-11-26 修复】该设置此前只存不下发、从未被渲染读取（死配置），现接入全部二维码渲染端点。
+// 中心 LOGO 位很小，超 4 字符截断；后台留空回落 'M'。仅在有中心位且无 LOGO 图时显示（qrcode.js 内部判定）。
+const qrBrandText = q => String(q ?? settings.get('qr_brand') ?? '').trim().slice(0, 4) || 'M'
+
 router.get('/public/:slug/qr.svg', wrap(async (req, res) => {
   const row = db.prepare('SELECT slug, qr_fg, qr_bg, qr_logo, qr_style, logo, avatar FROM cards WHERE slug = ?').get(req.params.slug)
   if (!row) return fail(res, 404, '名片不存在')
   const size = Math.min(2000, Math.max(64, Number(req.query.size) || 360))
-  const brand = String(req.query.brand || 'M').slice(0, 2)
+  const brand = qrBrandText(req.query.brand)
   // query 覆盖 DB：编辑页保存前实时预览用；公开访问不带 query 则用 DB 值
   const fg = /^#[0-9a-fA-F]{6}$/.test(req.query.fg || '') ? req.query.fg : row.qr_fg
   const bg = /^#[0-9a-fA-F]{6}$/.test(req.query.bg || '') ? req.query.bg : row.qr_bg
@@ -304,7 +310,7 @@ router.get('/public/:slug/qr.png', wrap(async (req, res) => {
   const size = Math.min(2000, Math.max(128, Number(req.query.size) || 720))
   const logoImage = row.qr_logo ? await qrCenterImage(row) : ''
   const style = normalizeStyle(parseJson(row.qr_style, {}))
-  let opts = { size, fg: row.qr_fg, bg: row.qr_bg, logoImage, logo: !!row.qr_logo, brand: 'M', style }
+  let opts = { size, fg: row.qr_fg, bg: row.qr_bg, logoImage, logo: !!row.qr_logo, brand: qrBrandText(), style }
   const isScan = String(req.query.scan || '') === '1'
   if (isScan) opts = { ...opts, ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg, logo: !!row.qr_logo, logoImage, style }) }
   const buf = await qr.png(requestUrl(req, `/c/${row.slug}`), opts)
@@ -348,7 +354,7 @@ router.get('/public/:slug/vcard.svg', wrap(async (req, res) => {
   const style = normalizeStyle(parseJson(row.qr_style, {}))
   const logoImage = row.qr_logo ? await qrCenterImage(row) : ''
   res.type('image/svg+xml').set('Cache-Control', 'public, max-age=60')
-    .send(qr.svg(text, { size, brand: 'M', ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg, style, logo: !!row.qr_logo, logoImage }) }))
+    .send(qr.svg(text, { size, brand: qrBrandText(), ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg, style, logo: !!row.qr_logo, logoImage }) }))
 }))
 
 // vCard 高清 PNG（保存用）：与 vcard.svg 同款，码点/码眼跟随用户风格，前端长按/保存一律用 PNG（微信「识别图中二维码」不认 SVG）
@@ -361,7 +367,7 @@ router.get('/public/:slug/vcard.png', wrap(async (req, res) => {
   const size = Math.min(1600, Math.max(256, Number(req.query.size) || 720))
   const style = normalizeStyle(parseJson(row.qr_style, {}))
   const logoImage = row.qr_logo ? await qrCenterImage(row) : ''
-  const buf = await qr.png(text, { size, brand: 'M', ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg, style, logo: !!row.qr_logo, logoImage }) })
+  const buf = await qr.png(text, { size, brand: qrBrandText(), ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg, style, logo: !!row.qr_logo, logoImage }) })
   res.type('png').set('Cache-Control', 'public, max-age=60').send(buf)
 }))
 
