@@ -77,10 +77,12 @@ function sendSpa(req, res) {
       const origin = originOf(req)
       // og:image 必须是绝对 URL（相对路径微信抓不到）。
       // 站点 LOGO 唯一真相源 = site_config.site_logo；分享池唯一真相源 = settings.shareView().share_image。
+      // 最终兜底 = 服务端名片卡片图 /api/cards/public/:slug/share.png（无需登录，webp 头像也能渲染，彻底消灭空图）。
       const absOf = u => !u ? '' : /^https?:\/\//i.test(u) ? u : u.startsWith('/') ? `${origin}${u}` : ''
       let shareFirst = ''
       try { shareFirst = settings.shareView()?.share_image?.[0] || '' } catch { /* 分享池读取失败不拖垮 SEO */ }
       const image = absOf(card.logo) || absOf(card.avatar) || absOf(settings.get('site_logo', '')) || absOf(shareFirst)
+        || `${origin}/api/cards/public/${m[1]}/share.png`
       const meta = [
         `<title>${esc(title)}</title>`,
         `<meta name="description" content="${esc(desc)}">`,

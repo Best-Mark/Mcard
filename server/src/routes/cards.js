@@ -309,6 +309,16 @@ router.get('/public/:slug/qr.png', wrap(async (req, res) => {
   res.type('png').set('Cache-Control', isScan ? 'public, max-age=60' : 'public, max-age=3600').send(buf)
 }))
 
+// 名片分享缩略图（公开、无需登录）：头像/姓名/公司 + 小二维码的 600×600 PNG。
+// 微信转发卡片用：访客未登录时前端无法上传图片，服务端直接按 slug 生成，彻底消灭空图。
+router.get('/public/:slug/share.png', wrap(async (req, res) => {
+  const row = db.prepare('SELECT * FROM cards WHERE slug = ?').get(req.params.slug)
+  if (!row) return fail(res, 404, '名片不存在')
+  const origin = originOf(req)
+  const buf = await require('../utils/shareCard').buildSharePng(publicView(row, origin), `${origin}/c/${row.slug}`)
+  res.type('png').set('Cache-Control', 'public, max-age=600').send(buf)
+}))
+
 // vCard 文本（唯一真相源仍是 services/vcard.build，前端拿它本地生成二维码，避免依赖图片接口）
 router.get('/public/:slug/vcard.txt', wrap((req, res) => {
   const row = db.prepare('SELECT * FROM cards WHERE slug = ?').get(req.params.slug)

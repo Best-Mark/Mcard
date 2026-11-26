@@ -136,8 +136,9 @@ export const setWechatShare = setupWechatShare
 /**
  * 名片分享卡片唯一真相源：/c/:slug 公开页与 /me 工作台共用同一口径。
  * 标题「XXX的名片」；描述首选简介（存量 company_intro 回落，空则落分享池）；
- * 缩略图严格按用户口径：公司 LOGO → 用户头像 → 项目 LOGO → 分享池（setupWechatShare 兜底）。
- * 绝不用二维码缩略图。webp 候选项会被 cardImage 过滤并自动落到下一级，不会出错。
+ * 缩略图口径（用户定稿）：公司 LOGO → 用户头像 → 项目 LOGO → 名片卡片样式图 → 分享池。
+ * 绝不用「纯二维码」当缩略图；但名片卡片图（头像+姓名+公司，含作为名片一部分的小二维码）是用户认可的兜底，
+ * 它比空图好看得多。webp 候选项会被 cardImage 过滤并自动落到下一级，不会出错。
  * 工作台必须自己配置，不能只靠异步嵌入的 CardView——否则加载慢时转发走全局兜底。
  */
 export function setCardShare(api, card, link, shareImage) {
@@ -150,8 +151,8 @@ export function setCardShare(api, card, link, shareImage) {
     title,
     desc: String(card?.bio || card?.company_intro || '').slice(0, 120),
     link: target,
-    // 公司 LOGO(/upload/logo 产 PNG) → 名片头像 → 项目 LOGO → 历史 shareImage 参数（兼容旧调用，通常为空）。
-    // 二维码不作为候选；全都不合格时由 setupWechatShare 落 share_image 分享池。
+    // 公司 LOGO → 名片头像 → 项目 LOGO → 名片卡片样式图（CardView 异步生成传入）→ 分享池。
+    // 前几档若是 webp 会被 cardImage 过滤并自动落到下一档；全都不合格才由 setupWechatShare 落 share_image。
     imgCandidates: [
       absoluteMediaUrl(card?.logo),
       absoluteMediaUrl(card?.avatar),
