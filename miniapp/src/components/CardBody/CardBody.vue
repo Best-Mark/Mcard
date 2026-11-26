@@ -95,23 +95,17 @@
         </view>
       </view>
 
-      <!-- 名片二维码双码弹层（2026-11-26 用户定稿：两个都要）：联系人码=vCard 瘦身版（只放主流字段，
-           扫一扫直接弹「添加到通讯录」）；名片链接码=地址短链（扫了打开名片页）。默认联系人码，
-           正文不摆大块二维码卡（对齐 H5 约定①）；一律 PNG（微信长按识别不认 SVG） -->
+      <!-- 名片二维码弹层（2026-11-26 用户定稿：只显示二维码效果）：双码切换（联系人码=vCard 瘦身版/
+           链接码=地址短链）+ 大图，其余全免；保存/转发靠长按图片（show-menu-by-longpress 系统菜单），
+           关闭点遮罩。入口两处：身份卡右上小码 + dock「二维码」键（页面经 defineExpose 的 openQr 唤起） -->
       <view v-if="qrOpen" class="mask" @tap="qrOpen = false">
         <view class="qr-modal" @tap.stop>
-          <view class="qr-modal-title">我的名片</view>
           <view class="qr-tabs">
             <button :class="['qr-tab', { on: qrMode === 'vcard' }]" @tap="qrMode = 'vcard'">联系人码</button>
             <button :class="['qr-tab', { on: qrMode === 'link' }]" @tap="qrMode = 'link'">名片链接码</button>
           </view>
-          <image class="qr-big" :src="scanQrUrl(card.slug, qrMode === 'vcard' ? 'vcard.png' : 'qr.png', 640)" mode="aspectFit" />
-          <view class="muted small" style="text-align:center">{{ qrMode === 'vcard' ? '手机相机/微信扫一扫，直接把名片存入通讯录（已瘦身只含主流字段，保证可扫）' : '扫一扫打开名片页，名片里的资料随时更新、链接永久不变' }}</view>
-          <view class="btn-row qr-modal-btns">
-            <button class="btn primary" @tap="copyText(linkUrl, '名片链接已复制')">复制名片链接</button>
-            <button class="btn" @tap="saveQrImage(card.slug, qrMode === 'vcard' ? 'vcard.png' : 'qr.png')">保存二维码</button>
-            <button class="btn" @tap="qrOpen = false">关闭</button>
-          </view>
+          <image class="qr-big" :src="scanQrUrl(card.slug, qrMode === 'vcard' ? 'vcard.png' : 'qr.png', 640)" mode="aspectFit" show-menu-by-longpress />
+          <view class="muted small" style="text-align:center">长按图片可保存或转发</view>
         </view>
       </view>
 
@@ -141,7 +135,7 @@
 
 <script setup>
 import { computed, ref, onMounted } from 'vue'
-import { api, baseUrl, toast, copyText, callPhone, saveQrImage, parseSlug, scanQrUrl, getSiteInfo } from '../../utils/request'
+import { api, baseUrl, toast, copyText, callPhone, parseSlug, scanQrUrl, getSiteInfo } from '../../utils/request'
 
 const props = defineProps({
   card: { type: Object, required: true },
@@ -169,7 +163,9 @@ const mySlug = ref('')
 const exchanging = ref(false)
 const qrOpen = ref(false)
 const qrMode = ref('vcard')
-const linkUrl = computed(() => card.value.url || (baseUrl + '/c/' + card.value.slug))
+// dock「二维码」键 / 身份卡右上小码共用这一个弹层；页面经 defineExpose 的 openQr 唤起
+function openQr() { qrOpen.value = true }
+defineExpose({ openQr })
 
 // 联系方式行（与 H5 CardSheet contactFields 同构）：手机/座机可拨打，其余点行复制
 const contactRows = computed(() => {
@@ -388,17 +384,15 @@ async function exchange() {
 .link { display: flex; flex-direction: column; padding: 14rpx 0; border-bottom: 2rpx solid #f1f5f9; }
 .link .b { font-size: 26rpx; font-weight: 600; }
 .hint { font-size: 22rpx; color: #b09a72; margin-top: 14rpx; line-height: 1.6; }
-/* 二维码大图弹层（点击身份卡右上小码打开） */
+/* 二维码大图弹层（身份卡右上小码 / dock 二维码键共用）：只显示二维码效果 */
 .mask { position: fixed; left: 0; right: 0; top: 0; bottom: 0; background: rgba(15,23,42,.55); z-index: 120; display: flex; align-items: center; justify-content: center; padding: 40rpx; }
 .qr-modal { width: 100%; max-width: 560rpx; background: #fff; border-radius: 24rpx; padding: 36rpx 30rpx; }
-.qr-modal-title { font-size: 32rpx; font-weight: 800; text-align: center; margin-bottom: 20rpx; }
 /* 双码切换（联系人码/名片链接码）：胶囊分段控件，button 重置 */
 .qr-tabs { display: flex; justify-content: center; gap: 12rpx; margin-bottom: 20rpx; }
 .qr-tab { font-size: 24rpx; font-weight: 600; padding: 12rpx 30rpx; border-radius: 999rpx; line-height: 1.2; border: 2rpx solid #e8dcc2; background: #f7f1e3; color: #8a7355; }
 .qr-tab::after { border: 0; }
 .qr-tab.on { background: #a62b2b; border-color: #a62b2b; color: #fff; }
 .qr-big { width: 400rpx; height: 400rpx; margin: 0 auto 16rpx; display: block; background: #fff; }
-.qr-modal-btns { justify-content: center; flex-wrap: wrap; }
 .btn-row { display: flex; gap: 12rpx; margin-top: 16rpx; }
 .btn { font-size: 24rpx; padding: 16rpx 0; border-radius: 12rpx; background: #f0e7d2; color: #2b2118; }
 .btn::after { border: 0; }

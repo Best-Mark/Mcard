@@ -27,13 +27,13 @@
 
     <!-- 有名片：整页就是名片本身 + owner 编辑 dock（四键与 H5 Dashboard 完全一致；相册管理在「编辑名片」页内的公司相册分节） -->
     <block v-else>
-      <CardBody :card="card" :materials="materials" :is-self="true" :self-check-done="true" :top-inset="topInset"
+      <CardBody ref="bodyEl" :card="card" :materials="materials" :is-self="true" :self-check-done="true" :top-inset="topInset"
         @edit="go('/pages/edit/edit')" @activate="go('/pages/plans/plans')" @update="onCardPatch" />
+      <!-- dock 两键（2026-11-26 用户定稿）：编辑名片 + 二维码（直接弹层，不跳页）。
+           配色循环在封面品牌位点击即可、集市在底部 TabBar，分享走右上角 ⋯ 菜单转发，不再占 dock -->
       <view class="dock">
         <button class="dock-btn primary" @tap="go('/pages/edit/edit')"><text class="dico">✎</text><text>编辑名片</text></button>
-        <button class="dock-btn" @tap="go('/pages/edit/edit?focus=theme')"><text class="dico">◐</text><text>配色风格</text></button>
-        <button class="dock-btn" @tap="go('/pages/market/market')"><text class="dico">⌕</text><text>名片集市</text></button>
-        <button class="dock-btn" open-type="share"><text class="dico">↗</text><text>分享</text></button>
+        <button class="dock-btn" @tap="bodyEl && bodyEl.openQr()"><text class="dico">▣</text><text>二维码</text></button>
       </view>
     </block>
 
@@ -54,6 +54,7 @@ const loadError = ref('')
 const card = ref(null)
 const materials = ref([])
 const busy = ref(false)
+const bodyEl = ref(null) // CardBody 实例：dock「二维码」键经 openQr() 唤起共享二维码弹层
 
 const tpl = computed(() => card.value?.template || 'classic')
 const glowRgb = computed(() => {
@@ -149,8 +150,8 @@ onShareAppMessage(() => {
 .small { font-size: 22rpx; }
 
 /* owner 编辑 dock（页面级，非名片正文；tpl-X 覆写跟模板走，与 card.vue 同口径） */
-/* 四键单行等大：与 H5 Dashboard dock 同构（编辑名片/配色风格/名片集市/分享），主键只做填色区分不做尺寸区分 */
-.dock { position: fixed; left: 0; right: 0; bottom: calc(110rpx + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: repeat(4, 1fr); gap: 12rpx; padding: 16rpx 24rpx; background: rgba(255,255,255,.96); box-shadow: 0 -4rpx 20rpx rgba(15,23,42,.06); z-index: 50; }
+/* 两键单行等大：编辑名片 + 二维码（2026-11-26 用户定稿）；主键只做填色区分不做尺寸区分 */
+.dock { position: fixed; left: 0; right: 0; bottom: calc(110rpx + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: repeat(2, 1fr); gap: 12rpx; padding: 16rpx 24rpx; background: rgba(255,255,255,.96); box-shadow: 0 -4rpx 20rpx rgba(15,23,42,.06); z-index: 50; }
 .dock-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4rpx; min-height: 96rpx; padding: 8rpx 0; border-radius: 14rpx; background: #f0e7d2; color: #2b2118; font-size: 22rpx; line-height: 1.2; }
 .dock-btn::after { border: 0; }
 .dock-btn.primary { background: #a62b2b; color: #fff; }
