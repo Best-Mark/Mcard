@@ -33,7 +33,6 @@
           <button class="btn btn-primary btn-block" :disabled="busy" @click="createCard">
             {{ busy ? '创建中…' : '立即创建我的名片' }}
           </button>
-          <p class="muted small" style="margin-top:10px">短码将自动生成，之后可在编辑名片里修改</p>
         </div>
       </div>
     </div>

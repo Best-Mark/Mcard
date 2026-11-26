@@ -12,7 +12,6 @@
       <view class="create-title">还没有名片</view>
       <view class="create-desc">创建后即可获得永久二维码，之后换资料不用换码。</view>
       <button class="btn primary block" :disabled="busy" @tap="create">{{ busy ? '创建中…' : '立即创建我的名片' }}</button>
-      <view class="create-tip">短码将自动生成，之后可在「编辑名片」里改</view>
     </view>
 
     <view v-else class="body">
@@ -130,7 +129,6 @@ async function create() {
 .create-ico { font-size: 80rpx; opacity: .25; }
 .create-title { font-size: 34rpx; font-weight: 800; color: #162033; margin: 16rpx 0 10rpx; }
 .create-desc { font-size: 24rpx; color: #6b7688; line-height: 1.6; margin-bottom: 32rpx; }
-.create-tip { font-size: 22rpx; color: #94a3b8; margin-top: 20rpx; }
 .body { padding: 24rpx; }
 .card { background: #fff; border-radius: 24rpx; padding: 26rpx; margin-bottom: 18rpx; box-shadow: 0 8rpx 28rpx rgba(15,23,42,.05); }
 .row { display: flex; justify-content: space-between; align-items: center; }
