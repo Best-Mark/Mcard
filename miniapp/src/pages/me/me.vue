@@ -25,18 +25,20 @@
       <button class="btn ghost block" style="margin-top:16rpx" @tap="go('/pages/market/market')">先去逛逛名片集市</button>
     </view>
 
-    <!-- 有名片：整页就是名片本身 + owner 编辑 dock（四键与 H5 Dashboard 完全一致；相册管理在「编辑名片」页内的公司相册分节） -->
+    <!-- 有名片：整页就是名片本身 + owner 编辑 dock（编辑/配色/二维码/上架四键与 H5 Dashboard 完全一致；相册管理在「编辑名片」页内的公司相册分节） -->
     <block v-else>
       <CardBody :card="card" :materials="materials" :is-self="true" :self-check-done="true" :top-inset="topInset"
         @edit="go('/pages/edit/edit')" @activate="go('/pages/plans/plans')" @update="onCardPatch" />
-      <!-- dock 三态翻转（2026-11-26 用户定稿）：main=编辑/配色/二维码；点「配色」整行翻转成模板缩略行
+      <!-- dock 三态翻转（2026-11-26 用户定稿，2026-11-27 补上架入口）：main=编辑/配色/二维码/上架；点「配色」整行翻转成模板缩略行
            （与 H5 配色风格页同款 template-thumbs 缩略，点中即换、上面名片实时变、可连着试）；
            点「二维码」翻转成二维码预设调节行（改的是二维码风格本身，不是弹码展示）；行首 ✕ 收起回 main。
-           集市在底部 TabBar，分享走右上角 ⋯ 菜单，不占 dock -->
+           底部 TabBar 的「集市」是逛别人的名片，dock 第 4 键管「让别人找到我」（跳编辑页集市卡片），
+           文案随 market_opt_in 反映上架状态；分享走右上角 ⋯ 菜单，不占 dock -->
       <view v-if="dockMode === 'main'" class="dock">
         <button class="dock-btn primary" @tap="go('/pages/edit/edit')"><text class="dico">✎</text><text>编辑</text></button>
         <button class="dock-btn" @tap="toggleDock('tpl')"><text class="dico">▦</text><text>配色</text></button>
         <button class="dock-btn" @tap="toggleDock('qr')"><text class="dico">▣</text><text>二维码</text></button>
+        <button class="dock-btn" @tap="go('/pages/edit/edit?focus=market')"><text class="dico">◎</text><text>{{ card?.market_opt_in ? '已上架' : '上架' }}</text></button>
       </view>
       <!-- 模板行：左右滑动点中即应用整套配色并保存，页面即实时预览 -->
       <view v-else-if="dockMode === 'tpl'" class="dock dock-flip">
@@ -270,8 +272,8 @@ onShareAppMessage(() => {
 .small { font-size: 22rpx; }
 
 /* owner 编辑 dock（页面级，非名片正文；tpl-X 覆写跟模板走，与 card.vue 同口径） */
-/* 三键单行等大：编辑名片 + 模板 + 二维码（2026-11-26 用户定稿）；主键只做填色区分不做尺寸区分 */
-.dock { position: fixed; left: 0; right: 0; bottom: calc(110rpx + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: repeat(3, 1fr); gap: 12rpx; padding: 16rpx 24rpx; background: rgba(255,255,255,.96); box-shadow: 0 -4rpx 20rpx rgba(15,23,42,.06); z-index: 50; }
+/* 四键单行等大：编辑 + 配色 + 二维码 + 上架集市（2026-11-27 补，与 H5 dock 同款）；主键只做填色区分不做尺寸区分 */
+.dock { position: fixed; left: 0; right: 0; bottom: calc(110rpx + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: repeat(4, 1fr); gap: 10rpx; padding: 16rpx 20rpx; background: rgba(255,255,255,.96); box-shadow: 0 -4rpx 20rpx rgba(15,23,42,.06); z-index: 50; }
 /* 翻转态行：模板缩略 / 二维码预设，横滑点选即换；缩略 thumb 用 px（与 H5 同源样式），选中主色描边 */
 .dock-flip { display: flex; align-items: center; gap: 16rpx; --ng-gold: #d8bb85; }
 .dock-back { flex: 0 0 72rpx; height: 116rpx; font-size: 30rpx; color: #8a7355; background: #f0e7d2; border-radius: 14rpx; display: flex; align-items: center; justify-content: center; }

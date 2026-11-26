@@ -70,7 +70,7 @@
           <button @click="moreOpen = false; openExchange()">交换名片</button>
         </div>
       </div>
-      <!-- dock 三态翻转（2026-11-26 用户终稿）：main=编辑/配色/二维码；
+      <!-- dock 三态翻转（2026-11-26 用户终稿，2026-11-27 补上架入口）：main=编辑/配色/二维码/上架；
            点「配色」整行翻转成模板缩略行（H5 同款 template-thumbs 缩略，点中即换、页面实时预览、可连着试）；
            点「二维码」名片本体让位给顶部二维码大图，dock 分两级：
              一级=风格预设/码点形状/码眼形状 三个分类入口；
@@ -82,6 +82,10 @@
           <button class="btn btn-primary dock-btn" @click="router.push('/me/card')"><span class="dock-ico">✎</span>编辑</button>
           <button class="btn btn-ghost dock-btn" @click="toggleDock('tpl')"><span class="dock-ico">▦</span>配色</button>
           <button class="btn btn-ghost dock-btn" @click="toggleDock('qr')"><span class="dock-ico">▣</span>二维码</button>
+          <!-- 上架集市（2026-11-27）：底部 tab 的「集市」是逛别人的名片，这里管「让别人找到我」，
+               与编辑/配色/二维码同为名片级操作，放主场 dock 最顺手；文案随 market_opt_in 反映当前上架状态。
+               公开页 dock 本就 4 键等分（flex:1），加第 4 键无需改样式。 -->
+          <button class="btn btn-ghost dock-btn" @click="router.push('/me/card/market')"><span class="dock-ico">◎</span>{{ card.market_opt_in ? '已上架' : '上架' }}</button>
         </template>
         <!-- 模板行：左右滑动点中即应用整套配色并保存，页面即实时预览 -->
         <template v-else-if="dockMode === 'tpl'">
@@ -272,7 +276,7 @@ import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 // embed：嵌入模式（只渲染封面+身份区，其余由宿主页呈现）；owner：持有者预览（/me 我的名片）。
-// ⚠️ owner 与公开页「同一套模板、同一套样式、同一屏内容」；差异只在 dock（持有者=编辑名片/配色风格/名片集市/分享，
+// ⚠️ owner 与公开页「同一套模板、同一套样式、同一屏内容」；差异只在 dock（持有者=编辑/配色/二维码/上架集市，
 // 公开页=打电话/复制号码/存入通讯录/分享）与封面左上的编辑入口，且不设置微信分享/不查收藏/不上报访问。
 // 2026-11-25 用户定稿。
 const props = defineProps({
