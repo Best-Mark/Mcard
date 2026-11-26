@@ -303,8 +303,9 @@ onShareAppMessage(() => {
 .state .muted { margin-top: 10rpx; }
 .cover { height: 240rpx; border-radius: 0 0 40rpx 40rpx; padding: 30rpx; color: #fff; position: relative; overflow: hidden; }
 /* 封面动态光晕：主题色柔光呼吸，只动 opacity 不动位移（避免被感知为遮罩在动） */
-.cover::before { content: ''; position: absolute; inset: -30%; pointer-events: none; z-index: 0; background: radial-gradient(70% 90% at 22% 10%, rgba(var(--glow-rgb, 37,99,235), .22), transparent 62%); animation: cvGlow 30s ease-in-out infinite alternate; }
-.cover > * { position: relative; z-index: 1; }
+.cover::before { content: ''; position: absolute; top: -30%; right: -30%; bottom: -30%; left: -30%; pointer-events: none; z-index: 0; background: radial-gradient(70% 90% at 22% 10%, rgba(var(--glow-rgb, 37,99,235), .22), transparent 62%); animation: cvGlow 30s ease-in-out infinite alternate; }
+/* WXSS 不支持 * 通配选择器（编译报 error at token '*'），显式列出 cover 的两个子元素 */
+.cover .brand, .cover .inactive { position: relative; z-index: 1; }
 @keyframes cvGlow { 0% { opacity: .4; } 100% { opacity: 1; } }
 .brand { font-size: 36rpx; font-weight: 800; }
 .em { opacity: .8; }
