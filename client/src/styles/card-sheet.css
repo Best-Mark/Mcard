@@ -214,16 +214,8 @@
   box-shadow: 0 -8px 30px -14px rgba(var(--glow-rgb, 37,99,235), .75);
   -webkit-backdrop-filter: blur(18px) saturate(1.35); backdrop-filter: blur(18px) saturate(1.35);
 }
-/* 微光粒子：白点 + 主题色点交替，低透明度不抢内容；四边定位代替 inset（老 WebView 兼容） */
-.cv-page .cv-dock.cv-dock-glass::before {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none;
-  background:
-    radial-gradient(circle at 12% 30%, rgba(255,255,255,.28) 0 2px, transparent 3px),
-    radial-gradient(circle at 34% 72%, rgba(var(--glow-rgb, 37,99,235),.85) 0 1.5px, transparent 3px),
-    radial-gradient(circle at 62% 24%, rgba(255,255,255,.20) 0 1.5px, transparent 3px),
-    radial-gradient(circle at 84% 66%, rgba(var(--glow-rgb, 37,99,235),.75) 0 2px, transparent 3px),
-    radial-gradient(circle at 52% 88%, rgba(255,255,255,.16) 0 1px, transparent 2px);
-}
+/* 微光粒子已移除（2026-11-26 用户实锤）：主题色亮点在 34% 处正好落在「编辑/配色」两按钮缝隙里，
+   被当成一个蓝色小圆点、像 bug；毛玻璃渐变底色足够表达主题，粒子纯装饰无功能，整体删掉。 */
 /* 四个主操作按钮本身就是毛玻璃：淡透明白底 + 主题色描边，第一枚用主题色加深强调 */
 .cv-page .cv-dock.cv-dock-glass .dock-btn {
   position: relative; min-height: 50px; display: flex; flex-direction: column;
