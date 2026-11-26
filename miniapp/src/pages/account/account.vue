@@ -32,7 +32,7 @@
 <script setup>
 import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { api, baseUrl, toast } from '../../utils/request'
+import { api, baseUrl, toast, ensurePrivacy } from '../../utils/request'
 
 const avatar = ref('')
 const wxAvatar = ref('')
@@ -81,8 +81,10 @@ async function saveNickname() {
 }
 onShow(load)
 
-function chooseAvatar() {
+async function chooseAvatar() {
   if (busy.value) return
+  // 隐私守卫：选图属隐私接口，微信端先弹官方隐私授权（MShop 同款口径）
+  if (!(await ensurePrivacy())) return toast('需要同意隐私授权才能选择图片')
   busy.value = true
   uni.chooseImage({
     count: 1,

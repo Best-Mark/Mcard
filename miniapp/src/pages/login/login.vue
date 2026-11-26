@@ -8,9 +8,10 @@
       <view class="gold-line"></view>
     </view>
     <view class="form">
-      <!-- 小程序主推微信快捷登录（置顶）：wx.login 一次性 code → 服务端换 openid 建号/登录 -->
-      <button class="btn wx-login" :disabled="wxBusy || busy || !agreed" @tap="wechatLogin">
-        <text class="wx-ico">微</text>{{ wxBusy ? '正在登录…' : '微信快捷登录' }}
+      <!-- 小程序主推一键登录（置顶）：wx.login 一次性 code → 服务端换 openid 建号/登录。
+           ⚠️ 按钮文案不得出现「微信」字样或官方 logo（平台审核「混淆行为」红线，参照 MShop）。 -->
+      <button class="btn wx-login" :disabled="wxBusy || busy" @tap="wechatLogin">
+        {{ wxBusy ? '正在登录…' : '一键登录' }}
       </button>
       <view class="divider"><text>或使用手机号</text></view>
       <view class="field">
@@ -50,12 +51,26 @@ import { api, setAuth, toast, bindPendingInvite, takeLoginRedirect } from '../..
 const mode = ref('login')
 const phone = ref(''); const password = ref(''); const nickname = ref(''); const busy = ref(false)
 const wxBusy = ref(false)
-// 协议勾选：微信审核硬要求，必须用户主动勾选且默认不勾选，未勾选拦截所有登录
+// 协议勾选：微信审核硬要求，必须用户主动勾选且默认不勾选，未勾选拦截所有登录。
+// ⚠️ 审核红线：agreed 初值必须 false，不得为少一次点击改成 true（默认自动同意会被驳回）。
 const agreed = ref(false)
+// 未勾选时不逼用户翻页找勾选框，弹 showModal 一键「同意并继续 / 暂不同意」（MShop 成熟做法）：
+// 弹窗由用户主动确认即满足「用户自主选择」口径。
 function ensureAgreed() {
-  if (agreed.value) return true
-  toast('请先阅读并勾选同意《用户协议》与《隐私政策》')
-  return false
+  if (agreed.value) return Promise.resolve(true)
+  return new Promise(resolve => {
+    uni.showModal({
+      title: '用户协议与隐私政策',
+      content: '登录前请阅读并同意《用户协议》与《隐私政策》，我们将依法保护你的个人信息。',
+      confirmText: '同意并继续',
+      cancelText: '暂不同意',
+      success: r => {
+        agreed.value = !!r.confirm
+        resolve(!!r.confirm)
+      },
+      fail: () => resolve(false)
+    })
+  })
 }
 function openLegal(type) {
   uni.navigateTo({ url: '/pages/legal/legal?type=' + type })
@@ -72,9 +87,9 @@ function goAfterLogin(delay = 500) {
 // 微信快捷登录：uni.login 一次性 code → 服务端 code2session → 建号/登录。
 // 铁律：busy 守卫 + 按钮 disabled 成对防重入；code 只消费一次，失败必须重新 login 取新 code；
 // uni.login 无回调时用超时兜底恢复 busy，绝不能永久停在「正在登录…」。
-function wechatLogin() {
+async function wechatLogin() {
   if (wxBusy.value || busy.value) return
-  if (!ensureAgreed()) return
+  if (!(await ensureAgreed())) return
   wxBusy.value = true
   let settled = false
   const done = () => { settled = true; wxBusy.value = false }
@@ -102,7 +117,7 @@ function wechatLogin() {
 }
 
 async function submit() {
-  if (!ensureAgreed()) return
+  if (!(await ensureAgreed())) return
   if (!/^1\d{10}$/.test(phone.value)) return toast('请输入 11 位手机号')
   if (password.value.length < 6) return toast('密码至少 6 位')
   busy.value = true
@@ -138,9 +153,8 @@ async function submit() {
 .btn::after { border: 0; }
 .btn.primary { background: linear-gradient(135deg, #a62b2b, #8c2318); color: #f8e8c8; font-weight: 700; letter-spacing: 4rpx; box-shadow: 0 8rpx 22rpx rgba(140,35,24,.22); }
 .btn.block { width: 100%; }
-/* 微信快捷登录：鎏金底，主推入口 */
+/* 一键登录：鎏金底，主推入口 */
 .btn.wx-login { background: linear-gradient(135deg, #d4af37, #c9a227); color: #3a2a12; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 12rpx; letter-spacing: 3rpx; box-shadow: 0 8rpx 22rpx rgba(184,134,11,.22); }
-.wx-ico { width: 38rpx; height: 38rpx; line-height: 38rpx; text-align: center; border-radius: 8rpx; background: rgba(255,255,255,.28); font-size: 22rpx; }
 .btn.wx-login[disabled], .btn.primary[disabled] { opacity: .55; }
 .divider { display: flex; align-items: center; gap: 16rpx; color: #b09a72; font-size: 22rpx; margin: 26rpx 0; }
 .divider::before, .divider::after { content: ''; flex: 1; height: 2rpx; background: linear-gradient(90deg, transparent, #e8dcc2, transparent); }

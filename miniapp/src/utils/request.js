@@ -148,12 +148,38 @@ export function copyText(text, tip = '已复制') {
   uni.setClipboardData({ data: String(text), success: () => toast(tip, 'success') })
 }
 
+// 微信隐私保护指引守卫（参照 MShop utils/privacy.js 成熟做法）：
+// 调用隐私接口（选图/定位/存相册等）前先过这道，微信端弹官方隐私授权弹窗。
+// 降级语义（与 MShop 一致）：拿不到隐私状态一律放行，明确拒绝才中止——避免平台差异卡死业务。
+// 注意：本函数并入 request.js 而非新建 js 文件（项目铁律：新增纯 require js 会触发工具热重载白屏）。
+export function ensurePrivacy() {
+  return new Promise(resolve => {
+    try {
+      // 非微信端（支付宝/抖音）没有这套隐私接口，直接放行
+      if (typeof uni.getPrivacySetting !== 'function') return resolve(true)
+      uni.getPrivacySetting({
+        success: res => {
+          if (!res || !res.needAuthorization) return resolve(true)
+          if (typeof uni.requirePrivacyAuthorize !== 'function') return resolve(true)
+          uni.requirePrivacyAuthorize({
+            success: () => resolve(true),
+            fail: () => resolve(false)
+          })
+        },
+        fail: () => resolve(true) // 查不到状态放行，不阻断业务
+      })
+    } catch { resolve(true) }
+  })
+}
+
 export function callPhone(phone) {
   if (!phone) return toast('尚未填写电话')
   uni.makePhoneCall({ phoneNumber: String(phone) })
 }
 
-function saveImage(path) {
+async function saveImage(path) {
+  // 隐私守卫：存相册属隐私接口，微信端先弹官方隐私授权（MShop 同款口径）
+  if (!(await ensurePrivacy())) return toast('需要同意隐私授权才能保存到相册')
   uni.saveImageToPhotosAlbum({
     filePath: path,
     success: () => toast('已保存到相册', 'success'),
@@ -281,7 +307,9 @@ export function shareCardPath(slug) {
 
 // 统一定位入口：微信/支付宝/抖音(api.getLocation) 差异封装，失败走 reject
 export function getLocation() {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
+    // 隐私守卫：定位属隐私接口，微信端先弹官方隐私授权（MShop 同款口径）
+    if (!(await ensurePrivacy())) return reject(new Error('需要同意隐私授权才能定位'))
     // #ifdef MP-WEIXIN || MP-ALIPAY || MP-TOUTIAO
     uni.getLocation({
       type: 'gcj02',

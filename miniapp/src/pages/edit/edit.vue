@@ -154,7 +154,7 @@
 <script setup>
 import { ref, computed, onUnmounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { api, toast, uploadImage, uploadLogo, processLogo, geoLocate, reverseGeocode, geocodeAddress, getRegions } from '../../utils/request'
+import { api, toast, uploadImage, uploadLogo, processLogo, geoLocate, reverseGeocode, geocodeAddress, getRegions, ensurePrivacy } from '../../utils/request'
 
 // ⚠️ 与 client/src/utils/themes.js 保持同步（小程序独立渲染，无 web-view）
 const themes = {
@@ -297,8 +297,10 @@ onLoad(async options => {
 })
 // 二维码背景图：独立上传（不走素材库），成对防重入（disabled + busy 守卫）
 const qrBgBusy = ref(false)
-function chooseQrBg() {
+async function chooseQrBg() {
   if (qrBgBusy.value) return
+  // 隐私守卫：选图属隐私接口，微信端先弹官方隐私授权（MShop 同款口径）
+  if (!(await ensurePrivacy())) return toast('需要同意隐私授权才能选择图片')
   qrBgBusy.value = true
   uni.chooseImage({
     count: 1,
@@ -428,8 +430,10 @@ function chooseTemplate(key) {
   toast(`已应用「${currentTplLabel.value}」整套配色`, 'success')
 }
 
-function chooseAvatar() {
+async function chooseAvatar() {
   if (avatarBusy.value) return
+  // 隐私守卫：选图属隐私接口，微信端先弹官方隐私授权（MShop 同款口径）
+  if (!(await ensurePrivacy())) return toast('需要同意隐私授权才能选择图片')
   uni.chooseImage({ count: 1, sizeType: ['compressed'], success: async res => {
     avatarBusy.value = true
     try {
@@ -439,7 +443,9 @@ function chooseAvatar() {
     finally { avatarBusy.value = false }
   } })
 }
-function chooseLogo() {
+async function chooseLogo() {
+  // 隐私守卫：选图属隐私接口，微信端先弹官方隐私授权（MShop 同款口径）
+  if (!(await ensurePrivacy())) return toast('需要同意隐私授权才能选择图片')
   uni.chooseImage({ count: 1, sizeType: ['original'], success: async res => {
     logoBusy.value = true
     try {

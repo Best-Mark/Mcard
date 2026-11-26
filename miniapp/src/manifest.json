@@ -8,10 +8,14 @@
   "mp-weixin": {
     "appid": "",
     "setting": { "urlCheck": false, "es6": true, "postcss": true },
-    "requiredPrivateInfos": ["getLocation"],
+    "__usePrivacyCheck__": true,
+    "requiredPrivateInfos": ["getLocation", "chooseLocation"],
     "permission": {
       "scope.userLocation": {
-        "desc": "用于名片集市按距离为你发现附近的业务伙伴，仅在你主动定位时获取"
+        "desc": "用于名片集市按距离为你发现附近的业务伙伴、地图选点定位名片地址，仅在你主动操作时获取"
+      },
+      "scope.writePhotosAlbum": {
+        "desc": "用于将你的名片二维码、实体名片版式保存到相册"
       }
     }
   },

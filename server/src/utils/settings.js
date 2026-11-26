@@ -7,7 +7,7 @@ const config = require('../config')
 // 公开键：匿名接口 /api/public/config 仅下发这些
 // share_* 是分享素材池（标题/描述/图片，每行一条），匿名可读——对齐 MShop 的 share_config 白名单口径
 const SHARE_KEYS = ['share_title', 'share_desc', 'share_image']
-const PUBLIC_KEYS = ['site_name', 'site_logo', 'site_desc', 'contact', 'notice', 'qr_brand', 'miniapp_launch_image', 'user_agreement', 'privacy_policy', ...SHARE_KEYS]
+const PUBLIC_KEYS = ['site_name', 'site_logo', 'site_desc', 'contact', 'notice', 'qr_brand', 'miniapp_launch_image', 'icp', 'user_agreement', 'privacy_policy', ...SHARE_KEYS]
 // 用户协议 / 隐私政策：微信小程序审核硬性要求——登录前用户可查看并主动勾选同意，内容由后台维护。
 // 空值回落内置默认（LEGAL_DEFAULTS），保证任何时刻都有完整可读的协议正文。
 const LEGAL_KEYS = ['user_agreement', 'privacy_policy']
@@ -104,7 +104,9 @@ const GROUPS = {
       { key: 'notice', label: '公告', type: 'textarea' },
       { key: 'qr_brand', label: '二维码水印', type: 'text' },
       // 小程序启动图：配置后小程序启动页直接展示这张图（点击进入），不再显示内置推广页；留空走内置推广页。
-      { key: 'miniapp_launch_image', label: '小程序启动图（图片地址，绝对路径 /uploads/... 或完整 URL；留空用内置推广页）', type: 'text' }
+      { key: 'miniapp_launch_image', label: '小程序启动图（图片地址，绝对路径 /uploads/... 或完整 URL；留空用内置推广页）', type: 'text' },
+      // ICP 备案号：协议页脚合规公示（微信审核要求经营主体/备案公示），留空则页脚不显示该项
+      { key: 'icp', label: 'ICP 备案号（如 京ICP备12345678号，协议页脚公示；留空不显示）', type: 'text' }
     ]
   },
   legal: {

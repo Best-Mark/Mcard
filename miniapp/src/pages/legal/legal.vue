@@ -13,6 +13,12 @@
     </view>
     <view v-else class="body">
       <view v-for="(line, i) in lines" :key="i" class="line" :class="{ title: isTitle(line), blank: !line }">{{ line }}</view>
+      <!-- 合规公示：经营主体 / ICP 备案号 / 联系方式（微信审核要求协议页可公示主体信息；留空项不显示） -->
+      <view class="legal-foot">
+        <view v-if="siteName">{{ siteName }}</view>
+        <view v-if="icp">{{ icp }}</view>
+        <view v-if="contact">联系客服：{{ contact }}</view>
+      </view>
     </view>
 
     <view class="foot">
@@ -30,6 +36,10 @@ const type = ref('user_agreement')
 const content = ref('')
 const loading = ref(true)
 const error = ref('')
+// 合规公示信息：来自公开配置（同一次请求顺带取，不单独发请求）
+const siteName = ref('')
+const icp = ref('')
+const contact = ref('')
 
 // 兜底正文：网络/配置失败时也能看到完整可读协议（与后端 LEGAL_DEFAULTS 同口径的精简兜底）
 const FALLBACK = {
@@ -47,6 +57,10 @@ async function load() {
   try {
     const cfg = await api.get('/api/public/config', false)
     content.value = String(cfg?.[type.value] || '').trim() || FALLBACK[type.value]
+    // 合规公示：站点名 / ICP 备案号 / 联系方式（留空项前端不显示）
+    siteName.value = String(cfg?.site_name || '').trim()
+    icp.value = String(cfg?.icp || '').trim()
+    contact.value = String(cfg?.contact || '').trim()
   } catch (e) {
     // 拉取失败不阻断：回落兜底正文，保证审核场景任何时候都有可读协议
     content.value = FALLBACK[type.value]
@@ -74,6 +88,8 @@ function goBack() {
 .line { font-size: 27rpx; line-height: 1.85; color: #2b2118; margin-bottom: 14rpx; }
 .line.title { font-size: 32rpx; font-weight: 800; color: #8c2318; letter-spacing: 3rpx; text-align: center; margin: 12rpx 0 22rpx; }
 .line.blank { height: 12rpx; margin-bottom: 0; }
+/* 合规公示：经营主体 / ICP / 联系方式，弱化处理但可读 */
+.legal-foot { margin-top: 32rpx; padding-top: 22rpx; border-top: 2rpx solid #e8dcc2; text-align: center; font-size: 22rpx; color: #8a7355; line-height: 1.8; }
 .foot { position: fixed; left: 0; right: 0; bottom: 0; padding: 20rpx 32rpx calc(20rpx + env(safe-area-inset-bottom, 0px)); background: #fffdf8; border-top: 2rpx solid rgba(212,175,55,.18); }
 .btn { font-size: 28rpx; padding: 20rpx 0; border-radius: 14rpx; background: #f0e7d2; color: #2b2118; }
 .btn::after { border: 0; }
