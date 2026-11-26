@@ -109,6 +109,25 @@
         </view>
       </view>
 
+      <!-- 模板弹层（dock「模板」键唤起）：胶囊清单选中即应用整套配色并保存，
+           关掉弹层页面本身就是实时预览；未开通由服务端套餐闸门拦 -->
+      <view v-if="tplOpen" class="mask mask-bottom" @tap="tplOpen = false">
+        <view class="tpl-modal" @tap.stop>
+          <view class="tpl-modal-head">
+            <text class="tpl-modal-title">展示模板</text>
+            <text class="tpl-modal-tip">选中即应用整套配色</text>
+          </view>
+          <scroll-view scroll-y class="tpl-scroll">
+            <view class="tpl-flow">
+              <button v-for="t in tpls" :key="t.key" :class="['tpl-chip', { on: card.template === t.key, busy: tplBusy }]" @tap="chooseTpl(t)">
+                {{ t.label }}<text v-if="card.template === t.key" class="tpl-chip-check"> ✓</text>
+              </button>
+            </view>
+            <view v-if="!tpls.length" class="muted small" style="text-align:center;padding:30rpx 0">模板清单加载中…</view>
+          </scroll-view>
+        </view>
+      </view>
+
       <!-- 自己看自己名片时不显示「交换名片」（与 H5 owner 隐藏悬浮菜单同口径） -->
       <view v-if="!isSelf" class="card block">
         <view class="section">交换名片</view>
@@ -165,7 +184,8 @@ const qrOpen = ref(false)
 const qrMode = ref('vcard')
 // dock「二维码」键 / 身份卡右上小码共用这一个弹层；页面经 defineExpose 的 openQr 唤起
 function openQr() { qrOpen.value = true }
-defineExpose({ openQr })
+// dock「模板」键唤起模板选择弹层
+defineExpose({ openQr, openTpl })
 
 // 联系方式行（与 H5 CardSheet contactFields 同构）：手机/座机可拨打，其余点行复制
 const contactRows = computed(() => {
@@ -200,6 +220,67 @@ const THEMES = {
   alas: { label: '阿拉斯红', accent: '#a01722' }
 }
 const THEME_ORDER = Object.keys(THEMES)
+
+// 模板弹层（dock「模板」键唤起，页面即实时预览）：模板清单来自公开接口（与 edit.vue 同源），
+// 选中即 PUT /api/cards/mine 应用整套配色（template+theme+accent+二维码色，与 edit.vue chooseTemplate 同口径），
+// 未开通由服务端套餐闸门拦（403 → toast）。⚠️ TEMPLATE_PALETTES 与 edit.vue / client/src/utils/themes.js 三端同步。
+const TEMPLATE_PALETTES = {
+  tang: { theme: 'tang', qrFg: '#7a1e15', qrBg: '#f7ecd9' },
+  vanna: { theme: 'vanna', qrFg: '#0c2a4d', qrBg: '#eaf2f9' },
+  phantom: { theme: 'phantom', qrFg: '#052e1c', qrBg: '#e8f5ee' },
+  lava: { theme: 'lava', qrFg: '#1a1a1e', qrBg: '#f1f1f2' },
+  star: { theme: 'star', qrFg: '#8a8aa0', qrBg: '#12121a' },
+  alas: { theme: 'alas', qrFg: '#4a0d14', qrBg: '#f9eaea' },
+  classic: { theme: 'ocean', qrFg: '#12306b', qrBg: '#f2f7ff' },
+  minimal: { theme: 'ocean', qrFg: '#2b2118', qrBg: '#ffffff' },
+  elite: { theme: 'ink', qrFg: '#b99355', qrBg: '#15171c' },
+  vivid: { theme: 'royal', qrFg: '#7c3aed', qrBg: '#fff7ed' },
+  seal: { theme: 'ocean', qrFg: '#2b2118', qrBg: '#ffffff' },
+  contact: { theme: 'ink', qrFg: '#12202e', qrBg: '#ffffff' },
+  navygold: { theme: 'ink', qrFg: '#1d3a55', qrBg: '#f7f1e3' },
+  paper: { theme: 'ocean', qrFg: '#3f4a5a', qrBg: '#f7f6f3' },
+  glass: { theme: 'mint', qrFg: '#0b2e2a', qrBg: '#eaf8f4' },
+  wood: { theme: 'sunset', qrFg: '#5b3a1f', qrBg: '#f6eee1' },
+  neon: { theme: 'royal', qrFg: '#3d1a72', qrBg: '#f3e9ff' },
+  acid: { theme: 'mint', qrFg: '#0a0a0a', qrBg: '#dfff5e' },
+  pop: { theme: 'sunset', qrFg: '#1a1a1a', qrBg: '#fff4e8' },
+  magazine: { theme: 'sunset', qrFg: '#b91c1c', qrBg: '#f7f3ec' },
+  poster: { theme: 'ink', qrFg: '#1d3a55', qrBg: '#ffffff' },
+  ticket: { theme: 'ocean', qrFg: '#1f2937', qrBg: '#f7f5ee' },
+  horizontal: { theme: 'ocean', qrFg: '#1d3a55', qrBg: '#eef1f4' },
+  sidebar: { theme: 'sunset', qrFg: '#44291a', qrBg: '#f7f3ec' }
+}
+const tplOpen = ref(false)
+const tpls = ref([])
+const tplBusy = ref(false)
+let tplsLoaded = false
+async function openTpl() {
+  tplOpen.value = true
+  if (tplsLoaded) return
+  try {
+    const r = await api.get('/api/cards/public/templates?t=' + Date.now(), false)
+    if (r?.templates?.length) { tpls.value = r.templates; tplsLoaded = true }
+  } catch { /* 清单拉取失败静默，弹层保留「加载中」可关掉重开 */ }
+}
+async function chooseTpl(t) {
+  if (tplBusy.value || card.value.template === t.key) return
+  const pal = TEMPLATE_PALETTES[t.key] || { theme: 'ocean', qrFg: '#2b2118', qrBg: '#ffffff' }
+  const patch = {
+    template: t.key,
+    theme: pal.theme,
+    accent: (THEMES[pal.theme] || THEMES.ocean).accent,
+    qr_fg: pal.qrFg,
+    qr_bg: pal.qrBg
+  }
+  tplBusy.value = true
+  try {
+    await api.put('/api/cards/mine', patch)
+    toast(`已应用「${t.label}」整套配色`, 'success')
+    emit('update', patch)
+    tplOpen.value = false
+  } catch (e) { toast(e.message) } finally { tplBusy.value = false }
+}
+
 const themeBusy = ref(false)
 async function cycleTheme() {
   if (!isSelf.value || themeBusy.value) return
@@ -393,6 +474,18 @@ async function exchange() {
 .qr-tab::after { border: 0; }
 .qr-tab.on { background: #a62b2b; border-color: #a62b2b; color: #fff; }
 .qr-big { width: 400rpx; height: 400rpx; margin: 0 auto 16rpx; display: block; background: #fff; }
+/* 模板弹层：底部抽屉式（贴近 H5 编辑页「实时预览+模板」层级），点选即生效 */
+.mask-bottom { align-items: flex-end; padding: 0; }
+.tpl-modal { width: 100%; background: #fff; border-radius: 32rpx 32rpx 0 0; padding: 30rpx 30rpx calc(30rpx + env(safe-area-inset-bottom, 0px)); }
+.tpl-modal-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 20rpx; }
+.tpl-modal-title { font-size: 32rpx; font-weight: 800; }
+.tpl-modal-tip { font-size: 22rpx; color: #b09a72; }
+.tpl-scroll { max-height: 55vh; }
+.tpl-flow { display: flex; flex-wrap: wrap; gap: 14rpx; }
+.tpl-chip { font-size: 24rpx; font-weight: 600; padding: 14rpx 26rpx; border-radius: 999rpx; line-height: 1.2; border: 2rpx solid #e8dcc2; background: #f7f1e3; color: #8a7355; }
+.tpl-chip::after { border: 0; }
+.tpl-chip.on { background: #a62b2b; border-color: #a62b2b; color: #fff; }
+.tpl-chip.busy { opacity: .6; }
 .btn-row { display: flex; gap: 12rpx; margin-top: 16rpx; }
 .btn { font-size: 24rpx; padding: 16rpx 0; border-radius: 12rpx; background: #f0e7d2; color: #2b2118; }
 .btn::after { border: 0; }
