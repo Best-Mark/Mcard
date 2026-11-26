@@ -380,7 +380,7 @@ export function traceVisit(slug, source = '', city = '') {
 // 池内容来自匿名接口 /api/public/config 下发的 share_title / share_desc / share_image；
 // 缺省时回落内置文案，保证任何页面转发出去都有像样的标题/缩略图，不是裸链接。
 const SHARE_TITLE_FALLBACK = ['一张名片，扫码存进通讯录', '资料随时改，二维码终身不变', '认识一下，这是我的电子名片']
-const sharePool = { titles: [], descs: [], images: [] }
+const sharePool = { titles: [], descs: [], images: [], siteLogo: '' }
 const warmedImages = new Map()
 let sharePoolLoading = null
 
@@ -394,6 +394,7 @@ export function prefetchShareCard() {
     sharePool.titles = poolOf(d?.share_title)
     sharePool.descs = poolOf(d?.share_desc)
     sharePool.images = poolOf(d?.share_image).map(toShareImageUrl)
+    sharePool.siteLogo = toShareImageUrl(d?.site_logo) || ''
     warmShareImages()
   }).catch(() => {}).finally(() => { sharePoolLoading = null })
   return sharePoolLoading
@@ -405,9 +406,10 @@ function toShareImageUrl(u) {
   return s.startsWith('/') ? API_BASE + s : ''
 }
 
-/** 预热图片池前 5 张到本地临时路径，避免微信分享面板首次打开时缩略图转圈（失败静默） */
+/** 预热图片池前 5 张 + 站点LOGO到本地临时路径，避免微信分享面板首次打开时缩略图转圈（失败静默） */
 function warmShareImages() {
-  for (const url of sharePool.images.slice(0, 5)) {
+  const urls = (sharePool.siteLogo ? [sharePool.siteLogo] : []).concat(sharePool.images.slice(0, 5))
+  for (const url of urls) {
     if (warmedImages.has(url)) continue
     uni.downloadFile({
       url,
@@ -422,8 +424,8 @@ export function getShareCardTitle() {
   return pickOne(sharePool.titles) || pickOne(SHARE_TITLE_FALLBACK)
 }
 
-/** 分享缩略图：优先已预热的本地路径（秒出），否则用池里的网络图 */
+/** 全局分享缩略图（无名片上下文时）：站点LOGO → 分享池，优先预热过的本地路径（秒出）。绝不用二维码。 */
 export function getShareCardImage() {
-  const url = pickOne(sharePool.images)
+  const url = sharePool.siteLogo || pickOne(sharePool.images)
   return url ? (warmedImages.get(url) || url) : ''
 }

@@ -70,17 +70,17 @@ function sendSpa(req, res) {
   if (m) {
     const card = db.prepare('SELECT slug, name, title, company, bio, company_intro, logo, cover, avatar FROM cards WHERE slug = ?').get(m[1])
     if (card) {
-      // 与前端分享口径一致：标题「XXX的名片」，描述首选简介（存量 company_intro 回落），
-      // 缩略图 LOGO → 头像 → 封面（cover 仅作最后兜底，svg/webp 由微信侧自行忽略）。
+      // 与前端分享口径严格一致（用户定稿）：标题「XXX的名片」，描述首选简介；
+      // 缩略图 公司LOGO → 用户头像 → 项目LOGO → 分享池，绝不用二维码当缩略图。
       const title = `${card.name || '名片'}的名片`
       const desc = String(card.bio || card.company_intro || `${card.name || ''} ${card.title || ''} ${card.company || ''}`).slice(0, 150)
       const origin = originOf(req)
-      // og:image 必须是绝对 URL（相对路径微信抓不到）；webp 保留（og 抓取容忍度高于 JS-SDK）。
-      // 兜底链与前端分享同口径：名片 LOGO → 头像 → 站点 LOGO → 二维码 PNG。
-      // 站点 LOGO 唯一真相源 = site_config.site_logo（后台「站点基础」可配）。
-      const logoImg = card.logo || card.avatar || card.cover || ''
+      // og:image 必须是绝对 URL（相对路径微信抓不到）。
+      // 站点 LOGO 唯一真相源 = site_config.site_logo；分享池唯一真相源 = settings.shareView().share_image。
       const absOf = u => !u ? '' : /^https?:\/\//i.test(u) ? u : u.startsWith('/') ? `${origin}${u}` : ''
-      const image = absOf(logoImg) || absOf(settings.get('site_logo', '')) || `${origin}/api/cards/public/${m[1]}/qr.png?size=300`
+      let shareFirst = ''
+      try { shareFirst = settings.shareView()?.share_image?.[0] || '' } catch { /* 分享池读取失败不拖垮 SEO */ }
+      const image = absOf(card.logo) || absOf(card.avatar) || absOf(settings.get('site_logo', '')) || absOf(shareFirst)
       const meta = [
         `<title>${esc(title)}</title>`,
         `<meta name="description" content="${esc(desc)}">`,

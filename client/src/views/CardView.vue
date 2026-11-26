@@ -211,7 +211,6 @@ import { THEMES, themeOf, themeVars } from '../utils/themes'
 import { isWeChat, isIOS, saveImageUrl, prepareExternalOpen, openVcfInline, androidContactIntent, deviceEnv, SAVE_IMAGE_TIPS } from '../utils/save-image'
 import { shareOrCopy, mapLinks } from '../utils/share'
 import { setCardShare } from '../utils/wx-share'
-import { buildAndUploadShareImage } from '../utils/shareCardImage'
 import { scanQrUrl } from '../utils/qr'
 import { getCachedPosition } from '../utils/geo'
 import BottomSheet from '../components/BottomSheet.vue'
@@ -492,14 +491,9 @@ async function load() {
     // owner 页（/me）同样要配置微信分享卡片：微信「···」原生转发取的是这里配的 link，
     // 不配就会把当前 /me 链接发出去 → 别人打开被守卫踢去登录，登录后看到「我的名片页」。
     // 口径与工作台共用 setCardShare（唯一真相源）。
+    // 分享缩略图：严格按 公司LOGO → 用户头像 → 项目LOGO → 分享池 的口径（见 wx-share.setCardShare），
+    // 不再生成带二维码的分享图——用户明确不要二维码当缩略图。
     if (full) setCardShare(api, card.value, publicLink.value)
-    // 分享缩略图：生成一张名片卡片样式图（头像/姓名/二维码）替代难看的纯二维码。
-    // 需要登录态才能上传；失败静默保留二维码兜底。生成后重设分享卡片（wx-share 的 key 含图 URL，会重新 config）。
-    if (full && auth.token) {
-      buildAndUploadShareImage(api, { ...card.value, url: publicLink.value }).then(url => {
-        if (url && card.value?.slug === slug.value) setCardShare(api, card.value, publicLink.value, url)
-      }).catch(() => {})
-    }
     if (!embed && !owner && auth.token) {
       try { const mine = await api.get('/api/cards/mine'); isOwner.value = mine.data.data?.slug === slug.value } catch { /* 忽略 */ }
       if (!isOwner.value) {

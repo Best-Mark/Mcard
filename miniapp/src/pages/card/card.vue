@@ -281,8 +281,9 @@ async function exchange() {
   } catch (e) { toast(e.message) } finally { exchanging.value = false }
 }
 
-// 分享口径（2026-11-25 用户定稿）：标题「XXX的名片」；描述首选简介；
-// 缩略图 LOGO → 头像 → 分享池兜底，滤掉 svg/webp（微信解析不出会变灰块）。
+// 分享口径：标题「XXX的名片」；描述首选简介；
+// 缩略图严格按 公司LOGO → 用户头像 → 项目LOGO → 分享池（getShareCardImage 内），绝不用二维码；
+// 滤掉 svg/webp（微信解析不出会变灰块）。webp 头像自动落到下一候选，不会出错。
 onShareAppMessage(() => {
   const c = card.value
   const absolute = u => (!u ? '' : /^https?:\/\//i.test(u) ? u : u.startsWith('/') ? baseUrl + u : '')

@@ -31,19 +31,12 @@ export function cleanShareLink(raw) {
 }
 
 // 缩略图只认 JPG / PNG / GIF：微信解析不出 svg / webp 的缩略图，硬传会变成灰块甚至整卡退化成网址。
-// ⚠️ 但 imgUrl 传空串同样会让整卡退化成纯链接（微信不会去抓页面首图）——这正是「分享出去只有裸链接」的根因。
-// 项目上传链路统一把头像/LOGO 转成 .webp，会被这里过滤掉，分享素材池默认又是空的，
-// 于是一台新名片的分享图恒为空。所以调用方必须给一张必定合格的 PNG 兜底（名片二维码），见 cardQrThumb。
+// 上传链路把头像等栅格图转 webp，会被这里过滤掉并自动落到下一候选，不会报错。
+// 公司 LOGO 走 /upload/logo 产出的是 PNG，可被识别；share_image 池也是 PNG/JPG。
+// ⚠️ 用户口径：分享缩略图绝不用二维码——优先级 公司LOGO → 用户头像 → 项目LOGO → 分享池。
 function cardImage(u) {
   const abs = absoluteMediaUrl(u)
   return /\.(jpe?g|png|gif)(\?|$)/i.test(abs) ? abs : ''
-}
-
-// share-thumb 唯一真相源：服务端 qr.png 是真实 PNG，微信 100% 识别。
-// 没有可用 LOGO/头像（webp 被过滤、池为空）时用它兜底，保证分享是「图+标题+简介」的卡片而非裸链接。
-function cardQrThumb(card, link) {
-  const slug = card?.slug || (String(link || '').match(/\/c\/([a-z0-9-]+)/i) || [])[1] || ''
-  return slug ? `${window.location.origin}/api/cards/public/${slug}/qr.png?size=300` : ''
 }
 
 function setMeta(attr, key, val) {
@@ -143,7 +136,8 @@ export const setWechatShare = setupWechatShare
 /**
  * 名片分享卡片唯一真相源：/c/:slug 公开页与 /me 工作台共用同一口径。
  * 标题「XXX的名片」；描述首选简介（存量 company_intro 回落，空则落分享池）；
- * 缩略图 LOGO → 头像，都不合格再由 setupWechatShare 落分享池。
+ * 缩略图严格按用户口径：公司 LOGO → 用户头像 → 项目 LOGO → 分享池（setupWechatShare 兜底）。
+ * 绝不用二维码缩略图。webp 候选项会被 cardImage 过滤并自动落到下一级，不会出错。
  * 工作台必须自己配置，不能只靠异步嵌入的 CardView——否则加载慢时转发走全局兜底。
  */
 export function setCardShare(api, card, link, shareImage) {
@@ -156,10 +150,14 @@ export function setCardShare(api, card, link, shareImage) {
     title,
     desc: String(card?.bio || card?.company_intro || '').slice(0, 120),
     link: target,
-    // 名片卡片预览图（含头像/姓名/二维码）→ 站点 LOGO → 二维码 PNG 兜底：
-    // 第一项是自动生成并上传的名片样式图，比纯二维码好看；上传失败自动回落到后面的候选。
-    // 注意 cardImage 只认 jpg/png/gif，webp 会被过滤，所以 LOGO 直链不再作为候选。
-    imgCandidates: [shareImage, absoluteMediaUrl(siteConfig.site_logo), cardQrThumb(card, target)]
+    // 公司 LOGO(/upload/logo 产 PNG) → 名片头像 → 项目 LOGO → 历史 shareImage 参数（兼容旧调用，通常为空）。
+    // 二维码不作为候选；全都不合格时由 setupWechatShare 落 share_image 分享池。
+    imgCandidates: [
+      absoluteMediaUrl(card?.logo),
+      absoluteMediaUrl(card?.avatar),
+      absoluteMediaUrl(siteConfig.site_logo),
+      shareImage
+    ]
   })
 }
 
