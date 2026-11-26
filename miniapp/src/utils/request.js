@@ -504,3 +504,27 @@ export function getShareCardImage() {
   const url = sharePool.siteLogo || pickOne(sharePool.images)
   return url ? (warmedImages.get(url) || url) : ''
 }
+
+// ===== 二维码美化选项（2026-11-26）：服务端 /api/cards/public/meta 下发为唯一真相源 =====
+// 追加在既有 utils/request.js（不新建纯 require js，避免开发者工具热重载白屏）。
+// 兜底只在服务端不可用时用一次；真实清单始终以服务端为准。
+let _qrStylesCache = null
+export function loadQrStyles() {
+  if (_qrStylesCache) return Promise.resolve(_qrStylesCache)
+  return api.get('/api/cards/public/meta', { t: Date.now() }).then(({ data }) => {
+    const m = (data && data.data) || {}
+    _qrStylesCache = {
+      dots: Array.isArray(m.qrDotStyles) && m.qrDotStyles.length ? m.qrDotStyles : [{ value: 'square', label: '普通' }, { value: 'dots', label: '大圆点' }],
+      eyes: Array.isArray(m.qrEyeStyles) && m.qrEyeStyles.length ? m.qrEyeStyles : [{ value: 'square', label: '方正' }, { value: 'circle', label: '圆形' }],
+      presets: Array.isArray(m.qrPresets) && m.qrPresets.length ? m.qrPresets : []
+    }
+    return _qrStylesCache
+  }).catch(() => {
+    _qrStylesCache = {
+      dots: [{ value: 'square', label: '普通' }, { value: 'dots', label: '大圆点' }],
+      eyes: [{ value: 'square', label: '方正' }, { value: 'circle', label: '圆形' }],
+      presets: []
+    }
+    return _qrStylesCache
+  })
+}

@@ -170,7 +170,7 @@
 <script setup>
 import { ref, computed, onUnmounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { api, toast, uploadImage, uploadLogo, processLogo, geoLocate, reverseGeocode, geocodeAddress, getRegions, ensurePrivacy } from '../../utils/request'
+import { api, toast, uploadImage, uploadLogo, processLogo, geoLocate, reverseGeocode, geocodeAddress, getRegions, ensurePrivacy, loadQrStyles } from '../../utils/request'
 
 // ⚠️ 与 client/src/utils/themes.js 保持同步（小程序独立渲染，无 web-view）
 const themes = {
@@ -215,14 +215,13 @@ const TEMPLATE_PALETTES = {
 }
 const paletteOf = key => TEMPLATE_PALETTES[key] || { theme: 'ocean', qrFg: '#2b2118', qrBg: '#ffffff' }
 const DEFAULT_PAL = paletteOf('tang')
-const QR_PRESETS = [
-  { key: 'classic', label: '经典', dot: 'square', eye: 'square', gradTo: '' },
-  { key: 'dots', label: '圆点', dot: 'dots', eye: 'rounded', gradTo: '' },
-  { key: 'tech', label: '科技渐变', dot: 'rounded', eye: 'rounded', gradTo: '#06b6d4' },
-  { key: 'elegant', label: '典雅', dot: 'rounded', eye: 'circle', gradTo: '' }
-]
-const dotValues = ['square', 'dots', 'rounded']; const dotLabels = ['方形', '圆点', '圆角']
-const eyeValues = ['square', 'rounded', 'circle']; const eyeLabels = ['方形', '圆角', '圆形']
+// 预设/码点/码眼全部由服务端 /api/cards/public/meta 下发（唯一真相源），本页不再硬编码取值。
+const QR_PRESETS = ref([])
+const dotStyles = ref([]); const eyeStyles = ref([])
+const dotValues = computed(() => dotStyles.value.map(x => x.value))
+const dotLabels = computed(() => dotStyles.value.map(x => x.label))
+const eyeValues = computed(() => eyeStyles.value.map(x => x.value))
+const eyeLabels = computed(() => eyeStyles.value.map(x => x.label))
 function qrPresetActive(p) {
   const s = form.value.qr_style || {}
   return s.dot === p.dot && s.eye === p.eye && (s.gradTo || '') === p.gradTo
@@ -230,8 +229,8 @@ function qrPresetActive(p) {
 function applyQrPreset(p) {
   form.value.qr_style = { ...(form.value.qr_style || {}), dot: p.dot, eye: p.eye, gradTo: p.gradTo }
 }
-const dotIdx = computed(() => Math.max(0, dotValues.indexOf(form.value.qr_style?.dot)))
-const eyeIdx = computed(() => Math.max(0, eyeValues.indexOf(form.value.qr_style?.eye)))
+const dotIdx = computed(() => Math.max(0, dotValues.value.indexOf(form.value.qr_style?.dot)))
+const eyeIdx = computed(() => Math.max(0, eyeValues.value.indexOf(form.value.qr_style?.eye)))
 
 const blank = {
   slug: '', name: '', name_en: '', title: '', company: '', company_intro: '', department: '',
@@ -302,6 +301,8 @@ const logoModeIdx = ref(0)
 onLoad(async options => {
   loadTemplates()
   loadMarketMeta()
+  // 二维码选项独立启动，不挂在下面 /cards/mine 链尾（前置失败会拖住样式选项）
+  loadQrStyles().then(s => { dotStyles.value = s.dots; eyeStyles.value = s.eyes; QR_PRESETS.value = s.presets })
   try {
     const c = await api.get('/api/cards/mine')
     if (!c) return uni.redirectTo({ url: '/pages/me/me' })

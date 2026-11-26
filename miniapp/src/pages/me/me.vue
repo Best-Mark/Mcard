@@ -72,7 +72,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onShow, onReady, onShareAppMessage } from '@dcloudio/uni-app'
-import { api, baseUrl, isLogged, goLogin, toast, getPublicMaterials, getShareCardImage, withInvite } from '../../utils/request'
+import { api, baseUrl, isLogged, goLogin, toast, getPublicMaterials, getShareCardImage, withInvite, loadQrStyles } from '../../utils/request'
 import CardBody from '../../components/CardBody/CardBody.vue'
 import TabBar from '../../components/TabBar/TabBar.vue'
 
@@ -153,14 +153,8 @@ async function chooseTpl(t) {
   } catch (e) { toast(e.message) } finally { tplBusy.value = false }
 }
 
-// 二维码风格预设（与 H5 配色风格页同款 4 个）：改码点/定位角/渐变组合，点中即保存实时生效；
-// 更细的前景色/背景色/背景图等微调在编辑页
-const QR_PRESETS = [
-  { key: 'classic', label: '经典', swatch: '#0f172a', dot: 'square', eye: 'square', gradTo: '' },
-  { key: 'dots', label: '圆点', swatch: '#2563eb', dot: 'dots', eye: 'rounded', gradTo: '' },
-  { key: 'tech', label: '科技渐变', swatch: 'linear-gradient(135deg,#2563eb,#06b6d4)', dot: 'rounded', eye: 'rounded', gradTo: '#06b6d4' },
-  { key: 'elegant', label: '典雅', swatch: '#b45309', dot: 'rounded', eye: 'circle', gradTo: '' }
-]
+// 二维码风格预设由服务端 /api/cards/public/meta 下发（唯一真相源），本页不再硬编码 4 个组合。
+const QR_PRESETS = ref([])
 const qrBusy = ref(false)
 function qrPresetActive(p) {
   const s = card.value?.qr_style || {}
@@ -222,7 +216,10 @@ async function load() {
     loadError.value = e.message || '网络异常'
   } finally { loading.value = false }
 }
-onShow(load)
+onShow(() => {
+  load()
+  loadQrStyles().then(s => { QR_PRESETS.value = s.presets })
+})
 
 async function create() {
   if (busy.value) return

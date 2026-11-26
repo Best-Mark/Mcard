@@ -1,5 +1,7 @@
 const QRCode = require('qrcode')
 const sharp = require('sharp')
+// 码点/码眼清单唯一真相源（含全部取值与中文标签），经 /public/meta 下发两端。
+const { DOT_VALUES, EYE_VALUES } = require('../utils/qrStyles')
 
 // 二维码生成缓存：内容是「内容 + 样式 + 颜色 + logo + size」决定的纯函数，重复请求无需重算。
 // 实测：SVG ~1ms，PNG ~56ms；缓存后重复请求近 0ms。上限 + TTL 双保护。
@@ -30,8 +32,8 @@ function normalizeStyle(s) {
   const o = s && typeof s === 'object' ? s : {}
   const inSet = (v, set, d) => set.includes(v) ? v : d
   return {
-    dot: inSet(o.dot, ['square', 'dots', 'rounded'], DEFAULT_STYLE.dot),
-    eye: inSet(o.eye, ['square', 'rounded', 'circle'], DEFAULT_STYLE.eye),
+    dot: inSet(o.dot, DOT_VALUES, DEFAULT_STYLE.dot),
+    eye: inSet(o.eye, EYE_VALUES, DEFAULT_STYLE.eye),
     gradTo: /^#[0-9a-fA-F]{6}$/.test(o.gradTo || '') ? o.gradTo : '',
     logoShape: inSet(o.logoShape, ['rounded', 'circle', 'none'], DEFAULT_STYLE.logoShape),
     bgImage: typeof o.bgImage === 'string' && /^(data:image\/|\/uploads\/|https?:\/\/)/.test(o.bgImage) ? o.bgImage.slice(0, 200000) : ''
@@ -48,18 +50,90 @@ function inFinder(x, y, n) {
   return (x < 8 && y < 8) || (x >= n - 8 && y < 8) || (x < 8 && y >= n - 8)
 }
 
-// 画一个 finder：ox,oy 为 7×7 区域左上角（模块坐标）
+// 画一个 finder（码眼）：ox,oy 为 7×7 区域左上角（模块坐标）。
+// ⚠️ 所有形状都保持「外框 + 中心实心」两级结构，这是扫码器识别 finder 的关键，
+// 只换外框圆角/线宽/几何形状，不改位置与尺寸（含 1 格分隔带）。
 function finderMarkup(ox, oy, eye, fill) {
-  if (eye === 'circle') {
-    return `<circle cx="${ox + 3.5}" cy="${oy + 3.5}" r="3.4" fill="none" stroke="${fill}" stroke-width="1"/>
-<circle cx="${ox + 3.5}" cy="${oy + 3.5}" r="1.6" fill="${fill}"/>`
+  const cx = ox + 3.5, cy = oy + 3.5
+  const frame = (rx, sw) => `<rect x="${ox}" y="${oy}" width="7" height="7" rx="${rx}" fill="none" stroke="${fill}" stroke-width="${sw}"/>`
+  const dot = (r) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}"/>`
+  const innerRect = (rx) => `<rect x="${ox + 2}" y="${oy + 2}" width="3" height="3" rx="${rx}" fill="${fill}"/>`
+  switch (eye) {
+    case 'circle': return frame(0, 1) + dot(1.6)
+    case 'rounded': return frame(2, 1) + innerRect(1)
+    case 'thickRounded': return frame(2, 2.2) + innerRect(1)
+    case 'mediumRounded': return frame(2, 1.5) + innerRect(1)
+    case 'thinRounded': return frame(2, 0.7) + innerRect(0.8)
+    case 'thickCircle': return `<circle cx="${cx}" cy="${cy}" r="3.1" fill="none" stroke="${fill}" stroke-width="2.2"/>` + dot(1.7)
+    case 'thinCircle': return `<circle cx="${cx}" cy="${cy}" r="3.4" fill="none" stroke="${fill}" stroke-width="0.7"/>` + dot(1.5)
+    case 'diamond': return `<path d="M${cx},${oy}h3.5v3.5h-3.5z" transform="rotate(45 ${cx} ${cy})" fill="none" stroke="${fill}" stroke-width="1"/>`
+      + `<path d="M${cx},${cy - 1.6}l1.6,1.6l-1.6,1.6l-1.6,-1.6z" fill="${fill}"/>`
+    case 'star': {
+      const star = (outer, inner) => {
+        const pts = []
+        for (let i = 0; i < 8; i++) {
+          const a = -Math.PI / 2 + i * Math.PI / 4
+          const r = i % 2 === 0 ? outer : inner
+          pts.push(`${(cx + Math.cos(a) * r).toFixed(2)},${(cy + Math.sin(a) * r).toFixed(2)}`)
+        }
+        return pts.join(' ')
+      }
+      return `<polygon points="${star(3.4, 2.1)}" fill="none" stroke="${fill}" stroke-width="1"/>`
+        + `<polygon points="${star(1.7, 1)}" fill="${fill}"/>`
+    }
+    case 'bubble': return `<path d="M${ox + 1},${oy}h5a1,1 0 0 1 1,1v4a1,1 0 0 1 -1,1h-3l-1.5,1.4v-1.4h-0.5a1,1 0 0 1 -1,-1v-4a1,1 0 0 1 1,-1z" fill="none" stroke="${fill}" stroke-width="1"/>`
+      + dot(1.6)
+    case 'eye': return `<ellipse cx="${cx}" cy="${cy}" rx="3.5" ry="2.6" fill="none" stroke="${fill}" stroke-width="1"/>` + dot(1.5)
+    case 'singleRound': return `<path d="M${ox},${oy + 2}a2,2 0 0 1 2,-2h5v7h-7z" fill="none" stroke="${fill}" stroke-width="1"/>` + dot(1.6)
+    case 'fourRound': return `<rect x="${ox}" y="${oy}" width="7" height="7" rx="1.6" fill="none" stroke="${fill}" stroke-width="1"/>`
+      + `<circle cx="${ox + 1.6}" cy="${oy + 1.6}" r="0.8" fill="${fill}"/><circle cx="${ox + 5.4}" cy="${oy + 1.6}" r="0.8" fill="${fill}"/>`
+      + `<circle cx="${ox + 1.6}" cy="${oy + 5.4}" r="0.8" fill="${fill}"/><circle cx="${ox + 5.4}" cy="${oy + 5.4}" r="0.8" fill="${fill}"/>`
+      + dot(1.2)
+    default: return frame(0, 1) + innerRect(0)
   }
-  const rx = eye === 'rounded' ? 2 : 0
-  return `<rect x="${ox}" y="${oy}" width="7" height="7" rx="${rx}" fill="none" stroke="${fill}" stroke-width="1"/>
-<rect x="${ox + 2}" y="${oy + 2}" width="3" height="3" rx="${eye === 'rounded' ? 1 : 0}" fill="${fill}"/>`
 }
 
-// 核心：按样式渲染 data 区码点（跳过 finder 区域，finder 单独画）
+// 单个码点形状：以 (x,y) 模块左上角为原点，绘制在 1×1 方格内。
+function dotShape(x, y, dot) {
+  const cx = x + 0.5, cy = y + 0.5
+  switch (dot) {
+    case 'dots': return `<circle cx="${cx}" cy="${cy}" r="0.47"/>`
+    case 'smallDots': return `<circle cx="${cx}" cy="${cy}" r="0.3"/>`
+    case 'smallSquare': return `<rect x="${x + 0.2}" y="${y + 0.2}" width="0.6" height="0.6"/>`
+    case 'diamond': return `<path d="M${cx},${y}l0.5,0.5l-0.5,0.5l-0.5,-0.5z"/>`
+    case 'hStripe': return `<rect x="${x}" y="${y + 0.3}" width="1" height="0.4"/>`
+    case 'vStripe': return `<rect x="${x + 0.3}" y="${y}" width="0.4" height="1"/>`
+    case 'stripe': return `<rect x="${x}" y="${y + 0.18}" width="1" height="0.22"/><rect x="${x}" y="${y + 0.6}" width="1" height="0.22"/>`
+    case 'tile': return `<rect x="${x}" y="${y}" width="0.45" height="0.45"/><rect x="${x + 0.55}" y="${y + 0.55}" width="0.45" height="0.45"/>`
+    case 'grid': return `<rect x="${x + 0.05}" y="${y + 0.05}" width="0.4" height="0.4"/><rect x="${x + 0.55}" y="${y + 0.05}" width="0.4" height="0.4"/><rect x="${x + 0.05}" y="${y + 0.55}" width="0.4" height="0.4"/><rect x="${x + 0.55}" y="${y + 0.55}" width="0.4" height="0.4"/>`
+    case 'liquid': return `<rect x="${x - 0.03}" y="${y - 0.03}" width="1.06" height="1.06" rx="0.38"/>`
+    case 'roundLiquid': return `<circle cx="${cx}" cy="${cy}" r="0.6"/>`
+    case 'hex': {
+      const pts = []
+      for (let i = 0; i < 6; i++) {
+        const a = -Math.PI / 2 + i * Math.PI / 3
+        pts.push(`${(cx + Math.cos(a) * 0.5).toFixed(2)},${(cy + Math.sin(a) * 0.5).toFixed(2)}`)
+      }
+      return `<polygon points="${pts.join(' ')}"/>`
+    }
+    case 'thickStar':
+    case 'thinStar': {
+      const outer = dot === 'thickStar' ? 0.5 : 0.5
+      const inner = dot === 'thickStar' ? 0.22 : 0.11
+      const pts = []
+      for (let i = 0; i < 8; i++) {
+        const a = -Math.PI / 2 + i * Math.PI / 4
+        const r = i % 2 === 0 ? outer : inner
+        pts.push(`${(cx + Math.cos(a) * r).toFixed(2)},${(cy + Math.sin(a) * r).toFixed(2)}`)
+      }
+      return `<polygon points="${pts.join(' ')}"/>`
+    }
+    default: return `<rect x="${x + 0.04}" y="${y + 0.04}" width="0.92" height="0.92" rx="0.3"/>`
+  }
+}
+
+// 核心：按样式渲染 data 区码点（跳过 finder 区域，finder 单独画）。
+// 非方点用 1×1 的 <defs><path> 模板 + <use transform> 复用，避免每模块重复输出完整几何（体积可降一个量级）。
 function dataPath(bits, n, dot) {
   if (dot === 'square') {
     const d = []
@@ -69,14 +143,13 @@ function dataPath(bits, n, dot) {
     }
     return `<path d="${d.join('')}"/>`
   }
-  const shapes = []
+  const shape = dotShape(0, 0, dot)
+  const uses = []
   for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
     if (inFinder(x, y, n)) continue
-    if (!bits.get(x, y)) continue
-    if (dot === 'dots') shapes.push(`<circle cx="${x + 0.5}" cy="${y + 0.5}" r="0.47"/>`)
-    else shapes.push(`<rect x="${x + 0.04}" y="${y + 0.04}" width="0.92" height="0.92" rx="0.3"/>`)
+    if (bits.get(x, y)) uses.push(`<use href="#qds" x="${x}" y="${y}"/>`)
   }
-  return shapes.join('')
+  return `<defs><g id="qds">${shape}</g></defs>` + uses.join('')
 }
 
 // SVG 渲染（草料式美化）。logoImage 为 dataURL 或 /uploads/ 路径；brand 为无 LOGO 图时的文字。

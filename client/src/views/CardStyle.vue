@@ -67,17 +67,17 @@
               <p class="small muted">中心 LOGO 固定居中常显，这里只挑码点风格。</p>
               <div class="field"><label>一键预设</label>
                 <div class="qr-presets">
-                  <button v-for="p in QR_PRESETS" :key="p.key" class="qr-preset" :class="{ on: qrPresetActive(p) }" @click="applyQrPreset(p)">
+                  <button v-for="p in qrPresets" :key="p.key" class="qr-preset" :class="{ on: qrPresetActive(p) }" @click="applyQrPreset(p)">
                     <i :style="{ background: p.swatch }"></i>{{ p.label }}
                   </button>
                 </div>
               </div>
               <div class="grid2">
                 <div class="field"><label>码点形状</label>
-                  <BottomSelect v-model="card.qr_style.dot" :options="DOT_OPTIONS" title="码点形状" />
+                  <BottomSelect v-model="card.qr_style.dot" :options="dotOptions" title="码点形状" />
                 </div>
                 <div class="field"><label>定位角样式</label>
-                  <BottomSelect v-model="card.qr_style.eye" :options="EYE_OPTIONS" title="定位角样式" />
+                  <BottomSelect v-model="card.qr_style.eye" :options="eyeOptions" title="定位角样式" />
                 </div>
               </div>
             </template>
@@ -112,6 +112,7 @@ import { showToast } from '../store'
 import { THEMES, paletteOf } from '../utils/themes'
 import CardPreview from '../components/CardPreview.vue'
 import BottomSelect from '../components/BottomSelect.vue'
+import { loadQrStyles } from '../utils/qrStyles'
 
 const router = useRouter()
 const card = ref(null)
@@ -140,14 +141,8 @@ onBeforeUnmount(() => { document.body.style.overflow = bodyOverflowBefore })
 
 // 二维码只留三项可调：一键预设 + 码点形状 + 定位角样式。
 // 码色/底色跟模板走，中心 LOGO 固定居中常显（logoShape 锁 rounded、qr_logo 锁 true）。
-const DOT_OPTIONS = [{ value: 'square', label: '方形' }, { value: 'dots', label: '圆点' }, { value: 'rounded', label: '圆角' }]
-const EYE_OPTIONS = [{ value: 'square', label: '方形' }, { value: 'rounded', label: '圆角' }, { value: 'circle', label: '圆形' }]
-const QR_PRESETS = [
-  { key: 'classic', label: '经典', swatch: '#0f172a', dot: 'square', eye: 'square', gradTo: '' },
-  { key: 'dots', label: '圆点', swatch: '#2563eb', dot: 'dots', eye: 'rounded', gradTo: '' },
-  { key: 'tech', label: '科技渐变', swatch: 'linear-gradient(135deg,#2563eb,#06b6d4)', dot: 'rounded', eye: 'rounded', gradTo: '#06b6d4' },
-  { key: 'elegant', label: '典雅', swatch: '#b45309', dot: 'rounded', eye: 'circle', gradTo: '' }
-]
+// 选项清单由服务端 /api/cards/public/meta 下发（唯一真相源），本页不再硬编码取值。
+const dotOptions = ref([]); const eyeOptions = ref([]); const qrPresets = ref([])
 // LOGO 永远居中常显：底板固定圆角方（qrcode.js 里居中绘制），开关强制开
 const FIXED_LOGO_SHAPE = 'rounded'
 const currentTplLabel = computed(() => templates.value.find(t => t.key === card.value?.template)?.label || card.value?.template || '默认')
@@ -195,7 +190,12 @@ async function load() {
 async function loadTemplates() {
   try { const { data } = await api.get(`/api/cards/public/templates?t=${Date.now()}`); templates.value = data.data?.templates || [] } catch {}
 }
-onMounted(async () => { await load(); loadTemplates() })
+onMounted(async () => {
+  // 样式选项/模板清单独立启动，不挂在 load 链尾（前置请求失败/重启窗口会拖住关键选项）
+  loadQrStyles().then(s => { dotOptions.value = s.dots; eyeOptions.value = s.eyes; qrPresets.value = s.presets })
+  loadTemplates()
+  await load()
+})
 
 async function done() {
   if (saving.value || !card.value) return

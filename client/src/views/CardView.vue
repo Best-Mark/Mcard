@@ -113,20 +113,20 @@
           <div class="dock-scroll">
             <div class="dock-flow">
               <template v-if="qrSub === 'preset'">
-                <button v-for="p in QR_PRESETS" :key="p.key" :class="['dock-tpl', { on: qrPresetActive(p), busy: qrBusy }]" @click="applyQrStyle({ dot: p.dot, eye: p.eye, gradTo: p.gradTo })">
+                <button v-for="p in qrPresets" :key="p.key" :class="['dock-tpl', { on: qrPresetActive(p), busy: qrBusy }]" @click="applyQrStyle({ dot: p.dot, eye: p.eye, gradTo: p.gradTo })">
                   <span class="qr-swatch" :style="{ background: p.swatch }"></span>
                   <span class="dock-tpl-label">{{ p.label }}</span>
                 </button>
               </template>
               <template v-else-if="qrSub === 'dot'">
-                <button v-for="o in DOT_OPTS" :key="'dot-' + o.value" :class="['dock-tpl', { on: (card.qr_style?.dot || 'square') === o.value, busy: qrBusy }]" @click="applyQrStyle({ dot: o.value })">
-                  <span class="qr-swatch qs-dot" :class="'qs-' + o.value"><i v-for="n in 9" :key="n"></i></span>
+                <button v-for="o in dotOpts" :key="'dot-' + o.value" :class="['dock-tpl', { on: (card.qr_style?.dot || 'square') === o.value, busy: qrBusy }]" @click="applyQrStyle({ dot: o.value })">
+                  <img class="qr-swatch qr-swatch-live" :src="qrStyleSwatch({ dot: o.value, eye: card.qr_style?.eye || 'square' })" alt="" />
                   <span class="dock-tpl-label">{{ o.label }}</span>
                 </button>
               </template>
               <template v-else-if="qrSub === 'eye'">
-                <button v-for="o in EYE_OPTS" :key="'eye-' + o.value" :class="['dock-tpl', { on: (card.qr_style?.eye || 'square') === o.value, busy: qrBusy }]" @click="applyQrStyle({ eye: o.value })">
-                  <span class="qr-swatch qs-eye" :class="'qs-' + o.value"><i></i></span>
+                <button v-for="o in eyeOpts" :key="'eye-' + o.value" :class="['dock-tpl', { on: (card.qr_style?.eye || 'square') === o.value, busy: qrBusy }]" @click="applyQrStyle({ eye: o.value })">
+                  <img class="qr-swatch qr-swatch-live" :src="qrStyleSwatch({ dot: card.qr_style?.dot || 'square', eye: o.value })" alt="" />
                   <span class="dock-tpl-label">{{ o.label }}</span>
                 </button>
               </template>
@@ -280,6 +280,7 @@ import { isWeChat, isIOS, saveImageUrl, prepareExternalOpen, openVcfInline, andr
 import { shareOrCopy, mapLinks } from '../utils/share'
 import { setCardShare } from '../utils/wx-share'
 import { scanQrUrl } from '../utils/qr'
+import { loadQrStyles } from '../utils/qrStyles'
 // dock 翻转行的模板缩略（与配色风格页/编辑页同一份唯一真相源）
 import '../styles/template-thumbs.css'
 import { getCachedPosition } from '../utils/geo'
@@ -363,24 +364,22 @@ async function chooseTpl(t) {
     qrStamp.value = Date.now()
   } catch (e) { showToast(e.message, 'error') } finally { tplBusy.value = false }
 }
-// 二维码风格预设（dock「二维码」键翻转出的调节行，与配色风格页同款 4 个）：
-// 改码点/定位角/渐变组合，点中即保存实时生效；更细的前景/背景色、背景图等微调在配色风格页
-const QR_PRESETS = [
-  { key: 'classic', label: '经典', swatch: '#0f172a', dot: 'square', eye: 'square', gradTo: '' },
-  { key: 'dots', label: '圆点', swatch: '#2563eb', dot: 'dots', eye: 'rounded', gradTo: '' },
-  { key: 'tech', label: '科技渐变', swatch: 'linear-gradient(135deg,#2563eb,#06b6d4)', dot: 'rounded', eye: 'rounded', gradTo: '#06b6d4' },
-  { key: 'elegant', label: '典雅', swatch: '#b45309', dot: 'rounded', eye: 'circle', gradTo: '' }
-]
+// 二维码预设/码点/码眼选项不再本地硬编码：服务端 /api/cards/public/meta 下发为唯一真相源，
+// 本页挂载时拉取一次（utils/qrStyles 带缓存+兜底），新增形状两端自动同步。
+const dotOpts = ref([]); const eyeOpts = ref([]); const qrPresets = ref([])
 const qrBusy = ref(false)
 // 二维码图 URL 缓存击穿：qr_style 等由服务端渲染，固定 URL 会被 CDN/浏览器缓存 60s，
 // 预设点中后必须换 query 才能立刻看到新码（2026-11-26）
 const qrStamp = ref(0)
-// 码型细调（与配色风格页 BottomSelect 同款选项，2026-11-26 用户定：行内继续用点选方式）
-const DOT_OPTS = [{ value: 'square', label: '方形' }, { value: 'dots', label: '圆点' }, { value: 'rounded', label: '圆角' }]
-const EYE_OPTS = [{ value: 'square', label: '方形' }, { value: 'rounded', label: '圆角' }, { value: 'circle', label: '圆形' }]
 function qrPresetActive(p) {
   const s = card.value?.qr_style || {}
   return s.dot === p.dot && s.eye === p.eye && (s.gradTo || '') === p.gradTo
+}
+// 码点/码眼缩略直接用服务端真实渲染（?style= 覆盖，无 logo），16+14 种形状零 CSS 维护、
+// 所见即所得；固定参数不跟着 qrStamp 变，浏览器/CDN 缓存即可。
+function qrStyleSwatch(patch) {
+  const s = { ...(card.value?.qr_style || {}), ...patch, logoShape: 'none', bgImage: '' }
+  return `${qrApi.value}/qr.svg?size=108&logo=0&style=${encodeURIComponent(JSON.stringify(s))}`
 }
 // 部分合并应用 qr_style（预设=dot+eye+gradTo 整组，码型细调=单项），点中即保存实时生效
 async function applyQrStyle(patch) {
@@ -690,7 +689,11 @@ async function traceVisit() {
     if (src || city) await api.post(`${qrApi.value}/trace`, { source: src, city })
   } catch { /* 上报失败静默 */ }
 }
-onMounted(load)
+onMounted(() => {
+  load()
+  // 样式选项独立启动，挂在 load 链尾会被前置请求拖住（同密钥加载教训）
+  loadQrStyles().then(s => { dotOpts.value = s.dots; eyeOpts.value = s.eyes; qrPresets.value = s.presets })
+})
 // 同组件参数变化（名片夹连续看 /c/a → /c/b）：组件复用不会重新 mounted，
 // 必须重置跟随名片的状态再重新加载，否则第二张名片显示第一张的内容。
 watch(slug, () => {

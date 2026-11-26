@@ -50,6 +50,8 @@
 /* 选中描边双环（白内环 + 主题色外环）：深浅底上都清晰 */
 .cv-dock.cv-dock-flip .dock-tpl.on .tpl-thumb, .cv-dock.cv-dock-flip .dock-tpl.on .qr-swatch { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--t-accent, #2563eb); }
 .cv-dock.cv-dock-flip .qr-swatch { display: block; width: 54px; height: 54px; border-radius: 9px; border: 1px solid rgba(255,255,255,.3); box-sizing: border-box; }
+/* 码点/码眼缩略：直接显示服务端真实渲染的二维码（?style= 覆盖），白底保证深浅 dock 底都清晰 */
+.cv-dock.cv-dock-flip .qr-swatch-live { background: #fff; object-fit: contain; padding: 2px; }
 /* 码型细调（码点形状/定位角）分组小标与迷你图案 swatch：白底深图案，深/浅 dock 底上都清晰 */
 .cv-dock.cv-dock-flip .dock-grp { flex: 0 0 auto; align-self: center; font-size: 9px; color: #fff; background: rgba(15,23,42,.5); padding: 3px 7px; border-radius: 6px; white-space: nowrap; }
 .cv-dock.cv-dock-flip .qs-dot { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 9px; background: #fff; }
