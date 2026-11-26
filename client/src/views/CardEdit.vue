@@ -121,18 +121,20 @@
           <div v-show="active === 'materials'" class="card card-pad" id="focus-materials">
             <div class="section-title" style="margin-top:0">公司相册</div>
             <p class="small muted" style="margin-bottom:12px">直接上传图片，自动压缩转 WebP（最长边 1600px，GIF 保留动画），访客点开进全屏浏览。最多 {{ GALLERY_MAX }} 张。</p>
-            <label class="gallery-upload" :class="{ disabled: galleryUploading || galleryUrls.length >= GALLERY_MAX }">
-              <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple :disabled="galleryUploading || galleryUrls.length >= GALLERY_MAX" @change="onGalleryUpload" />
-              {{ galleryUploading ? '上传中…' : (galleryUrls.length >= GALLERY_MAX ? '已达上限' : '+ 上传图片') }}
-            </label>
             <div class="gallery-count small muted">已上传 {{ galleryUrls.length }} / {{ GALLERY_MAX }} 张</div>
-            <div v-if="galleryUrls.length" class="gallery-edit-grid">
+            <!-- 上传入口收进网格：与缩略图同尺寸的「＋」占位格（对齐小程序公司相册口径），
+                 点整格触发选图；满 20 张占位格自动消失，上传中显示状态且不可再点。 -->
+            <div class="gallery-edit-grid">
               <div v-for="(url, i) in galleryUrls" :key="url" class="gallery-edit-cell">
                 <img :src="url" :alt="'相册图片 ' + (i + 1)" loading="lazy" />
                 <button class="gallery-edit-del" aria-label="移除此图" @click="removeGalleryImage(url)">✕</button>
               </div>
+              <label v-if="galleryUrls.length < GALLERY_MAX" class="gallery-edit-add" :class="{ disabled: galleryUploading }" :aria-label="galleryUploading ? '图片上传中' : '上传图片'">
+                <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple :disabled="galleryUploading" @change="onGalleryUpload" />
+                <span class="gallery-add-plus">{{ galleryUploading ? '…' : '＋' }}</span>
+                <span v-if="galleryUploading" class="gallery-add-text">上传中</span>
+              </label>
             </div>
-            <div v-else class="small muted" style="padding:12px 0">还没有图片，点上方「上传图片」。</div>
             <div class="section-foot"><span class="save-state">修改即时反映到右侧预览 · 自动保存仅用于持久化</span></div>
           </div>
 
@@ -656,14 +658,18 @@ async function finish() {
 .region-sheet-body { padding: 0 18px 18px; max-height: 70vh; overflow-y: auto; }
 .link-row { display: grid; grid-template-columns: 1fr 1.5fr auto; gap: 8px; margin-bottom: 8px; }
 /* 公司相册：独立上传后的缩略图网格，移除按钮右上角常驻 */
-.gallery-upload { display: inline-flex; align-items: center; justify-content: center; padding: 10px 18px; border-radius: 9px; background: var(--primary, #2563eb); color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
-.gallery-upload.disabled { opacity: .55; cursor: not-allowed; }
-.gallery-upload input { display: none; }
-.gallery-count { margin-top: 6px; }
+.gallery-count { margin: 0 0 4px; }
 .gallery-edit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; margin-top: 12px; }
 .gallery-edit-cell { position: relative; aspect-ratio: 1; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--bg-page, #f4f6fb); }
 .gallery-edit-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .gallery-edit-del { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border: 0; border-radius: 50%; background: rgba(15,23,42,.72); color: #fff; font-size: 12px; line-height: 1; }
+/* 「＋」上传占位格：与缩略图同尺寸同网格，虚线描边区分；满额 v-if 移除，上传中禁用 */
+.gallery-edit-add { display: flex; flex-direction: column; align-items: center; justify-content: center; aspect-ratio: 1; border: 2px dashed var(--line, #d9dde6); border-radius: 10px; background: var(--bg-page, #f4f6fb); color: var(--primary, #2563eb); cursor: pointer; transition: border-color .15s, background .15s; }
+.gallery-edit-add:hover { border-color: var(--primary, #2563eb); background: color-mix(in srgb, var(--primary, #2563eb) 6%, var(--bg-page, #f4f6fb)); }
+.gallery-edit-add input { display: none; }
+.gallery-edit-add.disabled { opacity: .55; cursor: progress; }
+.gallery-add-plus { font-size: 30px; font-weight: 300; line-height: 1; }
+.gallery-add-text { margin-top: 4px; font-size: 11px; }
 .theme-list { display: flex; flex-wrap: wrap; gap: 8px; }
 .theme-item { border: 1px solid var(--line); border-radius: 10px; padding: 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; }
 .theme-item.on { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37,99,235,.12); }
