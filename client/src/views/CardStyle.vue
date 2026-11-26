@@ -80,6 +80,9 @@
                   <BottomSelect v-model="card.qr_style.eye" :options="eyeOptions" title="定位角样式" />
                 </div>
               </div>
+              <div class="field"><label>码色（深码浅底成对，保证可扫）</label>
+                <BottomSelect v-model="colorKey" :options="colorKeyOptions" title="码色" />
+              </div>
             </template>
             <!-- 只收起面板，不保存；保存统一走页面底部唯一「完成」按钮 -->
             <div class="sheet-confirm"><button class="btn btn-ghost btn-block" @click="sheetOpen = false">收起面板</button></div>
@@ -139,10 +142,18 @@ watch(sheetOpen, on => {
 })
 onBeforeUnmount(() => { document.body.style.overflow = bodyOverflowBefore })
 
-// 二维码只留三项可调：一键预设 + 码点形状 + 定位角样式。
-// 码色/底色跟模板走，中心 LOGO 固定居中常显（logoShape 锁 rounded、qr_logo 锁 true）。
+// 二维码可调：预设 + 码色 + 码点 + 定位角。中心 LOGO 固定居中常显（logoShape 锁 rounded、qr_logo 锁 true）。
 // 选项清单由服务端 /api/cards/public/meta 下发（唯一真相源），本页不再硬编码取值。
-const dotOptions = ref([]); const eyeOptions = ref([]); const qrPresets = ref([])
+const dotOptions = ref([]); const eyeOptions = ref([]); const qrPresets = ref([]); const colorOptions = ref([])
+// 码色是 fg/bg 成对字段（cards.qr_fg / qr_bg），BottomSelect 单值用 key 代理，watch 写回两个字段。
+const colorKeyOptions = computed(() => colorOptions.value.map(c => ({ value: c.key, label: c.label })))
+const colorKey = computed({
+  get: () => colorOptions.value.find(c => c.fg === card.value?.qr_fg && c.bg === card.value?.qr_bg)?.key || colorOptions.value[0]?.key || '',
+  set: k => {
+    const c = colorOptions.value.find(x => x.key === k)
+    if (c && card.value) { card.value.qr_fg = c.fg; card.value.qr_bg = c.bg }
+  }
+})
 // LOGO 永远居中常显：底板固定圆角方（qrcode.js 里居中绘制），开关强制开
 const FIXED_LOGO_SHAPE = 'rounded'
 const currentTplLabel = computed(() => templates.value.find(t => t.key === card.value?.template)?.label || card.value?.template || '默认')
@@ -192,7 +203,7 @@ async function loadTemplates() {
 }
 onMounted(async () => {
   // 样式选项/模板清单独立启动，不挂在 load 链尾（前置请求失败/重启窗口会拖住关键选项）
-  loadQrStyles().then(s => { dotOptions.value = s.dots; eyeOptions.value = s.eyes; qrPresets.value = s.presets })
+  loadQrStyles().then(s => { dotOptions.value = s.dots; eyeOptions.value = s.eyes; qrPresets.value = s.presets; colorOptions.value = s.colors })
   loadTemplates()
   await load()
 })

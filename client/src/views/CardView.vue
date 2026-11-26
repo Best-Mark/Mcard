@@ -118,6 +118,12 @@
                   <span class="dock-tpl-label">{{ p.label }}</span>
                 </button>
               </template>
+              <template v-else-if="qrSub === 'color'">
+                <button v-for="c in colorOpts" :key="'color-' + c.key" :class="['dock-tpl', { on: card.qr_fg === c.fg && card.qr_bg === c.bg, busy: qrBusy }]" @click="applyQrColor(c)">
+                  <img class="qr-swatch qr-swatch-live" :src="qrStyleSwatch({}, c.fg, c.bg)" alt="" />
+                  <span class="dock-tpl-label">{{ c.label }}</span>
+                </button>
+              </template>
               <template v-else-if="qrSub === 'dot'">
                 <button v-for="o in dotOpts" :key="'dot-' + o.value" :class="['dock-tpl', { on: (card.qr_style?.dot || 'square') === o.value, busy: qrBusy }]" @click="applyQrStyle({ dot: o.value })">
                   <img class="qr-swatch qr-swatch-live" :src="qrStyleSwatch({ dot: o.value, eye: card.qr_style?.eye || 'square' })" alt="" />
@@ -322,6 +328,7 @@ const dockMode = ref('main')
 const qrSub = ref('')
 const QR_CATS = [
   { key: 'preset', label: '风格预设', ico: '✦' },
+  { key: 'color', label: '码色', ico: '◐' },
   { key: 'dot', label: '码点形状', ico: '⠿' },
   { key: 'eye', label: '码眼形状', ico: '◎' }
 ]
@@ -366,7 +373,7 @@ async function chooseTpl(t) {
 }
 // 二维码预设/码点/码眼选项不再本地硬编码：服务端 /api/cards/public/meta 下发为唯一真相源，
 // 本页挂载时拉取一次（utils/qrStyles 带缓存+兜底），新增形状两端自动同步。
-const dotOpts = ref([]); const eyeOpts = ref([]); const qrPresets = ref([])
+const dotOpts = ref([]); const eyeOpts = ref([]); const qrPresets = ref([]); const colorOpts = ref([])
 const qrBusy = ref(false)
 // 二维码图 URL 缓存击穿：qr_style 等由服务端渲染，固定 URL 会被 CDN/浏览器缓存 60s，
 // 预设点中后必须换 query 才能立刻看到新码（2026-11-26）
@@ -377,9 +384,22 @@ function qrPresetActive(p) {
 }
 // 码点/码眼缩略直接用服务端真实渲染（?style= 覆盖，无 logo），16+14 种形状零 CSS 维护、
 // 所见即所得；固定参数不跟着 qrStamp 变，浏览器/CDN 缓存即可。
-function qrStyleSwatch(patch) {
+function qrStyleSwatch(patch, fg, bg) {
   const s = { ...(card.value?.qr_style || {}), ...patch, logoShape: 'none', bgImage: '' }
-  return `${qrApi.value}/qr.svg?size=108&logo=0&style=${encodeURIComponent(JSON.stringify(s))}`
+  const f = encodeURIComponent(fg || card.value?.qr_fg || '#0f172a')
+  const b = encodeURIComponent(bg || card.value?.qr_bg || '#ffffff')
+  return `${qrApi.value}/qr.svg?size=108&logo=0&fg=${f}&bg=${b}&style=${encodeURIComponent(JSON.stringify(s))}`
+}
+// 码色走既有 cards.qr_fg / qr_bg（不新建参数）；深码浅底成对保存，服务端白名单与套餐闸门已覆盖这两字段。
+async function applyQrColor(c) {
+  if (qrBusy.value || !card.value) return
+  if (card.value.qr_fg === c.fg && card.value.qr_bg === c.bg) return
+  qrBusy.value = true
+  try {
+    await api.put('/api/cards/mine', { qr_fg: c.fg, qr_bg: c.bg })
+    card.value = { ...card.value, qr_fg: c.fg, qr_bg: c.bg }
+    qrStamp.value = Date.now()
+  } catch (e) { showToast(e.message, 'error') } finally { qrBusy.value = false }
 }
 // 部分合并应用 qr_style（预设=dot+eye+gradTo 整组，码型细调=单项），点中即保存实时生效
 async function applyQrStyle(patch) {
@@ -692,7 +712,7 @@ async function traceVisit() {
 onMounted(() => {
   load()
   // 样式选项独立启动，挂在 load 链尾会被前置请求拖住（同密钥加载教训）
-  loadQrStyles().then(s => { dotOpts.value = s.dots; eyeOpts.value = s.eyes; qrPresets.value = s.presets })
+  loadQrStyles().then(s => { dotOpts.value = s.dots; eyeOpts.value = s.eyes; qrPresets.value = s.presets; colorOpts.value = s.colors })
 })
 // 同组件参数变化（名片夹连续看 /c/a → /c/b）：组件复用不会重新 mounted，
 // 必须重置跟随名片的状态再重新加载，否则第二张名片显示第一张的内容。

@@ -50,7 +50,23 @@ const QR_PRESETS = [
   { key: 'grid', label: '网格', swatch: '#0f766e', dot: 'grid', eye: 'fourRound', gradTo: '' }
 ]
 
+// 码色（前景色 fg + 底色 bg 成对）：只用「深码 + 浅底」组合，保证任何主题下可扫。
+// 复用 cards.qr_fg / cards.qr_bg 两个既有字段，不新建参数；这里只给推荐组合的清单。
+// 保证对比度：深码亮度 < 110、浅底亮度 > 200（与 routes/cards.js 的 scanOptions 同口径）。
+const QR_COLORS = [
+  { key: 'ink', label: '墨黑', fg: '#0f172a', bg: '#ffffff' },
+  { key: 'navy', label: '藏青', fg: '#12306b', bg: '#f2f7ff' },
+  { key: 'ocean', label: '经典蓝', fg: '#1e3a8a', bg: '#eff6ff' },
+  { key: 'tang', label: '唐红', fg: '#7a1e15', bg: '#fdf5f5' },
+  { key: 'gold', label: '鎏金', fg: '#6b4a12', bg: '#fdf8e7' },
+  { key: 'mint', label: '翡翠', fg: '#0b3d38', bg: '#effaf7' },
+  { key: 'purple', label: '皇家紫', fg: '#4c1d95', bg: '#f6f3ff' },
+  { key: 'slate', label: '石墨', fg: '#1f2937', bg: '#f1f5f9' },
+  { key: 'coffee', label: '咖啡', fg: '#44291a', bg: '#fbf5ef' },
+  { key: 'forest', label: '松绿', fg: '#052e1c', bg: '#e8f5ee' }
+]
+
 const DOT_VALUES = DOT_STYLES.map(x => x.value)
 const EYE_VALUES = EYE_STYLES.map(x => x.value)
 
-module.exports = { DOT_STYLES, EYE_STYLES, DOT_VALUES, EYE_VALUES, QR_PRESETS }
+module.exports = { DOT_STYLES, EYE_STYLES, DOT_VALUES, EYE_VALUES, QR_PRESETS, QR_COLORS }

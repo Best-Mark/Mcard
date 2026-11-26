@@ -516,14 +516,16 @@ export function loadQrStyles() {
     _qrStylesCache = {
       dots: Array.isArray(m.qrDotStyles) && m.qrDotStyles.length ? m.qrDotStyles : [{ value: 'square', label: '普通' }, { value: 'dots', label: '大圆点' }],
       eyes: Array.isArray(m.qrEyeStyles) && m.qrEyeStyles.length ? m.qrEyeStyles : [{ value: 'square', label: '方正' }, { value: 'circle', label: '圆形' }],
-      presets: Array.isArray(m.qrPresets) && m.qrPresets.length ? m.qrPresets : []
+      presets: Array.isArray(m.qrPresets) && m.qrPresets.length ? m.qrPresets : [],
+      colors: Array.isArray(m.qrColors) && m.qrColors.length ? m.qrColors : [{ key: 'ink', label: '墨黑', fg: '#0f172a', bg: '#ffffff' }]
     }
     return _qrStylesCache
   }).catch(() => {
     _qrStylesCache = {
       dots: [{ value: 'square', label: '普通' }, { value: 'dots', label: '大圆点' }],
       eyes: [{ value: 'square', label: '方正' }, { value: 'circle', label: '圆形' }],
-      presets: []
+      presets: [],
+      colors: [{ key: 'ink', label: '墨黑', fg: '#0f172a', bg: '#ffffff' }]
     }
     return _qrStylesCache
   })

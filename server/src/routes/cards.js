@@ -10,7 +10,7 @@ const vcard = require('../services/vcard')
 const { CARD_TEMPLATES, isTemplate, DEFAULT_TEMPLATE } = require('../utils/cardTemplates')
 const { INDUSTRIES, CITIES, HOT_CITIES, cityCoords, isIndustry, normalizeIndustry, distanceKm } = require('../utils/market')
 const { MATERIAL_TYPES, VISIT_SOURCES, isMaterialType, isVisitSource, CARD_WATCH_FIELDS, NOTIFY_TYPES } = require('../utils/constants')
-const { DOT_STYLES, EYE_STYLES, QR_PRESETS } = require('../utils/qrStyles')
+const { DOT_STYLES, EYE_STYLES, QR_PRESETS, QR_COLORS } = require('../utils/qrStyles')
 const { tokenize: tokenizeQuery, score: relevanceScore } = require('../utils/search')
 const notify = require('../services/notify')
 
@@ -158,7 +158,7 @@ router.get('/public/inline-image', wrap(async (req, res) => {
 // 资料夹类型 + 访客来源 + 二维码样式清单（前端编辑器/统计页/两端二维码选项唯一真相源，不各自硬编码）
 router.get('/public/meta', wrap((req, res) => {
   res.set('Cache-Control', 'public, max-age=3600')
-  ok(res, { materialTypes: MATERIAL_TYPES, sources: VISIT_SOURCES, qrDotStyles: DOT_STYLES, qrEyeStyles: EYE_STYLES, qrPresets: QR_PRESETS })
+  ok(res, { materialTypes: MATERIAL_TYPES, sources: VISIT_SOURCES, qrDotStyles: DOT_STYLES, qrEyeStyles: EYE_STYLES, qrPresets: QR_PRESETS, qrColors: QR_COLORS })
 }))
 
 // 名片集市元数据（行业清单 + 内置城市坐标）——固定路径，必须在 /public/:slug 之前
