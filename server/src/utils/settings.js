@@ -114,8 +114,10 @@ const GROUPS = {
     label: '推广分销',
     fields: [
       { key: 'promo_enabled', label: '启用推广分销（true / false）', type: 'text' },
-      { key: 'promo_register_reward_cents', label: '注册奖励（分，被邀请人注册成功给推广员）', type: 'text' },
-      { key: 'promo_order_rate', label: '消费返佣比例（%，如 10 表示订单金额的 10%）', type: 'text' },
+      // 首单奖与消费返佣都是百分比（唯一真相源）：首单奖=被邀请人首次开通套餐时按订单金额额外给，与每单返佣叠加。
+      // 旧 promo_register_reward_cents（固定金额）已废弃，存量库残留键无害、不再读取也不再下发。
+      { key: 'promo_first_order_rate', label: '首单奖励比例（%，被邀请人首次开通套餐时按订单金额额外给推广员，如 10 表示 10%）', type: 'text' },
+      { key: 'promo_order_rate', label: '消费返佣比例（%，每笔订单给推广员，如 10 表示订单金额的 10%）', type: 'text' },
       { key: 'promo_withdraw_min_cents', label: '最低提现额（分）', type: 'text' },
       { key: 'promo_invite_base_url', label: '邀请链接前缀（留空=自动用当前站点域名，如 https://card.example.com）', type: 'text' }
     ]
@@ -257,22 +259,24 @@ function mapConfig() {
   }
 }
 
-// 推广分销规则（唯一真相源）：奖励金额/返佣比例/提现门槛后台可改，服务端结算时直读。
-// rate 限制 0~100，金额为非负整数分；脏值一律回落默认，绝不因配置异常给负数或超高返佣。
+// 推广分销规则（唯一真相源）：首单奖比例/每单返佣比例/提现门槛后台可改，服务端结算时直读。
+// 两个比例都限制 0~100（百分比），提现门槛为非负整数分；脏值一律回落默认，绝不因配置异常给负数或超高返佣。
 function promoConfig() {
-  // 空值（未种子/后台清空）一律回落默认，不能让 Number('')=0 变成「0 分奖励、0% 返佣」。
+  // 空值（未种子/后台清空）一律回落默认，不能让 Number('')=0 变成「0% 返佣」。
   const num = (k, def) => {
     const raw = get(k, null)
     if (raw === null || raw === '' || raw === undefined) return def
     const n = Math.round(Number(raw))
     return Number.isFinite(n) && n >= 0 ? n : def
   }
-  const rateRaw = get('promo_order_rate', null)
-  const rate = rateRaw === null || rateRaw === '' ? 10 : (Number.isFinite(Number(rateRaw)) && Number(rateRaw) >= 0 && Number(rateRaw) <= 100 ? Number(rateRaw) : 10)
+  const rate = (k, def) => {
+    const raw = get(k, null)
+    return raw === null || raw === '' ? def : (Number.isFinite(Number(raw)) && Number(raw) >= 0 && Number(raw) <= 100 ? Number(raw) : def)
+  }
   return {
     enabled: String(get('promo_enabled', '')) === 'true',
-    registerRewardCents: num('promo_register_reward_cents', 100),
-    orderRate: rate,
+    firstOrderRate: rate('promo_first_order_rate', 10),
+    orderRate: rate('promo_order_rate', 10),
     withdrawMinCents: num('promo_withdraw_min_cents', 1000),
     inviteBaseUrl: String(get('promo_invite_base_url', '') || '').trim()
   }
@@ -416,7 +420,7 @@ function seedDefaults() {
     share_desc: SHARE_POOL_DEFAULTS.share_desc.join('\n'),
     share_image: '',
     promo_enabled: 'false',
-    promo_register_reward_cents: '100',
+    promo_first_order_rate: '10',
     promo_order_rate: '10',
     promo_withdraw_min_cents: '1000',
     promo_invite_base_url: '',

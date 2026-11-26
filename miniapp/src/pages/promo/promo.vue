@@ -23,7 +23,7 @@
         <view class="muted small i-tip">仅推广员身份计入推广收益。</view>
       </view>
 
-      <view class="rule muted small">注册奖 ¥{{ ((rules.registerRewardCents || 0) / 100).toFixed(2) }} · 消费返佣 {{ rules.orderRate || 0 }}% · 满 ¥{{ ((rules.withdrawMinCents || 0) / 100).toFixed(2) }} 可提现</view>
+      <view class="rule muted small">首单奖励 {{ rules.firstOrderRate || 0 }}% · 每单返佣 {{ rules.orderRate || 0 }}% · 满 ¥{{ ((rules.withdrawMinCents || 0) / 100).toFixed(2) }} 可提现</view>
 
       <view class="seg">
         <button v-for="t in tabs" :key="t.k" :class="{ on: tab === t.k }" @tap="switchTab(t.k)">{{ t.label }}</button>
@@ -96,7 +96,7 @@ onShow(() => { load() })
 
 const statusText = s => ({ pending: '审核中', paid: '已打款', rejected: '已驳回' })[s] || s
 function rowTitle(r) {
-  if (tab.value === 'commissions') return r.type === 'register' ? '注册奖励' : '消费返佣'
+  if (tab.value === 'commissions') return ({ first_order: '首单奖励', order: '每单返佣', register: '注册奖励（旧）' })[r.type] || '返佣'
   if (tab.value === 'invitees') return r.nickname
   return `¥${(r.amountCents / 100).toFixed(2)} · ${r.channel}`
 }

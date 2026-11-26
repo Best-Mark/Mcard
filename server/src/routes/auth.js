@@ -385,11 +385,9 @@ router.post('/register', wrap((req, res) => {
   const result = db.prepare('INSERT INTO users (phone, password_hash, nickname) VALUES (?,?,?)')
     .run(phone, bcrypt.hashSync(String(password), 10), String(nickname || '').slice(0, 30))
   const userId = result.lastInsertRowid
-  // 邀请归因：注册成功后一次性绑定邀请人并发注册奖励（失败不影响注册主流程）
-  try {
-    const b = promo.bindInvite(userId, invite)
-    if (b.invited) promo.grantRegisterReward(b.promoterId, userId)
-  } catch (e) { console.error('[Promo] 注册归因失败', e.message) }
+  // 邀请归因：注册成功后一次性绑定邀请人（失败不影响注册主流程）。
+  // 注册不再发固定奖励；推广佣金改为首次开通套餐时按订单金额百分比发首单奖（见 services/orders.js）。
+  try { promo.bindInvite(userId, invite) } catch (e) { console.error('[Promo] 注册归因失败', e.message) }
   const user = db.prepare('SELECT id, phone, nickname, role, status, is_promoter FROM users WHERE id = ?').get(userId)
   ok(res, { token: sign(user), user: publicUser(user) })
 }))

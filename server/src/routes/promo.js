@@ -53,8 +53,8 @@ router.get('/my-code', authRequired, wrap((req, res) => {
 }))
 
 // 登录后的邀请归因兜底绑定：前端所有登录方式统一在拿到 token 后调一次。
-// 只认「注册 24h 内 + 尚未有上级 + 新邀请码有效」的账号，防老用户挂靠刷注册奖。
-// 幂等：已有上级直接跳过；注册奖励靠 DB 唯一索引一人一次。
+// 只认「注册 24h 内 + 尚未有上级 + 新邀请码有效」的账号，防老用户挂靠。
+// 幂等：已有上级直接跳过。此处只绑定归因、不发钱；佣金在首次开通套餐时按订单金额百分比结算。
 router.post('/bind-invite', authRequired, wrap((req, res) => {
   const invite = String(req.body?.invite || '').trim()
   if (!invite) return ok(res, { bound: false })
@@ -63,7 +63,6 @@ router.post('/bind-invite', authRequired, wrap((req, res) => {
   const created = new Date(String(me.created_at).replace(' ', 'T') + 'Z').getTime()
   if (Number.isFinite(created) && Date.now() - created > 24 * 3600 * 1000) return ok(res, { bound: false })
   const b = promo.bindInvite(req.user.id, invite)
-  if (b.invited) promo.grantRegisterReward(b.promoterId, req.user.id)
   ok(res, { bound: !!b.invited })
 }))
 
@@ -74,7 +73,7 @@ router.get('/summary', authRequired, requirePromoter, wrap((req, res) => {
     ...s,
     inviteUrl: promo.inviteUrl(s.inviteCode, req),
     rules: {
-      registerRewardCents: cfg.registerRewardCents,
+      firstOrderRate: cfg.firstOrderRate,
       orderRate: cfg.orderRate,
       withdrawMinCents: cfg.withdrawMinCents
     }

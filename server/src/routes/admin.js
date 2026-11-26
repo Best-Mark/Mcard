@@ -257,6 +257,11 @@ router.put('/config', superRequired, wrap((req, res) => {
     if (k === 'wechat_oauth_verify_name' && String(v) && !/^MP_verify_[A-Za-z0-9_-]{1,64}\.txt$/.test(String(v))) {
       return fail(res, 400, '校验文件名格式应为 MP_verify_xxx.txt')
     }
+    // 分销比例：0~100 的百分比，拒绝负数/超范围/非数字，避免脏值运行时静默回落误导运营
+    if (k === 'promo_first_order_rate' || k === 'promo_order_rate') {
+      const n = Number(v)
+      if (String(v) === '' || !Number.isFinite(n) || n < 0 || n > 100) return fail(res, 400, `${k} 必须是 0~100 的百分比`)
+    }
     // 容量上限取字段元数据（与后台文件选择共用唯一真相源），share 池沿用独立上限
     const fieldMeta = Object.values(settings.GROUPS).flatMap(g => g.fields).find(f => f.key === k)
     const max = fieldMeta?.maxBytes || (k.startsWith('share_') ? 4000 : 1000)

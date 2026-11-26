@@ -261,9 +261,10 @@ CREATE TABLE IF NOT EXISTS user_assets (
 );
 CREATE INDEX IF NOT EXISTS idx_user_assets_user ON user_assets(user_id, created_at);
 
--- 推广佣金流水：注册奖励 + 被邀请人每笔消费的返佣，逐笔留痕（唯一真相源）。
--- promoter_id=拿佣金的人；invitee_id=带来收益的下线用户；order_id=消费返佣对应订单（注册奖励为 NULL）。
--- 幂等键 uniq_promo_order 保证同一订单只返佣一次（支付回调/补单/查单重入都安全）。
+-- 推广佣金流水：首单奖 + 被邀请人每笔消费的返佣，逐笔留痕（唯一真相源）。
+-- promoter_id=拿佣金的人；invitee_id=带来收益的下线用户；order_id=对应订单。
+-- type: first_order=首次开通套餐的百分比奖（一生一次）；order=每单返佣（可叠加）；register=旧固定注册奖（仅历史展示，不再新发）。
+-- 幂等键 uniq_promo_order 保证同一订单的每单返佣只发一次（支付回调/补单/查单重入都安全）。
 CREATE TABLE IF NOT EXISTS commissions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   promoter_id INTEGER NOT NULL,
@@ -275,7 +276,11 @@ CREATE TABLE IF NOT EXISTS commissions (
 );
 CREATE INDEX IF NOT EXISTS idx_comm_promoter ON commissions(promoter_id, id);
 CREATE UNIQUE INDEX IF NOT EXISTS uniq_promo_order ON commissions(order_id) WHERE order_id IS NOT NULL;
--- 注册奖励幂等：每个被邀请人一生只发一次注册奖（重复绑定/重入不会重复发）
+-- 首单奖幂等：每个被邀请人一生只发一次首单奖（重复支付/回调重入不会重复发）。
+-- 首单奖 order_id 为 NULL（与旧注册奖同构），避免与同一订单的每单返佣共撞 uniq_promo_order；
+-- 触发订单号记在 balance_logs.note，可追溯。金额按首笔成功订单金额 × 首单奖比例结算。
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_promo_first_order ON commissions(invitee_id) WHERE type = 'first_order';
+-- 旧注册奖唯一索引保留：存量 register 记录仍受约束、可展示；新逻辑不再写入该 type。
 CREATE UNIQUE INDEX IF NOT EXISTS uniq_promo_register ON commissions(invitee_id) WHERE type = 'register';
 CREATE INDEX IF NOT EXISTS idx_comm_invitee ON commissions(invitee_id, type);
 
@@ -314,6 +319,8 @@ CREATE INDEX IF NOT EXISTS idx_balance_user ON balance_logs(user_id, id);
 addColumnIfMissing('withdrawals', 'idempotency_key', "TEXT NOT NULL DEFAULT ''")
 db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS uniq_withdraw_idem ON withdrawals(idempotency_key) WHERE idempotency_key <> '';`)
 db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS uniq_balance_ref ON balance_logs(ref_type, ref_id) WHERE ref_type IN ('commission_order','commission_register','withdraw_reject');`)
+// 首单奖流水：存量 uniq_balance_ref 定义不含该 ref_type 且 IF NOT EXISTS 不会重建，单列一条保证同一 commission 只记一次流水
+db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS uniq_balance_first_order ON balance_logs(ref_id) WHERE ref_type = 'commission_first_order';`)
 
 // 访客画像/来源分析 + 名片夹打标：存量库补列（自愈，CREATE TABLE IF NOT EXISTS 不改老表）
 // 必须放在上面的建表 exec 之后——card_views/card_favorites 表此时才存在

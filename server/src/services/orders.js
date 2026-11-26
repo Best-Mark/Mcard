@@ -34,8 +34,11 @@ function activateOrder(orderId, payNo = '') {
 
     db.prepare("UPDATE orders SET status = 'paid', pay_no = ?, paid_at = datetime('now') WHERE id = ?").run(payNo, order.id)
 
-    // 消费返佣：订单支付成功即给「邀请人」发放返佣（同事务、uniq_promo_order 幂等）。
-    // 受后台 promo_enabled 开关控制；失败已被 promo 内部捕获，绝不影响名片开通主流程。
+    // 分销佣金（两档，同事务发放，失败已被 promo 内部捕获，绝不影响名片开通主流程）：
+    // ① 首单奖：被邀请人首次开通套餐，按订单金额 × 首单奖比例给邀请人，一生一次（uniq_promo_first_order 幂等）；
+    // ② 每单返佣：每笔订单按订单金额 × 返佣比例给邀请人，可叠加（uniq_promo_order 幂等）。
+    // 均受后台 promo_enabled 开关控制；无上级 / 自买 / 非推广员上线一律不发。
+    promo.grantFirstOrderReward(order)
     promo.grantOrderCommission(order)
 
     let card = db.prepare('SELECT * FROM cards WHERE user_id = ?').get(order.user_id)

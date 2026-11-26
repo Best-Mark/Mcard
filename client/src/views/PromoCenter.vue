@@ -36,9 +36,9 @@
         <p class="ic-tip small muted">仅推广员身份计入推广收益；取消推广员身份后分享不再计佣。</p>
       </div>
 
-      <!-- 规则说明：一行静态说明，不做多步骤常驻指引 -->
+      <!-- 规则说明：一行静态说明，不做多步骤常驻指引；两档佣金都按订单金额百分比，首单额外叠加 -->
       <div class="rule-line small muted">
-        注册奖励 ¥{{ ((rules.registerRewardCents || 0) / 100).toFixed(2) }} · 消费返佣 {{ rules.orderRate || 0 }}% · 满 ¥{{ ((rules.withdrawMinCents || 0) / 100).toFixed(2) }} 可提现
+        首单奖励 {{ rules.firstOrderRate || 0 }}% · 每单返佣 {{ rules.orderRate || 0 }}% · 满 ¥{{ ((rules.withdrawMinCents || 0) / 100).toFixed(2) }} 可提现
       </div>
 
       <!-- 明细层：分段切换 -->
@@ -49,7 +49,7 @@
         <div v-if="tab === 'commissions'">
           <div v-if="!commissions.length" class="empty small">暂无收益记录</div>
           <div v-for="r in commissions" :key="r.id" class="row-item">
-            <div class="ri-main"><b>{{ r.type === 'register' ? '注册奖励' : '消费返佣' }}</b><span class="small muted">{{ r.invitee }} · {{ r.createdAt }}</span></div>
+            <div class="ri-main"><b>{{ commissionTypeText(r.type) }}</b><span class="small muted">{{ r.invitee }} · {{ r.createdAt }}</span></div>
             <div class="ri-amount">+¥{{ (r.amountCents / 100).toFixed(2) }}</div>
           </div>
         </div>
@@ -177,6 +177,7 @@ async function submitWithdraw() {
 }
 
 const statusText = s => ({ pending: '审核中', paid: '已打款', rejected: '已驳回' })[s] || s
+const commissionTypeText = t => ({ first_order: '首单奖励', order: '每单返佣', register: '注册奖励（旧）' })[t] || '返佣'
 </script>
 
 <style scoped>
