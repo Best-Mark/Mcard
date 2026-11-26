@@ -29,11 +29,11 @@
     <block v-else>
       <CardBody ref="bodyEl" :card="card" :materials="materials" :is-self="true" :self-check-done="true" :top-inset="topInset"
         @edit="go('/pages/edit/edit')" @activate="go('/pages/plans/plans')" @update="onCardPatch" />
-      <!-- dock 三键（2026-11-26 用户定稿：配色风格页的功能提到这层，不进编辑页）：编辑名片 + 模板 + 二维码，
-           模板/二维码都是弹层直选；集市在底部 TabBar，分享走右上角 ⋯ 菜单转发，不占 dock -->
+      <!-- dock 三键（2026-11-26 用户定稿：配色风格页的功能提到这层，不进编辑页）：编辑名片 + 配色 + 二维码。
+           「配色」点开 dock 上方一横排模板条（左右滑动点中即换、可连着试）；集市在底部 TabBar，分享走右上角 ⋯ 菜单 -->
       <view class="dock">
         <button class="dock-btn primary" @tap="go('/pages/edit/edit')"><text class="dico">✎</text><text>编辑名片</text></button>
-        <button class="dock-btn" @tap="bodyEl && bodyEl.openTpl()"><text class="dico">▦</text><text>模板</text></button>
+        <button class="dock-btn" @tap="bodyEl && bodyEl.toggleTpl()"><text class="dico">▦</text><text>配色</text></button>
         <button class="dock-btn" @tap="bodyEl && bodyEl.openQr()"><text class="dico">▣</text><text>二维码</text></button>
       </view>
     </block>
