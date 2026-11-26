@@ -47,6 +47,38 @@ function cleanStates() {
   for (const r of rows) {
     try { if (JSON.parse(r.value).createdAt < cutoff) del.run(r.key) } catch { del.run(r.key) }
   }
+  cleanLoginCodes()
+}
+
+// ---------- 登录凭证一次性兑换（2026-11-27 加固）：JWT 不再进 URL ----------
+// 旧做法回调 302 把 JWT+user 编进 hash（#token=...&user=...），授权瞬间地址栏含登录态，
+// 复制/收藏该 URL 存在泄露窗口。现改为：回调只发 60 秒一次性兑换码（32hex），
+// 前端拿 code 调 POST /wechat/exchange 原子兑换 token+user，URL 泄露面只剩短时效一次性码。
+// 消费口径与 OAuth state 完全同款：先删后判 = 原子消费，防重放；重启不丢（DB 持久化）。
+const EXCHANGE_PREFIX = 'wx_login_code_'
+const EXCHANGE_TTL = 60 * 1000
+function saveLoginCode(code, data) {
+  db.prepare("INSERT INTO site_config (key, value, updated_at) VALUES (?,?,datetime('now')) ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=datetime('now')")
+    .run(EXCHANGE_PREFIX + code, JSON.stringify({ ...data, createdAt: Date.now() }))
+}
+function consumeLoginCode(code) {
+  if (!/^[a-f0-9]{32}$/.test(String(code || ''))) return null
+  const key = EXCHANGE_PREFIX + code
+  const row = db.prepare('SELECT value FROM site_config WHERE key = ?').get(key)
+  if (!row) return null
+  db.prepare('DELETE FROM site_config WHERE key = ?').run(key) // 先删 = 原子消费
+  try {
+    const v = JSON.parse(row.value)
+    return v && Date.now() - v.createdAt <= EXCHANGE_TTL ? v : null
+  } catch { return null }
+}
+function cleanLoginCodes() {
+  const cutoff = Date.now() - EXCHANGE_TTL
+  const rows = db.prepare('SELECT key, value FROM site_config WHERE key LIKE ?').all(EXCHANGE_PREFIX + '%')
+  const del = db.prepare('DELETE FROM site_config WHERE key = ?')
+  for (const r of rows) {
+    try { if (JSON.parse(r.value).createdAt < cutoff) del.run(r.key) } catch { del.run(r.key) }
+  }
 }
 async function wxFetch(url) {
   const res = await fetch(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(10000) })
@@ -242,7 +274,14 @@ router.get('/wechat-bind/url', authRequired, wrap((req, res) => {
   ok(res, { url })
 }))
 
-// 微信回调：校验 state → code 换 openid + 昵称头像 → 建号/登录 → 302 回前端（token 走 hash）
+// 回跳 helper：登录成功 302 回前端，hash 只带 60s 一次性兑换码（login=<code>），JWT 不进 URL
+const loginBack = (req, res, target, jwt, pub) => {
+  const code = crypto.randomBytes(16).toString('hex')
+  saveLoginCode(code, { token: jwt, user: pub })
+  return res.redirect(`${requestUrl(req, target)}#login=${code}`)
+}
+
+// 微信回调：校验 state → code 换 openid + 昵称头像 → 建号/登录 → 302 回前端（hash 只带一次性兑换码）
 // 扫码登录（state 带 qr_<sid>_）：不把 token 塞进微信内 URL，而是写回 sid 会话，
 // 手机端只显示「扫码成功，回电脑完成登录」，凭证由电脑端轮询一次性兑换。
 router.get('/wechat/callback', wrap(async (req, res) => {
@@ -321,10 +360,10 @@ router.get('/wechat/callback', wrap(async (req, res) => {
         saveQrSession(qrSid, { status: 'done', token: jwt, user: pub })
         return res.redirect(`${requestUrl(req, '/wechat/qr-result')}?ok=1`)
       }
-      if (autoTarget) return res.redirect(`${requestUrl(req, autoTarget)}#token=${encodeURIComponent(jwt)}&user=${encodeURIComponent(JSON.stringify(pub))}`)
-      // 显式快捷登录：state 里带了回跳地址就直接回原页面（token 走 hash，与静默登录同规）
-      if (rtTarget) return res.redirect(`${requestUrl(req, rtTarget)}#token=${encodeURIComponent(jwt)}&user=${encodeURIComponent(JSON.stringify(pub))}`)
-      return res.redirect(`${requestUrl(req, '/wechat/callback')}#token=${encodeURIComponent(jwt)}&user=${encodeURIComponent(JSON.stringify(pub))}`)
+      if (autoTarget) return loginBack(req, res, autoTarget, jwt, pub)
+      // 显式快捷登录：state 里带了回跳地址就直接回原页面（与静默登录同规）
+      if (rtTarget) return loginBack(req, res, rtTarget, jwt, pub)
+      return loginBack(req, res, '/wechat/callback', jwt, pub)
     }
 
     // 新用户：按配置决定是否必须先绑定手机号（绑定凭据短 TTL 签名，防伪造 openid）
@@ -348,14 +387,22 @@ router.get('/wechat/callback', wrap(async (req, res) => {
       saveQrSession(qrSid, { status: 'done', token: jwt, user: pub })
       return res.redirect(`${requestUrl(req, '/wechat/qr-result')}?ok=1`)
     }
-    if (autoTarget) return res.redirect(`${requestUrl(req, autoTarget)}#token=${encodeURIComponent(jwt)}&user=${encodeURIComponent(JSON.stringify(pub))}`)
-    if (rtTarget) return res.redirect(`${requestUrl(req, rtTarget)}#token=${encodeURIComponent(jwt)}&user=${encodeURIComponent(JSON.stringify(pub))}`)
-    return res.redirect(`${requestUrl(req, '/wechat/callback')}#token=${encodeURIComponent(jwt)}&user=${encodeURIComponent(JSON.stringify(pub))}`)
+    if (autoTarget) return loginBack(req, res, autoTarget, jwt, pub)
+    if (rtTarget) return loginBack(req, res, rtTarget, jwt, pub)
+    return loginBack(req, res, '/wechat/callback', jwt, pub)
   } catch (e) {
     console.error('[WechatOAuth]', e.message)
     if (valid?.kind === 'bind') return bindBack('oauth')
     return failBack('oauth')
   }
+}))
+
+// 前端拿回调 302 带回的一次性兑换码换登录态：原子消费（先删后判防重放），60 秒过期。
+// JWT 从此不进任何 URL；兑换失败只能重新走授权，无法重放旧 code。
+router.post('/wechat/exchange', wrap((req, res) => {
+  const v = consumeLoginCode(String(req.body?.code || ''))
+  if (!v) return fail(res, 400, '登录凭证无效或已过期，请重新登录')
+  ok(res, { token: v.token, user: v.user })
 }))
 
 // 微信授权后新用户绑定手机号（凭据 10 分钟有效，一次性使用）

@@ -67,21 +67,31 @@ const routes = [
 
 const router = createRouter({ history: createWebHistory(), routes, scrollBehavior: () => ({ top: 0 }) })
 
-// 微信内「打开页面即登录」（snsapi_base 静默授权）回调后 token 走 URL hash 回到原页面。
+// 微信内「打开页面即登录」（snsapi_base 静默授权）回调后回原页面：hash 只带 60s 一次性兑换码
+//（login=<code>），POST /wechat/exchange 原子换 token——JWT 不进任何 URL（2026-11-27 加固）。
 // 任意页面都要能消费；显式登录的 /wechat/callback 刻意跳过，由 WechatCallback.vue 独占处理，
 // 避免两边抢同一份 hash（一次性凭证被先到者消费导致对方误报失败）。
-function consumeAuthHash(to) {
+async function consumeAuthHash(to) {
   if (to.path === '/wechat/callback') return
   const p = new URLSearchParams(location.hash.replace(/^#/, ''))
-  const token = p.get('token') || ''
+  const code = p.get('login') || ''
+  const oldToken = p.get('token') || '' // 升级过渡：旧版回调 hash 里的裸 JWT 兼容消费
   const raw = p.get('user') || ''
-  if (!token || !raw) return
-  let user
-  try { user = JSON.parse(raw) } catch { return }
-  if (!user || !user.id) return
-  setAuth(token, user)
-  bindPendingInvite(api) // 静默登录场景的邀请归因兜底
-  history.replaceState(null, '', location.pathname + location.search)
+  if (!code && !(oldToken && raw)) return
+  try {
+    let token = oldToken, user
+    if (code) {
+      const { data } = await api.post('/api/auth/wechat/exchange', { code })
+      token = data.data?.token || ''
+      user = data.data?.user || null
+    } else {
+      user = JSON.parse(raw)
+    }
+    if (!token || !user || typeof user !== 'object' || !user.id) return
+    setAuth(token, user)
+    bindPendingInvite(api) // 静默登录场景的邀请归因兜底
+  } catch { /* 兑换失败按未登录继续走，不让一次性码卡死导航 */ }
+  history.replaceState(null, '', location.pathname + location.search) // 无论成败都清 hash，防刷新重放/泄露
 }
 
 // 不触发自动登录的路径：登录/回调/扫码链路与后台（后台是独立管理员 token 体系）。
@@ -93,7 +103,7 @@ async function maybeWechatSilentLogin(to) {
   if (localStorage.getItem('mcard_token')) return false
   // 服务端回调失败带 wx_err 回来：本轮不再重试，避免授权失败时来回跳死循环
   if (to.query.wx_err) return false
-  if (new URLSearchParams(location.hash.replace(/^#/, '')).has('token')) return false
+  if (new URLSearchParams(location.hash.replace(/^#/, '')).has('login') || new URLSearchParams(location.hash.replace(/^#/, '')).has('token')) return false
   if (SILENT_SKIP.some(p => to.path === p || to.path.startsWith(p + '/'))) return false
   const last = Number(localStorage.getItem('wx_silent_attempt_at') || 0)
   if (last && Date.now() - last < SILENT_COOLDOWN) return false
@@ -119,7 +129,7 @@ router.beforeEach(async (to, _from, next) => {
   // 邀请归因零丢失：任何页面带邀请参数都落地保存，登录成功后由各登录入口回传绑定。
   const inv = to.query.invite || to.query.invite_code || to.query.ref
   if (inv) localStorage.setItem('mcard_invite', String(inv).slice(0, 20))
-  consumeAuthHash(to)
+  await consumeAuthHash(to)
   // 门户首页仅 PC 形态可见；H5/小程序 web-view 内访问一律回集市
   if (to.path === '/portal' && !isPC.value) return next('/market')
   const ticket = to.query.wx_ticket
