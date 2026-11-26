@@ -61,32 +61,48 @@
           <button @click="moreOpen = false; openExchange()">交换名片</button>
         </div>
       </div>
-      <!-- 主操作单排。持有者视角三键（2026-11-26 用户定稿，与小程序一致）：编辑名片 / 配色（横条点选即换） /
-           二维码（弹层）；公开页：打电话 / 复制号码 / 存入通讯录 / 分享。 -->
-      <div v-if="full" class="cv-dock cv-dock-glass">
-        <template v-if="owner">
-          <button class="btn btn-primary dock-btn" @click="router.push('/me/card')"><span class="dock-ico">✎</span>编辑名片</button>
-          <button class="btn btn-ghost dock-btn" @click="toggleTplBar"><span class="dock-ico">▦</span>配色</button>
-          <button class="btn btn-ghost dock-btn" @click="qrModal = true"><span class="dock-ico">▣</span>二维码</button>
+      <!-- dock 三态翻转（2026-11-26 用户终稿，与小程序 me 页完全一致）：main=编辑/配色/二维码；
+           点「配色」整行翻转成模板缩略行（H5 同款 template-thumbs 缩略，点中即换、页面实时预览、可连着试）；
+           点「二维码」翻转成二维码风格预设调节行（改的是二维码本身，不是弹码；弹码走身份卡小码）；
+           行首 ✕ 收起。公开页 dock 不变：打电话 / 复制号码 / 存入通讯录 / 分享 -->
+      <div v-if="full && owner" :class="['cv-dock cv-dock-glass', { 'cv-dock-flip': dockMode !== 'main' }]">
+        <template v-if="dockMode === 'main'">
+          <button class="btn btn-primary dock-btn" @click="router.push('/me/card')"><span class="dock-ico">✎</span>编辑</button>
+          <button class="btn btn-ghost dock-btn" @click="toggleDock('tpl')"><span class="dock-ico">▦</span>配色</button>
+          <button class="btn btn-ghost dock-btn" @click="toggleDock('qr')"><span class="dock-ico">▣</span>二维码</button>
         </template>
+        <!-- 模板行：左右滑动点中即应用整套配色并保存，页面即实时预览 -->
+        <template v-else-if="dockMode === 'tpl'">
+          <button class="dock-back" @click="dockMode = 'main'">✕</button>
+          <div class="dock-scroll">
+            <div class="dock-flow">
+              <button v-for="t in tpls" :key="t.key" :class="['dock-tpl', { on: card.template === t.key, busy: tplBusy }]" @click="chooseTpl(t)">
+                <span class="tpl-thumb" :class="'thumb-' + t.key"><i class="tpl-ava"></i></span>
+                <span class="dock-tpl-label">{{ t.label }}</span>
+              </button>
+            </div>
+            <div v-if="!tpls.length" class="dock-tpl-loading">模板清单加载中…</div>
+          </div>
+        </template>
+        <!-- 二维码调节行：一键风格预设（码点/定位角/渐变，与配色风格页同款 4 个），点中即保存实时生效 -->
         <template v-else>
-          <button class="btn btn-primary dock-btn" :disabled="!contactPhone" @click="tel(contactPhone)"><span class="dock-ico dock-ico-phone"></span>打电话</button>
-          <button class="btn btn-ghost dock-btn" :disabled="!contactPhone" @click="copy(contactPhone, '号码')"><span class="dock-ico">⧉</span>复制号码</button>
-          <a v-if="contactNative" class="btn btn-ghost dock-btn" :title="contactActionTip" :aria-label="contactActionLabel" :href="contactHref"><span class="dock-ico">◉</span>存入通讯录</a>
-          <button v-else class="btn btn-ghost dock-btn" :title="contactActionTip" :aria-label="contactActionLabel" @click="saveContact"><span class="dock-ico">◉</span>存入通讯录</button>
-          <button class="btn btn-ghost dock-btn" @click="doShare"><span class="dock-ico">↗</span>分享</button>
+          <button class="dock-back" @click="dockMode = 'main'">✕</button>
+          <div class="dock-scroll">
+            <div class="dock-flow">
+              <button v-for="p in QR_PRESETS" :key="p.key" :class="['dock-tpl', { on: qrPresetActive(p), busy: qrBusy }]" @click="applyQrPreset(p)">
+                <span class="qr-swatch" :style="{ background: p.swatch }"></span>
+                <span class="dock-tpl-label">{{ p.label }}</span>
+              </button>
+            </div>
+          </div>
         </template>
       </div>
-      <!-- 模板横条（owner「配色」键唤起，与小程序配色横条同款交互）：dock 上方一横排模板缩略左右滑动，
-           点中即应用整套配色并保存（条保持打开可连续试）；页面即实时预览；未开通由服务端套餐闸门拦 -->
-      <div v-if="owner && tplBar" class="cv-tpl-bar">
-        <div class="cv-tpl-row">
-          <button v-for="t in tpls" :key="t.key" :class="['cv-tpl-item', { on: card.template === t.key, busy: tplBusy }]" @click="chooseTpl(t)">
-            <span class="cv-tpl-thumb" :style="{ background: tplThumbBg(t.key) }"></span>
-            <span class="cv-tpl-label">{{ t.label }}</span>
-          </button>
-        </div>
-        <div v-if="!tpls.length" class="cv-tpl-empty">模板清单加载中…</div>
+      <div v-else-if="full" class="cv-dock cv-dock-glass">
+        <button class="btn btn-primary dock-btn" :disabled="!contactPhone" @click="tel(contactPhone)"><span class="dock-ico dock-ico-phone"></span>打电话</button>
+        <button class="btn btn-ghost dock-btn" :disabled="!contactPhone" @click="copy(contactPhone, '号码')"><span class="dock-ico">⧉</span>复制号码</button>
+        <a v-if="contactNative" class="btn btn-ghost dock-btn" :title="contactActionTip" :aria-label="contactActionLabel" :href="contactHref"><span class="dock-ico">◉</span>存入通讯录</a>
+        <button v-else class="btn btn-ghost dock-btn" :title="contactActionTip" :aria-label="contactActionLabel" @click="saveContact"><span class="dock-ico">◉</span>存入通讯录</button>
+        <button class="btn btn-ghost dock-btn" @click="doShare"><span class="dock-ico">↗</span>分享</button>
       </div>
       <BottomSheet :show="mapOpen" @update:show="mapOpen = $event">
         <div class="map-sheet-head"><b>选择导航地图</b><button @click="mapOpen = false">×</button></div>
@@ -227,6 +243,8 @@ import { isWeChat, isIOS, saveImageUrl, prepareExternalOpen, openVcfInline, andr
 import { shareOrCopy, mapLinks } from '../utils/share'
 import { setCardShare } from '../utils/wx-share'
 import { scanQrUrl } from '../utils/qr'
+// dock 翻转行的模板缩略（与配色风格页/编辑页同一份唯一真相源）
+import '../styles/template-thumbs.css'
 import { getCachedPosition } from '../utils/geo'
 import BottomSheet from '../components/BottomSheet.vue'
 import CardSheet from '../components/CardSheet.vue'
@@ -253,23 +271,22 @@ const vcfApi = computed(() => `${qrApi.value}/card.vcf`)
 // 打开名片由分享链接点击承担，不需要二维码。此前的「vCard 太密不用」结论仅针对小尺寸场景。
 const card = ref(null); const loading = ref(true); const error = ref('')
 
-// 模板横条（owner「配色」键，2026-11-26 与小程序同款）：清单来自公开接口（与 CardStyle/CardEdit 同源），
+// dock 三态翻转（owner「配色」/「二维码」键，与小程序 me 页终稿完全一致）：
+// main（编辑/配色/二维码）→ tpl（模板缩略行）/ qr（二维码风格预设行），✕ 收起。
+// 模板清单来自公开接口（与 CardStyle/CardEdit 同源，缓存一次）；
 // 点中即 PUT /api/cards/mine 应用整套配色（与 CardStyle done 同口径），card 就地合并 → 页面实时预览；
-// 条保持打开可连续切换对比，再点「配色」收起。未开通由服务端套餐闸门拦（403 → toast）。
-const tplBar = ref(false); const tpls = ref([]); const tplBusy = ref(false)
+// 条保持打开可连续切换对比。未开通由服务端套餐闸门拦（403 → toast）。
+const dockMode = ref('main')
+const tpls = ref([]); const tplBusy = ref(false)
 let tplsLoaded = false
-function toggleTplBar() {
-  tplBar.value = !tplBar.value
-  if (tplBar.value && !tplsLoaded) {
+function toggleDock(m) {
+  dockMode.value = dockMode.value === m ? 'main' : m
+  if (dockMode.value === 'tpl' && !tplsLoaded) {
     api.get(`/api/cards/public/templates?t=${Date.now()}`).then(({ data }) => {
       const list = data?.data?.templates || []
       if (list.length) { tpls.value = list; tplsLoaded = true }
-    }).catch(() => { /* 清单拉取失败静默，条内显示「加载中」可再点重试 */ })
+    }).catch(() => { /* 清单拉取失败静默，行内显示「加载中」可收起再开重试 */ })
   }
-}
-function tplThumbBg(key) {
-  const pal = TEMPLATE_PALETTES[key]
-  return pal ? (THEMES[pal.theme] || THEMES.ocean).accent : '#2b2118'
 }
 async function chooseTpl(t) {
   if (tplBusy.value || !card.value || card.value.template === t.key) return
@@ -287,6 +304,29 @@ async function chooseTpl(t) {
     showToast(`已应用「${t.label}」整套配色`, 'success')
     card.value = { ...card.value, ...patch }
   } catch (e) { showToast(e.message, 'error') } finally { tplBusy.value = false }
+}
+// 二维码风格预设（dock「二维码」键翻转出的调节行，与配色风格页同款 4 个）：
+// 改码点/定位角/渐变组合，点中即保存实时生效；更细的前景/背景色、背景图等微调在配色风格页
+const QR_PRESETS = [
+  { key: 'classic', label: '经典', swatch: '#0f172a', dot: 'square', eye: 'square', gradTo: '' },
+  { key: 'dots', label: '圆点', swatch: '#2563eb', dot: 'dots', eye: 'rounded', gradTo: '' },
+  { key: 'tech', label: '科技渐变', swatch: 'linear-gradient(135deg,#2563eb,#06b6d4)', dot: 'rounded', eye: 'rounded', gradTo: '#06b6d4' },
+  { key: 'elegant', label: '典雅', swatch: '#b45309', dot: 'rounded', eye: 'circle', gradTo: '' }
+]
+const qrBusy = ref(false)
+function qrPresetActive(p) {
+  const s = card.value?.qr_style || {}
+  return s.dot === p.dot && s.eye === p.eye && (s.gradTo || '') === p.gradTo
+}
+async function applyQrPreset(p) {
+  if (qrBusy.value) return
+  const qr_style = { ...(card.value?.qr_style || {}), dot: p.dot, eye: p.eye, gradTo: p.gradTo }
+  qrBusy.value = true
+  try {
+    await api.put('/api/cards/mine', { qr_style })
+    showToast(`二维码风格「${p.label}」已应用`, 'success')
+    card.value = { ...card.value, qr_style }
+  } catch (e) { showToast(e.message, 'error') } finally { qrBusy.value = false }
 }
 const currentTheme = ref('ocean'); const isOwner = ref(false)
 const template = ref('contact')

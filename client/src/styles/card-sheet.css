@@ -14,23 +14,22 @@
 /* padding-top 用页面背景色给出与顶栏的间距（不用 margin，避免透出 body 白色） */
 .cv-page.cv-owner { padding-top: 12px; padding-bottom: 148px; }
 .cv-owner .cv-dock { bottom: 56px; }
-/* 模板横条（owner「配色」键唤起，2026-11-26 与小程序配色横条同款交互）：dock 上方一横排左右滑动点中即换；
-   bottom = MemberNav 56px + owner dock 高度约 78px；深色毛玻璃底与 dock 同族 */
-.cv-tpl-bar {
-  position: fixed; left: 0; right: 0; bottom: calc(134px + env(safe-area-inset-bottom)); z-index: 60;
-  background: rgba(18,22,36,.85); border-top: 1px solid rgba(255,255,255,.18);
-  padding: 10px 12px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
-  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
-}
-.cv-tpl-bar::-webkit-scrollbar { display: none; }
-.cv-tpl-row { display: flex; gap: 14px; width: max-content; }
-.cv-tpl-item { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: 0; padding: 0; cursor: pointer; color: #94a3b8; font-size: 11px; }
-.cv-tpl-item.busy { opacity: .5; }
-.cv-tpl-item.on { color: #fff; font-weight: 700; }
-.cv-tpl-thumb { width: 44px; height: 28px; border-radius: 6px; border: 2px solid rgba(255,255,255,.22); box-sizing: border-box; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
-.cv-tpl-item.on .cv-tpl-thumb { border-color: #fff; box-shadow: 0 0 0 2px rgba(255,255,255,.3); }
-.cv-tpl-label { max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cv-tpl-empty { color: #94a3b8; font-size: 12px; text-align: center; padding: 6px 0; }
+/* dock 翻转态行（owner「配色」/「二维码」键，2026-11-26 与小程序 me 页终稿同款交互）：
+   main 三键 ↔ 模板缩略行 / 二维码风格预设行，整行覆盖 dock 区域，行首 ✕ 收起；
+   深色毛玻璃底上 label 用浅色，缩略用 template-thumbs.css 的迷你名片卡（与配色风格页同一份） */
+.cv-dock.cv-dock-flip { display: flex; align-items: center; gap: 10px; --ng-gold: #d8bb85; }
+.cv-dock.cv-dock-flip .dock-back { flex: 0 0 40px; height: 58px; display: flex; align-items: center; justify-content: center; font-size: 16px; border-radius: 16px; background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.24); cursor: pointer; }
+.cv-dock.cv-dock-flip .dock-scroll { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.cv-dock.cv-dock-flip .dock-scroll::-webkit-scrollbar { display: none; }
+.cv-dock.cv-dock-flip .dock-flow { display: inline-flex; gap: 12px; padding: 2px 4px; }
+.cv-dock.cv-dock-flip .dock-tpl { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 5px; background: none; border: 0; padding: 0; cursor: pointer; line-height: 1.2; }
+.cv-dock.cv-dock-flip .dock-tpl.busy { opacity: .5; }
+.cv-dock.cv-dock-flip .dock-tpl .tpl-thumb { width: 54px; height: 54px; }
+.cv-dock.cv-dock-flip .dock-tpl-label { font-size: 10px; color: #cbd5e1; max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cv-dock.cv-dock-flip .dock-tpl.on .dock-tpl-label { color: #fff; font-weight: 700; }
+.cv-dock.cv-dock-flip .dock-tpl.on .tpl-thumb, .cv-dock.cv-dock-flip .dock-tpl.on .qr-swatch { box-shadow: 0 0 0 2px #fff; }
+.cv-dock.cv-dock-flip .qr-swatch { display: block; width: 54px; height: 54px; border-radius: 9px; border: 1px solid rgba(255,255,255,.3); box-sizing: border-box; }
+.cv-dock.cv-dock-flip .dock-tpl-loading { display: inline-block; color: #cbd5e1; font-size: 12px; padding: 16px 10px; }
 .cv-owner .cv-fab { bottom: calc(128px + env(safe-area-inset-bottom)); }
 .cv-owner .cv-fab-menu { bottom: calc(180px + env(safe-area-inset-bottom)); }
 /* 高档商务名片：卡片大圆角 + 轻阴影，浅灰蓝底衬托层次 */
