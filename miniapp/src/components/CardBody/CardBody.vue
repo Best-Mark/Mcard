@@ -1,37 +1,56 @@
-<!-- 名片正文共享组件：封面 + 身份 + 联系 + 简介/链接/地址 + 相册 + 二维码 +（访客）交换/创建引导 + 落款。
+<!-- 名片正文共享组件：封面 + 身份卡(✎编辑/小码入口/未开通角标) + 未开通提示 + 联系方式(含地址) + 简介/链接/主页店铺
+     + 相册 +（访客）交换/创建引导 + 落款。信息/操作分层与 H5 CardSheet 同口径（2026-11-26 对齐定稿）：
+     二维码只在身份卡右上角放小图、点击弹层放大，正文不摆大块二维码卡；联系方式一行一字段点行复制。
      card.vue（名片详情页/分享页）与 me.vue（「名片」tab）共用这一套渲染，绝不复制两套名片样式。
      模板样式（template × theme 正交）全部内聚在本组件；dock（底部操作条）属页面级，由各页面自渲染并覆写 .tpl-X .dock。 -->
 <template>
   <view class="cv-root" :class="'tpl-' + tpl" :style="{ '--t-accent': accent, '--glow-rgb': glowRgb }">
     <view class="cover" :style="{ background: coverBg }">
-      <view class="brand">唐<text class="em">笺</text></view>
-      <view v-if="!card.active" class="inactive">未开通 / 已到期</view>
+      <view class="brand">M<text class="em">Card</text></view>
     </view>
 
     <view class="body">
+      <!-- 身份卡：对齐 H5 CardSheet——✎ 编辑（仅本人）+ 小二维码入口右上角（点击弹层放大）+ 英文名/公司独立行 + 未开通角标 -->
       <view class="card profile">
+        <button v-if="isSelf" class="inline-edit" @tap="$emit('edit')">✎</button>
         <view class="avatar" :class="{ 'is-logo': !!card.logo }">
           <image v-if="card.logo || card.avatar" :src="card.logo || card.avatar" :mode="card.logo ? 'aspectFit' : 'aspectFill'" />
           <text v-else>{{ (card.name || '名').slice(0, 1) }}</text>
         </view>
         <view class="ident">
           <view class="name-row">
-            <view class="name">{{ card.name || card.name_en || '未填写姓名' }}</view>
+            <view class="name">{{ card.name || card.name_en || '未填写姓名' }}<text v-if="card.name && card.name_en" class="en">{{ card.name_en }}</text></view>
           </view>
-          <view class="title">{{ titleText }}</view>
-          <view v-if="tpl === 'navygold' && card.company" class="ng-org">{{ card.company }}</view>
+          <view class="title">{{ titleText || '点击「编辑名片」完善你的职业信息' }}</view>
+          <view v-if="card.company" class="org">{{ card.company }}</view>
         </view>
+        <button class="qr-entry" @tap="qrOpen = true"><image :src="scanQrUrl(card.slug, 'qr.png', 200)" mode="aspectFit" /></button>
+        <view v-if="!card.active" class="status-badge">未开通 / 已到期</view>
         <view v-if="card.tags && card.tags.length" class="tags">
           <text v-for="tag in card.tags" :key="tag">{{ tag }}</text>
         </view>
       </view>
 
-      <view class="card actions">
-        <button class="act" @tap="callPhone(card.mobile || card.phone)"><text class="ico">✆</text><text>打电话</text></button>
-        <button class="act" @tap="copyText(card.mobile || card.phone, '手机号已复制')"><text class="ico">✎</text><text>存号码</text></button>
-        <button class="act" @tap="copyText(card.email, '邮箱已复制')"><text class="ico">✉</text><text>存邮箱</text></button>
-        <button class="act" @tap="copyText(card.wechat || card.whatsapp, '微信号已复制')"><text class="ico">微</text><text>存微信</text></button>
-        <button class="act" @tap="copyText(card.alipay, '支付宝账号已复制')"><text class="ico">支</text><text>存支付宝</text></button>
+      <!-- 未开通提示 + 持有者「立即开通」：与 H5 after-profile 同口径 -->
+      <view v-if="!card.active" class="card block notice">
+        <view class="notice-b">这张名片尚未开通或已到期</view>
+        <view class="muted small">联系持有者开通后，二维码仍会指向这里，无需更换。</view>
+        <button v-if="isSelf" class="btn primary block" style="margin-top:16rpx" @tap="$emit('activate')">立即开通</button>
+      </view>
+
+      <!-- 联系方式：一行一字段，点行即复制（与 H5 同构）；拨号/导航收进行内小按钮；地址并入本块（2026-11-26 用户定） -->
+      <view v-if="contactRows.length || fullAddress" class="card block">
+        <view class="section">联系方式 <text class="muted small">· 点一行即复制该字段</text></view>
+        <view v-for="f in contactRows" :key="f.key" class="crow" @tap="copyText(f.value, f.label + '已复制')">
+          <text class="crow-label">{{ f.label }}：</text>
+          <text class="crow-value">{{ f.value }}</text>
+          <text v-if="f.tel" class="crow-act" @tap.stop="callPhone(f.value)">拨打</text>
+        </view>
+        <view v-if="fullAddress" class="crow" @tap="copyText(fullAddress, '地址已复制，可粘贴到地图')">
+          <text class="crow-label">地址：</text>
+          <text class="crow-value"><text v-if="regionLine">{{ regionLine }} </text>{{ detailAddress }}</text>
+          <text v-if="canNavigate" class="crow-act" @tap.stop="openNavigation()">导航</text>
+        </view>
       </view>
 
       <!-- 简介只保留一个区块：字段 bio，存量 company_intro 兜底 -->
@@ -57,15 +76,6 @@
         </view>
       </view>
 
-      <view v-if="fullAddress" class="card block">
-        <view class="section">地址</view>
-        <view v-if="regionLine" class="region-line">{{ regionLine }}</view>
-        <view class="addr" @tap="canNavigate ? openNavigation() : copyText(fullAddress, '地址已复制，可粘贴到地图')">
-          <text class="content">地址：{{ detailAddress }}</text>
-          <text class="nav-mini" v-if="canNavigate">导航 ›</text>
-        </view>
-      </view>
-
       <view v-if="materials.length" class="card block">
         <view class="section">相册 · {{ materials.length }} 项 <text class="muted small">（点开直接看）</text></view>
         <view class="gal">
@@ -79,14 +89,17 @@
         </view>
       </view>
 
-      <view class="card qr-card">
-        <image class="qr" :src="scanQrUrl(card.slug, 'qr.png', 440)" mode="aspectFit" />
-        <view class="qr-info">
-          <view class="section">扫一扫，存进通讯录</view>
-          <view class="muted small">二维码永久固定，资料更新也不失效</view>
-          <view class="btn-row">
-            <button class="btn primary" @tap="saveQrImage(card.slug)">保存二维码</button>
-            <button class="btn" @tap="copyText(withInvite(card.url || (baseUrl + '/c/' + card.slug)), '名片链接已复制')">复制链接</button>
+      <!-- 名片地址二维码大图弹层：正文不摆大块二维码卡（对齐 H5 约定①），保存/复制都在弹层里 -->
+      <view v-if="qrOpen" class="mask" @tap="qrOpen = false">
+        <view class="qr-modal" @tap.stop>
+          <view class="qr-modal-title">我的名片</view>
+          <image class="qr-big" :src="scanQrUrl(card.slug, 'qr.png', 640)" mode="aspectFit" />
+          <view class="qr-url" @tap="copyText(linkUrl, '名片链接已复制')">{{ linkUrl }}</view>
+          <view class="muted small" style="text-align:center">客户扫一扫即可打开名片、存入通讯录；链接永久不变</view>
+          <view class="btn-row qr-modal-btns">
+            <button class="btn primary" @tap="copyText(linkUrl, '名片链接已复制')">复制名片链接</button>
+            <button class="btn" @tap="saveQrImage(card.slug)">保存二维码</button>
+            <button class="btn" @tap="qrOpen = false">关闭</button>
           </view>
         </view>
       </view>
@@ -110,21 +123,24 @@
         <button class="btn primary block" @tap="goCreate">免费创建我的名片 →</button>
       </view>
 
-      <view class="foot">由 唐笺 提供技术支持</view>
+      <view class="foot">由 <text class="foot-b">{{ siteName }}</text> 提供技术支持</view>
     </view>
   </view>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue'
-import { api, baseUrl, toast, copyText, callPhone, saveQrImage, parseSlug, scanQrUrl, withInvite } from '../../utils/request'
+import { api, baseUrl, toast, copyText, callPhone, saveQrImage, parseSlug, scanQrUrl } from '../../utils/request'
 
 const props = defineProps({
   card: { type: Object, required: true },
   materials: { type: Array, default: () => [] },
   isSelf: { type: Boolean, default: false },
-  selfCheckDone: { type: Boolean, default: true }
+  selfCheckDone: { type: Boolean, default: true },
+  siteName: { type: String, default: '唐笺' }
 })
+// edit：身份卡 ✎（仅本人显示，页面接去编辑页）；activate：未开通时「立即开通」（页面接去套餐页）
+const emit = defineEmits(['edit', 'activate'])
 
 const card = computed(() => props.card || {})
 const materials = computed(() => props.materials || [])
@@ -133,6 +149,21 @@ const selfCheckDone = computed(() => !!props.selfCheckDone)
 
 const mySlug = ref('')
 const exchanging = ref(false)
+const qrOpen = ref(false)
+const linkUrl = computed(() => card.value.url || (baseUrl + '/c/' + card.value.slug))
+
+// 联系方式行（与 H5 CardSheet contactFields 同构）：手机/座机可拨打，其余点行复制
+const contactRows = computed(() => {
+  const c = card.value
+  const rows = []
+  if (c.mobile) rows.push({ key: 'mobile', label: '手机', value: c.mobile, tel: true })
+  if (c.phone) rows.push({ key: 'phone', label: '座机', value: c.phone, tel: true })
+  if (c.email) rows.push({ key: 'email', label: '邮箱', value: c.email })
+  if (c.wechat) rows.push({ key: 'wechat', label: '微信', value: c.wechat })
+  if (c.alipay) rows.push({ key: 'alipay', label: '支付宝', value: c.alipay })
+  if (c.whatsapp) rows.push({ key: 'whatsapp', label: 'WhatsApp', value: c.whatsapp })
+  return rows
+})
 
 const tpl = computed(() => card.value.template || 'classic')
 const accent = computed(() => card.value.accent || '#a62b2b')
@@ -159,11 +190,10 @@ const coverBg = computed(() => {
   if (tpl.value === 'navygold') return 'linear-gradient(135deg,#1d3a55 0%,#2f5a7d 40%,#d8bb85 78%,#b99355 100%)'
   return `linear-gradient(135deg, ${c}, #2b2118)`
 })
-// 深蓝鎏金把公司从职位行拆成独立署名行，其余模板保持原拼接口径
+// 职位行 = 职位 · 部门（与 H5 displayTitle 同口径）；公司独立一行（.org），不再拼进职位
 const titleText = computed(() => {
   const c = card.value
-  const parts = tpl.value === 'navygold' ? [c.title, c.department] : [c.title, c.company, c.department]
-  return parts.filter(Boolean).join(' · ')
+  return [c.title, c.department].filter(Boolean).join(' · ')
 })
 const regionLine = computed(() => {
   const c = card.value
@@ -269,32 +299,47 @@ async function exchange() {
 .avatar image { width: 100%; height: 100%; }
 /* LOGO 优先时白底完整展示；头像仍铺满 */
 .avatar.is-logo { background: #fff; padding: 10rpx; box-sizing: border-box; }
-.ident { flex: 1; min-width: 0; }
+.ident { flex: 1; min-width: 0; padding-right: 104rpx; }
 .name-row { display: flex; align-items: center; gap: 14rpx; }
 .name { font-size: 38rpx; font-weight: 800; }
 .title { font-size: 24rpx; color: #8a7355; margin-top: 6rpx; }
 .tags { width: 100%; display: flex; gap: 10rpx; flex-wrap: wrap; }
 .tags text { font-size: 20rpx; color: #a62b2b; background: #f7ecd9; padding: 4rpx 14rpx; border-radius: 999rpx; }
-.actions { display: grid; grid-template-columns: repeat(5, 1fr); padding: 16rpx 0; }
-.act { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8rpx; font-size: 22rpx; color: #8a7355; background: transparent; padding: 0; line-height: 1.3; }
-.act::after { border: 0; }
-.ico { width: 68rpx; height: 68rpx; border-radius: 50%; background: #f7ecd9; color: #a62b2b; display: flex; align-items: center; justify-content: center; font-size: 30rpx; font-weight: 700; }
+/* 身份卡新增元素：✎ 编辑（本人）、小二维码入口、未开通角标、英文名、公司独立行 */
+.inline-edit { position: absolute; left: 20rpx; top: 20rpx; width: 52rpx; height: 52rpx; border-radius: 50%; font-size: 26rpx; line-height: 1; color: var(--t-accent, #a62b2b); background: rgba(var(--glow-rgb, 37,99,235), .1); border: 2rpx solid rgba(var(--glow-rgb, 37,99,235), .22); padding: 0; display: flex; align-items: center; justify-content: center; }
+.inline-edit::after { border: 0; }
+.qr-entry { position: absolute; right: 20rpx; top: 20rpx; width: 96rpx; height: 96rpx; padding: 8rpx; box-sizing: border-box; background: #fff; border: 2rpx solid #e8dcc2; border-radius: 12rpx; }
+.qr-entry::after { border: 0; }
+.qr-entry image { width: 100%; height: 100%; }
+.status-badge { position: absolute; right: 20rpx; bottom: 16rpx; font-size: 20rpx; color: #92400e; background: #fef3c7; padding: 6rpx 16rpx; border-radius: 999rpx; }
+.en { font-size: 22rpx; font-weight: 400; color: #8a7355; margin-left: 10rpx; }
+.org { font-size: 24rpx; color: #5c4a35; margin-top: 4rpx; }
+/* 联系方式块：一行一字段点行复制（与 H5 同构），行内小按钮=拨打/导航 */
+.crow { display: flex; align-items: center; gap: 12rpx; padding: 16rpx 0; border-bottom: 2rpx solid #f1f5f9; }
+.crow:last-child { border-bottom: 0; }
+.crow-label { font-size: 24rpx; color: #8a7355; flex-shrink: 0; }
+.crow-value { flex: 1; min-width: 0; font-size: 26rpx; color: #2b2118; word-break: break-all; }
+.crow-act { flex-shrink: 0; font-size: 22rpx; color: #a62b2b; background: #f7ecd9; padding: 8rpx 20rpx; border-radius: 999rpx; }
+.notice { border-left: 8rpx solid #f59e0b; }
+.notice-b { font-size: 28rpx; font-weight: 700; margin-bottom: 8rpx; }
 .section { font-size: 30rpx; font-weight: 700; margin-bottom: 12rpx; }
 /* 相册：图片点开用系统预览，链接/文档直接复制，不跳中间页 */
 .gal { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14rpx; }
 .gal-img { width: 100%; aspect-ratio: 1; border-radius: 12rpx; background: #f0e7d2; }
 .gal-file { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8rpx; aspect-ratio: 1; border-radius: 12rpx; background: #f7ecd9; padding: 10rpx; box-sizing: border-box; }
+.content { font-size: 26rpx; color: #5c4a35; line-height: 1.7; }
 .gal-ico { font-size: 40rpx; }
 .gal-title { font-size: 22rpx; color: #334155; text-align: center; line-height: 1.3; max-height: 58rpx; overflow: hidden; }
-.content { font-size: 26rpx; color: #5c4a35; line-height: 1.7; }
 .link { display: flex; flex-direction: column; padding: 14rpx 0; border-bottom: 2rpx solid #f1f5f9; }
 .link .b { font-size: 26rpx; font-weight: 600; }
-.region-line { font-size: 26rpx; font-weight: 700; color: #a62b2b; margin-bottom: 10rpx; }
-.addr { display: flex; align-items: flex-start; justify-content: space-between; gap: 16rpx; }
 .hint { font-size: 22rpx; color: #b09a72; margin-top: 14rpx; line-height: 1.6; }
-.qr-card { display: flex; gap: 20rpx; align-items: center; }
-.qr { width: 200rpx; height: 200rpx; background: #fff; border: 2rpx solid #e8dcc2; border-radius: 16rpx; flex-shrink: 0; }
-.qr-info { flex: 1; min-width: 0; }
+/* 二维码大图弹层（点击身份卡右上小码打开） */
+.mask { position: fixed; left: 0; right: 0; top: 0; bottom: 0; background: rgba(15,23,42,.55); z-index: 120; display: flex; align-items: center; justify-content: center; padding: 40rpx; }
+.qr-modal { width: 100%; max-width: 560rpx; background: #fff; border-radius: 24rpx; padding: 36rpx 30rpx; }
+.qr-modal-title { font-size: 32rpx; font-weight: 800; text-align: center; margin-bottom: 20rpx; }
+.qr-big { width: 400rpx; height: 400rpx; margin: 0 auto 16rpx; display: block; background: #fff; }
+.qr-url { font-size: 22rpx; color: #8a7355; text-align: center; word-break: break-all; margin-bottom: 8rpx; }
+.qr-modal-btns { justify-content: center; flex-wrap: wrap; }
 .btn-row { display: flex; gap: 12rpx; margin-top: 16rpx; }
 .btn { font-size: 24rpx; padding: 16rpx 0; border-radius: 12rpx; background: #f0e7d2; color: #2b2118; }
 .btn::after { border: 0; }
@@ -306,7 +351,7 @@ async function exchange() {
 .create-own-copy { display: flex; flex-direction: column; gap: 8rpx; margin-bottom: 20rpx; }
 .create-own-copy .b { font-size: 30rpx; font-weight: 700; }
 .foot { text-align: center; font-size: 22rpx; color: #b09a72; padding: 30rpx 0 40rpx; }
-.nav-mini { color: #a62b2b; font-size: 22rpx; flex-shrink: 0; }
+.foot-b { font-weight: 700; }
 .muted { color: #8a7355; }
 .small { font-size: 22rpx; }
 

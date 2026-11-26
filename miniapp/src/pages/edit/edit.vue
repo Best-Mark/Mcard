@@ -77,6 +77,22 @@
         </view>
       </view>
 
+      <!-- 公司相册：与 H5 CardEdit「公司相册」分节同口径（多图上传、缩略图网格、随保存提交 /mine/materials） -->
+      <view class="card">
+        <view class="section">公司相册</view>
+        <view class="muted small" style="margin-bottom:16rpx">直接上传图片，访客点开名片即可浏览。最多 {{ GALLERY_MAX }} 张，上传后点底部「保存资料」生效。</view>
+        <view class="gal-grid">
+          <view v-for="(m, i) in materials" :key="i" class="gal-cell">
+            <image :src="m.url" mode="aspectFill" />
+            <text class="gal-del" @tap="materials.splice(i, 1)">×</text>
+          </view>
+          <view v-if="materials.length < GALLERY_MAX" class="gal-add" @tap="chooseGallery">
+            <text>{{ galBusy ? '上传中…' : '＋ 上传' }}</text>
+          </view>
+        </view>
+        <view class="muted small" style="margin-top:12rpx">已上传 {{ materials.length }} / {{ GALLERY_MAX }} 张</view>
+      </view>
+
       <view class="card" id="market-card">
         <view class="section">名片集市 <text class="muted small"> · 让客户主动找到你，获取更多业务流量</text></view>
         <view v-if="!planActive" class="gate-tip" @tap="goPlans">上架集市需要开通套餐 · 点此去开通 / 续期 ›</view>
@@ -229,6 +245,11 @@ const blank = {
 const form = ref({ ...blank })
 const tagsText = ref('')
 const saving = ref(false)
+// 公司相册：图片 URL 列表（内部映射成 card_materials 的 {type:'file',title,url}，保持 /mine/materials 契约）。
+// 上限唯一真相源 = GALLERY_MAX，与 H5 CardEdit 同值（2026-11-26 用户口径：相册自己带上限）。
+const GALLERY_MAX = 20
+const materials = ref([])
+const galBusy = ref(false)
 // 套餐闸门：配色方案 + 上架集市需要有效套餐；加载时记录原值，保存时只在「改了」时拦截。
 const planActive = ref(true)
 const PLAN_GATED_KEYS = ['template', 'theme', 'accent', 'qr_fg', 'qr_bg', 'qr_logo', 'qr_style', 'market_opt_in']
@@ -292,6 +313,11 @@ onLoad(async options => {
     form.value.company_intro = ''
     tagsText.value = (c.tags || []).join(', ')
   } catch (e) { toast(e.message) }
+  // 相册与资料互相独立：拉取失败不影响资料编辑，保存时一并提供
+  try {
+    const { data } = await api.get('/api/cards/mine/materials')
+    materials.value = (data.data?.list || []).map(m => ({ type: m.type || 'file', title: m.title || '', url: m.url }))
+  } catch { /* 相册拉取失败静默，保存时仍会以当前列表为准 */ }
   // 从「上架集市」入口进来：渲染后滚到集市卡片，直接看到上架开关
   if (options?.focus === 'market') {
     setTimeout(() => uni.createSelectorQuery().select('#market-card').boundingClientRect(rect => {
@@ -496,6 +522,28 @@ function applyLogo() {
 
 function goPlans() { uni.navigateTo({ url: '/pages/plans/plans' }) }
 
+// 公司相册上传：多选、逐张串行上传（严格按选择顺序追加）、成对防重入（busy 守卫）；
+// 达上限停止、单张失败提示但不中断整批（与 H5 CardEdit onGalleryUpload 同口径）
+async function chooseGallery() {
+  if (galBusy.value) return
+  const room = GALLERY_MAX - materials.value.length
+  if (room <= 0) return toast(`相册最多 ${GALLERY_MAX} 张`)
+  // 隐私守卫：选图属隐私接口，微信端先弹官方隐私授权
+  if (!(await ensurePrivacy())) return toast('需要同意隐私授权才能选择图片')
+  uni.chooseImage({ count: Math.min(9, room), sizeType: ['compressed'], success: async res => {
+    galBusy.value = true
+    try {
+      const paths = (res.tempFilePaths || []).slice(0, room)
+      if ((res.tempFilePaths || []).length > room) toast(`最多 ${GALLERY_MAX} 张，本次只上传 ${room} 张`)
+      for (const p of paths) {
+        const url = await uploadImage(p)
+        materials.value.push({ type: 'file', title: `图片 ${materials.value.length + 1}`, url })
+      }
+      toast('图片已上传，保存资料后生效', 'success')
+    } catch (e) { toast(e.message || '上传失败') } finally { galBusy.value = false }
+  } })
+}
+
 async function save() {
   if (!form.value.name) return toast('请填写姓名')
   // 套餐闸门：未开通/过期时改配色或开启上架，引导续期（关闭下架放行，与后端同口径）
@@ -519,6 +567,8 @@ async function save() {
     delete payload.slug
     // avatar 是名片资料(cards.avatar)，随资料一起保存；账号头像(users.avatar)在「账号资料」页单独管理
     await api.put('/api/cards/mine', payload)
+    // 公司相册随保存一并提交（与 H5 CardEdit saveMaterials 同契约：items 带 sort）
+    await api.put('/api/cards/mine/materials', { items: materials.value.filter(m => m.url).map((m, i) => ({ ...m, sort: i })) })
     toast('资料已保存，二维码不变', 'success')
     setTimeout(() => uni.navigateBack(), 700)
   } catch (e) { toast(e.message) } finally { saving.value = false }
@@ -658,4 +708,10 @@ async function save() {
 .btn.block { width: 100%; }
 .muted { color: #8a7355; }
 .small { font-size: 22rpx; }
+/* 公司相册：三列缩略图网格 + 删除角标 + 上传格（Grid 多列防 flex 亚像素挤行） */
+.gal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14rpx; }
+.gal-cell { position: relative; width: 100%; aspect-ratio: 1; border-radius: 12rpx; overflow: hidden; background: #f0e7d2; }
+.gal-cell image { width: 100%; height: 100%; }
+.gal-del { position: absolute; right: 6rpx; top: 6rpx; width: 40rpx; height: 40rpx; border-radius: 50%; background: rgba(15,23,42,.6); color: #fff; font-size: 26rpx; display: flex; align-items: center; justify-content: center; }
+.gal-add { width: 100%; aspect-ratio: 1; border: 2rpx dashed #c9a227; border-radius: 12rpx; display: flex; align-items: center; justify-content: center; font-size: 24rpx; color: #a62b2b; background: #fdf8ec; box-sizing: border-box; }
 </style>

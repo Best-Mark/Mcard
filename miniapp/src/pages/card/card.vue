@@ -11,7 +11,8 @@
     </view>
 
     <block v-else-if="card">
-      <CardBody :card="card" :materials="materials" :is-self="isSelf" :self-check-done="selfCheckDone" />
+      <CardBody :card="card" :materials="materials" :is-self="isSelf" :self-check-done="selfCheckDone"
+        @edit="go('/pages/edit/edit')" @activate="go('/pages/plans/plans')" />
 
       <!-- 底部操作 dock：owner 对齐 H5（编辑/配色/集市/分享/管理），访客是联系操作（打电话/复制/存通讯录/导航/收藏/分享）。
            selfCheckDone 前不渲染，避免本人打开自己名片时先闪一下「收藏自己/打电话给自己」的访客 dock。 -->

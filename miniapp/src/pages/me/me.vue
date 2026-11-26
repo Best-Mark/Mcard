@@ -25,15 +25,15 @@
       <button class="btn ghost block" style="margin-top:16rpx" @tap="go('/pages/market/market')">先去逛逛名片集市</button>
     </view>
 
-    <!-- 有名片：整页就是名片本身 + owner 编辑 dock -->
+    <!-- 有名片：整页就是名片本身 + owner 编辑 dock（四键与 H5 Dashboard 完全一致；相册管理在「编辑名片」页内的公司相册分节） -->
     <block v-else>
-      <CardBody :card="card" :materials="materials" :is-self="true" :self-check-done="true" />
+      <CardBody :card="card" :materials="materials" :is-self="true" :self-check-done="true"
+        @edit="go('/pages/edit/edit')" @activate="go('/pages/plans/plans')" />
       <view class="dock">
-        <button class="dock-btn" @tap="go('/pages/edit/edit')"><text class="dico">✎</text><text>编辑名片</text></button>
+        <button class="dock-btn primary" @tap="go('/pages/edit/edit')"><text class="dico">✎</text><text>编辑名片</text></button>
         <button class="dock-btn" @tap="go('/pages/edit/edit?focus=theme')"><text class="dico">◐</text><text>配色风格</text></button>
         <button class="dock-btn" @tap="go('/pages/market/market')"><text class="dico">⌕</text><text>名片集市</text></button>
-        <button class="dock-btn" @tap="go('/pages/materials/materials?slug=' + card.slug)"><text class="dico">📚</text><text>相册</text></button>
-        <button class="dock-btn primary" open-type="share"><text class="dico">↗</text><text>分享</text></button>
+        <button class="dock-btn" open-type="share"><text class="dico">↗</text><text>分享</text></button>
       </view>
     </block>
 
