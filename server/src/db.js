@@ -356,6 +356,29 @@ if (!seeded('qr_logo_default_off_v1')) {
   })()
 }
 
+// 一次性迁移（2026-11-26）：模板推荐码色易扫修正的存量自愈。
+// star/elite 模板旧推荐是「浅码深底」反色（相机/微信扫码引擎对深码浅底有强偏好，反色极难识别），
+// 已应用过这两套配色的卡片库里存的还是反色组合。按模板翻转到新的安全配色，其余反色卡兜底到黑码白底。
+// 只跑一次：此后用户在码色预设里选的都是深码浅底，不会再产生反色。
+if (!seeded('qr_color_light_on_dark_v1')) {
+  const lum = hex => {
+    const n = parseInt(String(hex || '').replace('#', ''), 16)
+    if (Number.isNaN(n)) return 0
+    return 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)
+  }
+  const SAFE = { star: ['#12121a', '#ececf2'], elite: ['#2b2417', '#f2ead9'], fallback: ['#0f172a', '#ffffff'] }
+  const fix = db.prepare('UPDATE cards SET qr_fg = ?, qr_bg = ? WHERE id = ?')
+  db.transaction(() => {
+    for (const c of db.prepare("SELECT id, template, qr_fg, qr_bg FROM cards WHERE qr_bg <> '' AND qr_fg <> ''").all()) {
+      if (lum(c.qr_bg) < lum(c.qr_fg)) { // 底比码深 = 反色，翻转
+        const [fg, bg] = SAFE[c.template] || SAFE.fallback
+        fix.run(fg, bg, c.id)
+      }
+    }
+    insertSeedFlag.run('qr_color_light_on_dark_v1', '1')
+  })()
+}
+
 if (!seeded('seed_packages_v1')) {
   const insert = db.prepare('INSERT INTO packages (name, description, price_cents, duration_days, features, sort) VALUES (@name,@description,@price_cents,@duration_days,@features,@sort)')
   db.transaction(rows => { rows.forEach(r => insert.run(r)); insertSeedFlag.run('seed_packages_v1', '1') })(seedPackages)

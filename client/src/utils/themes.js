@@ -62,17 +62,19 @@ export const THEMES = {
 
 // 模板自带推荐配色：选模板即应用一整套（主题/强调色/二维码色），用户无需逐项调色。
 // key = cardTemplates.js 的模板 key；二维码色遵循「深码 + 浅底」保证可扫。
+// 【2026-11-26 易扫修正】star/elite 原推荐是「浅码深底」反色（灰紫码印近黑底），相机/微信扫码
+// 引擎对深码浅底有强偏好，反色码识别率极低且深底静音区雪上加霜；改为深码浅底、色感贴近原主题。
 // ⚠️ 新增模板或调整模板配色时，需同步 miniapp/src/pages/edit/edit.vue 的 TEMPLATE_PALETTES。
 export const TEMPLATE_PALETTES = {
   tang: { theme: 'tang', qrFg: '#7a1e15', qrBg: '#f7ecd9' },
   vanna: { theme: 'vanna', qrFg: '#0c2a4d', qrBg: '#eaf2f9' },
   phantom: { theme: 'phantom', qrFg: '#052e1c', qrBg: '#e8f5ee' },
   lava: { theme: 'lava', qrFg: '#1a1a1e', qrBg: '#f1f1f2' },
-  star: { theme: 'star', qrFg: '#8a8aa0', qrBg: '#12121a' },
+  star: { theme: 'star', qrFg: '#12121a', qrBg: '#ececf2' },
   alas: { theme: 'alas', qrFg: '#4a0d14', qrBg: '#f9eaea' },
   classic: { theme: 'ocean', qrFg: '#12306b', qrBg: '#f2f7ff' },
   minimal: { theme: 'ocean', qrFg: '#0f172a', qrBg: '#ffffff' },
-  elite: { theme: 'ink', qrFg: '#b99355', qrBg: '#15171c' },
+  elite: { theme: 'ink', qrFg: '#2b2417', qrBg: '#f2ead9' },
   vivid: { theme: 'royal', qrFg: '#7c3aed', qrBg: '#fff7ed' },
   seal: { theme: 'ocean', qrFg: '#0f172a', qrBg: '#ffffff' },
   contact: { theme: 'ink', qrFg: '#12202e', qrBg: '#ffffff' },
