@@ -32,6 +32,11 @@ api.interceptors.response.use(
     const status = err.response?.status
     const cfg = err.config
     if (status === 401 && !cfg?.url?.includes('/login')) {
+      // 静默鉴权请求（X-Silent-Auth）：调用方自带 catch 兜底的「锦上添花」接口（如分享取码），
+      // 401 不代表会话失效场景需要处理，绝不跳登录页——否则匿名访客会被踢离当前页面。
+      if (cfg?.headers?.['X-Silent-Auth']) {
+        return Promise.reject(new Error(err.response?.data?.msg || err.message || '请求失败'))
+      }
       const admin = cfg?.url?.startsWith('/api/admin')
       // 同步清空响应式 store，避免「localStorage 已删但页面仍显示已登录」的假登录态
       if (admin) setAdminAuth('', null)

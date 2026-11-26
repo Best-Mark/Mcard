@@ -3,7 +3,7 @@ const express = require('express')
 const db = require('../db')
 const settings = require('../utils/settings')
 const { ok, fail, wrap } = require('../utils/response')
-const { authRequired } = require('../utils/auth')
+const { authRequired, parseToken } = require('../utils/auth')
 const promo = require('../services/promo')
 
 const router = express.Router()
@@ -47,8 +47,13 @@ function accountView(userId) {
 
 // 当前登录用户的邀请码（全面邀请的唯一真相源）：只有推广员才有码，非推广员返回空。
 // 分享工具据此给每个分享出口自动拼 ?invite=；用独立轻量接口，避免 /auth/me 形状变动影响既有缓存。
-router.get('/my-code', authRequired, wrap((req, res) => {
-  const u = db.prepare('SELECT is_promoter, invite_code FROM users WHERE id = ?').get(req.user.id)
+// ⚠️ 必须匿名放行（未登录回空码 200，绝不 401）：分享兜底链路（wx-share setupWechatShare）
+// 在每个页面都会调本接口，401 会被 axios 拦截器当成登录失效，把匿名访客整个踢去登录页——
+// 访客点开分享的名片还没看到名片就被赶去登录（2026-11-26 实锤故障）。
+router.get('/my-code', wrap((req, res) => {
+  const payload = parseToken(req)
+  if (!payload?.id) return ok(res, { inviteCode: '' })
+  const u = db.prepare('SELECT is_promoter, invite_code FROM users WHERE id = ?').get(payload.id)
   ok(res, { inviteCode: u?.is_promoter ? (u.invite_code || '') : '' })
 }))
 

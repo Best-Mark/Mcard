@@ -14,7 +14,9 @@ export async function loadMyInviteCode() {
   if (fetching) return fetching
   fetching = (async () => {
     try {
-      const { data } = await api.get('/api/promo/my-code')
+      // X-Silent-Auth：取码失败静默降级为空码（调用方有 catch），401 拦截器看到该头不跳登录页。
+      // 本接口在每页分享兜底链路都会被匿名调用，绝不能因为 401 把访客踢去登录（2026-11-26 实锤）。
+      const { data } = await api.get('/api/promo/my-code', { headers: { 'X-Silent-Auth': '1' } })
       inviteCode = String(data?.data?.inviteCode || '')
     } catch { inviteCode = '' } // 未登录/非推广员/网络异常一律空码，不打扰用户
     finally { fetching = null }

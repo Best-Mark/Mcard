@@ -206,7 +206,10 @@ router.get('/wechat/silent-url', wrap((req, res) => {
   ok(res, { url })
 }))
 
-// 前端点「微信快捷登录」：拿到授权跳转地址（AppSecret 全程留在服务端）
+// 前端点「微信快捷登录」：拿到授权跳转地址（AppSecret 全程留在服务端）。
+// 回跳地址编进 state（rt_<8hex>_<base64url(target)>）：登录成功后直接回原页面——
+// 否则回跳固定落 /wechat/callback，redirect 丢失，登录后一律落到 /me（访客点开分享名片
+// 被要求登录后看到的是自己的工作台，而不是那张名片，2026-11-26 实锤故障）。
 router.get('/wechat/url', wrap((req, res) => {
   if (!enabled()) return fail(res, 400, '微信快捷登录未配置或数据源不全')
   cleanStates()
@@ -215,6 +218,10 @@ router.get('/wechat/url', wrap((req, res) => {
   // 扫码登录：把 sid 编进 state（32hex sid + 分隔符 + 随机态），回调时识别并写回会话
   const sid = String(req.query.sid || '')
   if (/^[a-f0-9]{32}$/.test(sid)) state = `qr_${sid}_${crypto.randomBytes(8).toString('hex')}`
+  else {
+    const target = safeReturnPath(req.query.redirect)
+    if (target && target !== '/market') state = `rt_${crypto.randomBytes(8).toString('hex')}_${b64url(target)}`
+  }
   saveState(state)
   const redirectUri = requestUrl(req, '/api/auth/wechat/callback')
   const url = `${OAUTH_PAGE}/connect/oauth2/authorize?appid=${encodeURIComponent(c.appId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=snsapi_userinfo&state=${encodeURIComponent(state)}#wechat_redirect`
@@ -246,6 +253,9 @@ router.get('/wechat/callback', wrap(async (req, res) => {
   // 静默登录 state：auto_<8hex>_<base64url(回跳路径)>。回跳路径二次校验，只认站内相对路径。
   const autoM = state.match(/^auto_([a-f0-9]{16})_([A-Za-z0-9_-]+)$/)
   const autoTarget = autoM ? safeReturnPath(unb64url(autoM[2])) : ''
+  // 显式快捷登录 state：rt_<8hex>_<base64url(回跳路径)>——登录后直接回原页面（与 auto_ 同规）
+  const rtM = state.match(/^rt_([a-f0-9]{16})_([A-Za-z0-9_-]+)$/)
+  const rtTarget = rtM ? safeReturnPath(unb64url(rtM[2])) : ''
   // 原子消费 DB 中的 state（一次性防重放）。state 随机且 DB 命中即证明本服务发起，
   // 不依赖 cookie —— 手机微信回调不保证带回 cookie，也不该被并发登录覆盖的 cookie 误伤。
   const valid = consumeState(state)
@@ -253,10 +263,12 @@ router.get('/wechat/callback', wrap(async (req, res) => {
     if (qrSid) failQrSession(qrSid, msg) // 授权失败也要让电脑端停止等待
     return res.redirect(`${requestUrl(req, '/wechat/qr-result')}?err=${encodeURIComponent(msg)}`)
   }
-  // 静默登录失败：回原页面并带 wx_err，前端守卫看到后不再自动重试（防授权失败死循环）
+  // 静默登录失败：回原页面并带 wx_err，前端守卫看到后不再自动重试（防授权失败死循环）。
+  // 显式快捷登录失败：回登录页，但带上原回跳地址（redirect），登录成功后仍回原页面。
   const failBack = msg => {
     if (qrSid) return qrFail(msg)
     if (autoTarget) return res.redirect(withQuery(requestUrl(req, autoTarget), 'wx_err', msg))
+    if (rtTarget) return res.redirect(`${requestUrl(req, '/login')}?redirect=${encodeURIComponent(rtTarget)}&err=${encodeURIComponent(msg)}`)
     return res.redirect(`${requestUrl(req, '/login')}?err=${encodeURIComponent(msg)}`)
   }
   if (!valid) return failBack('state')
@@ -310,6 +322,8 @@ router.get('/wechat/callback', wrap(async (req, res) => {
         return res.redirect(`${requestUrl(req, '/wechat/qr-result')}?ok=1`)
       }
       if (autoTarget) return res.redirect(`${requestUrl(req, autoTarget)}#token=${encodeURIComponent(jwt)}&user=${encodeURIComponent(JSON.stringify(pub))}`)
+      // 显式快捷登录：state 里带了回跳地址就直接回原页面（token 走 hash，与静默登录同规）
+      if (rtTarget) return res.redirect(`${requestUrl(req, rtTarget)}#token=${encodeURIComponent(jwt)}&user=${encodeURIComponent(JSON.stringify(pub))}`)
       return res.redirect(`${requestUrl(req, '/wechat/callback')}#token=${encodeURIComponent(jwt)}&user=${encodeURIComponent(JSON.stringify(pub))}`)
     }
 
@@ -318,6 +332,8 @@ router.get('/wechat/callback', wrap(async (req, res) => {
       const ticket = signBind({ openid, unionid, nickname: autoTarget ? '微信用户' : nickname, avatar, qrSid })
       // 静默授权拿不到昵称头像，新用户仍需一次手机号绑定；带 target 让绑完回到原来那页
       if (autoTarget) return res.redirect(`${requestUrl(req, '/login')}?redirect=${encodeURIComponent(autoTarget)}#bind=${encodeURIComponent(ticket)}`)
+      // 显式快捷登录新用户：同样把回跳地址带给登录页，绑定手机号完成后回到原页面
+      if (rtTarget) return res.redirect(`${requestUrl(req, '/login')}?redirect=${encodeURIComponent(rtTarget)}#bind=${encodeURIComponent(ticket)}`)
       return qrSid
         ? res.redirect(`${requestUrl(req, '/wechat/qr-result')}?bind=${encodeURIComponent(ticket)}&sid=${encodeURIComponent(qrSid)}&nickname=${encodeURIComponent(nickname)}&avatar=${encodeURIComponent(avatar)}`)
         : res.redirect(`${requestUrl(req, '/login')}#bind=${encodeURIComponent(ticket)}&nickname=${encodeURIComponent(nickname)}&avatar=${encodeURIComponent(avatar)}`)
@@ -333,6 +349,7 @@ router.get('/wechat/callback', wrap(async (req, res) => {
       return res.redirect(`${requestUrl(req, '/wechat/qr-result')}?ok=1`)
     }
     if (autoTarget) return res.redirect(`${requestUrl(req, autoTarget)}#token=${encodeURIComponent(jwt)}&user=${encodeURIComponent(JSON.stringify(pub))}`)
+    if (rtTarget) return res.redirect(`${requestUrl(req, rtTarget)}#token=${encodeURIComponent(jwt)}&user=${encodeURIComponent(JSON.stringify(pub))}`)
     return res.redirect(`${requestUrl(req, '/wechat/callback')}#token=${encodeURIComponent(jwt)}&user=${encodeURIComponent(JSON.stringify(pub))}`)
   } catch (e) {
     console.error('[WechatOAuth]', e.message)
