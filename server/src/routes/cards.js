@@ -319,13 +319,16 @@ router.get('/public/:slug/qr.png', wrap(async (req, res) => {
   res.type('png').set('Cache-Control', isScan ? 'public, max-age=60' : 'public, max-age=3600').send(buf)
 }))
 
-// 名片分享缩略图（公开、无需登录）：头像/姓名/公司 + 小二维码的 600×600 PNG。
-// 微信转发卡片用：访客未登录时前端无法上传图片，服务端直接按 slug 生成，彻底消灭空图。
+// 名片分享缩略图（公开、无需登录）：按名片页顶部「身份卡区域」重绘的 600×600 PNG
+// （头像在左 + 姓名/职位/公司/标签 + 右上角本人美化码）。微信转发/og:image 直接用这个公开 URL。
+// 配色 query（bg/fg/mu/ac）由前端 themeOf 下发（唯一真相源），服务端只做 hex 白名单校验；
+// 非法/缺省静默回落深色主题，绝不让坏参数拖垮分享图。缓存按配色分键，换肤后自动出新图。
 router.get('/public/:slug/share.png', wrap(async (req, res) => {
   const row = db.prepare('SELECT * FROM cards WHERE slug = ?').get(req.params.slug)
   if (!row) return fail(res, 404, '名片不存在')
   const origin = originOf(req)
-  const buf = await require('../utils/shareCard').buildSharePng(publicView(row, origin), `${origin}/c/${row.slug}`)
+  const palette = { bg: req.query.bg, fg: req.query.fg, mu: req.query.mu, ac: req.query.ac }
+  const buf = await require('../utils/shareCard').buildSharePng(publicView(row, origin), `${origin}/c/${row.slug}`, palette)
   res.type('png').set('Cache-Control', 'public, max-age=600').send(buf)
 }))
 

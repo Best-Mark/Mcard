@@ -2,6 +2,7 @@ import { isWeChat, configWx } from './wx-sdk'
 import { sharePools, pick } from '../config/shareConfig'
 import { siteConfig } from '../store'
 import { loadMyInviteCode, withInvite } from './invite'
+import { themeOf } from './themes'
 
 // 微信 JS-SDK 分享卡片：让转发到微信好友/朋友圈显示成一张像样的卡片（标题+描述+缩略图）。
 // 签名与 config 统一走 wx-sdk.js（一次 config 配齐分享+定位+扫码接口，避免 jsApiList 互相覆盖）。
@@ -33,9 +34,10 @@ export function cleanShareLink(raw) {
 // 缩略图只认 JPG / PNG / GIF：微信解析不出 svg / webp 的缩略图，硬传会变成灰块甚至整卡退化成网址。
 // 上传链路把头像等栅格图转 webp，会被这里过滤掉并自动落到下一候选，不会报错。
 // 公司 LOGO 走 /upload/logo 产出的是 PNG，可被识别；share_image 池也是 PNG/JPG。
-// ⚠️ 用户口径：分享缩略图绝不用纯二维码——优先级 公司LOGO → 用户头像 → 服务端名片图 → 项目LOGO → 分享池。
-//    服务端名片图必须排在项目LOGO之前：头像/LOGO 若是 webp 被滤掉后，旧顺序会让项目LOGO抢先命中，
-//    用户明明有头像却转发成项目LOGO（2026-11-26 实锤）；名片图内含本人头像，是正确兜底。
+// ⚠️ 用户口径（2026-11-26 二次定稿）：分享图 = 名片页顶部「身份卡区域」——服务端 share.png 已按该区域重绘
+//    （头像左 + 姓名/职位/公司/标签 + 右上本人美化码 + 主题配色），故走第一候选，一眼认出是谁的名片。
+//    优先级 服务端名片图 → 公司LOGO → 用户头像 → 项目LOGO → 分享池；项目LOGO 必须垫后，
+//    旧顺序曾让项目LOGO抢先命中，用户有头像却转发成项目LOGO。服务端内联 webp，不受本过滤影响。
 function cardImage(u) {
   const abs = absoluteMediaUrl(u)
   return /\.(jpe?g|png|gif)(\?|$)/i.test(abs) ? abs : ''
@@ -138,12 +140,11 @@ export const setWechatShare = setupWechatShare
 /**
  * 名片分享卡片唯一真相源：/c/:slug 公开页与 /me 工作台共用同一口径。
  * 标题「XXX的名片」；描述首选简介（存量 company_intro 回落，空则落分享池）；
- * 缩略图口径（用户定稿 2026-11-26 修正）：公司 LOGO → 用户头像 → 服务端名片卡片图 → 项目 LOGO → 分享池。
- * 绝不用「纯二维码」当缩略图；但名片卡片图（头像+姓名+公司，含作为名片一部分的小二维码）是用户认可的兜底。
- * ⚠️ 服务端名片卡片图必须排在项目 LOGO 之前：头像/LOGO 常为 webp 会被 cardImage 过滤，
- *    旧顺序会让项目 LOGO 抢先命中，用户明明上传了头像却转发成项目 LOGO。
+ * 缩略图口径（用户定稿 2026-11-26 二次修正）：服务端名片「身份卡区域」图 → 公司 LOGO → 头像 → 项目 LOGO → 分享池。
+ * 服务端 share.png 按名片页顶部身份卡重绘（头像左+姓名/职位/公司/标签+右上本人美化码+主题配色），是用户指定的分享图形态。
+ * 绝不用「纯二维码」当缩略图——身份卡里的小码只是名片的一部分，主体是本人形象+资料。
  * 服务端 share.png 是公开接口（无需登录、webp 头像也能内联渲染），任何调用点都能传，
- * 不传则由本函数按 card.slug 兜底推导，避免工作台/侧栏分享漏传时退到项目 LOGO。
+ * 不传则由本函数按 card.slug 兜底推导；配色从 themeOf(card) 下发（前端 themes.js 唯一真相源）。
  * 工作台必须自己配置，不能只靠异步嵌入的 CardView——否则加载慢时转发走全局兜底。
  */
 export function setCardShare(api, card, link, shareImage) {
@@ -152,18 +153,22 @@ export function setCardShare(api, card, link, shareImage) {
   // 微信转发面板顶部显示的是 document.title，必须与分享卡片标题一致为「某某的名片」，
   // 否则即使 JS-SDK 标题配对了，面板顶部仍是站点默认标题「MCard 电子名片」。
   if (typeof document !== 'undefined' && document.title !== title) document.title = title
-  // 服务端名片图兜底：调用方未显式传时按 slug 推导公开地址（动态域名，不写死）。
-  const cardShot = shareImage || (card?.slug ? `/api/cards/public/${encodeURIComponent(card.slug)}/share.png` : '')
+  // 服务端身份卡图：调用方未显式传时按 slug 推导公开地址（动态域名，不写死）；
+  // 带上当前主题配色，让分享图与名片页顶部那块区域观感一致（换主题自动换图）。
+  const t = themeOf(card)
+  const pal = `bg=${encodeURIComponent(t.surface)}&fg=${encodeURIComponent(t.text)}&mu=${encodeURIComponent(t.muted)}&ac=${encodeURIComponent(t.accent)}`
+  const base = shareImage || (card?.slug ? `/api/cards/public/${encodeURIComponent(card.slug)}/share.png` : '')
+  const cardShot = base && /\/share\.png($|\?)/.test(base) ? `${base}${base.includes('?') ? '&' : '?'}${pal}` : base
   return setupWechatShare(api, {
     title,
     desc: String(card?.bio || card?.company_intro || '').slice(0, 120),
     link: target,
-    // 公司 LOGO → 名片头像 → 服务端名片图（含本人头像）→ 项目 LOGO → 分享池。
+    // 身份卡图（本人形象+资料）→ 公司 LOGO → 名片头像 → 项目 LOGO → 分享池。
     // 前几档若是 webp 会被 cardImage 过滤并自动落到下一档；全都不合格才由 setupWechatShare 落 share_image。
     imgCandidates: [
+      absoluteMediaUrl(cardShot),
       absoluteMediaUrl(card?.logo),
       absoluteMediaUrl(card?.avatar),
-      absoluteMediaUrl(cardShot),
       absoluteMediaUrl(siteConfig.site_logo)
     ]
   })
