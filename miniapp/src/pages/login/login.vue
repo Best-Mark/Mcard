@@ -62,7 +62,8 @@ function wechatLogin() {
           setAuth(data.token, data.user)
           bindPendingInvite().catch(() => {})
           toast(data.created ? '已为你创建账号' : '登录成功', 'success')
-          setTimeout(() => uni.navigateBack({ delta: 1, fail: () => uni.switchTab({ url: '/pages/index/index' }) }), 500)
+          // 登录后直接进入「我的名片」页（那里有建卡入口），不回首页、也不把登录页留在返回栈。
+          setTimeout(() => uni.redirectTo({ url: '/pages/me/me', fail: () => uni.navigateBack() }), 500)
         })
         .catch((e) => { clearTimeout(guard); done(); toast(e?.message || '微信登录失败，请重试') })
     },
@@ -83,7 +84,8 @@ async function submit() {
     setAuth(data.token, data.user)
     await bindPendingInvite()
     toast('登录成功', 'success')
-    setTimeout(() => uni.navigateBack({ delta: 1, fail: () => uni.redirectTo({ url: '/pages/index/index' }) }), 600)
+    // 登录后直接进入「我的名片」页（那里有建卡入口），不回首页、也不把登录页留在返回栈。
+    setTimeout(() => uni.redirectTo({ url: '/pages/me/me', fail: () => uni.navigateBack() }), 600)
   } catch (e) { toast(e.message) } finally { busy.value = false }
 }
 </script>
