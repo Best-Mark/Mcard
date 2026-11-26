@@ -377,6 +377,40 @@ router.post('/wechat/bind', wrap((req, res) => {
   ok(res, { token: jwt, user: pub })
 }))
 
+// 小程序快捷登录：前端 uni.login() 拿一次性 code → 服务端 code2session 换 openid → 建号/登录。
+// openid 只从服务端换取，绝不信前端传值；code 一次性，失败必须让前端重新 login 取新 code。
+// 小程序 openid 本身就是稳定身份，不强制绑手机（快捷登录语义）；邀请归因照常一次性绑定。
+router.post('/miniapp-login', wrap(async (req, res) => {
+  const code = String(req.body?.code || '').trim()
+  if (!code) return fail(res, 400, '缺少微信登录凭证，请重试')
+  const invite = String(req.body?.invite || '').trim()
+  let openid
+  try {
+    openid = await require('../services/payment').miniOpenidByCode(code)
+  } catch (e) {
+    // code 已消费/过期必须让前端重新 uni.login，不能重试同一个 code
+    return fail(res, 400, `微信登录失败：${e.message}。请重新点击快捷登录`)
+  }
+  let user = db.prepare('SELECT * FROM users WHERE wx_openid = ?').get(openid)
+  let created = false
+  if (user) {
+    if (user.status !== 'active') return fail(res, 403, '账号已被停用')
+  } else {
+    try {
+      const r = db.prepare("INSERT INTO users (phone, password_hash, nickname, wx_openid, auth_source) VALUES (?,?,?,?, 'miniapp')")
+        .run(null, bcrypt.hashSync(crypto.randomBytes(24).toString('hex'), 10), '微信用户', openid)
+      user = db.prepare('SELECT * FROM users WHERE id = ?').get(r.lastInsertRowid)
+      created = true
+      try { promo.bindInvite(user.id, invite) } catch (e) { console.error('[Promo] 小程序登录归因失败', e.message) }
+    } catch (e) {
+      // 并发兜底：两个请求同时以同一 openid 首次登录，唯一索引会让其中一个插入失败，回查已建账号即可
+      user = db.prepare('SELECT * FROM users WHERE wx_openid = ?').get(openid)
+      if (!user) throw e
+    }
+  }
+  ok(res, { token: sign(user), user: publicUser(user), created })
+}))
+
 router.post('/register', wrap((req, res) => {
   const { phone, password, nickname, invite } = req.body || {}
   if (!/^1\d{10}$/.test(phone || '')) return fail(res, 400, '请输入 11 位手机号')
