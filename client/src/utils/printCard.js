@@ -9,7 +9,7 @@ const INK = { dark: '#111827', dark2: '#1f2937', paper: '#f8fafc', gold: '#c9a16
 
 // 图片内联唯一真相源（2026-11-26）：远程图一律走服务端 /api/cards/public/inline-image，
 // 由服务端带白名单/超时/大小限制拉取并转 dataURL，绕开浏览器 CORS（OSS 未配 Access-Control-Allow-Origin）。
-// 本地 /uploads 与 data: 直接返回/直读，不绕服务端；接口失败静默回落空串，调用方用默认头像/文字兜底。
+// 本地 /uploads 与 data: 直接返回/直读，不绕服务端；接口失败静默回落空串，调用方用公司名首字兜底。
 export async function inlineImage(url) {
   if (!url) return ''
   if (url.startsWith('data:')) return url
@@ -60,17 +60,19 @@ function qrBlock(qrText, x, y, size, fg = '#0f172a', pad = 1.5) {
   return `<rect x="${qx - pad}" y="${qy - pad}" width="${size + pad * 2}" height="${size + pad * 2}" rx="1.2" fill="#fff"/>${qrPath(qrText, qx, qy, size, fg)}`
 }
 
-// 头像：方形/圆形可选，clipPath id 随位置生成避免多头像冲突
-function avatarMarkup(card, x, y, r, t, shape = 'circle', id = 'av') {
+// 公司标识位（2026-11-26 用户定稿）：实体名片只放公司 LOGO，不再出现用户头像。
+// 有 LOGO 图用 contain 完整展示（避免 slice 裁掉带字 LOGO），没有则用公司名首字占位，
+// 绝不回落到用户姓名首字——实体版式的图像位属于公司，不属于个人。
+function companyMarkup(card, x, y, r, t, shape = 'circle', id = 'co') {
   const clip = shape === 'rect'
     ? `<clipPath id="${id}"><rect x="${x - r}" y="${y - r}" width="${r * 2}" height="${r * 2}" rx="1.6"/></clipPath>`
     : `<clipPath id="${id}"><circle cx="${x}" cy="${y}" r="${r}"/></clipPath>`
   const bg = shape === 'rect'
     ? `<rect x="${x - r}" y="${y - r}" width="${r * 2}" height="${r * 2}" rx="1.6" fill="${t.accent}" opacity=".14"/>`
     : `<circle cx="${x}" cy="${y}" r="${r}" fill="${t.accent}" opacity=".14"/>`
-  const initial = esc((card.name || card.name_en || 'M').slice(0, 1))
-  const body = card.avatarData
-    ? `<image href="${card.avatarData}" x="${x - r}" y="${y - r}" width="${r * 2}" height="${r * 2}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${id})"/>`
+  const initial = esc(String(card.company || '企').slice(0, 1))
+  const body = card.logoData
+    ? `<image href="${card.logoData}" x="${x - r}" y="${y - r}" width="${r * 2}" height="${r * 2}" preserveAspectRatio="xMidYMid meet" clip-path="url(#${id})"/>`
     : `${bg}<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-size="${r * 0.9}" font-weight="700" fill="${t.accent}">${initial}</text>`
   return `<defs>${clip}</defs>${body}`
 }
@@ -105,25 +107,25 @@ function front(card, t, qrText) {
   const qr = (x, y, s, fg) => qrBlock(qrText, x, y, s, fg)
   const page = (fill) => `<rect width="${W}" height="${H}" fill="${fill}"/>`
 
-  // ① 经典商务：细色条 + 头像 + 右二维码（最通用）
+  // ① 经典商务：细色条 + 公司 LOGO + 右二维码（最通用）
   if (tpl === 'classic') {
     return `${page(t.accent)}<rect x="${BLEED}" y="${BLEED}" width="${W - BLEED * 2}" height="${H - BLEED * 2}" fill="${t.surface}"/>
       <rect x="${BLEED}" y="${BLEED}" width="2.1" height="${H - BLEED * 2}" fill="${t.accent}"/>
       ${logoMarkup(card, 80, 6, 9)}
-      ${avatarMarkup(card, 14, 17, 6.5, t, 'rect', 'av-classic')}
+      ${companyMarkup(card, 14, 17, 6.5, t, 'rect', 'co-classic')}
       ${nameTitle(card, 24, 16, 21.5, t)}
       ${contactLines(card, 10, 35, 5.2, t)}
       ${qr(72, 17, 20)}`
   }
 
-  // ② 现代色块：上半主色块 + 悬浮头像 + 下方信息
+  // ② 现代色块：上半主色块 + 公司 LOGO + 下方信息
   if (tpl === 'modern') {
     return `${page(t.accent)}<rect x="${BLEED}" y="${BLEED}" width="${W - BLEED * 2}" height="${H - BLEED * 2}" fill="${t.surface}"/>
       <path d="M${BLEED},${BLEED} H57 V26 H${BLEED} Z" fill="${t.accent}"/>
       ${logoMarkup(card, 79, 6, 9, true)}
       <text x="10" y="14" font-size="5.4" font-weight="700" fill="#fff">${esc(card.name || card.name_en || '你的姓名')}</text>
       <text x="10" y="20" font-size="2.7" fill="#fff" opacity=".92">${esc([card.title, card.company].filter(Boolean).join(' · ').slice(0, 34))}</text>
-      ${avatarMarkup(card, 47, 33, 6.5, t, 'circle', 'av-modern')}
+      ${companyMarkup(card, 47, 33, 6.5, t, 'circle', 'co-modern')}
       <text x="10" y="36" font-size="2.6" fill="${t.text}">${esc(card.company || '')}</text>
       ${contactLines(card, 10, 42, 4, t, 2)}
       ${qr(72, 16, 21)}`
@@ -145,7 +147,7 @@ function front(card, t, qrText) {
     return `${page(INK.dark)}<rect x="${BLEED}" y="${BLEED}" width="${W - BLEED * 2}" height="${H - BLEED * 2}" fill="none" stroke="${INK.gold}" stroke-width=".4" opacity=".8"/>
       <rect x="${BLEED}" y="${BLEED}" width="${W - BLEED * 2}" height="1.1" fill="${INK.gold}"/>
       ${logoMarkup(card, 11, 9, 9, true)}
-      ${avatarMarkup(card, 18, 28, 7, { ...t, accent: INK.gold }, 'circle', 'av-elite')}
+      ${companyMarkup(card, 18, 28, 7, { ...t, accent: INK.gold }, 'circle', 'co-elite')}
       <text x="29" y="24" font-size="5.4" font-weight="700" fill="${INK.paper}">${esc(card.name || card.name_en || '你的姓名')}</text>
       <text x="29" y="30" font-size="2.7" fill="${INK.gold2}">${esc([card.title, card.company].filter(Boolean).join(' · ').slice(0, 34))}</text>
       <line x1="29" y1="33" x2="63" y2="33" stroke="${INK.gold}" stroke-width=".3" opacity=".6"/>
@@ -172,7 +174,7 @@ function front(card, t, qrText) {
   if (tpl === 'split') {
     return `${page(t.accent)}<rect x="${BLEED}" y="${BLEED}" width="34" height="${H - BLEED * 2}" fill="${t.accent}"/>
       <rect x="${BLEED + 34}" y="${BLEED}" width="${W - BLEED * 2 - 34}" height="${H - BLEED * 2}" fill="${t.surface}"/>
-      ${avatarMarkup(card, 20, 16, 7, { ...t, accent: '#ffffff' }, 'circle', 'av-split')}
+      ${companyMarkup(card, 20, 16, 7, { ...t, accent: '#ffffff' }, 'circle', 'co-split')}
       <text x="20" y="30" font-size="5" font-weight="700" fill="#fff" text-anchor="middle">${esc(card.name || card.name_en || '你的姓名')}</text>
       <text x="20" y="36" font-size="2.5" fill="#fff" opacity=".9" text-anchor="middle">${esc(String(card.title || '').slice(0, 16))}</text>
       ${logoMarkup(card, 43, 8, 9)}
@@ -181,12 +183,12 @@ function front(card, t, qrText) {
       ${qr(71, 18, 19)}`
   }
 
-  // ⑦ 圆章徽记：圆形头像居中 + 双侧细线 + 底部信息带
+  // ⑦ 圆章徽记：圆形公司 LOGO 居中 + 双侧细线 + 底部信息带
   if (tpl === 'badge') {
     return `${page(t.surface)}
       <circle cx="${W / 2}" cy="23" r="15" fill="none" stroke="${t.accent}" stroke-width=".35" opacity=".55"/>
       <circle cx="${W / 2}" cy="23" r="11.5" fill="none" stroke="${t.accent}" stroke-width=".25" opacity=".4"/>
-      ${avatarMarkup(card, W / 2, 23, 8.5, t, 'circle', 'av-badge')}
+      ${companyMarkup(card, W / 2, 23, 8.5, t, 'circle', 'co-badge')}
       ${logoMarkup(card, 8, 7, 9)}
       <text x="${W / 2}" y="43" font-size="5" font-weight="700" fill="${t.text}" text-anchor="middle">${esc(card.name || card.name_en || '你的姓名')}</text>
       <text x="${W / 2}" y="48" font-size="2.6" fill="${t.accent}" text-anchor="middle">${esc([card.title, card.company].filter(Boolean).join(' · ').slice(0, 34))}</text>
@@ -200,7 +202,7 @@ function front(card, t, qrText) {
     return `${page(t.surface)}
       <path d="M${BLEED},${BLEED} H93 V30 L${BLEED},44 Z" fill="${t.accent}"/>
       ${logoMarkup(card, 80, 6, 9, true)}
-      ${avatarMarkup(card, 15, 20, 6, { ...t, accent: '#ffffff' }, 'circle', 'av-corner')}
+      ${companyMarkup(card, 15, 20, 6, { ...t, accent: '#ffffff' }, 'circle', 'co-corner')}
       <text x="25" y="18" font-size="5.2" font-weight="700" fill="#fff">${esc(card.name || card.name_en || '你的姓名')}</text>
       <text x="25" y="24" font-size="2.7" fill="#fff" opacity=".9">${esc([card.title, card.company].filter(Boolean).join(' · ').slice(0, 34))}</text>
       <text x="${BLEED + 1}" y="50" font-size="2.9" fill="${t.text}" font-weight="700">${esc(card.company || '')}</text>
@@ -286,7 +288,8 @@ function guidesMarkup() {
 
 export async function buildPrintSvg(card, theme, opts = {}) {
   const { side = 'front', guides = false, brand = 'MCard', baseUrl = '', printBack = 'solid' } = opts
-  const enriched = { ...card, avatarData: await inlineImage(card.avatar), logoData: await inlineImage(card.logo) }
+  // 实体版式只内联公司 LOGO（用户头像不进印刷稿），省掉一次无用的远程图片拉取
+  const enriched = { ...card, logoData: await inlineImage(card.logo) }
   const qrText = `${baseUrl}/c/${card.slug}`
   const body = side === 'back' ? back(enriched, theme, qrText, brand, printBack) : front(enriched, theme, qrText)
   const sizeAttr = opts.raster
