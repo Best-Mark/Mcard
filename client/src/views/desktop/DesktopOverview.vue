@@ -84,7 +84,7 @@
             <span>{{ o.packageName }}</span><b>¥{{ (o.amountCents / 100).toFixed(2) }}</b>
             <small :class="o.status === 'paid' ? 'ok' : 'warn'">{{ statusText(o.status) }}</small>
           </div>
-          <button class="btn btn-sm btn-ghost" style="margin-top:12px" @click="$router.push('/me/plans')">查看套餐 / 续期 ›</button>
+          <button class="btn btn-sm btn-ghost" style="margin-top:12px" @click="$router.push('/me/plans')">{{ lifetime ? '查看套餐 ›' : '查看套餐 / 续期 ›' }}</button>
         </section>
       </div>
     </template>
@@ -108,6 +108,13 @@ const greeting = computed(() => { const h = new Date().getHours(); return h < 6 
 const days = computed(() => card.value?.expires_at
   ? Math.max(0, Math.ceil((new Date(String(card.value.expires_at).replace(' ', 'T') + 'Z').getTime() - Date.now()) / 86400000))
   : 0)
+// 终身会员（active 且无到期时间）：所有「续期」文案都不再出现
+const lifetime = computed(() => {
+  const c = card.value
+  if (!c) return false
+  const exp = c.expires_at || c.expiresAt
+  return !!c.active && !exp
+})
 const daily = computed(() => stats.value.daily || [])
 const sources = computed(() => stats.value.sources || [])
 const maxView = computed(() => Math.max(1, ...daily.value.map(d => d.n)))

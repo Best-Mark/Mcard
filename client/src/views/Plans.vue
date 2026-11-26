@@ -14,6 +14,11 @@
         <button class="btn btn-sm btn-primary" style="margin-top:10px" @click="load">重新加载</button>
       </div>
       <div v-else-if="!loading && !packages.length" class="card card-pad center">暂无可选套餐</div>
+      <!-- 终身会员提示（2026-11-27 用户定稿）：开通终身后不再提示/提供任何续费入口，购买按钮禁用 -->
+      <div v-if="isLifetime" class="card card-pad lifetime-tip">
+        <b>🎉 您已开通终身会员</b>
+        <p class="small muted" style="margin-top:6px">所有功能长期可用，无需续费。下方订单记录保留可查。</p>
+      </div>
       <div class="plan-grid">
         <div v-for="p in packages" :key="p.id" class="card plan" :class="{ hot: p.sort === 3 || p.duration_days === 0 }">
           <span v-if="p.sort === 3" class="plan-hot">推荐</span>
@@ -22,8 +27,8 @@
           <p class="small muted">{{ p.description }}</p>
           <div class="price"><small>¥</small>{{ (p.price_cents / 100).toFixed(p.price_cents % 100 ? 2 : 0) }}<span>/ {{ p.duration_days === 0 ? '永久' : p.duration_days + ' 天' }}</span></div>
           <ul><li v-for="f in p.features" :key="f">✓ {{ f }}</li></ul>
-          <button class="btn btn-block" :class="p.sort === 3 ? 'btn-primary' : 'btn-ghost'" :disabled="busy === p.id" @click="buy(p)">
-            {{ busy === p.id ? '下单中…' : (p.price_cents <= 0 ? '免费开通' : '立即开通') }}
+          <button class="btn btn-block" :class="p.sort === 3 ? 'btn-primary' : 'btn-ghost'" :disabled="busy === p.id || isLifetime" @click="buy(p)">
+            {{ isLifetime ? '终身会员无需开通' : busy === p.id ? '下单中…' : (p.price_cents <= 0 ? '免费开通' : '立即开通') }}
           </button>
         </div>
       </div>
@@ -48,7 +53,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
 import { showToast, toggleDrawer } from '../store'
@@ -56,6 +61,15 @@ import { payPreference } from '../utils/pay-env'
 
 const router = useRouter()
 const packages = ref([]); const busy = ref(0); const loadError = ref(''); const loading = ref(true)
+// 当前用户名片状态：终身会员（active 且无到期时间）隐藏一切续费/开通引导
+const myCard = ref(null)
+const isLifetime = computed(() => {
+  const c = myCard.value
+  return !!c?.active && !(c.expiresAt || c.expires_at)
+})
+async function loadCard() {
+  try { myCard.value = (await api.get('/api/cards/mine')).data.data } catch { /* 未登录/无名片不影响套餐浏览 */ }
+}
 async function load() {
   if (loading.value && packages.value.length) return
   loading.value = true; loadError.value = ''
@@ -76,7 +90,7 @@ async function loadOrders() {
 }
 function statusText(s) { return ({ paid: '已支付', pending: '待支付', cancelled: '已取消' })[s] || s }
 
-onMounted(() => { load(); loadOrders() })
+onMounted(() => { load(); loadOrders(); loadCard() })
 
 async function buy(p) {
   if (busy.value) return
@@ -102,6 +116,7 @@ async function buy(p) {
 
 <style scoped>
 .plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.lifetime-tip { margin-bottom: 14px; border-color: var(--primary); }
 .plan { padding: 20px; position: relative; }
 .plan.hot { border-color: var(--primary); box-shadow: 0 10px 30px rgba(37,99,235,.14); }
 .plan-hot { position: absolute; right: 12px; top: 12px; font-size: 10px; background: var(--primary); color: #fff; padding: 3px 8px; border-radius: 999px; }

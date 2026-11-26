@@ -23,10 +23,11 @@ const isVisitSource = v => VISIT_SOURCE_KEYS.includes(String(v || ''))
 
 // 通知类型
 const NOTIFY_TYPES = {
-  CARD_UPDATE: 'card_update',   // 关注的名片资料有更新
-  NEW_FAVORITE: 'new_favorite', // 我的名片被收藏
-  NEW_EXCHANGE: 'new_exchange', // 我的名片被交换
-  NEW_VIEW: 'new_view'          // 我的名片被浏览（可按 later 节流，默认不写以免打扰）
+  CARD_UPDATE: 'card_update',     // 关注的名片资料有更新
+  NEW_FAVORITE: 'new_favorite',   // 我的名片被收藏
+  NEW_EXCHANGE: 'new_exchange',   // 我的名片被交换
+  NEW_VIEW: 'new_view',           // 我的名片被浏览（可按 later 节流，默认不写以免打扰）
+  PLAN_EXPIRED: 'plan_expired'    // 套餐到期：名片重置（停用高级功能、集市下架），planExpiry 任务发出
 }
 const NOTIFY_TYPE_KEYS = Object.values(NOTIFY_TYPES)
 

@@ -52,7 +52,7 @@
           <b class="pf-plan-date">{{ planInfo.dateText }}</b>
           <span class="pf-plan-sub">{{ planInfo.subText }}</span>
         </div>
-        <button class="pf-plan-btn" @click="router.push('/me/plans')">{{ planInfo.expired ? '立即续期' : '续期 ›' }}</button>
+        <button class="pf-plan-btn" @click="router.push('/me/plans')">{{ planInfo.lifetime ? '终身会员' : planInfo.expired ? '立即续期' : '续期 ›' }}</button>
       </div>
     </div>
 
@@ -67,7 +67,7 @@
          四项 = 名片夹 / 套餐续期 / 实体版式 / 扫一扫（展会连扫）；浏览统计仍留在抽屉，入口不丢。 -->
     <div class="pf-quick">
       <router-link to="/me/contacts" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="grid" :size="22" /></i><span>名片夹</span></router-link>
-      <router-link to="/me/plans" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="yen" :size="22" /></i><span>套餐续期</span></router-link>
+      <router-link to="/me/plans" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="yen" :size="22" /></i><span>我的套餐</span></router-link>
       <router-link to="/me/print" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="list" :size="22" /></i><span>实体版式</span></router-link>
       <router-link to="/me/batch-scan" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="scan" :size="22" /></i><span>扫一扫</span></router-link>
     </div>
@@ -136,9 +136,9 @@ const planInfo = computed(() => {
   if (card.value.active === false) {
     return { dateText: raw ? '已到期 / 未开通' : '未开通', subText: '续期后恢复展示与配色/上架能力', expired: true }
   }
-  if (!raw) return { dateText: '永久有效', subText: '当前套餐长期可用', expired: false }
+  if (!raw) return { dateText: '永久有效', subText: '终身会员，无需续费', expired: false, lifetime: true }
   const d = new Date(String(raw).replace(' ', 'T') + (/Z|[+-]\d\d:\d\d$/.test(String(raw)) ? '' : 'Z'))
-  if (isNaN(d.getTime())) return { dateText: '永久有效', subText: '当前套餐长期可用', expired: false }
+  if (isNaN(d.getTime())) return { dateText: '永久有效', subText: '终身会员，无需续费', expired: false, lifetime: true }
   const dateText = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   const days = Math.ceil((d.getTime() - Date.now()) / 86400000)
   if (days < 0) return { dateText, subText: '套餐已到期，续期后恢复全部功能', expired: true }

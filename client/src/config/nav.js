@@ -24,7 +24,7 @@ export const DRAWER_GROUPS = [
     items: [
       { label: '分享名片', icon: 'share', kind: 'share' },
       { label: '浏览统计 / 订单', icon: 'chart', kind: 'route', path: '/me/stats' },
-      { label: '套餐 / 续期', icon: 'gem', kind: 'route', path: '/me/plans' },
+      { label: '我的套餐', icon: 'gem', kind: 'route', path: '/me/plans' },
       { label: '收款账户', icon: 'wallet', kind: 'route', path: '/me/withdraw-account', promoter: true }
     ]
   },

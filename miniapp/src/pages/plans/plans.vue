@@ -1,6 +1,11 @@
 <template>
   <view class="page">
     <view class="hint">套餐按<b>时段</b>计费，支付后立即开通；续期时长叠加，不会浪费。</view>
+    <!-- 终身会员提示（与 H5 口径一致）：开通终身后不再提示/提供任何续费入口 -->
+    <view v-if="isLifetime" class="lifetime-tip">
+      <text class="lt-title">🎉 您已开通终身会员</text>
+      <text class="lt-sub">所有功能长期可用，无需续费。订单记录保留可查。</text>
+    </view>
     <view class="body">
       <view v-for="p in packages" :key="p.id" class="plan">
         <view v-if="p.sort === 3" class="hot">推荐</view>
@@ -8,7 +13,7 @@
         <view class="muted small">{{ p.description }}</view>
         <view class="price"><text class="sym">¥</text>{{ (p.price_cents / 100).toFixed(p.price_cents % 100 ? 2 : 0) }}<text class="unit"> / {{ p.duration_days }} 天</text></view>
         <view class="feat"><text v-for="f in p.features" :key="f">✓ {{ f }}</text></view>
-        <button class="btn primary block" :disabled="busy === p.id" @tap="buy(p)">{{ busy === p.id ? '下单中…' : (p.price_cents <= 0 ? '免费开通' : '立即开通') }}</button>
+        <button class="btn primary block" :disabled="busy === p.id || isLifetime" @tap="buy(p)">{{ isLifetime ? '终身会员无需开通' : busy === p.id ? '下单中…' : (p.price_cents <= 0 ? '免费开通' : '立即开通') }}</button>
       </view>
       <view class="muted small center" style="margin:24rpx 0">资金直达商户号，本系统不经手、不沉淀资金。</view>
 
@@ -37,11 +42,17 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { api, toast } from '../../utils/request'
 
 const packages = ref([]); const busy = ref(0)
+// 终身会员（active 且无到期时间）：隐藏一切开通/续费引导（与 H5 Plans.vue 口径一致）
+const myCard = ref(null)
+const isLifetime = computed(() => {
+  const c = myCard.value
+  return !!c?.active && !(c.expires_at || c.expiresAt)
+})
 // 订单是「开通权益」的交易记录，属套餐管理范畴（与 H5 口径一致），随套餐一起加载
 const orders = ref([]); const ordersLoading = ref(true); const ordersError = ref('')
 async function loadOrders() {
@@ -57,6 +68,7 @@ function statusText(s) { return ({ paid: '已支付', pending: '待支付', canc
 onLoad(async () => {
   try { packages.value = await api.get('/api/packages', false) } catch (e) { toast(e.message) }
   loadOrders()
+  try { myCard.value = await api.get('/api/cards/mine', true) } catch { /* 未登录/无名片不影响浏览 */ }
 })
 
 // 小程序支付场景：微信取 code 换 openid（服务端换，前端只传 code），支付宝用 trade.create
@@ -107,6 +119,10 @@ async function buy(p) {
 
 <style scoped>
 .hint { background: #fffbeb; color: #92400e; font-size: 24rpx; padding: 20rpx 24rpx; line-height: 1.6; }
+/* 终身会员横幅（与 H5 Plans.vue 口径一致） */
+.lifetime-tip { margin: 24rpx; padding: 24rpx; background: #ecfdf5; border-radius: 16rpx; display: flex; flex-direction: column; }
+.lt-title { font-size: 28rpx; font-weight: 700; color: #065f46; }
+.lt-sub { font-size: 24rpx; color: #047857; margin-top: 8rpx; line-height: 1.5; }
 .body { padding: 24rpx; }
 .plan { background: #fff; border-radius: 24rpx; padding: 28rpx; margin-bottom: 18rpx; position: relative; box-shadow: 0 8rpx 28rpx rgba(15,23,42,.05); }
 .plan:nth-child(3) { border: 2rpx solid #a62b2b; }

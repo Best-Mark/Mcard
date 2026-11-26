@@ -24,13 +24,13 @@
           <text class="plan-date">{{ planInfo.dateText }}</text>
           <text class="plan-sub">{{ planInfo.subText }}</text>
         </view>
-        <text class="plan-btn">{{ planInfo.expired ? '立即续期' : '续期 ›' }}</text>
+        <text class="plan-btn">{{ planInfo.lifetime ? '终身会员' : planInfo.expired ? '立即续期' : '续期 ›' }}</text>
       </view>
     </view>
 
     <view class="quick">
       <view class="q" @tap="switchTab('/pages/contacts/contacts')"><text class="qi">▦</text><text>名片夹</text></view>
-      <view class="q" @tap="go('/pages/plans/plans')"><text class="qi">¥</text><text>套餐续期</text></view>
+      <view class="q" @tap="go('/pages/plans/plans')"><text class="qi">¥</text><text>我的套餐</text></view>
       <view class="q" @tap="go('/pages/print/print')"><text class="qi">▤</text><text>实体版式</text></view>
       <view class="q" @tap="go('/pages/index/index')"><text class="qi">⌗</text><text>扫一扫</text></view>
     </view>
@@ -83,7 +83,7 @@ const planInfo = computed(() => {
   if (card.value.active === false) {
     return { dateText: exp ? '已到期 / 未开通' : '未开通', subText: '续期后恢复展示与配色/上架能力', expired: true }
   }
-  if (!exp) return { dateText: '永久有效', subText: '当前套餐长期可用', expired: false }
+  if (!exp) return { dateText: '永久有效', subText: '终身会员，无需续费', expired: false, lifetime: true }
   const d = new Date(String(exp).replace(' ', 'T') + 'Z')
   const days = Math.max(0, Math.ceil((d.getTime() - Date.now()) / 86400000))
   return {

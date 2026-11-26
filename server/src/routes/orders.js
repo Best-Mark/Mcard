@@ -64,14 +64,25 @@ router.post('/', authRequired, wrap(async (req, res) => {
   const method = free ? 'free' : (pref.method || channels[0])
   if (!free && !channels.includes(method)) return fail(res, 400, '该支付方式未启用')
 
-  const card = db.prepare('SELECT id, slug FROM cards WHERE user_id = ?').get(req.user.id)
+  const card = db.prepare('SELECT id, slug, status, expires_at FROM cards WHERE user_id = ?').get(req.user.id)
+  // 体验卡限领：订单创建前先判——被拒不留垃圾 pending 订单
+  if (free) {
+    const planStillActive = card && card.status === 'active' &&
+      (!card.expires_at || new Date(String(card.expires_at).replace(' ', 'T') + 'Z') > new Date())
+    if (planStillActive) return fail(res, 400, '当前套餐仍有效，体验卡需到期后才能重新领取')
+  }
   const result = db.prepare(`INSERT INTO orders (order_no, user_id, card_id, package_id, amount_cents, payment_method)
     VALUES (?,?,?,?,?,?)`).run(orderNo(), req.user.id, card?.id || null, pkg.id, pkg.price_cents, method)
   const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(result.lastInsertRowid)
   try {
     // 0 元套餐（免费体验卡）：微信/支付宝均要求金额 ≥ 1 分，直接免费开通，绝不发支付网关。
     // 走同一个 activateOrder：时长叠加、终身防降级、分销佣金口径与付费订单完全一致。
+    // 限领规则（2026-11-27 用户定稿）：当前有有效套餐（active 未过期或终身）不可领取，
+    // 到期后才可重领——既挡「未到期反复叠加 7 天」，也挡付费/终身会员白嫖体验卡。
     if (free) {
+      const planStillActive = card && card.status === 'active' &&
+        (!card.expires_at || new Date(String(card.expires_at).replace(' ', 'T') + 'Z') > new Date())
+      if (planStillActive) return fail(res, 400, '当前套餐仍有效，体验卡需到期后才能重新领取')
       const r = activateOrder(order.id, 'FREE')
       return ok(res, {
         order: view({ ...(r.order || order), status: 'paid', package_name: pkg.name, duration_days: pkg.duration_days, slug: card?.slug }),

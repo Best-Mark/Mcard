@@ -100,7 +100,7 @@ async function remove(n) {
     if (!n.isRead) unread.value = Math.max(0, unread.value - 1)
   } catch (e) { showToast(e.message || '删除失败', 'error') }
 }
-function iconOf(type) { return ({ card_update: '🔄', new_favorite: '⭐', new_exchange: '🤝', new_view: '👀' })[type] || '🔔' }
+function iconOf(type) { return ({ card_update: '🔄', new_favorite: '⭐', new_exchange: '🤝', new_view: '👀', plan_expired: '⏰' })[type] || '🔔' }
 function timeOf(s) {
   if (!s) return ''
   const t = new Date(String(s).replace(' ', 'T') + (String(s).includes('Z') ? '' : 'Z'))
