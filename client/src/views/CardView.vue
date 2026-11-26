@@ -26,7 +26,7 @@
     <template v-else-if="card">
       <CardSheet
         :card="card" :tags="card.tags || []" :materials="materialsList" :site-name="siteConfig.site_name"
-        :qr-url="full ? (qrApi + '/qr.png?size=200&scan=1&v=' + qrStamp) : ''"
+        :qr-url="full ? (qrApi + '/qr.png?size=200&v=' + qrStamp) : ''"
         :full="full" :interactive="full && !embed" :show-edit="!!owner"
         @edit="router.push('/me/card')" @qr="qrModal = true"
         @copy="copy" @tel="tel" @sms="sms" @mailto="mailto"
@@ -84,14 +84,25 @@
             <div v-if="!tpls.length" class="dock-tpl-loading">模板清单加载中…</div>
           </div>
         </template>
-        <!-- 二维码调节行：一键风格预设（码点/定位角/渐变，与配色风格页同款 4 个），点中即保存实时生效 -->
+        <!-- 二维码调节行（2026-11-26 用户定稿）：一键风格预设 + 码型细调（码点形状/定位角），
+             同一行点选即保存实时生效，卡片右上小码实时跟着变（上方就是名片二维码，一调就能看到） -->
         <template v-else>
           <button class="dock-back" @click="dockMode = 'main'">&lt;</button>
           <div class="dock-scroll">
             <div class="dock-flow">
-              <button v-for="p in QR_PRESETS" :key="p.key" :class="['dock-tpl', { on: qrPresetActive(p), busy: qrBusy }]" @click="applyQrPreset(p)">
+              <button v-for="p in QR_PRESETS" :key="p.key" :class="['dock-tpl', { on: qrPresetActive(p), busy: qrBusy }]" @click="applyQrStyle({ dot: p.dot, eye: p.eye, gradTo: p.gradTo })">
                 <span class="qr-swatch" :style="{ background: p.swatch }"></span>
                 <span class="dock-tpl-label">{{ p.label }}</span>
+              </button>
+              <span class="dock-grp">码点</span>
+              <button v-for="o in DOT_OPTS" :key="'dot-' + o.value" :class="['dock-tpl', { on: (card.qr_style?.dot || 'square') === o.value, busy: qrBusy }]" @click="applyQrStyle({ dot: o.value })">
+                <span class="qr-swatch qs-dot" :class="'qs-' + o.value"><i v-for="n in 9" :key="n"></i></span>
+                <span class="dock-tpl-label">{{ o.label }}</span>
+              </button>
+              <span class="dock-grp">定位角</span>
+              <button v-for="o in EYE_OPTS" :key="'eye-' + o.value" :class="['dock-tpl', { on: (card.qr_style?.eye || 'square') === o.value, busy: qrBusy }]" @click="applyQrStyle({ eye: o.value })">
+                <span class="qr-swatch qs-eye" :class="'qs-' + o.value"><i></i></span>
+                <span class="dock-tpl-label">{{ o.label }}</span>
               </button>
             </div>
           </div>
@@ -269,6 +280,8 @@ const vcfApi = computed(() => `${qrApi.value}/card.vcf`)
 // 二维码分工（2026-11-26 用户定稿）：弹层大码/保存码 = vCard 联系人码（扫一扫直接存通讯录，
 // 服务端 scanOptions 硬化保证可扫）；身份卡右上角小装饰码仍用地址短链（尺寸小，vCard 太密难扫），
 // 打开名片由分享链接点击承担，不需要二维码。此前的「vCard 太密不用」结论仅针对小尺寸场景。
+// 小装饰码带用户美化码型（不带 scan=1，与服务端「装饰性小码保留美化样式」口径一致）：
+// 调码型时上面实时可见；要绝对稳妥的扫码用弹层大码（点小码即开，scanOptions 硬化）。
 const card = ref(null); const loading = ref(true); const error = ref('')
 
 // dock 三态翻转（owner「配色」/「二维码」键，与小程序 me 页终稿完全一致）：
@@ -323,17 +336,23 @@ const qrBusy = ref(false)
 // 二维码图 URL 缓存击穿：qr_style 等由服务端渲染，固定 URL 会被 CDN/浏览器缓存 60s，
 // 预设点中后必须换 query 才能立刻看到新码（2026-11-26）
 const qrStamp = ref(0)
+// 码型细调（与配色风格页 BottomSelect 同款选项，2026-11-26 用户定：行内继续用点选方式）
+const DOT_OPTS = [{ value: 'square', label: '方形' }, { value: 'dots', label: '圆点' }, { value: 'rounded', label: '圆角' }]
+const EYE_OPTS = [{ value: 'square', label: '方形' }, { value: 'rounded', label: '圆角' }, { value: 'circle', label: '圆形' }]
 function qrPresetActive(p) {
   const s = card.value?.qr_style || {}
   return s.dot === p.dot && s.eye === p.eye && (s.gradTo || '') === p.gradTo
 }
-async function applyQrPreset(p) {
+// 部分合并应用 qr_style（预设=dot+eye+gradTo 整组，码型细调=单项），点中即保存实时生效
+async function applyQrStyle(patch) {
   if (qrBusy.value) return
-  const qr_style = { ...(card.value?.qr_style || {}), dot: p.dot, eye: p.eye, gradTo: p.gradTo }
+  const cur = card.value?.qr_style || {}
+  if (Object.keys(patch).every(k => cur[k] === patch[k] || (patch[k] === '' && !cur[k]))) return
+  const qr_style = { ...cur, ...patch }
   qrBusy.value = true
   try {
     await api.put('/api/cards/mine', { qr_style })
-    // 同模板切换：选中高亮 + 二维码实时刷新即反馈，不弹成功 toast
+    // 同模板切换：选中高亮 + 二维码实时刷新即反馈（上方名片小码跟着变），不弹成功 toast
     card.value = { ...card.value, qr_style }
     qrStamp.value = Date.now()
   } catch (e) { showToast(e.message, 'error') } finally { qrBusy.value = false }

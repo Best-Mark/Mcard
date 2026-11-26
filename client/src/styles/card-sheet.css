@@ -36,6 +36,18 @@
 /* 选中描边双环（白内环 + 主题色外环）：深浅底上都清晰 */
 .cv-dock.cv-dock-flip .dock-tpl.on .tpl-thumb, .cv-dock.cv-dock-flip .dock-tpl.on .qr-swatch { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--t-accent, #2563eb); }
 .cv-dock.cv-dock-flip .qr-swatch { display: block; width: 54px; height: 54px; border-radius: 9px; border: 1px solid rgba(255,255,255,.3); box-sizing: border-box; }
+/* 码型细调（码点形状/定位角）分组小标与迷你图案 swatch：白底深图案，深/浅 dock 底上都清晰 */
+.cv-dock.cv-dock-flip .dock-grp { flex: 0 0 auto; align-self: center; font-size: 9px; color: #fff; background: rgba(15,23,42,.5); padding: 3px 7px; border-radius: 6px; white-space: nowrap; }
+.cv-dock.cv-dock-flip .qs-dot { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 9px; background: #fff; }
+.cv-dock.cv-dock-flip .qs-dot i { display: block; width: 100%; aspect-ratio: 1; background: #1f2937; }
+.cv-dock.cv-dock-flip .qs-dot.qs-square i { border-radius: 1px; }
+.cv-dock.cv-dock-flip .qs-dot.qs-dots i { border-radius: 50%; }
+.cv-dock.cv-dock-flip .qs-dot.qs-rounded i { border-radius: 4px; }
+.cv-dock.cv-dock-flip .qs-eye { display: flex; align-items: center; justify-content: center; background: #fff; }
+.cv-dock.cv-dock-flip .qs-eye i { display: block; width: 28px; height: 28px; box-sizing: border-box; border: 6px solid #1f2937; background: transparent; }
+.cv-dock.cv-dock-flip .qs-eye.qs-square i { border-radius: 2px; }
+.cv-dock.cv-dock-flip .qs-eye.qs-rounded i { border-radius: 10px; }
+.cv-dock.cv-dock-flip .qs-eye.qs-circle i { border-radius: 50%; }
 .cv-dock.cv-dock-flip .dock-tpl-loading { display: inline-block; color: #fff; background: rgba(15,23,42,.5); border-radius: 6px; font-size: 12px; padding: 6px 10px; margin: 10px; }
 .cv-owner .cv-fab { bottom: calc(128px + env(safe-area-inset-bottom)); }
 .cv-owner .cv-fab-menu { bottom: calc(180px + env(safe-area-inset-bottom)); }

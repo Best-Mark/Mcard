@@ -79,7 +79,7 @@ npm run dev            # 同时启动 API(:3000) 与 H5(:5173)
 
 ### 小程序开发 / 构建
 
-先把 `miniapp/src/utils/request.js` 顶部的 `API_BASE` 改成后端可访问地址（真机预览需填局域网 IP 或线上域名），再按需编译：
+小程序 API 域名由构建期注入、源码不写死：开发默认 `http://localhost:3000`，真机预览填局域网 IP 时复制 `miniapp/.env.example` 为 `miniapp/.env.production` 并修改 `VITE_API_BASE`；生产 `.env.production` 已填正式 HTTPS 域名。改完再按需编译：
 
 ```bash
 npm --prefix miniapp run dev:mp-weixin     # 微信开发者工具导入 miniapp/dist/build/mp-weixin
@@ -126,7 +126,7 @@ nginx 只需反代 `/` 到 Node 服务（`/uploads`、`/api`、静态资源都�
 
 ```bash
 mkdir -p /www/wwwroot/card.microeco.net && cd /www/wwwroot/card.microeco.net
-git clone <你的仓库地址> .
+git clone https://github.com/Best-Mark/Mcard.git .
 npm run setup                 # 装根/server/client/miniapp 四处依赖
 npm run build                 # 产出 client/dist（Express 同源托管）
 cp server/.env.example server/.env
