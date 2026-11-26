@@ -10,10 +10,15 @@
         <div class="ic-content">
           <p class="ic-tip">
             图片格式必须为：png,jpeg,jpg；不可大于2M；建议使用png格式图片，以保持最佳效果；<br />
-            建议图片尺寸为{{ outputSize }}px*{{ outputSize }}px
+            建议图片尺寸为{{ outputSize }}px*{{ outputSize }}px；勾选「背景透明」后提交时自动抠除与图片边缘同色的背景（输出仍为 PNG）
           </p>
 
-          <button type="button" class="ic-btn ic-btn-default" @click="pickFile">上传文件</button>
+          <div class="ic-actions">
+            <button type="button" class="ic-btn ic-btn-default" @click="pickFile">上传文件</button>
+            <!-- 背景透明（2026-11-26 用户加）：勾选后提交时把与边缘同色的连通背景抠成透明，
+                 泛洪只从边缘扩散，LOGO/头像内部的同色区域不会被误伤 -->
+            <label class="ic-trans"><input type="checkbox" v-model="transparentBg" />背景透明</label>
+          </div>
 
           <div class="ic-body">
             <div class="ic-stage">
@@ -85,6 +90,7 @@ const disp = ref({ x: 0, y: 0, w: 0, h: 0 });
 const sel = ref({ x: 0, y: 0, size: 0 });
 
 const submitting = ref(false);
+const transparentBg = ref(false); // 背景透明开关（默认关；每次打开弹窗重置）
 let drag = null;            // { mode, startX, startY, orig:{x,y,size} }
 
 function clamp(v, min, max) { return Math.min(Math.max(v, min), max); }
@@ -207,6 +213,47 @@ function previewStyle(P) {
   };
 }
 
+/**
+ * 抠掉背景（勾选「背景透明」时）：
+ * 取四角像素均值当背景色，从画布四边所有与背景色相近的像素出发做泛洪（BFS），
+ * 只把与边缘「连通」的同色区置 alpha=0 —— LOGO/头像内部的同色区域不会被误伤。
+ * 阈值 tol 是 RGB 欧氏距离，容忍压缩噪点与轻微渐变；输出仍是 PNG。
+ */
+function knockOutBackground(ctx, size) {
+  const image = ctx.getImageData(0, 0, size, size);
+  const px = image.data;
+  const w = size;
+  const idx = (x, y) => (y * w + x) * 4;
+  // 四角均值作背景色
+  const corners = [idx(0, 0), idx(w - 1, 0), idx(0, w - 1), idx(w - 1, w - 1)];
+  let r = 0, g = 0, b = 0;
+  for (const i of corners) { r += px[i]; g += px[i + 1]; b += px[i + 2]; }
+  r /= 4; g /= 4; b /= 4;
+  const tol = 60;
+  const near = (i) => {
+    const dr = px[i] - r, dg = px[i + 1] - g, db = px[i + 2] - b;
+    return dr * dr + dg * dg + db * db < tol * tol;
+  };
+  const visited = new Uint8Array(w * w);
+  const queue = [];
+  for (let x = 0; x < w; x++) queue.push(x, (w - 1) * w + x);
+  for (let y = 0; y < w; y++) queue.push(y * w, y * w + w - 1);
+  while (queue.length) {
+    const p = queue.pop();
+    if (visited[p]) continue;
+    const i = p * 4;
+    if (!near(i)) continue;
+    visited[p] = 1;
+    px[i + 3] = 0; // 置透明
+    const x = p % w, y = (p / w) | 0;
+    if (x > 0) queue.push(p - 1);
+    if (x < w - 1) queue.push(p + 1);
+    if (y > 0) queue.push(p - w);
+    if (y < w - 1) queue.push(p + w);
+  }
+  ctx.putImageData(image, 0, 0);
+}
+
 function submit() {
   if (!img || submitting.value) return;
   const d = disp.value, s = sel.value;
@@ -223,6 +270,7 @@ function submit() {
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(img, sx, sy, ss, ss, 0, 0, props.outputSize, props.outputSize);
+  if (transparentBg.value) knockOutBackground(ctx, props.outputSize);
   canvas.toBlob(async (blob) => {
     if (!blob) { showToast('裁剪失败，请重试', 'error'); return; }
     submitting.value = true;
@@ -250,6 +298,7 @@ watch(() => props.modelValue, (open) => {
     imgSrc.value = '';
     img = null;
     drag = null;
+    transparentBg.value = false;
   }
 });
 </script>
@@ -291,6 +340,11 @@ watch(() => props.modelValue, (open) => {
 .ic-btn-primary { background: #4f6ef7; color: #fff; }
 .ic-btn-primary:hover { background: #405ce0; }
 .ic-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* 上传按钮与背景透明开关同行（原样式上加，不另起样式体系） */
+.ic-actions { display: flex; align-items: center; gap: 16px; }
+.ic-trans { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: #353535; cursor: pointer; user-select: none; }
+.ic-trans input { margin: 0; cursor: pointer; }
 
 .ic-body { display: flex; gap: 44px; margin-top: 24px; }
 
