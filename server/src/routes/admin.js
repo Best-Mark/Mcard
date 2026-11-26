@@ -254,8 +254,16 @@ router.put('/config', superRequired, wrap((req, res) => {
       return fail(res, 400, `${k} 只能是 true 或 false`)
     }
     if (k === 'wechat_oauth_scope' && String(v) !== 'snsapi_userinfo') return fail(res, 400, '授权范围固定为 snsapi_userinfo')
-    if (k === 'wechat_oauth_verify_name' && String(v) && !/^MP_verify_[A-Za-z0-9_-]{1,64}\.txt$/.test(String(v))) {
-      return fail(res, 400, '校验文件名格式应为 MP_verify_xxx.txt')
+    // 域名校验文件列表：JSON 数组 [{name,content}]，文件名只拦路径穿越/非 .txt，不强制 MP_verify_ 前缀
+    if (k === 'wechat_verify_files') {
+      let arr
+      try { arr = JSON.parse(String(v || '[]')) } catch { return fail(res, 400, '校验文件列表格式错误') }
+      if (!Array.isArray(arr)) return fail(res, 400, '校验文件列表必须是数组')
+      const { validName } = require('../utils/verifyFile')
+      for (const f of arr) {
+        if (!f || typeof f !== 'object' || !validName(f.name)) return fail(res, 400, '校验文件名非法（须为 .txt 且不含路径）')
+        if (String(f.content || '').length > 64 * 1024) return fail(res, 400, '单个校验文件不能超过 64KB')
+      }
     }
     // 分销比例：0~100 的百分比，拒绝负数/超范围/非数字，避免脏值运行时静默回落误导运营
     if (k === 'promo_first_order_rate' || k === 'promo_order_rate') {
@@ -271,7 +279,7 @@ router.put('/config', superRequired, wrap((req, res) => {
   db.transaction(() => { for (const [k, v] of entries) stmt.run(k, v) })()
   // 校验文件落盘：DB 已写入权威底本，立即同步镜像到 client/dist（新增/替换/清空删除都在这里生效）。
   // 落盘失败不影响配置保存成功——动态路由仍从 DB 下发，且下次启动会自愈重试。
-  if (entries.some(([k]) => k === 'wechat_oauth_verify_name' || k === 'wechat_oauth_verify_content')) {
+  if (entries.some(([k]) => k === 'wechat_verify_files' || k === 'wechat_oauth_verify_name' || k === 'wechat_oauth_verify_content')) {
     try { require('../utils/verifyFile').syncVerifyFile() } catch (e) { console.error('[VerifyFile] 保存后同步失败', e.message) }
   }
   // OSS 配置变更后立即失效客户端缓存，避免改了配置仍用旧密钥/旧路径

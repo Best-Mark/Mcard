@@ -78,10 +78,12 @@ const GROUPS = {
       { key: 'wechat_oauth_secret', label: '公众号 AppSecret', type: 'secret' },
       { key: 'wechat_oauth_scope', label: '授权范围（固定 snsapi_userinfo 以取昵称头像）', type: 'text' },
       { key: 'wechat_oauth_bind_phone', label: '新用户授权后必须绑定手机号（true / false）', type: 'text' },
-      { key: 'wechat_oauth_verify_name', label: '域名校验文件名（上传后自动填入）', type: 'hidden' },
-      // 同一份 MP_verify 文件同时服务两个场景：① 公众号网页授权域名 ② 小程序后台配置业务域名/服务器域名时
-      // 微信要求放到站点根的校验文件。上传后自动落盘到站点根并提供动态路由，保存即生效、重启自愈。
-      { key: 'wechat_oauth_verify_content', label: '域名校验文件（小程序/公众号配置域名时微信给的 MP_verify_xxx.txt，上传后自动放到站点根）', type: 'file' }
+      // 域名校验文件列表（JSON 数组 [{name,content}]）：公众号网页授权域名、小程序业务域名等
+      // 每个场景微信都会给一个独立文件，必须能同时放多个、互不覆盖。
+      // 文件名只拦路径穿越，不再强制 MP_verify_ 前缀（微信改名/浏览器加 (1) 后缀仍可用）。
+      { key: 'wechat_verify_files', label: '域名校验文件（小程序/公众号配置域名时微信给的 .txt，可一次选多个，上传后自动放到站点根）', type: 'files' }
+      // 旧单文件字段 wechat_oauth_verify_name / wechat_oauth_verify_content 已废弃，
+      // 仅作存量数据兼容在 wechatOauthConfig() 里读取迁移，不再下发后台表单。
     ]
   },
   map: {
@@ -237,17 +239,42 @@ function smsConfig() {
   }
 }
 
+// 校验文件列表（唯一真相源）：[{name,content}]。容错解析，脏数据一律当空列表，绝不让坏 JSON 拖垮配置读取。
+// 兼容存量：旧的单文件字段 name/content 若还有值，自动并入列表（迁移后不再写回，仅读时兜底）。
+function verifyFiles() {
+  const out = []
+  const seen = new Set()
+  const push = (name, content) => {
+    const n = String(name || '').trim()
+    const c = String(content || '').replace(/\s+/g, '')
+    if (!n || !c || seen.has(n)) return
+    seen.add(n)
+    out.push({ name: n, content: c })
+  }
+  try {
+    const raw = get('wechat_verify_files', '')
+    const arr = typeof raw === 'string' ? JSON.parse(raw || '[]') : raw
+    if (Array.isArray(arr)) for (const f of arr) if (f && typeof f === 'object') push(f.name, f.content)
+  } catch { /* 坏 JSON 忽略 */ }
+  // 存量单字段兜底（旧版本上传的文件不会因升级而消失）
+  push(get('wechat_oauth_verify_name', ''), get('wechat_oauth_verify_content', ''))
+  return out
+}
+
 // 读取微信网页授权配置（公众号 OAuth，非小程序）
 function wechatOauthConfig() {
   const fromDb = k => String(get(k, ''))
+  const files = verifyFiles()
   return {
     enabled: fromDb('wechat_oauth_enabled') === 'true',
     appId: fromDb('wechat_oauth_appid'),
     secret: fromDb('wechat_oauth_secret'),
     scope: 'snsapi_userinfo', // 需求：取昵称头像，固定 userinfo（不接受公开改 scope）
     bindPhone: fromDb('wechat_oauth_bind_phone') !== 'false',
-    verifyName: fromDb('wechat_oauth_verify_name'),
-    verifyContent: fromDb('wechat_oauth_verify_content')
+    verifyFiles: files,
+    // 兼容旧调用点：保留首份文件名/内容（动态路由旧逻辑与历史字段展示用）
+    verifyName: files[0]?.name || '',
+    verifyContent: files[0]?.content || ''
   }
 }
 
@@ -368,6 +395,18 @@ function adminView() {
   }
   // 分享池配置中心所见即所得：空池展示内置默认文案（C 端实际分享出去的就是这批）
   for (const k of SHARE_KEYS) out[k] = normalizePool(map[k], SHARE_POOL_DEFAULTS[k]).join('\n')
+  // 校验文件：把（含旧单字段迁移后的）权威列表回显给后台，避免「后端生效但后台看不见」。
+  // 同时把迁移结果自愈写回 DB（幂等），下次起不再依赖兼容读取。
+  const vf = verifyFiles()
+  const stored = String(map['wechat_verify_files'] || '')
+  const normalized = JSON.stringify(vf)
+  if (normalized !== '[]' && stored !== normalized) {
+    try {
+      db.prepare("INSERT INTO site_config (key,value,updated_at) VALUES ('wechat_verify_files',?,datetime('now')) ON CONFLICT(key) DO UPDATE SET value=excluded.value")
+        .run(normalized)
+    } catch (e) { console.warn('[VerifyFile] 迁移回写失败', e.message) }
+  }
+  out.wechat_verify_files = normalized
   return out
 }
 
@@ -408,6 +447,7 @@ function seedDefaults() {
     wechat_oauth_bind_phone: 'true',
     wechat_oauth_verify_name: '',
     wechat_oauth_verify_content: '',
+    wechat_verify_files: '[]',
     amap_key: '',
     map_provider: 'amap',
     map_default_city: '上海',
@@ -434,4 +474,4 @@ function seedDefaults() {
   tx()
 }
 
-module.exports = { PUBLIC_KEYS, PUBLIC_DERIVED_KEYS, SHARE_KEYS, SHARE_POOL_DEFAULTS, NOTIFY_KEYS, NOTIFY_TEMPLATE_DEFAULTS, GROUPS, SENSITIVE_KEYS, ALL_KEYS, MASK, fingerprint, get, normalizePool, shareView, notifyView, payConfig, payModeOf, payChannels, smsConfig, wechatOauthConfig, wechatLoginEnabled, mapConfig, promoConfig, ossConfig, publicView, adminView, seedDefaults }
+module.exports = { PUBLIC_KEYS, PUBLIC_DERIVED_KEYS, SHARE_KEYS, SHARE_POOL_DEFAULTS, NOTIFY_KEYS, NOTIFY_TEMPLATE_DEFAULTS, GROUPS, SENSITIVE_KEYS, ALL_KEYS, MASK, fingerprint, get, normalizePool, shareView, notifyView, payConfig, payModeOf, payChannels, smsConfig, wechatOauthConfig, verifyFiles, wechatLoginEnabled, mapConfig, promoConfig, ossConfig, publicView, adminView, seedDefaults }

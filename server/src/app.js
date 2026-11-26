@@ -8,7 +8,7 @@ const updater = require('./services/updater')
 const { startPayReconcileLoop } = require('./services/payReconcile')
 const settings = require('./utils/settings')
 const { originOf } = require('./utils/origin')
-const { syncVerifyFile } = require('./utils/verifyFile')
+const { syncVerifyFile, validName } = require('./utils/verifyFile')
 // 首次启动：把 .env 里的支付参数等种子导入配置中心（幂等，DB 已有值不覆盖）
 settings.seedDefaults()
 // 自愈：以 DB 为权威底本，把微信域名校验文件同步落盘到站点根（重建/部署后自动补回，不依赖动态路由是否回源）
@@ -31,13 +31,15 @@ app.get('/api/public/config', (_req, res) => {
   res.json({ code: 0, data: settings.publicView() })
 })
 
-// 微信域名校验文件动态路由（第一层）：从 DB 底本按需下发，部署/git clean 不会丢失。
-// 第二层是 utils/verifyFile 把同一份内容落盘到 client/dist，兼容 nginx 直托静态目录（不回源 Node）的场景。
-app.get('/MP_verify_:code.txt', (req, res) => {
-  const c = settings.wechatOauthConfig()
-  const name = `MP_verify_${String(req.params.code || '').replace(/[^\w-]/g, '')}.txt`
-  if (!c.verifyName || name !== c.verifyName || !c.verifyContent) return res.status(404).type('text/plain').send('not found')
-  res.type('text/plain').send(String(c.verifyContent).replace(/\s+/g, ''))
+// 微信域名校验文件动态路由（第一层）：从 DB 底本按文件名精确匹配下发，部署/git clean 不会丢失。
+// 支持多个文件（公众号网页授权域名、小程序业务域名等各一个），文件名放宽到任意合法 .txt。
+// 第二层是 utils/verifyFile 把同一批内容落盘到 client/dist，兼容 nginx 直托静态目录（不回源 Node）的场景。
+app.get('/:verifyName.txt', (req, res, next) => {
+  const name = String(req.params.verifyName || '') + '.txt'
+  if (!validName(name)) return next()
+  const hit = settings.verifyFiles().find(f => f.name === name)
+  if (!hit) return next()
+  res.type('text/plain').send(String(hit.content || ''))
 })
 
 app.use('/api/auth', require('./routes/auth'))

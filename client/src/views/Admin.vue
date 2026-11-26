@@ -397,6 +397,21 @@
                     <option v-for="op in optionsFor(f.key)" :key="op[0]" :value="op[0]">{{ op[1] }}</option>
                   </select>
                   <div v-else-if="f.type === 'hidden'" class="cfg-static">{{ cfg[f.key] ? cfg[f.key] : '未上传' }}</div>
+                  <!-- 域名校验文件：可一次选多个（公众号/小程序各一个），微信改名或带 (1) 后缀也能传 -->
+                  <div v-else-if="f.type === 'files'" class="cfg-file">
+                    <label class="cfg-file-btn">
+                      <input type="file" accept=".txt,text/plain" multiple @change="onVerifyFilesChosen($event)" />
+                      {{ verifyFiles.length ? '继续添加校验文件' : '选择校验文件（可多选）' }}
+                    </label>
+                    <span class="small muted">从微信公众平台下载后直接上传，可一次选多个；点保存后才会生效</span>
+                    <div v-if="verifyFiles.length" class="verify-file-list">
+                      <div v-for="(vf, i) in verifyFiles" :key="i" class="verify-file-row">
+                        <a :href="'/' + vf.name" target="_blank" rel="noopener">/{{ vf.name }}</a>
+                        <span class="small muted">（点开应显示与微信给的一致的内容）</span>
+                        <button type="button" class="link-btn small" @click="removeVerifyFile(i)">移除</button>
+                      </div>
+                    </div>
+                  </div>
                   <div v-else-if="f.type === 'file'" class="cfg-file">
                     <label class="cfg-file-btn">
                       <input type="file" accept=".txt,text/plain" @change="onVerifyFileChosen($event)" />
@@ -975,6 +990,60 @@ async function reviewWithdrawal(w, approve) {
     await Promise.all([loadWithdrawals(), api.get('/api/admin/promo/overview').then(r => { promoOverview.value = r.data.data })])
   } catch (e) { showToast(e.message, 'error') } finally { busy.value = false }
 }
+// 域名校验文件列表：cfg.wechat_verify_files 存 JSON 字符串 [{name,content}]，这里是它的响应式视图。
+const verifyFiles = computed(() => {
+  try { const a = JSON.parse(cfg.value.wechat_verify_files || '[]'); return Array.isArray(a) ? a : [] } catch { return [] }
+})
+function setVerifyFiles(list) { cfg.value.wechat_verify_files = JSON.stringify(list) }
+function onVerifyFilesChosen(e) {
+  const input = e.target
+  const files = Array.from(input.files || [])
+  input.value = ''
+  if (!files.length) return
+  const list = verifyFiles.value.slice()
+  let pending = files.length
+  let added = 0
+  for (const file of files) {
+    // 文件名只拦路径穿越/非 .txt；微信给的名字即使带 (1) 后缀也接受
+    if (!/\.txt$/i.test(file.name) || file.name.includes('..') || /[\\/]/.test(file.name)) {
+      showToast(`「${file.name}」不是合法的 .txt 校验文件，已跳过`, 'error')
+      if (!--pending) finish()
+      continue
+    }
+    if (file.size > 64 * 1024) {
+      showToast(`「${file.name}」超过 64KB，已跳过`, 'error')
+      if (!--pending) finish()
+      continue
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      const content = String(reader.result || '').replace(/\s+/g, '')
+      if (!content) {
+        showToast(`「${file.name}」内容为空，已跳过`, 'error')
+      } else {
+        const idx = list.findIndex(x => x && x.name === file.name)
+        const item = { name: file.name, content }
+        if (idx >= 0) list[idx] = item; else list.push(item) // 同名覆盖，方便重新上传
+        added++
+      }
+      if (!--pending) finish()
+    }
+    reader.onerror = () => {
+      showToast(`读取「${file.name}」失败`, 'error')
+      if (!--pending) finish()
+    }
+    reader.readAsText(file)
+  }
+  function finish() {
+    if (added) { setVerifyFiles(list); showToast(`已读取 ${added} 个校验文件，点保存后生效`, 'success') }
+  }
+}
+function removeVerifyFile(i) {
+  const list = verifyFiles.value.slice()
+  list.splice(i, 1)
+  setVerifyFiles(list)
+}
+
 function onVerifyFileChosen(e) {
   const input = e.target
   const file = input.files && input.files[0]
@@ -1410,6 +1479,9 @@ async function saveUpdateConfig() {
 .cfg-file-btn { display: inline-flex; align-items: center; justify-content: center; width: fit-content; padding: 8px 14px; border: 1px solid var(--primary); border-radius: 8px; color: var(--primary); font-size: 13px; cursor: pointer; }
 .cfg-file-btn:hover { background: rgba(59,130,246,.06); }
 .cfg-file-btn input { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.verify-file-list { display: flex; flex-direction: column; gap: 4px; margin-top: 2px; }
+.verify-file-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; }
+.verify-file-row a { color: var(--primary); word-break: break-all; }
 .cfg-manual-link { width: fit-content; color: var(--muted); font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
 .cfg-manual-link:hover { color: var(--primary); }
 .cfg-actions { display: flex; align-items: center; gap: 14px; justify-content: flex-end; padding-top: 16px; margin-top: 6px; border-top: 1px solid var(--line); }
