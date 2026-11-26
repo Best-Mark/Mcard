@@ -26,7 +26,7 @@
     <template v-else-if="card">
       <CardSheet
         :card="card" :tags="card.tags || []" :materials="materialsList" :site-name="siteConfig.site_name"
-        :qr-url="full ? (qrApi + '/qr.png?size=200&scan=1') : ''"
+        :qr-url="full ? (qrApi + '/qr.png?size=200&scan=1&v=' + qrStamp) : ''"
         :full="full" :interactive="full && !embed" :show-edit="!!owner"
         @edit="router.push('/me/card')" @qr="qrModal = true"
         @copy="copy" @tel="tel" @sms="sms" @mailto="mailto"
@@ -133,7 +133,7 @@
           <button :class="['qr-mode-tab', { on: qrMode === 'vcard' }]" @click="qrMode = 'vcard'">联系人码</button>
           <button :class="['qr-mode-tab', { on: qrMode === 'link' }]" @click="qrMode = 'link'">名片链接码</button>
         </div>
-        <img :src="scanQrUrl(slug, qrMode === 'vcard' ? 'vcard.png' : 'qr.png', 640)" style="width:264px;height:264px;margin:4px auto 10px;display:block" :alt="qrMode === 'vcard' ? '名片联系人二维码' : '名片地址二维码'" />
+        <img :src="scanQrUrl(slug, qrMode === 'vcard' ? 'vcard.png' : 'qr.png', 640) + '&v=' + qrStamp" style="width:264px;height:264px;margin:4px auto 10px;display:block" :alt="qrMode === 'vcard' ? '名片联系人二维码' : '名片地址二维码'" />
         <p class="small muted center">{{ qrMode === 'vcard' ? '手机相机/微信扫一扫，直接把名片存入通讯录（已瘦身只含主流字段，保证可扫）' : '扫一扫打开名片页，名片里的资料随时更新、链接永久不变' }}</p>
         <!-- 一个入口承载三件事：存联系人的码/打开名片的码、复制链接、公开页（关闭弹层即当前公开页） -->
         <div class="btn-row" style="justify-content:center;margin-top:14px;flex-wrap:wrap">
@@ -303,6 +303,12 @@ async function chooseTpl(t) {
     await api.put('/api/cards/mine', patch)
     showToast(`已应用「${t.label}」整套配色`, 'success')
     card.value = { ...card.value, ...patch }
+    // ⚠️ 名片本体的模板类名/主题色变量由独立 ref 派生（load() 时赋值，根类名 cv-tpl-{template}、vars 走 currentTheme）：
+    // 必须与 card 合并同步更新，否则只有缩略高亮变、上面名片不跟着换（2026-11-26 用户截图实锤）。
+    currentTheme.value = THEMES[patch.theme] ? patch.theme : 'ocean'
+    template.value = patch.template || 'contact'
+    // 整套配色含二维码前景/背景色（服务端渲染）：击穿二维码图缓存让新色立刻可见
+    qrStamp.value = Date.now()
   } catch (e) { showToast(e.message, 'error') } finally { tplBusy.value = false }
 }
 // 二维码风格预设（dock「二维码」键翻转出的调节行，与配色风格页同款 4 个）：
@@ -314,6 +320,9 @@ const QR_PRESETS = [
   { key: 'elegant', label: '典雅', swatch: '#b45309', dot: 'rounded', eye: 'circle', gradTo: '' }
 ]
 const qrBusy = ref(false)
+// 二维码图 URL 缓存击穿：qr_style 等由服务端渲染，固定 URL 会被 CDN/浏览器缓存 60s，
+// 预设点中后必须换 query 才能立刻看到新码（2026-11-26）
+const qrStamp = ref(0)
 function qrPresetActive(p) {
   const s = card.value?.qr_style || {}
   return s.dot === p.dot && s.eye === p.eye && (s.gradTo || '') === p.gradTo
@@ -326,6 +335,7 @@ async function applyQrPreset(p) {
     await api.put('/api/cards/mine', { qr_style })
     showToast(`二维码风格「${p.label}」已应用`, 'success')
     card.value = { ...card.value, qr_style }
+    qrStamp.value = Date.now()
   } catch (e) { showToast(e.message, 'error') } finally { qrBusy.value = false }
 }
 const currentTheme = ref('ocean'); const isOwner = ref(false)
