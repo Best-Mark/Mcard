@@ -337,29 +337,29 @@ router.get('/public/:slug/vcard.txt', wrap((req, res) => {
 }))
 
 // vCard 内容二维码：扫码得到的是完整联系人数据（BEGIN:VCARD...），
-// iOS/Android 相机扫一扫会直接弹出「添加到通讯录」——这才是「扫一扫存入通讯录」的正确实现。
-// 不加 logo（H 纠错留足识别余量），内容较长时自动选合适版本。
+// iOS/Android 相机扫一扫会直接弹出「添加到通讯录」——2026-11-26 用户定稿：名片码唯一职责就是存联系人
+// （打开名片靠分享链接点击即可，不需要二维码承担）。内容较长码点密，必须按扫码主场景硬化：
+// scanOptions 强制高对比+标准方点+静音区4+无 LOGO，与 /qr.png?scan=1 同规。
+// 渲染逻辑升级会改同 URL 图案：缓存只给 60s（与 scan 模式一致），前端另带 qv 击穿缓存。
 router.get('/public/:slug/vcard.svg', wrap((req, res) => {
   const row = db.prepare('SELECT * FROM cards WHERE slug = ?').get(req.params.slug)
   if (!row) return fail(res, 404, '名片不存在')
   const origin = originOf(req)
   const text = vcard.build(publicView(row, origin), origin)
   const size = Math.min(2000, Math.max(256, Number(req.query.size) || 520))
-  const style = normalizeStyle(parseJson(row.qr_style, {}))
-  res.type('image/svg+xml').set('Cache-Control', 'public, max-age=3600')
-    .send(qr.svg(text, { size, fg: row.qr_fg || '#0f172a', bg: row.qr_bg || '#ffffff', logo: false, style }))
+  res.type('image/svg+xml').set('Cache-Control', 'public, max-age=60')
+    .send(qr.svg(text, { size, ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg }) }))
 }))
 
-// vCard 高清 PNG（保存用）：与 vcard.svg 同款样式，服务端 qr.png 统一渲染
+// vCard 高清 PNG（保存用）：与 vcard.svg 同款硬化，前端长按/保存一律用 PNG（微信「识别图中二维码」不认 SVG）
 router.get('/public/:slug/vcard.png', wrap(async (req, res) => {
   const row = db.prepare('SELECT * FROM cards WHERE slug = ?').get(req.params.slug)
   if (!row) return fail(res, 404, '名片不存在')
   const origin = originOf(req)
   const text = vcard.build(publicView(row, origin), origin)
   const size = Math.min(1600, Math.max(256, Number(req.query.size) || 720))
-  const style = normalizeStyle(parseJson(row.qr_style, {}))
-  const buf = await qr.png(text, { size, fg: row.qr_fg || '#0f172a', bg: row.qr_bg || '#ffffff', logo: false, style })
-  res.type('png').set('Cache-Control', 'public, max-age=3600').send(buf)
+  const buf = await qr.png(text, { size, ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg }) })
+  res.type('png').set('Cache-Control', 'public, max-age=60').send(buf)
 }))
 
 router.get('/public/:slug/card.vcf', wrap((req, res) => {

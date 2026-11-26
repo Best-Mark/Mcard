@@ -97,14 +97,16 @@
       </BottomSheet>
     </template>
 
-    <!-- 名片地址二维码大图：微信扫一扫打开名片页，再点页面里的「存入通讯录」保存 -->
+    <!-- 名片联系人二维码（vCard）：2026-11-26 用户定稿——名片码唯一职责就是存联系人，
+         手机相机/微信扫一扫直接弹「添加到通讯录」；打开名片靠分享链接点击即可，不需要二维码承担。
+         一律 PNG（微信「识别图中二维码」不认 SVG），链接仅作文案可复制 -->
     <div v-if="qrModal" class="modal-mask" @click.self="qrModal = false">
       <div class="modal center">
         <h3>我的名片</h3>
-        <img :src="scanQrUrl(slug, 'qr.png', 640)" style="width:264px;height:264px;margin:4px auto 10px;display:block" alt="名片地址二维码" />
+        <img :src="scanQrUrl(slug, 'vcard.png', 640)" style="width:264px;height:264px;margin:4px auto 10px;display:block" alt="名片联系人二维码" />
         <p class="cv-qr-url" @click="copy(publicLink, '名片链接')" title="点击复制名片链接">{{ publicLink }}</p>
-        <p class="small muted center">客户扫一扫即可打开名片、存入通讯录；链接永久不变</p>
-        <!-- 一个入口承载三件事：看二维码、复制链接、公开页（关闭弹层即当前公开页） -->
+        <p class="small muted center">手机相机/微信扫一扫，直接把名片存入通讯录；分享链接点开即看，无需二维码</p>
+        <!-- 一个入口承载三件事：存联系人的码、复制链接、公开页（关闭弹层即当前公开页） -->
         <div class="btn-row" style="justify-content:center;margin-top:14px;flex-wrap:wrap">
           <button class="btn btn-primary" @click="copy(publicLink, '名片链接')">复制名片链接</button>
           <button class="btn btn-ghost" @click="saveQr">保存二维码</button>
@@ -170,7 +172,7 @@
         <template v-else>
           <p v-html="saveTip"></p>
         </template>
-        <img v-if="guide !== 'contact'" :src="guideImage || scanQrUrl(slug, 'qr.png', 520)" style="width:200px;height:200px;margin:10px auto;object-fit:contain" alt="二维码" />
+        <img v-if="guide !== 'contact'" :src="guideImage || scanQrUrl(slug, 'vcard.png', 520)" style="width:200px;height:200px;margin:10px auto;object-fit:contain" alt="二维码" />
         <div class="btn-row">
           <button class="btn btn-ghost" @click="closeGuide">知道了</button>
         </div>
@@ -233,8 +235,9 @@ const full = !embed
 const slug = computed(() => props.embedSlug || route.params.slug)
 const qrApi = computed(() => `/api/cards/public/${slug.value}`)
 const vcfApi = computed(() => `${qrApi.value}/card.vcf`)
-// 二维码统一用名片地址短链（qr.svg/qr.png）：码点少、微信扫一扫必开；
-// 存通讯录在打开的名片页里点按钮完成，不再把整段 vCard 塞进二维码（太密、微信不认、难扫）。
+// 二维码分工（2026-11-26 用户定稿）：弹层大码/保存码 = vCard 联系人码（扫一扫直接存通讯录，
+// 服务端 scanOptions 硬化保证可扫）；身份卡右上角小装饰码仍用地址短链（尺寸小，vCard 太密难扫），
+// 打开名片由分享链接点击承担，不需要二维码。此前的「vCard 太密不用」结论仅针对小尺寸场景。
 const card = ref(null); const loading = ref(true); const error = ref('')
 const currentTheme = ref('ocean'); const isOwner = ref(false)
 const template = ref('contact')
@@ -573,7 +576,8 @@ async function copy(v, label) {
 }
 async function saveQr() {
   guideImage.value = ''
-  const r = await saveImageUrl(scanQrUrl(slug.value, 'qr.png', 900), `${slug.value}-二维码.png`)
+  // 保存的也是联系人码（vCard），与弹层展示一致；扫这张码=直接存通讯录
+  const r = await saveImageUrl(scanQrUrl(slug.value, 'vcard.png', 900), `${slug.value}-名片码.png`)
   if (r.kind === 'longpress') { await showGuide('qr'); return }
   showToast(r.kind === 'downloaded' ? '二维码已开始下载' : '已打开二维码，请长按保存', 'success')
 }

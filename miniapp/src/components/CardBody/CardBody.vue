@@ -89,13 +89,15 @@
         </view>
       </view>
 
-      <!-- 名片地址二维码大图弹层：正文不摆大块二维码卡（对齐 H5 约定①），保存/复制都在弹层里 -->
+      <!-- 名片联系人二维码（vCard）弹层：正文不摆大块二维码卡（对齐 H5 约定①），保存/复制都在弹层里。
+           2026-11-26 用户定稿：名片码唯一职责=存联系人（手机相机/微信扫一扫直接弹「添加到通讯录」），
+           打开名片靠分享链接点击即可，不需要二维码承担；一律 PNG（微信长按识别不认 SVG） -->
       <view v-if="qrOpen" class="mask" @tap="qrOpen = false">
         <view class="qr-modal" @tap.stop>
           <view class="qr-modal-title">我的名片</view>
-          <image class="qr-big" :src="scanQrUrl(card.slug, 'qr.png', 640)" mode="aspectFit" />
+          <image class="qr-big" :src="scanQrUrl(card.slug, 'vcard.png', 640)" mode="aspectFit" />
           <view class="qr-url" @tap="copyText(linkUrl, '名片链接已复制')">{{ linkUrl }}</view>
-          <view class="muted small" style="text-align:center">客户扫一扫即可打开名片、存入通讯录；链接永久不变</view>
+          <view class="muted small" style="text-align:center">手机相机/微信扫一扫，直接把名片存入通讯录；分享链接点开即看，无需二维码</view>
           <view class="btn-row qr-modal-btns">
             <button class="btn primary" @tap="copyText(linkUrl, '名片链接已复制')">复制名片链接</button>
             <button class="btn" @tap="saveQrImage(card.slug)">保存二维码</button>
