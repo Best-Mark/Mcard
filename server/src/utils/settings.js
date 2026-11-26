@@ -192,7 +192,9 @@ const GROUPS = {
     fields: [
       { key: 'amap_key', label: '高德地图 Web 服务 Key（IP 定位/逆地理/地理编码）', type: 'secret' },
       { key: 'map_provider', label: '地图服务商（amap / osm）', type: 'text' },
-      { key: 'map_default_city', label: '定位兜底城市（如 上海）', type: 'text' }
+      // 兜底城市 2026-11-27 起用下拉（Admin.vue OPTIONS）：选项锁死两端城市坐标表一致的安全集——
+      // 小程序 MP_CITY_CENTERS 是严格匹配，表外城市静默回落上海；下拉杜绝手写表外城市造成「配了不生效」。
+      { key: 'map_default_city', label: '定位兜底城市（定位失败时回落的城市中心）' }
     ]
   },
   oss: {

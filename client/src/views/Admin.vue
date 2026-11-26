@@ -776,6 +776,9 @@ const OPTIONS = {
   wechat_oauth_bind_phone: [['true', '必须绑定手机号'], ['false', '直接建号（无手机号）']],
   wechat_oauth_scope: [['snsapi_userinfo', 'snsapi_userinfo · 取昵称头像']],
   map_provider: [['amap', '高德地图'], ['osm', 'OpenStreetMap（免费兜底）']],
+  // 定位兜底城市：唯一合法值 = 两端城市坐标表一致的安全集（H5 city-data.js 前 10 城带坐标 = 小程序
+  // request.js MP_CITY_CENTERS）。⚠️ 扩城市时必须三处同步（city-data.js / MP_CITY_CENTERS / 这里）。
+  map_default_city: [['上海', '上海'], ['北京', '北京'], ['广州', '广州'], ['深圳', '深圳'], ['杭州', '杭州'], ['成都', '成都'], ['重庆', '重庆'], ['武汉', '武汉'], ['西安', '西安'], ['南京', '南京']],
   oss_provider: [['local', 'local · 本地存储'], ['aliyun', 'aliyun · 阿里云 OSS'], ['tencent', 'tencent · 腾讯云 COS']],
   promo_levels: [['1', '一级 · 仅直接推广员'], ['2', '二级 · 加上上级'], ['3', '三级 · 再上一级']]
 }

@@ -249,6 +249,11 @@ router.put('/config', superRequired, wrap((req, res) => {
     // 健壮：枚举类配置只接受合法值，避免写入 "0"/"yes" 被判真导致功能意外开启
     if (k === 'pay_mode' && !['mock', 'wechat', 'alipay', 'both'].includes(String(v))) return fail(res, 400, '支付模式只能是 mock、wechat、alipay 或 both')
     if (k === 'map_provider' && !['amap', 'osm'].includes(String(v))) return fail(res, 400, '地图服务商只能是 amap 或 osm')
+    // 定位兜底城市：只接受两端城市坐标表（H5 city-data.js / 小程序 MP_CITY_CENTERS）一致的安全集，
+    // 表外城市在小程序端会静默回落上海，直接在保存入口拦掉
+    if (k === 'map_default_city' && !['上海', '北京', '广州', '深圳', '杭州', '成都', '重庆', '武汉', '西安', '南京'].includes(String(v))) {
+      return fail(res, 400, '兜底城市暂只支持：上海、北京、广州、深圳、杭州、成都、重庆、武汉、西安、南京')
+    }
     if (k === 'oss_provider' && !['local', 'aliyun', 'tencent'].includes(String(v))) return fail(res, 400, '存储方式只能是 local / aliyun / tencent')
     if (['sms_enabled', 'wechat_oauth_enabled', 'wechat_oauth_bind_phone', 'promo_enabled'].includes(k) && !['true', 'false'].includes(String(v))) {
       return fail(res, 400, `${k} 只能是 true 或 false`)
