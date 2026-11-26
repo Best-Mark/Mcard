@@ -25,11 +25,42 @@ onLoad(async () => {
   try { packages.value = await api.get('/api/packages', false) } catch (e) { toast(e.message) }
 })
 
+// 小程序支付场景：微信取 code 换 openid（服务端换，前端只传 code），支付宝用 trade.create
+function mpEnv() {
+  // #ifdef MP-WEIXIN
+  return { method: 'wechat', scene: 'miniapp', platform: 'wechat' }
+  // #endif
+  // #ifdef MP-ALIPAY
+  return { method: 'alipay', scene: 'alipay-mini', platform: 'alipay' }
+  // #endif
+  // #ifndef MP-WEIXIN || MP-ALIPAY
+  return { method: 'mock', scene: 'h5', platform: 'other' }
+  // #endif
+}
+
+function loginCode() {
+  return new Promise(resolve => {
+    // #ifdef MP-WEIXIN
+    uni.login({ provider: 'weixin', success: r => resolve(r.code || ''), fail: () => resolve('') })
+    // #endif
+    // #ifndef MP-WEIXIN
+    resolve('')
+    // #endif
+  })
+}
+
 async function buy(p) {
+  if (busy.value) return
   busy.value = p.id
   try {
-    const data = await api.post('/api/orders', { package_id: p.id })
-    uni.navigateTo({ url: `/pages/pay/pay?id=${data.order.id}&pay=${encodeURIComponent(data.pay.payText || '')}` })
+    const env = mpEnv()
+    const code = env.platform === 'wechat' ? await loginCode() : ''
+    if (env.platform === 'wechat' && !code) throw new Error('微信登录失败，请重试')
+    const data = await api.post('/api/orders', { package_id: p.id, ...env, code })
+    const pay = data.pay || {}
+    uni.navigateTo({
+      url: `/pages/pay/pay?id=${data.order.id}&pay=${encodeURIComponent(pay.payText || '')}&payType=${encodeURIComponent(pay.payType || pay.mode || '')}&payParams=${encodeURIComponent(pay.payParams ? JSON.stringify(pay.payParams) : '')}`
+    })
   } catch (e) { toast(e.message) } finally { busy.value = 0 }
 }
 </script>

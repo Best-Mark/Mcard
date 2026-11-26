@@ -96,6 +96,16 @@ router.get('/invitees', authRequired, requirePromoter, wrap((req, res) => {
   })))
 }))
 
+// 余额流水：佣金收入/提现支出/驳回返还逐笔可查（唯一真相源 balance_logs）
+router.get('/balance-logs', authRequired, requirePromoter, wrap((req, res) => {
+  const rows = db.prepare(`SELECT id, type, amount_cents, ref_type, after_cents, note, created_at
+    FROM balance_logs WHERE user_id = ? ORDER BY id DESC LIMIT 200`).all(req.user.id)
+  ok(res, rows.map(r => ({
+    id: r.id, type: r.type, amountCents: r.amount_cents, refType: r.ref_type,
+    afterCents: r.after_cents, note: r.note, createdAt: r.created_at
+  })))
+}))
+
 router.get('/withdrawals', authRequired, requirePromoter, wrap((req, res) => {
   const rows = db.prepare(`SELECT id, amount_cents, status, channel, account, remark, admin_note, created_at, handled_at
     FROM withdrawals WHERE user_id = ? ORDER BY id DESC LIMIT 100`).all(req.user.id)
@@ -154,17 +164,30 @@ router.post('/withdraw', authRequired, requirePromoter, wrap((req, res) => {
   const a = obj[type]
   if (!ACCOUNT_TYPES[type] || !a || !(a.openid || a.account)) return fail(res, 400, '请先绑定收款账户')
   const snapshot = type === 'wechat' ? `微信openid:${a.openid}` : `${a.name || ''} ${a.bank ? a.bank + ' ' : ''}${a.account}`.trim().slice(0, 200)
+  // 幂等键：同一用户同一金额同一收款账户短时间内重复提交只生成一张单（防连点/重放重复提现）
+  const idem = `${req.user.id}:${amount}:${type}:${Math.floor(Date.now() / 5000)}`
+  if (db.prepare('SELECT 1 FROM withdrawals WHERE idempotency_key = ?').get(idem)) {
+    return ok(res, { applied: true, duplicate: true })
+  }
   const tx = db.transaction(() => {
     const u = db.prepare('SELECT balance_cents FROM users WHERE id = ?').get(req.user.id)
     if (!u || u.balance_cents < amount) return { ok: false }
     db.prepare('UPDATE users SET balance_cents = balance_cents - ? WHERE id = ?').run(amount, req.user.id)
-    db.prepare("INSERT INTO withdrawals (user_id, amount_cents, channel, account, remark) VALUES (?,?,?,?,?)")
-      .run(req.user.id, amount, type, snapshot, remark)
+    const ins = db.prepare("INSERT INTO withdrawals (user_id, amount_cents, channel, account, remark, idempotency_key) VALUES (?,?,?,?,?,?)")
+      .run(req.user.id, amount, type, snapshot, remark, idem)
+    const after = db.prepare('SELECT balance_cents FROM users WHERE id = ?').get(req.user.id).balance_cents
+    db.prepare("INSERT INTO balance_logs (user_id, type, amount_cents, ref_type, ref_id, after_cents, note) VALUES (?, 'withdraw', ?, 'withdraw', ?, ?, ?)")
+      .run(req.user.id, amount, ins.lastInsertRowid, after, `提现申请 ${type}`)
     return { ok: true }
   })
-  const r = tx()
-  if (!r.ok) return fail(res, 400, '可提现余额不足')
-  ok(res, { applied: true })
+  try {
+    const r = tx()
+    if (!r.ok) return fail(res, 400, '可提现余额不足')
+    ok(res, { applied: true })
+  } catch (e) {
+    if (String(e.message || '').includes('UNIQUE')) return ok(res, { applied: true, duplicate: true })
+    throw e
+  }
 }))
 
 module.exports = router

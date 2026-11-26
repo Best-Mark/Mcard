@@ -1,45 +1,56 @@
 const express = require('express')
-const crypto = require('crypto')
 const settings = require('../utils/settings')
-const db = require('../db')
 const payment = require('../services/payment')
-const { activateOrder } = require('../services/orders')
+const { handlePaySuccess } = require('../services/orders')
 
 const router = express.Router()
 
-function verifyNotifySignature(req, raw) {
-  // 配置了微信平台证书才校验签名；未配置时依赖 AES-GCM 解密 + 金额校验 + 订单号校验
-  const platformCert = settings.payConfig().WECHAT_PLATFORM_CERT
-  if (!platformCert) return true
-  const ts = req.headers['wechatpay-timestamp']
-  const nonce = req.headers['wechatpay-nonce']
-  const signature = req.headers['wechatpay-signature']
-  const serial = req.headers['wechatpay-serial']
-  if (!ts || !nonce || !signature || !serial) return false
-  if (Math.abs(Date.now() / 1000 - Number(ts)) > 300) return false
-  const message = `${ts}\n${nonce}\n${raw.toString('utf8')}\n`
-  return crypto.createVerify('RSA-SHA256').update(message).verify(platformCert, signature, 'base64')
-}
-
+// 微信回调：先验签（缺平台证书一律拒），再 AES-GCM 解密，再金额强校验 + 幂等收敛。
+// 金额不符不回 SUCCESS —— 让微信持续重试，绝不把问题静默吞掉。
 router.post('/notify/wechat', (req, res) => {
   try {
     const raw = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body || {}))
     const payload = JSON.parse(raw.toString('utf8'))
-    if (!verifyNotifySignature(req, raw)) return res.status(401).json({ code: 'FAIL', message: '签名校验失败' })
-
+    if (!payment.verifyWechatNotify(req.headers, raw)) {
+      return res.status(401).json({ code: 'FAIL', message: '签名校验失败' })
+    }
     const detail = payment.decryptResource(payload.resource)
     if (!detail || detail.trade_state !== 'SUCCESS') return res.json({ code: 'SUCCESS', message: '成功' })
 
-    const order = db.prepare('SELECT * FROM orders WHERE order_no = ?').get(detail.out_trade_no)
-    if (!order) return res.status(404).json({ code: 'FAIL', message: '订单不存在' })
-    if (order.amount_cents !== detail.amount?.total) return res.status(400).json({ code: 'FAIL', message: '金额不符' })
-    if (order.status === 'paid') return res.json({ code: 'SUCCESS', message: '成功' })
-
-    activateOrder(order.id, detail.transaction_id || '')
+    const result = handlePaySuccess(detail.out_trade_no, detail.transaction_id || '', detail.amount?.total, 'wechat')
+    if (!result.ok) {
+      console.warn('[PayNotify:wechat] 未开通：', JSON.stringify(result))
+      return res.status(400).json({ code: 'FAIL', message: result.reason || '回调校验失败' })
+    }
     res.json({ code: 'SUCCESS', message: '成功' })
   } catch (e) {
-    console.error('[PayNotify]', e)
+    console.error('[PayNotify:wechat]', e)
     res.status(500).json({ code: 'FAIL', message: e.message || '回调处理失败' })
+  }
+})
+
+// 支付宝回调：out_trade_no 是明文，但依然强制验签（缺公钥一律拒），金额元转分后强校验。
+// 成功回 success，失败回 fail —— 与支付宝协议一致。
+router.post('/notify/alipay', (req, res) => {
+  try {
+    const params = { ...(req.body || {}) }
+    if (!payment.verifyAliNotify(params)) {
+      return res.status(401).type('text/plain').send('fail')
+    }
+    const tradeStatus = String(params.trade_status || '')
+    if (!['TRADE_SUCCESS', 'TRADE_FINISHED'].includes(tradeStatus)) {
+      return res.type('text/plain').send('success')
+    }
+    const paidCents = params.total_amount ? Math.round(Number(params.total_amount) * 100) : null
+    const result = handlePaySuccess(params.out_trade_no, params.trade_no || '', paidCents, 'alipay')
+    if (!result.ok) {
+      console.warn('[PayNotify:alipay] 未开通：', JSON.stringify(result))
+      return res.status(400).type('text/plain').send('fail')
+    }
+    res.type('text/plain').send('success')
+  } catch (e) {
+    console.error('[PayNotify:alipay]', e)
+    res.status(500).type('text/plain').send('fail')
   }
 })
 

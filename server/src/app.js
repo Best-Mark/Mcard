@@ -5,6 +5,7 @@ const path = require('path')
 const config = require('./config')
 const db = require('./db')
 const updater = require('./services/updater')
+const { startPayReconcileLoop } = require('./services/payReconcile')
 const settings = require('./utils/settings')
 const { originOf } = require('./utils/origin')
 // 首次启动：把 .env 里的支付参数等种子导入配置中心（幂等，DB 已有值不覆盖）
@@ -106,4 +107,5 @@ app.use((err, _req, res, _next) => {
 app.listen(config.PORT, config.HOST, () => {
   console.log(`MCard API 已启动: http://localhost:${config.PORT}  (支付模式: ${settings.payConfig().PAY_MODE})`)
   updater.startAutoUpdateLoop()
+  startPayReconcileLoop()
 })

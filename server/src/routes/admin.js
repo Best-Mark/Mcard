@@ -164,18 +164,27 @@ router.get('/promo/withdrawals', adminRequired, wrap((req, res) => {
 }))
 
 // 审核提现：批准/驳回。驳回时把金额退回推广员余额（钱不会凭空消失）。
+// 安全：条件更新 WHERE status='pending' + changes 校验，杜绝重复审核导致重复退款/重复打款。
 router.put('/promo/withdrawals/:id/review', adminRequired, wrap((req, res) => {
   const approve = !!req.body?.approve
   const adminNote = String(req.body?.adminNote || '').slice(0, 200)
-  const w = db.prepare("SELECT * FROM withdrawals WHERE id = ? AND status = 'pending'").get(req.params.id)
-  if (!w) return fail(res, 404, '提现单不存在或已处理')
   const tx = db.transaction(() => {
-    db.prepare("UPDATE withdrawals SET status = ?, admin_note = ?, handled_at = datetime('now') WHERE id = ?")
-      .run(approve ? 'paid' : 'rejected', adminNote, w.id)
-    if (!approve) db.prepare('UPDATE users SET balance_cents = balance_cents + ? WHERE id = ?').run(w.amount_cents, w.user_id)
+    const status = approve ? 'paid' : 'rejected'
+    const upd = db.prepare("UPDATE withdrawals SET status = ?, admin_note = ?, handled_at = datetime('now') WHERE id = ? AND status = 'pending'")
+      .run(status, adminNote, req.params.id)
+    if (!upd.changes) return { updated: false }
+    if (!approve) {
+      const w = db.prepare('SELECT user_id, amount_cents FROM withdrawals WHERE id = ?').get(req.params.id)
+      db.prepare('UPDATE users SET balance_cents = balance_cents + ? WHERE id = ?').run(w.amount_cents, w.user_id)
+      const after = db.prepare('SELECT balance_cents FROM users WHERE id = ?').get(w.user_id).balance_cents
+      db.prepare("INSERT OR IGNORE INTO balance_logs (user_id, type, amount_cents, ref_type, ref_id, after_cents, note) VALUES (?, 'withdraw_refund', ?, 'withdraw_reject', ?, ?, ?)")
+        .run(w.user_id, w.amount_cents, w.id, after, adminNote || '提现驳回返还')
+    }
+    return { updated: true, status }
   })
-  tx()
-  ok(res, { updated: true, status: approve ? 'paid' : 'rejected' })
+  const r = tx()
+  if (!r.updated) return fail(res, 409, '提现单不存在或已处理，请刷新后重试')
+  ok(res, r)
 }))
 
 router.put('/users/:id/status', superRequired, wrap((req, res) => {
@@ -238,7 +247,7 @@ router.put('/config', superRequired, wrap((req, res) => {
       if (!s || s === settings.MASK) continue
     }
     // 健壮：枚举类配置只接受合法值，避免写入 "0"/"yes" 被判真导致功能意外开启
-    if (k === 'pay_mode' && !['mock', 'wechat'].includes(String(v))) return fail(res, 400, '支付模式只能是 mock 或 wechat')
+    if (k === 'pay_mode' && !['mock', 'wechat', 'alipay', 'both'].includes(String(v))) return fail(res, 400, '支付模式只能是 mock、wechat、alipay 或 both')
     if (k === 'map_provider' && !['amap', 'osm'].includes(String(v))) return fail(res, 400, '地图服务商只能是 amap 或 osm')
     if (k === 'oss_provider' && !['local', 'aliyun', 'tencent'].includes(String(v))) return fail(res, 400, '存储方式只能是 local / aliyun / tencent')
     if (['sms_enabled', 'wechat_oauth_enabled', 'wechat_oauth_bind_phone'].includes(k) && !['true', 'false'].includes(String(v))) {

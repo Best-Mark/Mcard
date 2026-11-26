@@ -27,16 +27,27 @@ const GROUPS = {
   payment: {
     label: '支付参数',
     fields: [
-      { key: 'pay_mode', label: '支付模式（mock / wechat）', type: 'text' },
+      // 支付模式唯一真相源：mock=本地演示；wechat=仅微信；alipay=仅支付宝；both=两通道按客户端场景自选。
+      // 存量库只可能是 mock/wechat，天然兼容；新增通道必须在这里登记，禁止页面另写枚举。
+      { key: 'pay_mode', label: '支付模式（mock / wechat / alipay / both）', type: 'text' },
       { key: 'wechat_mch_id', label: '微信商户号 MCH ID', type: 'text' },
-      { key: 'wechat_app_id', label: '微信 AppID', type: 'text' },
+      { key: 'wechat_app_id', label: '微信 AppID（公众号/PC 扫码用）', type: 'text' },
       // 密钥类改用本地文件选择：前端 FileReader 读原文填进配置，随分组 PUT，不产生公开上传地址。
       // accept/maxBytes 是前后端共用的唯一真相源；type 仍是 secret，掩码+指纹机制完全不变。
       { key: 'wechat_api_v3_key', label: 'API v3 密钥', type: 'secret', upload: true, accept: '.txt', fileHint: '选择从微信商户平台下载的 API v3 密钥文本文件', maxBytes: 1000 },
       { key: 'wechat_cert_serial_no', label: '商户证书序列号', type: 'text' },
       { key: 'wechat_private_key', label: '商户私钥 PEM', type: 'secret', large: true, upload: true, accept: '.pem,.key,.txt', fileHint: '选择商户 API 私钥文件 apiclient_key.pem', maxBytes: 20000 },
-      { key: 'wechat_notify_url', label: '支付回调 URL', type: 'text' },
-      { key: 'wechat_platform_cert', label: '微信平台证书 PEM（可选，用于回调验签）', type: 'secret', large: true, upload: true, accept: '.pem,.crt,.cer,.txt', fileHint: '选择微信支付平台证书文件', maxBytes: 20000 }
+      { key: 'wechat_notify_url', label: '微信支付回调 URL（留空=按当前域名自动生成，禁止写死域名）', type: 'text' },
+      // 强制验签：未配置平台证书/公钥时回调一律 401，绝不放行（对齐 MShop 安全口径）。
+      { key: 'wechat_platform_cert', label: '微信平台证书/公钥 PEM（回调验签必填）', type: 'secret', large: true, upload: true, accept: '.pem,.crt,.cer,.txt', fileHint: '选择微信支付平台证书或公钥文件', maxBytes: 20000 },
+      { key: 'wechat_h5_return_url', label: '微信 H5 支付完成回跳 URL（留空=当前域名 /me/pay/:id）', type: 'text' },
+      // 小程序 AppID 复用「小程序参数」分组的 miniapp_wx_appid，不在此重复定义（参数唯一真相源）。
+      // 公众号 AppID 复用「微信网页授权」分组的 wechat_oauth_appid，同上。
+      { key: 'ali_app_id', label: '支付宝 AppID', type: 'text' },
+      { key: 'ali_private_key', label: '支付宝应用私钥 PEM', type: 'secret', large: true, upload: true, accept: '.pem,.key,.txt', fileHint: '选择支付宝应用私钥文件', maxBytes: 20000 },
+      { key: 'ali_pub_key', label: '支付宝公钥 PEM（回调验签必填）', type: 'secret', large: true, upload: true, accept: '.pem,.crt,.txt', fileHint: '选择支付宝公钥文件', maxBytes: 20000 },
+      { key: 'ali_notify_url', label: '支付宝回调 URL（留空=按当前域名自动生成）', type: 'text' },
+      { key: 'ali_return_url', label: '支付宝支付完成回跳 URL（留空=当前域名 /me/pay/:id）', type: 'text' }
     ]
   },
   sms: {
@@ -182,8 +193,31 @@ function payConfig() {
     WECHAT_CERT_SERIAL_NO: fromDb('wechat_cert_serial_no') || config.WECHAT_CERT_SERIAL_NO || '',
     WECHAT_PRIVATE_KEY: fromDb('wechat_private_key') || config.WECHAT_PRIVATE_KEY || '',
     WECHAT_NOTIFY_URL: fromDb('wechat_notify_url') || config.WECHAT_NOTIFY_URL || '',
-    WECHAT_PLATFORM_CERT: fromDb('wechat_platform_cert') || config.WECHAT_PLATFORM_CERT || ''
+    WECHAT_PLATFORM_CERT: fromDb('wechat_platform_cert') || config.WECHAT_PLATFORM_CERT || '',
+    WECHAT_H5_RETURN_URL: fromDb('wechat_h5_return_url') || '',
+    // AppID 复用既有分组，绝不在此另建副本（参数唯一真相源）
+    WECHAT_MINI_APP_ID: fromDb('miniapp_wx_appid') || '',
+    WECHAT_OA_APP_ID: fromDb('wechat_oauth_appid') || '',
+    ALI_APP_ID: fromDb('ali_app_id') || '',
+    ALI_PRIVATE_KEY: fromDb('ali_private_key') || '',
+    ALI_PUB_KEY: fromDb('ali_pub_key') || '',
+    ALI_NOTIFY_URL: fromDb('ali_notify_url') || '',
+    ALI_RETURN_URL: fromDb('ali_return_url') || ''
   }
+}
+
+// 支付模式判定（唯一真相源）：mock 仅演示；wechat/alipay 单通道；both 双通道自选。
+// 未知值一律按 mock 处理（fail-safe：绝不因脏配置把用户带进真实支付）。
+function payModeOf(p = payConfig()) {
+  const m = String(p.PAY_MODE || '').toLowerCase()
+  return ['wechat', 'alipay', 'both'].includes(m) ? m : 'mock'
+}
+function payChannels(p = payConfig()) {
+  const m = payModeOf(p)
+  if (m === 'mock') return ['mock']
+  if (m === 'wechat') return ['wechat']
+  if (m === 'alipay') return ['alipay']
+  return ['wechat', 'alipay']
 }
 
 // 读取短信配置对象
@@ -345,6 +379,12 @@ function seedDefaults() {
     wechat_private_key: config.WECHAT_PRIVATE_KEY || '',
     wechat_notify_url: config.WECHAT_NOTIFY_URL || '',
     wechat_platform_cert: config.WECHAT_PLATFORM_CERT || '',
+    wechat_h5_return_url: '',
+    ali_app_id: '',
+    ali_private_key: '',
+    ali_pub_key: '',
+    ali_notify_url: '',
+    ali_return_url: '',
     sms_enabled: 'false',
     sms_provider: 'aliyun',
     sms_access_key_id: '',
@@ -388,4 +428,4 @@ function seedDefaults() {
   tx()
 }
 
-module.exports = { PUBLIC_KEYS, PUBLIC_DERIVED_KEYS, SHARE_KEYS, SHARE_POOL_DEFAULTS, NOTIFY_KEYS, NOTIFY_TEMPLATE_DEFAULTS, GROUPS, SENSITIVE_KEYS, ALL_KEYS, MASK, fingerprint, get, normalizePool, shareView, notifyView, payConfig, smsConfig, wechatOauthConfig, wechatLoginEnabled, mapConfig, promoConfig, ossConfig, publicView, adminView, seedDefaults }
+module.exports = { PUBLIC_KEYS, PUBLIC_DERIVED_KEYS, SHARE_KEYS, SHARE_POOL_DEFAULTS, NOTIFY_KEYS, NOTIFY_TEMPLATE_DEFAULTS, GROUPS, SENSITIVE_KEYS, ALL_KEYS, MASK, fingerprint, get, normalizePool, shareView, notifyView, payConfig, payModeOf, payChannels, smsConfig, wechatOauthConfig, wechatLoginEnabled, mapConfig, promoConfig, ossConfig, publicView, adminView, seedDefaults }

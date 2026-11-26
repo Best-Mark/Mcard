@@ -294,7 +294,26 @@ CREATE TABLE IF NOT EXISTS withdrawals (
 );
 CREATE INDEX IF NOT EXISTS idx_withdraw_user ON withdrawals(user_id, id);
 CREATE INDEX IF NOT EXISTS idx_withdraw_status ON withdrawals(status, id);
+
+-- 佣金余额流水：唯一真相源。佣金发放/提现扣减/驳回返还逐笔留痕，可对账可追溯。
+CREATE TABLE IF NOT EXISTS balance_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  type TEXT NOT NULL,
+  amount_cents INTEGER NOT NULL,
+  ref_type TEXT NOT NULL DEFAULT '',
+  ref_id INTEGER,
+  after_cents INTEGER NOT NULL DEFAULT 0,
+  note TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_balance_user ON balance_logs(user_id, id);
 `)
+
+// 提现幂等键：存量库补列（必须在建表 exec 之后），随后建唯一索引
+addColumnIfMissing('withdrawals', 'idempotency_key', "TEXT NOT NULL DEFAULT ''")
+db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS uniq_withdraw_idem ON withdrawals(idempotency_key) WHERE idempotency_key <> '';`)
+db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS uniq_balance_ref ON balance_logs(ref_type, ref_id) WHERE ref_type IN ('commission_order','commission_register','withdraw_reject');`)
 
 // 访客画像/来源分析 + 名片夹打标：存量库补列（自愈，CREATE TABLE IF NOT EXISTS 不改老表）
 // 必须放在上面的建表 exec 之后——card_views/card_favorites 表此时才存在

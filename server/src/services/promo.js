@@ -9,6 +9,14 @@ const { slugId } = require('../utils/id')
 const crypto = require('crypto')
 const { originOf } = require('../utils/origin')
 
+// 余额流水：每笔佣金/提现/驳回返还都留痕（唯一真相源 balance_logs）。
+// ref_type+ref_id 唯一索引保证同一业务事件只记一次（发放重入不会重复流水）。
+function logBalance(userId, type, amountCents, refType, refId, note = '') {
+  const after = db.prepare('SELECT balance_cents FROM users WHERE id = ?').get(userId)?.balance_cents ?? 0
+  db.prepare("INSERT OR IGNORE INTO balance_logs (user_id, type, amount_cents, ref_type, ref_id, after_cents, note) VALUES (?,?,?,?,?,?,?)")
+    .run(userId, type, amountCents, refType, refId ?? null, after, note.slice(0, 120))
+}
+
 // 生成不重复的推广邀请码（8 位易读短码，撞码自动重试）
 function ensureInviteCode(userId) {
   const row = db.prepare('SELECT invite_code FROM users WHERE id = ?').get(userId)
@@ -61,6 +69,7 @@ function grantRegisterReward(promoterId, inviteeId) {
       .run(promoterId, inviteeId, cfg.registerRewardCents)
     if (!ins.changes) return 0
     db.prepare('UPDATE users SET balance_cents = balance_cents + ? WHERE id = ?').run(cfg.registerRewardCents, promoterId)
+    logBalance(promoterId, 'commission', cfg.registerRewardCents, 'commission_register', ins.lastInsertRowid, '注册奖励')
     return cfg.registerRewardCents
   })
   try { return tx() } catch (e) {
@@ -86,9 +95,13 @@ function grantOrderCommission(order, enabledOverride) {
   const amount = Math.floor(Number(order.amount_cents) * cfg.orderRate / 100)
   if (amount <= 0) return 0
   try {
-    db.prepare("INSERT INTO commissions (promoter_id, invitee_id, type, order_id, amount_cents) VALUES (?,?, 'order', ?, ?)")
-      .run(promoterId, order.user_id, order.id, amount)
-    db.prepare('UPDATE users SET balance_cents = balance_cents + ? WHERE id = ?').run(amount, promoterId)
+    const tx = db.transaction(() => {
+      const ins = db.prepare("INSERT INTO commissions (promoter_id, invitee_id, type, order_id, amount_cents) VALUES (?,?, 'order', ?, ?)")
+        .run(promoterId, order.user_id, order.id, amount)
+      db.prepare('UPDATE users SET balance_cents = balance_cents + ? WHERE id = ?').run(amount, promoterId)
+      logBalance(promoterId, 'commission', amount, 'commission_order', ins.lastInsertRowid, `订单 ${order.order_no} 返佣`)
+    })
+    tx()
     return amount
   } catch (e) {
     if (String(e.message || '').includes('UNIQUE')) return 0

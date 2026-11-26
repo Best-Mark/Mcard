@@ -37,6 +37,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
 import { showToast, toggleDrawer } from '../store'
+import { payPreference } from '../utils/pay-env'
 
 const router = useRouter()
 const packages = ref([]); const busy = ref(0); const loadError = ref(''); const loading = ref(true)
@@ -53,8 +54,13 @@ async function buy(p) {
   if (busy.value) return
   busy.value = p.id
   try {
-    const { data } = await api.post('/api/orders', { package_id: p.id })
-    router.push({ path: `/me/pay/${data.data.order.id}`, query: { pay: data.data.pay.payText } })
+    const pref = payPreference()
+    const { data } = await api.post('/api/orders', { package_id: p.id, ...pref })
+    const pay = data.data.pay || {}
+    router.push({
+      path: `/me/pay/${data.data.order.id}`,
+      query: { pay: pay.payText || '', payType: pay.payType || pay.mode || '', payParams: pay.payParams ? JSON.stringify(pay.payParams) : '' }
+    })
   } catch (e) { showToast(e.message, 'error') } finally { busy.value = 0 }
 }
 </script>

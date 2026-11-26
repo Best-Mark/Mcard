@@ -52,4 +52,27 @@ export function configWx(api, force = false) {
   return configPromise
 }
 
+// 微信内 JSAPI 支付：调起收银台。与 wx.config 的分享/扫码权限无关，只依赖 SDK 已加载。
+// 参数来自后端 JSAPI 下单二次签名（appId/timeStamp/nonceStr/package/signType/paySign），前端不参与签名。
+export function wxPay(params) {
+  return new Promise((resolve, reject) => {
+    loadSdk().then(wx => {
+      if (!wx?.chooseWXPay) return reject(new Error('当前环境不支持微信支付，请在微信内打开'))
+      try {
+        wx.chooseWXPay({
+          appId: params.appId,
+          timestamp: params.timeStamp,
+          nonceStr: params.nonceStr,
+          package: params.package,
+          signType: params.signType || 'RSA',
+          paySign: params.paySign,
+          success: () => resolve({ ok: true }),
+          fail: err => reject(new Error(err?.errMsg || '微信支付未完成')),
+          cancel: () => reject(new Error('已取消支付'))
+        })
+      } catch (e) { reject(new Error(e.message || '拉起微信支付失败')) }
+    }).catch(reject)
+  })
+}
+
 export { loadSdk, UNIFIED_API_LIST, isWeChat }

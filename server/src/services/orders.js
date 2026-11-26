@@ -1,8 +1,28 @@
 const db = require('../db')
 const { makeSlug } = require('../utils/slug')
 const promo = require('./promo')
+const payment = require('./payment')
 
 const toSqlTime = d => new Date(d).toISOString().slice(0, 19).replace('T', ' ')
+
+// 支付成功统一收敛（对齐 MShop 的 handlePaySuccess）：回调/查单/补单/模拟支付全部走这里。
+// 铁律：① 金额强校验（分），不符绝不置 paid；② 幂等（已 paid 直接返回）；③ 单号带 _X 时还原订单号。
+function handlePaySuccess(outTradeNo, transactionId = '', paidCents = null, method = '') {
+  const orderNo = payment.baseOrderNo(outTradeNo)
+  const order = db.prepare('SELECT * FROM orders WHERE order_no = ?').get(orderNo)
+  if (!order) return { ok: false, reason: '订单不存在' }
+  if (order.status === 'paid') return { ok: true, alreadyPaid: true, order }
+  if (order.status === 'cancelled') return { ok: false, reason: '订单已取消' }
+  if (paidCents !== null && paidCents !== undefined) {
+    const paid = Math.round(Number(paidCents))
+    if (!Number.isFinite(paid) || paid !== order.amount_cents) return { ok: false, reason: '支付金额与订单不符' }
+  }
+  if (method && order.payment_method && String(order.payment_method) !== String(method)) {
+    return { ok: false, reason: '支付方式与订单不符' }
+  }
+  const result = activateOrder(order.id, String(transactionId || outTradeNo))
+  return { ok: result.changed || result.reason === '订单已开通', ...result }
+}
 
 function activateOrder(orderId, payNo = '') {
   const tx = db.transaction(() => {
@@ -51,4 +71,4 @@ function activateOrder(orderId, payNo = '') {
   return tx()
 }
 
-module.exports = { activateOrder }
+module.exports = { activateOrder, handlePaySuccess }
