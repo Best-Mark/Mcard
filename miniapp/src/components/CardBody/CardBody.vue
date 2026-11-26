@@ -326,7 +326,8 @@ async function exchange() {
 </script>
 
 <style scoped>
-.cover { height: 240rpx; border-radius: 0 0 40rpx 40rpx; padding: 30rpx; color: #fff; position: relative; overflow: hidden; }
+/* 品牌位贴封面最顶端（2026-11-26 用户定稿：LOGO+站名要在蓝色区域最上面，紧贴导航栏下缘，不留大空隙） */
+.cover { height: 240rpx; border-radius: 0 0 40rpx 40rpx; padding: 10rpx 30rpx 30rpx; color: #fff; position: relative; overflow: hidden; }
 /* 封面动态光晕：主题色柔光呼吸，只动 opacity 不动位移（避免被感知为遮罩在动） */
 .cover::before { content: ''; position: absolute; top: -30%; right: -30%; bottom: -30%; left: -30%; pointer-events: none; z-index: 0; background: radial-gradient(70% 90% at 22% 10%, rgba(var(--glow-rgb, 37,99,235), .22), transparent 62%); animation: cvGlow 30s ease-in-out infinite alternate; }
 /* WXSS 不支持 * 通配选择器（编译报 error at token '*'），显式列出 cover 的两个子元素 */
