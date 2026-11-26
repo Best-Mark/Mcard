@@ -675,9 +675,10 @@ async function load() {
     // owner 页（/me）同样要配置微信分享卡片：微信「···」原生转发取的是这里配的 link，
     // 不配就会把当前 /me 链接发出去 → 别人打开被守卫踢去登录，登录后看到「我的名片页」。
     // 口径与工作台共用 setCardShare（唯一真相源）。
-    // 分享缩略图口径（用户定稿）：公司LOGO → 用户头像 → 项目LOGO → 名片卡片图 → 分享池。
-    // 名片卡片图由服务端公开接口 /api/cards/public/:slug/share.png 生成（无需登录、webp 头像也能渲染），
-    // 访客转发/未登录场景也能用，彻底消灭空图。传作第 4 候选，前三档可用时自动优先。
+    // 分享缩略图口径（2026-11-26 修正）：公司LOGO → 用户头像 → 服务端名片卡片图 → 项目LOGO → 分享池。
+    // 名片卡片图由服务端公开接口 /api/cards/public/:slug/share.png 生成（无需登录、webp 头像也能内联渲染），
+    // 访客转发/未登录场景也能用。必须排在项目LOGO之前：头像/LOGO 若是 webp 会被 cardImage 滤掉，
+    // 旧顺序会让项目LOGO抢先命中（用户有头像却转发成项目LOGO），名片卡片图才是正确兜底。
     if (full) setCardShare(api, card.value, publicLink.value, `${qrApi.value}/share.png`)
     if (!embed && !owner && auth.token) {
       try {

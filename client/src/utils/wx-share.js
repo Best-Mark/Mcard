@@ -33,7 +33,9 @@ export function cleanShareLink(raw) {
 // 缩略图只认 JPG / PNG / GIF：微信解析不出 svg / webp 的缩略图，硬传会变成灰块甚至整卡退化成网址。
 // 上传链路把头像等栅格图转 webp，会被这里过滤掉并自动落到下一候选，不会报错。
 // 公司 LOGO 走 /upload/logo 产出的是 PNG，可被识别；share_image 池也是 PNG/JPG。
-// ⚠️ 用户口径：分享缩略图绝不用二维码——优先级 公司LOGO → 用户头像 → 项目LOGO → 分享池。
+// ⚠️ 用户口径：分享缩略图绝不用纯二维码——优先级 公司LOGO → 用户头像 → 服务端名片图 → 项目LOGO → 分享池。
+//    服务端名片图必须排在项目LOGO之前：头像/LOGO 若是 webp 被滤掉后，旧顺序会让项目LOGO抢先命中，
+//    用户明明有头像却转发成项目LOGO（2026-11-26 实锤）；名片图内含本人头像，是正确兜底。
 function cardImage(u) {
   const abs = absoluteMediaUrl(u)
   return /\.(jpe?g|png|gif)(\?|$)/i.test(abs) ? abs : ''
@@ -136,9 +138,12 @@ export const setWechatShare = setupWechatShare
 /**
  * 名片分享卡片唯一真相源：/c/:slug 公开页与 /me 工作台共用同一口径。
  * 标题「XXX的名片」；描述首选简介（存量 company_intro 回落，空则落分享池）；
- * 缩略图口径（用户定稿）：公司 LOGO → 用户头像 → 项目 LOGO → 名片卡片样式图 → 分享池。
- * 绝不用「纯二维码」当缩略图；但名片卡片图（头像+姓名+公司，含作为名片一部分的小二维码）是用户认可的兜底，
- * 它比空图好看得多。webp 候选项会被 cardImage 过滤并自动落到下一级，不会出错。
+ * 缩略图口径（用户定稿 2026-11-26 修正）：公司 LOGO → 用户头像 → 服务端名片卡片图 → 项目 LOGO → 分享池。
+ * 绝不用「纯二维码」当缩略图；但名片卡片图（头像+姓名+公司，含作为名片一部分的小二维码）是用户认可的兜底。
+ * ⚠️ 服务端名片卡片图必须排在项目 LOGO 之前：头像/LOGO 常为 webp 会被 cardImage 过滤，
+ *    旧顺序会让项目 LOGO 抢先命中，用户明明上传了头像却转发成项目 LOGO。
+ * 服务端 share.png 是公开接口（无需登录、webp 头像也能内联渲染），任何调用点都能传，
+ * 不传则由本函数按 card.slug 兜底推导，避免工作台/侧栏分享漏传时退到项目 LOGO。
  * 工作台必须自己配置，不能只靠异步嵌入的 CardView——否则加载慢时转发走全局兜底。
  */
 export function setCardShare(api, card, link, shareImage) {
@@ -147,17 +152,19 @@ export function setCardShare(api, card, link, shareImage) {
   // 微信转发面板顶部显示的是 document.title，必须与分享卡片标题一致为「某某的名片」，
   // 否则即使 JS-SDK 标题配对了，面板顶部仍是站点默认标题「MCard 电子名片」。
   if (typeof document !== 'undefined' && document.title !== title) document.title = title
+  // 服务端名片图兜底：调用方未显式传时按 slug 推导公开地址（动态域名，不写死）。
+  const cardShot = shareImage || (card?.slug ? `/api/cards/public/${encodeURIComponent(card.slug)}/share.png` : '')
   return setupWechatShare(api, {
     title,
     desc: String(card?.bio || card?.company_intro || '').slice(0, 120),
     link: target,
-    // 公司 LOGO → 名片头像 → 项目 LOGO → 名片卡片样式图（CardView 异步生成传入）→ 分享池。
+    // 公司 LOGO → 名片头像 → 服务端名片图（含本人头像）→ 项目 LOGO → 分享池。
     // 前几档若是 webp 会被 cardImage 过滤并自动落到下一档；全都不合格才由 setupWechatShare 落 share_image。
     imgCandidates: [
       absoluteMediaUrl(card?.logo),
       absoluteMediaUrl(card?.avatar),
-      absoluteMediaUrl(siteConfig.site_logo),
-      shareImage
+      absoluteMediaUrl(cardShot),
+      absoluteMediaUrl(siteConfig.site_logo)
     ]
   })
 }
