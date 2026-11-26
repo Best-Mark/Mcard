@@ -29,7 +29,7 @@
            信息层只有码图+一句说明，所有操作留在底部翻转行，点行首↙退出才回到整体名片 -->
       <div v-if="dockMode === 'qr'" class="cv-qr-tune">
         <div class="cv-qr-tune-card"><img :src="qrApi + '/qr.png?size=560&v=' + qrStamp" alt="当前名片二维码" /></div>
-        <p class="small muted cv-qr-tune-tip">当前二维码 · 调整下方样式即时生效</p>
+        <p class="small muted cv-qr-tune-tip">当前二维码 · {{ qrSub ? '正在调整' + (QR_CATS.find(c => c.key === qrSub)?.label || '') : '调整下方样式即时生效' }}</p>
       </div>
       <CardSheet
         v-else
@@ -71,8 +71,11 @@
       </div>
       <!-- dock 三态翻转（2026-11-26 用户终稿）：main=编辑/配色/二维码；
            点「配色」整行翻转成模板缩略行（H5 同款 template-thumbs 缩略，点中即换、页面实时预览、可连着试）；
-           点「二维码」名片本体让位给顶部二维码大图，整行翻成码型调节行（点中即改、大图即时刷新）；
-           行首 ↙ 收起回到整体名片。公开页 dock 不变：打电话 / 复制号码 / 存入通讯录 / 分享 -->
+           点「二维码」名片本体让位给顶部二维码大图，dock 分两级：
+             一级=风格预设/码点形状/码眼形状 三个分类入口；
+             二级=该类选项行（点中即改、大图即时刷新，面板不关可连试）；
+             ↙ 二级退回一级（大码保持），一级 ↙ 才收起回整体名片。
+           公开页 dock 不变：打电话 / 复制号码 / 存入通讯录 / 分享 -->
       <div v-if="full && owner" :class="['cv-dock cv-dock-glass', { 'cv-dock-flip': dockMode !== 'main' }]">
         <template v-if="dockMode === 'main'">
           <button class="btn btn-primary dock-btn" @click="router.push('/me/card')"><span class="dock-ico">✎</span>编辑</button>
@@ -92,27 +95,41 @@
             <div v-if="!tpls.length" class="dock-tpl-loading">模板清单加载中…</div>
           </div>
         </template>
-        <!-- 二维码调节行（2026-11-26 用户定稿）：一键风格预设 + 码型细调（码点形状/定位角），
-             同一行点选即保存实时生效；此时名片本体让位给顶部二维码大图，一调就能直视变化。
-             ↙ 收起才回到整体名片 -->
+        <!-- 二维码一级：三个分类入口（风格预设 / 码点形状 / 码眼形状）。↙ 收起回整体名片 -->
+        <template v-else-if="!qrSub">
+          <button class="dock-back" @click="closeDock" aria-label="收起二维码调节，返回名片">↙</button>
+          <div class="dock-scroll">
+            <div class="dock-flow dock-cats">
+              <button v-for="c in QR_CATS" :key="c.key" class="dock-cat" @click="qrSub = c.key">
+                <span class="dock-cat-ico">{{ c.ico }}</span>{{ c.label }}
+              </button>
+            </div>
+          </div>
+        </template>
+        <!-- 二维码二级：当前分类的选项行，点中即保存实时生效、面板不关可连着试。
+             ↙ 退回一级分类行（顶部大码全程保持） -->
         <template v-else>
-          <button class="dock-back" @click="closeDock" aria-label="收起二维码调节行，返回名片">↙</button>
+          <button class="dock-back" @click="qrSub = ''" aria-label="返回二维码分类入口">↙</button>
           <div class="dock-scroll">
             <div class="dock-flow">
-              <button v-for="p in QR_PRESETS" :key="p.key" :class="['dock-tpl', { on: qrPresetActive(p), busy: qrBusy }]" @click="applyQrStyle({ dot: p.dot, eye: p.eye, gradTo: p.gradTo })">
-                <span class="qr-swatch" :style="{ background: p.swatch }"></span>
-                <span class="dock-tpl-label">{{ p.label }}</span>
-              </button>
-              <span class="dock-grp">码点</span>
-              <button v-for="o in DOT_OPTS" :key="'dot-' + o.value" :class="['dock-tpl', { on: (card.qr_style?.dot || 'square') === o.value, busy: qrBusy }]" @click="applyQrStyle({ dot: o.value })">
-                <span class="qr-swatch qs-dot" :class="'qs-' + o.value"><i v-for="n in 9" :key="n"></i></span>
-                <span class="dock-tpl-label">{{ o.label }}</span>
-              </button>
-              <span class="dock-grp">定位角</span>
-              <button v-for="o in EYE_OPTS" :key="'eye-' + o.value" :class="['dock-tpl', { on: (card.qr_style?.eye || 'square') === o.value, busy: qrBusy }]" @click="applyQrStyle({ eye: o.value })">
-                <span class="qr-swatch qs-eye" :class="'qs-' + o.value"><i></i></span>
-                <span class="dock-tpl-label">{{ o.label }}</span>
-              </button>
+              <template v-if="qrSub === 'preset'">
+                <button v-for="p in QR_PRESETS" :key="p.key" :class="['dock-tpl', { on: qrPresetActive(p), busy: qrBusy }]" @click="applyQrStyle({ dot: p.dot, eye: p.eye, gradTo: p.gradTo })">
+                  <span class="qr-swatch" :style="{ background: p.swatch }"></span>
+                  <span class="dock-tpl-label">{{ p.label }}</span>
+                </button>
+              </template>
+              <template v-else-if="qrSub === 'dot'">
+                <button v-for="o in DOT_OPTS" :key="'dot-' + o.value" :class="['dock-tpl', { on: (card.qr_style?.dot || 'square') === o.value, busy: qrBusy }]" @click="applyQrStyle({ dot: o.value })">
+                  <span class="qr-swatch qs-dot" :class="'qs-' + o.value"><i v-for="n in 9" :key="n"></i></span>
+                  <span class="dock-tpl-label">{{ o.label }}</span>
+                </button>
+              </template>
+              <template v-else-if="qrSub === 'eye'">
+                <button v-for="o in EYE_OPTS" :key="'eye-' + o.value" :class="['dock-tpl', { on: (card.qr_style?.eye || 'square') === o.value, busy: qrBusy }]" @click="applyQrStyle({ eye: o.value })">
+                  <span class="qr-swatch qs-eye" :class="'qs-' + o.value"><i></i></span>
+                  <span class="dock-tpl-label">{{ o.label }}</span>
+                </button>
+              </template>
             </div>
           </div>
         </template>
@@ -294,20 +311,28 @@ const vcfApi = computed(() => `${qrApi.value}/card.vcf`)
 const card = ref(null); const loading = ref(true); const error = ref('')
 
 // dock 三态翻转（owner「配色」/「二维码」键）：
-// main（编辑/配色/二维码）→ tpl（模板缩略行，整张名片实时预览）/ qr（名片本体让位，顶部直视二维码大图 + 码型调节行），↙ 收起。
+// main（编辑/配色/二维码）→ tpl（模板缩略行，整张名片实时预览）/ qr（名片本体让位，顶部直视二维码大图 + 两级 dock），↙ 收起。
+// 二维码 dock 二级：一级 = 风格预设/码点形状/码眼形状 三个入口（qrSub=''），二级 = 该类选项（qrSub='preset'|'dot'|'eye'）；
+// 二级 ↙ 回一级（大码保持），一级 ↙ 才 closeDock 回整体名片。
 // 模板清单来自公开接口（与 CardStyle/CardEdit 同源，缓存一次）；
 // 点中即 PUT /api/cards/mine 应用整套配色（与 CardStyle done 同口径），card 就地合并 → 页面实时预览；
 // 条保持打开可连续切换对比。未开通由服务端套餐闸门拦（403 → toast）。
 const dockMode = ref('main')
+const qrSub = ref('')
+const QR_CATS = [
+  { key: 'preset', label: '风格预设', ico: '✦' },
+  { key: 'dot', label: '码点形状', ico: '⠿' },
+  { key: 'eye', label: '码眼形状', ico: '◎' }
+]
 const tpls = ref([]); const tplBusy = ref(false)
 let tplsLoaded = false
 // 进入二维码调节态：名片本体让位，顶部直视大码；从任意滚动位置点底部 dock 都要先回页顶，
 // 否则用户下滑后点「二维码」只见调节行、看不到上方大码（2026-11-26 用户截图实锤）。
 function scrollPageTop() { try { windowRef.scrollTo?.(0, 0) } catch { /* 老 WebView 无 scrollTo 选项时忽略 */ } }
-function closeDock() { dockMode.value = 'main'; scrollPageTop() }
+function closeDock() { dockMode.value = 'main'; qrSub.value = ''; scrollPageTop() }
 function toggleDock(m) {
   dockMode.value = dockMode.value === m ? 'main' : m
-  if (dockMode.value === 'qr') scrollPageTop()
+  if (dockMode.value === 'qr') { qrSub.value = ''; scrollPageTop() }
   if (dockMode.value === 'tpl' && !tplsLoaded) {
     api.get(`/api/cards/public/templates?t=${Date.now()}`).then(({ data }) => {
       const list = data?.data?.templates || []
@@ -673,6 +698,7 @@ watch(slug, () => {
   materialsList.value = []
   qrModal.value = false; guide.value = ''; exchangeOpen.value = false
   mapOpen.value = false; moreOpen.value = false; galleryIndex.value = -1
+  dockMode.value = 'main'; qrSub.value = ''
   favorite.value = false; isOwner.value = false; mySlug.value = ''
   windowRef.scrollTo?.(0, 0)
   load()
