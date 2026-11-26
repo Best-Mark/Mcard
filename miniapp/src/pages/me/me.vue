@@ -131,7 +131,8 @@ onShareAppMessage(() => {
 .small { font-size: 22rpx; }
 
 /* owner 编辑 dock（页面级，非名片正文；tpl-X 覆写跟模板走，与 card.vue 同口径） */
-.dock { position: fixed; left: 0; right: 0; bottom: calc(110rpx + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: repeat(3, 1fr); gap: 12rpx 16rpx; padding: 16rpx 24rpx; background: rgba(255,255,255,.96); box-shadow: 0 -4rpx 20rpx rgba(15,23,42,.06); z-index: 50; }
+/* 四键单行等大：与 H5 Dashboard dock 同构（编辑名片/配色风格/名片集市/分享），主键只做填色区分不做尺寸区分 */
+.dock { position: fixed; left: 0; right: 0; bottom: calc(110rpx + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: repeat(4, 1fr); gap: 12rpx; padding: 16rpx 24rpx; background: rgba(255,255,255,.96); box-shadow: 0 -4rpx 20rpx rgba(15,23,42,.06); z-index: 50; }
 .dock-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4rpx; min-height: 96rpx; padding: 8rpx 0; border-radius: 14rpx; background: #f0e7d2; color: #2b2118; font-size: 22rpx; line-height: 1.2; }
 .dock-btn::after { border: 0; }
 .dock-btn.primary { background: #a62b2b; color: #fff; }
