@@ -28,9 +28,11 @@
 .cv-dock.cv-dock-flip .dock-tpl { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 5px; background: none; border: 0; padding: 0; cursor: pointer; line-height: 1.2; }
 .cv-dock.cv-dock-flip .dock-tpl.busy { opacity: .5; }
 .cv-dock.cv-dock-flip .dock-tpl .tpl-thumb { width: 54px; height: 54px; }
-/* 名称：深色半透明胶囊白字，深/浅 dock 底上都可读；选中换主题色胶囊 */
+/* 名称：深色半透明胶囊白字，深/浅 dock 底上都可读；选中态加深加粗+主题色内描边。
+   ⚠️ 选中胶囊不能用主题色当底（浅色主题如星钻黑银灰/浅亮色时白字糊在浅底上看不见，2026-11-26 用户截图实锤），
+   白字必须落在固定深底上，主题色只做描边点缀 */
 .cv-dock.cv-dock-flip .dock-tpl-label { font-size: 10px; color: #fff; background: rgba(15,23,42,.5); padding: 1px 6px; border-radius: 6px; max-width: 68px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box; }
-.cv-dock.cv-dock-flip .dock-tpl.on .dock-tpl-label { background: var(--t-accent, #2563eb); color: #fff; font-weight: 700; }
+.cv-dock.cv-dock-flip .dock-tpl.on .dock-tpl-label { background: rgba(15,23,42,.88); color: #fff; font-weight: 700; box-shadow: inset 0 0 0 1.5px var(--t-accent, #2563eb); }
 /* 选中描边双环（白内环 + 主题色外环）：深浅底上都清晰 */
 .cv-dock.cv-dock-flip .dock-tpl.on .tpl-thumb, .cv-dock.cv-dock-flip .dock-tpl.on .qr-swatch { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--t-accent, #2563eb); }
 .cv-dock.cv-dock-flip .qr-swatch { display: block; width: 54px; height: 54px; border-radius: 9px; border: 1px solid rgba(255,255,255,.3); box-sizing: border-box; }
