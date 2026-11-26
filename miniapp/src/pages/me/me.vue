@@ -27,7 +27,7 @@
 
     <!-- 有名片：整页就是名片本身 + owner 编辑 dock（四键与 H5 Dashboard 完全一致；相册管理在「编辑名片」页内的公司相册分节） -->
     <block v-else>
-      <CardBody :card="card" :materials="materials" :is-self="true" :self-check-done="true"
+      <CardBody :card="card" :materials="materials" :is-self="true" :self-check-done="true" :top-inset="topInset"
         @edit="go('/pages/edit/edit')" @activate="go('/pages/plans/plans')" @update="onCardPatch" />
       <view class="dock">
         <button class="dock-btn primary" @tap="go('/pages/edit/edit')"><text class="dico">✎</text><text>编辑名片</text></button>
@@ -70,7 +70,18 @@ function onCardPatch(p) { if (p && typeof p === 'object') card.value = { ...(car
 
 // 隐藏微信原生「返回首页」标：reLaunch 切 tab 后页面栈只有一页且非首页，微信会自动在左上角画 ⌂，
 // 压在名片封面上很突兀；导航有底部 TabBar 承担，此标无存在必要。onReady 调（避开启动窗口），失败静默（老基础库无此 API）
-onReady(() => { try { uni.hideHomeButton && uni.hideHomeButton({ fail: () => {} }) } catch { /* 老基础库 */ } })
+const topInset = ref(0)
+onReady(() => {
+  try { uni.hideHomeButton && uni.hideHomeButton({ fail: () => {} }) } catch { /* 老基础库 */ }
+  // custom 导航：用右上角胶囊矩形精确定位品牌行（MShop 同款做法，模拟器/真机同一坐标系零误差）；
+  // 拿不到胶囊（老基础库）退回状态栏高度
+  try {
+    const r = uni.getMenuButtonBoundingClientRect()
+    topInset.value = r && r.top > 0 ? r.top : (uni.getSystemInfoSync().statusBarHeight || 0)
+  } catch {
+    try { topInset.value = uni.getSystemInfoSync()?.statusBarHeight || 0 } catch { /* 兜底 0 */ }
+  }
+})
 
 async function load() {
   logged.value = isLogged()

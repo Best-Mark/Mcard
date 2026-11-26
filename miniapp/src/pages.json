@@ -4,7 +4,9 @@
     { "path": "pages/login/login", "style": { "navigationBarTitleText": "登录" } },
     { "path": "pages/legal/legal", "style": { "navigationBarTitleText": "用户协议与隐私政策" } },
     { "path": "pages/card/card", "style": { "navigationBarTitleText": "电子名片" } },
-    { "path": "pages/me/me", "style": { "navigationBarTitleText": "我的名片" } },
+    // me 页 custom 导航（2026-11-26 用户定稿，对齐 MShop 首页）：去掉原生标题栏，
+    // 封面顶到状态栏下，品牌位（站点LOGO+站名）用胶囊 rect 定位与右上角胶囊同排
+    { "path": "pages/me/me", "style": { "navigationBarTitleText": "我的名片", "navigationStyle": "custom" } },
     { "path": "pages/contacts/contacts", "style": { "navigationBarTitleText": "名片夹" } },
     { "path": "pages/profile/profile", "style": { "navigationBarTitleText": "我的" } },
     { "path": "pages/notifications/notifications", "style": { "navigationBarTitleText": "消息通知" } },

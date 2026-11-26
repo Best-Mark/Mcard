@@ -5,7 +5,7 @@
      模板样式（template × theme 正交）全部内聚在本组件；dock（底部操作条）属页面级，由各页面自渲染并覆写 .tpl-X .dock。 -->
 <template>
   <view class="cv-root" :class="'tpl-' + tpl" :style="{ '--t-accent': accent, '--glow-rgb': glowRgb }">
-    <view class="cover" :style="{ background: coverBg }">
+    <view class="cover" :style="{ background: coverBg, paddingTop: topInset ? topInset + 'px' : '' }">
       <!-- 品牌位 = 站点LOGO + 站点名称（对齐 MShop 首页 LOGO 形态；站点名/LOGO 来自匿名站点配置）。
            本人点击 = 循环切换名片配色方案（取自名片模板配色表 11 套主题）；访客点击无动作 -->
       <view class="brand" @tap="cycleTheme">
@@ -147,7 +147,10 @@ const props = defineProps({
   card: { type: Object, required: true },
   materials: { type: Array, default: () => [] },
   isSelf: { type: Boolean, default: false },
-  selfCheckDone: { type: Boolean, default: true }
+  selfCheckDone: { type: Boolean, default: true },
+  // 顶部内嵌（px）：custom 导航页传右上角胶囊 rect.top，品牌位（LOGO+站名）与胶囊同排（MShop 同款做法）；
+  // 原生导航页传 0，品牌位贴封面顶端
+  topInset: { type: Number, default: 0 }
 })
 // edit：身份卡 ✎（仅本人显示）；activate：未开通时「立即开通」；update：配色循环成功后回传补丁，页面合并进 card
 const emit = defineEmits(['edit', 'activate', 'update'])
@@ -326,7 +329,8 @@ async function exchange() {
 </script>
 
 <style scoped>
-/* 品牌位贴封面最顶端（2026-11-26 用户定稿：LOGO+站名要在蓝色区域最上面，紧贴导航栏下缘，不留大空隙） */
+/* 品牌位贴封面最顶端（2026-11-26 用户定稿：LOGO+站名要在蓝色区域最上面，紧贴导航栏下缘，不留大空隙）；
+   custom 导航页由页面传 topInset 把品牌位顶进右上角胶囊同一行（min-height 64rpx=胶囊高，内容垂直居中） */
 .cover { height: 240rpx; border-radius: 0 0 40rpx 40rpx; padding: 10rpx 30rpx 30rpx; color: #fff; position: relative; overflow: hidden; }
 /* 封面动态光晕：主题色柔光呼吸，只动 opacity 不动位移（避免被感知为遮罩在动） */
 .cover::before { content: ''; position: absolute; top: -30%; right: -30%; bottom: -30%; left: -30%; pointer-events: none; z-index: 0; background: radial-gradient(70% 90% at 22% 10%, rgba(var(--glow-rgb, 37,99,235), .22), transparent 62%); animation: cvGlow 30s ease-in-out infinite alternate; }
@@ -334,7 +338,7 @@ async function exchange() {
 .cover .brand, .cover .inactive { position: relative; z-index: 1; }
 @keyframes cvGlow { 0% { opacity: .4; } 100% { opacity: 1; } }
 /* 品牌位 = 站点LOGO + 站点名称（横向排布；LOGO 白底圆角方块在深浅色封面上都清晰） */
-.brand { display: flex; align-items: center; gap: 12rpx; font-size: 36rpx; font-weight: 800; }
+.brand { display: flex; align-items: center; gap: 12rpx; min-height: 64rpx; font-size: 36rpx; font-weight: 800; }
 .brand-logo { width: 48rpx; height: 48rpx; border-radius: 12rpx; background: #fff; box-shadow: 0 2rpx 10rpx rgba(15,23,42,.18); }
 .brand-logo-fb { display: flex; align-items: center; justify-content: center; font-size: 26rpx; color: #a62b2b; box-sizing: border-box; }
 .brand-name { font-size: 30rpx; font-weight: 700; letter-spacing: 1rpx; }
