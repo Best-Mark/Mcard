@@ -65,14 +65,14 @@ function copyLink(m) { copyText(fullUrl(m.url), '链接已复制') }
 </script>
 
 <style scoped>
-.page { min-height: 100vh; background: #f5f7fb; padding-bottom: 60rpx; }
-.bar { height: 88rpx; display: flex; align-items: center; gap: 20rpx; padding: 0 28rpx; background: #fff; border-bottom: 1rpx solid #e8edf4; }
-.back { font-size: 48rpx; color: #2563eb; }
+.page { min-height: 100vh; background: #f7f2e7; padding-bottom: 60rpx; }
+.bar { height: 88rpx; display: flex; align-items: center; gap: 20rpx; padding: 0 28rpx; background: #fff; border-bottom: 1rpx solid #e8dcc2; }
+.back { font-size: 48rpx; color: #a62b2b; }
 .title { font-size: 30rpx; font-weight: 700; }
-.state { padding: 100rpx 40rpx; text-align: center; color: #64748b; }
+.state { padding: 100rpx 40rpx; text-align: center; color: #8a7355; }
 .card { background: #fff; border-radius: 16rpx; padding: 24rpx; margin: 20rpx 24rpx; }
 .head .h-title { display: block; font-size: 32rpx; font-weight: 700; margin-bottom: 8rpx; }
-.muted { color: #94a3b8; }
+.muted { color: #b09a72; }
 .small { font-size: 24rpx; }
 .item { margin-top: 16rpx; }
 .i-head { display: flex; gap: 20rpx; align-items: center; margin-bottom: 18rpx; }
@@ -80,7 +80,7 @@ function copyLink(m) { copyText(fullUrl(m.url), '链接已复制') }
 .i-title { flex: 1; }
 .i-title .b { display: block; font-size: 28rpx; }
 .btn { font-size: 26rpx; padding: 12rpx 0; border-radius: 10rpx; background: #f1f5f9; color: #334155; }
-.btn.primary { background: #2563eb; color: #fff; }
+.btn.primary { background: #a62b2b; color: #fff; }
 .btn-row { display: flex; gap: 16rpx; }
 .btn-row .btn { flex: 1; }
 

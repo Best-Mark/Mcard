@@ -72,10 +72,10 @@ onUnmounted(() => { mapCtx = null })
 .row { margin-bottom: 14rpx; }
 .coord { font-weight: 600; }
 .btn-row { display: flex; gap: 16rpx; margin-top: 8rpx; }
-.btn { flex: 1; font-size: 28rpx; padding: 18rpx 0; border-radius: 12rpx; background: #eef2f7; }
+.btn { flex: 1; font-size: 28rpx; padding: 18rpx 0; border-radius: 12rpx; background: #f0e7d2; }
 .btn::after { border: 0; }
-.btn.primary { background: #2563eb; color: #fff; }
+.btn.primary { background: #a62b2b; color: #fff; }
 .mono { font-family: monospace; }
 .small { font-size: 24rpx; }
-.muted { color: #6b7688; }
+.muted { color: #8a7355; }
 </style>

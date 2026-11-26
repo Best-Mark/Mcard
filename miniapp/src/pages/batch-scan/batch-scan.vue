@@ -92,29 +92,29 @@ function back() { uni.navigateBack() }
 </script>
 
 <style scoped>
-.page { min-height: 100vh; background: #f5f7fb; padding-bottom: 60rpx; }
-.plan-gate { margin: 120rpx 40rpx 0; text-align: center; color: #6b7688; }
+.page { min-height: 100vh; background: #f7f2e7; padding-bottom: 60rpx; }
+.plan-gate { margin: 120rpx 40rpx 0; text-align: center; color: #8a7355; }
 .pg-ico { font-size: 90rpx; opacity: .25; }
-.pg-title { font-size: 34rpx; font-weight: 800; color: #162033; margin: 20rpx 0 10rpx; }
+.pg-title { font-size: 34rpx; font-weight: 800; color: #2b2118; margin: 20rpx 0 10rpx; }
 .pg-sub { font-size: 24rpx; line-height: 1.6; }
-.bar { height: 88rpx; display: flex; align-items: center; gap: 20rpx; padding: 0 28rpx; background: #fff; border-bottom: 1rpx solid #e8edf4; }
-.back { font-size: 48rpx; color: #2563eb; }
+.bar { height: 88rpx; display: flex; align-items: center; gap: 20rpx; padding: 0 28rpx; background: #fff; border-bottom: 1rpx solid #e8dcc2; }
+.back { font-size: 48rpx; color: #a62b2b; }
 .title { font-size: 30rpx; font-weight: 700; }
 .card { background: #fff; border-radius: 16rpx; padding: 24rpx; margin: 20rpx 24rpx; }
 .b { font-size: 28rpx; font-weight: 600; }
 .intro .muted { display: block; margin-top: 10rpx; line-height: 1.5; }
-.muted { color: #94a3b8; }
+.muted { color: #b09a72; }
 .small { font-size: 24rpx; }
 .btn { font-size: 26rpx; padding: 14rpx 0; border-radius: 10rpx; background: #f1f5f9; color: #334155; text-align: center; }
-.btn.primary { background: #2563eb; color: #fff; }
+.btn.primary { background: #a62b2b; color: #fff; }
 .btn.block { width: 100%; }
 .manual { display: flex; gap: 12rpx; margin-top: 20rpx; }
 .input { flex: 1; height: 76rpx; line-height: 76rpx; border: 1rpx solid #e2e8f0; border-radius: 10rpx; padding: 0 16rpx; font-size: 26rpx; background: #fff; box-sizing: border-box; }
 .lhead { display: flex; justify-content: space-between; margin-bottom: 12rpx; }
-.clear { color: #2563eb; font-size: 24rpx; }
+.clear { color: #a62b2b; font-size: 24rpx; }
 .chip { display: flex; justify-content: space-between; padding: 14rpx 18rpx; background: #f4f6fb; border-radius: 10rpx; margin-bottom: 10rpx; font-size: 26rpx; }
 .mono { font-family: monospace; }
 .field { margin-top: 18rpx; }
-.lbl { display: block; font-size: 24rpx; margin-bottom: 8rpx; color: #64748b; }
+.lbl { display: block; font-size: 24rpx; margin-bottom: 8rpx; color: #8a7355; }
 .field .input { width: 100%; box-sizing: border-box; }
 </style>

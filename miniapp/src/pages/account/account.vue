@@ -121,9 +121,9 @@ function uploadAvatar(filePath) {
 .section { font-size: 30rpx; font-weight: 700; margin-bottom: 16rpx; }
 .avatar-row { display: flex; align-items: center; gap: 20rpx; }
 .avatar { width: 110rpx; height: 110rpx; border-radius: 22rpx; flex-shrink: 0; }
-.ph { background: #2563eb; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 44rpx; font-weight: 800; }
+.ph { background: #a62b2b; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 44rpx; font-weight: 800; }
 .row { display: flex; justify-content: space-between; align-items: center; padding: 16rpx 0; border-bottom: 2rpx solid #f1f5f9; font-size: 26rpx; }
 .row:last-child { border-bottom: 0; }
-.label { color: #64748b; }
-.nickname-input { flex: 1; text-align: right; font-size: 26rpx; color: #0f172a; }
+.label { color: #8a7355; }
+.nickname-input { flex: 1; text-align: right; font-size: 26rpx; color: #2b2118; }
 </style>

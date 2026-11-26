@@ -23,7 +23,7 @@
               <view class="picker">去底方式：{{ logoModeLabels[logoModeIdx] }}（点击切换）</view>
             </picker>
             <view v-if="logoMode !== 'none'" class="slider-label">去底强度 {{ logoTolerance }}</view>
-            <slider v-if="logoMode !== 'none'" :value="logoTolerance" min="0" max="90" activeColor="#2563eb" @change="onLogoTolerance" />
+            <slider v-if="logoMode !== 'none'" :value="logoTolerance" min="0" max="90" activeColor="#a62b2b" @change="onLogoTolerance" />
             <image class="logo-preview" :src="logoProcessed" mode="aspectFit" />
             <view class="muted small">透明底已在服务端生成，可切换到「保留原图」对比</view>
             <button class="btn tiny primary" style="margin-top:12rpx" @tap="applyLogo">应用这张 LOGO</button>
@@ -123,8 +123,8 @@
         </view>
         <view v-if="showAdvanced">
         <view class="muted small" style="margin:8rpx 0 16rpx">当前配色来自模板「{{ currentTplLabel }}」，下面可单独微调。二维码请保持深码浅底，否则可能扫不出来。</view>
-        <view class="field"><text class="label">强调色</text><input v-model="form.accent" class="input" placeholder="#2563eb" /></view>
-        <view class="field"><text class="label">二维码前景色</text><input v-model="form.qr_fg" class="input" placeholder="#0f172a" /></view>
+        <view class="field"><text class="label">强调色</text><input v-model="form.accent" class="input" placeholder="#a62b2b" /></view>
+        <view class="field"><text class="label">二维码前景色</text><input v-model="form.qr_fg" class="input" placeholder="#2b2118" /></view>
         <view class="field"><text class="label">二维码背景色</text><input v-model="form.qr_bg" class="input" placeholder="#ffffff" /></view>
         <view class="field"><text class="label">中心 Logo</text><switch :checked="form.qr_logo" @change="e => form.qr_logo = e.detail.value" /></view>
 
@@ -158,7 +158,7 @@ import { api, toast, uploadImage, uploadLogo, processLogo, geoLocate, reverseGeo
 
 // ⚠️ 与 client/src/utils/themes.js 保持同步（小程序独立渲染，无 web-view）
 const themes = {
-  ocean: { label: '经典蓝', accent: '#2563eb' },
+  ocean: { label: '经典蓝', accent: '#a62b2b' },
   ink: { label: '曜石黑金', accent: '#b99355' },
   sunset: { label: '活力橙', accent: '#ea580c' },
   mint: { label: '翡翠绿', accent: '#0f766e' },
@@ -167,10 +167,10 @@ const themes = {
 // ⚠️ 与 client/src/utils/themes.js 的 TEMPLATE_PALETTES 保持同步
 const TEMPLATE_PALETTES = {
   classic: { theme: 'ocean', qrFg: '#12306b', qrBg: '#f2f7ff' },
-  minimal: { theme: 'ocean', qrFg: '#0f172a', qrBg: '#ffffff' },
+  minimal: { theme: 'ocean', qrFg: '#2b2118', qrBg: '#ffffff' },
   elite: { theme: 'ink', qrFg: '#b99355', qrBg: '#15171c' },
   vivid: { theme: 'royal', qrFg: '#7c3aed', qrBg: '#fff7ed' },
-  seal: { theme: 'ocean', qrFg: '#0f172a', qrBg: '#ffffff' },
+  seal: { theme: 'ocean', qrFg: '#2b2118', qrBg: '#ffffff' },
   contact: { theme: 'ink', qrFg: '#12202e', qrBg: '#ffffff' },
   navygold: { theme: 'ink', qrFg: '#1d3a55', qrBg: '#f7f1e3' },
   paper: { theme: 'ocean', qrFg: '#3f4a5a', qrBg: '#f7f6f3' },
@@ -185,7 +185,7 @@ const TEMPLATE_PALETTES = {
   horizontal: { theme: 'ocean', qrFg: '#1d3a55', qrBg: '#eef1f4' },
   sidebar: { theme: 'sunset', qrFg: '#44291a', qrBg: '#f7f3ec' }
 }
-const paletteOf = key => TEMPLATE_PALETTES[key] || { theme: 'ocean', qrFg: '#0f172a', qrBg: '#ffffff' }
+const paletteOf = key => TEMPLATE_PALETTES[key] || { theme: 'ocean', qrFg: '#2b2118', qrBg: '#ffffff' }
 const DEFAULT_PAL = paletteOf('contact')
 const QR_PRESETS = [
   { key: 'classic', label: '经典', dot: 'square', eye: 'square', gradTo: '' },
@@ -508,12 +508,12 @@ async function save() {
 </script>
 
 <style scoped>
-.notice { background: #eff6ff; color: #1e40af; font-size: 22rpx; padding: 20rpx 24rpx; line-height: 1.6; }
-.qr-beauty { margin-top: 16rpx; padding-top: 16rpx; border-top: 2rpx dashed #e8edf4; }
+.notice { background: #f7ecd9; color: #8c2318; font-size: 22rpx; padding: 20rpx 24rpx; line-height: 1.6; }
+.qr-beauty { margin-top: 16rpx; padding-top: 16rpx; border-top: 2rpx dashed #e8dcc2; }
 .preset-row { display: flex; gap: 12rpx; flex-wrap: wrap; margin-bottom: 12rpx; }
-.preset { font-size: 22rpx; padding: 10rpx 22rpx; border-radius: 999rpx; border: 2rpx solid #e8edf4; background: #f5f7fb; color: #6b7688; }
-.preset.on { border-color: #2563eb; color: #2563eb; background: #eff6ff; font-weight: 700; }
-.picker { border: 2rpx solid #e8edf4; border-radius: 12rpx; padding: 16rpx 18rpx; font-size: 26rpx; color: #162033; }
+.preset { font-size: 22rpx; padding: 10rpx 22rpx; border-radius: 999rpx; border: 2rpx solid #e8dcc2; background: #f7f2e7; color: #8a7355; }
+.preset.on { border-color: #a62b2b; color: #a62b2b; background: #f7ecd9; font-weight: 700; }
+.picker { border: 2rpx solid #e8dcc2; border-radius: 12rpx; padding: 16rpx 18rpx; font-size: 26rpx; color: #2b2118; }
 .body { padding: 24rpx; }
 .card { background: #fff; border-radius: 24rpx; padding: 26rpx; margin-bottom: 18rpx; box-shadow: 0 8rpx 28rpx rgba(15,23,42,.05); }
 .section { font-size: 30rpx; font-weight: 700; margin-bottom: 16rpx; }
@@ -521,33 +521,33 @@ async function save() {
 .avatar-row { display: flex; align-items: center; gap: 20rpx; margin-bottom: 20rpx; }
 .logo-current { display: flex; align-items: center; gap: 14rpx; margin-bottom: 14rpx; }
 .logo-current image { width: 80rpx; height: 80rpx; background: #f1f5f9; border-radius: 12rpx; padding: 6rpx; box-sizing: border-box; }
-.picker { border: 2rpx solid #e8edf4; border-radius: 12rpx; padding: 16rpx; font-size: 26rpx; margin-top: 14rpx; }
+.picker { border: 2rpx solid #e8dcc2; border-radius: 12rpx; padding: 16rpx; font-size: 26rpx; margin-top: 14rpx; }
 .region-pickers { display: flex; gap: 10rpx; }
 .region-pickers picker { flex: 1; min-width: 0; }
 .region-auto { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; margin-top: 10rpx; }
 .locate-row { display: flex; align-items: center; gap: 16rpx; flex-wrap: wrap; }
-.slider-label { font-size: 24rpx; color: #6b7688; margin-top: 14rpx; }
+.slider-label { font-size: 24rpx; color: #8a7355; margin-top: 14rpx; }
 .logo-preview { width: 220rpx; height: 160rpx; background: #f1f5f9; border-radius: 14rpx; margin: 14rpx auto; display: block; }
 .avatar { width: 100rpx; height: 100rpx; border-radius: 22rpx; flex-shrink: 0; }
-.ph { background: #2563eb; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 42rpx; font-weight: 800; }
+.ph { background: #a62b2b; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 42rpx; font-weight: 800; }
 .field { margin-bottom: 18rpx; }
-.label { display: block; font-size: 24rpx; color: #6b7688; margin-bottom: 8rpx; font-weight: 600; }
+.label { display: block; font-size: 24rpx; color: #8a7355; margin-bottom: 8rpx; font-weight: 600; }
 /* input 显式定高+line-height 防文字半截；textarea 用 padding+固定高即可 */
-.input { width: 100%; height: 84rpx; line-height: 84rpx; box-sizing: border-box; border: 2rpx solid #e8edf4; border-radius: 12rpx; padding: 0 18rpx; font-size: 26rpx; }
-.textarea { width: 100%; box-sizing: border-box; border: 2rpx solid #e8edf4; border-radius: 12rpx; padding: 16rpx 18rpx; font-size: 26rpx; }
+.input { width: 100%; height: 84rpx; line-height: 84rpx; box-sizing: border-box; border: 2rpx solid #e8dcc2; border-radius: 12rpx; padding: 0 18rpx; font-size: 26rpx; }
+.textarea { width: 100%; box-sizing: border-box; border: 2rpx solid #e8dcc2; border-radius: 12rpx; padding: 16rpx 18rpx; font-size: 26rpx; }
 .textarea { height: 160rpx; }
 .link-row { display: flex; gap: 10rpx; align-items: center; margin-bottom: 10rpx; }
 .link-row .input { flex: 1; min-width: 0; }
 .del { color: #dc2626; font-size: 24rpx; padding: 0 8rpx; }
 .tpl-list { display: flex; flex-direction: column; gap: 14rpx; }
-.tpl-item { position: relative; border: 2rpx solid #e8edf4; border-radius: 16rpx; padding: 14rpx; display: flex; flex-direction: column; gap: 6rpx; }
-.tpl-item.on { border-color: #2563eb; box-shadow: 0 0 0 4rpx rgba(37,99,235,.12); }
+.tpl-item { position: relative; border: 2rpx solid #e8dcc2; border-radius: 16rpx; padding: 14rpx; display: flex; flex-direction: column; gap: 6rpx; }
+.tpl-item.on { border-color: #a62b2b; box-shadow: 0 0 0 4rpx rgba(37,99,235,.12); }
 /* 微缩版式缩略图：每套不同骨架，一眼区分（与 H5 同口径） */
 .tpl-thumb { height: 90rpx; border-radius: 12rpx; position: relative; overflow: hidden; }
 .tpl-thumb::before, .tpl-thumb::after { content: ''; position: absolute; }
 .tpl-ava { position: absolute; width: 40rpx; height: 40rpx; left: 20rpx; bottom: 14rpx; z-index: 2; }
 .tpl-thumb::after { left: 76rpx; bottom: 20rpx; width: 40%; height: 5rpx; border-radius: 3rpx; background: rgba(120,130,145,.35); box-shadow: 0 12rpx 0 rgba(120,130,145,.2); }
-.thumb-classic { background: linear-gradient(150deg,#1e3a8a,#3b82f6); }
+.thumb-classic { background: linear-gradient(150deg,#7a1e15,#b03a2e); }
 .thumb-classic::before { inset: 0; background: linear-gradient(180deg,transparent 55%,rgba(255,255,255,.95) 55%); }
 .thumb-classic .tpl-ava { border-radius: 10rpx; background: #fff; box-shadow: 0 2rpx 8rpx rgba(0,0,0,.25); }
 .thumb-minimal { background: #f7f8fa; }
@@ -607,18 +607,18 @@ async function save() {
 .thumb-sidebar .tpl-ava { border-radius: 0; width: 30rpx; height: 44rpx; left: 6rpx; background: rgba(216,187,133,.55); }
 .thumb-sidebar::after { left: auto; right: 14rpx; background: rgba(92,61,36,.4); }
 .tpl-name { font-size: 28rpx; font-weight: 700; }
-.tpl-desc { font-size: 22rpx; color: #6b7688; }
-.tpl-check { font-size: 22rpx; color: #2563eb; font-weight: 700; }
-.adv-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; padding: 8rpx 0; font-size: 26rpx; color: #6b7688; }
+.tpl-desc { font-size: 22rpx; color: #8a7355; }
+.tpl-check { font-size: 22rpx; color: #a62b2b; font-weight: 700; }
+.adv-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; padding: 8rpx 0; font-size: 26rpx; color: #8a7355; }
 .themes { display: flex; flex-wrap: wrap; gap: 12rpx; margin-bottom: 20rpx; }
 .theme { padding: 10rpx 18rpx; border-radius: 12rpx; color: #fff; font-size: 24rpx; opacity: .65; }
 .theme.on { opacity: 1; box-shadow: 0 0 0 4rpx rgba(0,0,0,.1); }
-.btn { font-size: 26rpx; padding: 16rpx 0; border-radius: 12rpx; background: #eef2f7; }
+.btn { font-size: 26rpx; padding: 16rpx 0; border-radius: 12rpx; background: #f0e7d2; }
 .btn::after { border: 0; }
-.btn.primary { background: #2563eb; color: #fff; }
+.btn.primary { background: #a62b2b; color: #fff; }
 .btn.tiny { padding: 12rpx 24rpx; font-size: 24rpx; }
 .btn.big { padding: 22rpx 0; font-size: 30rpx; }
 .btn.block { width: 100%; }
-.muted { color: #6b7688; }
+.muted { color: #8a7355; }
 .small { font-size: 22rpx; }
 </style>

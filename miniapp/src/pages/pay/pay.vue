@@ -115,13 +115,13 @@ function goMe() { uni.reLaunch({ url: '/pages/me/me' }) }
 .center { text-align: center; }
 .ok { width: 110rpx; height: 110rpx; border-radius: 50%; background: #d1fae5; color: #059669; display: flex; align-items: center; justify-content: center; font-size: 56rpx; margin: 0 auto 22rpx; }
 .title { font-size: 34rpx; font-weight: 800; margin-bottom: 12rpx; }
-.pay-qr image { width: 360rpx; height: 360rpx; margin: 24rpx auto; border: 2rpx solid #e8edf4; border-radius: 16rpx; }
-.btn { font-size: 28rpx; padding: 20rpx 0; border-radius: 14rpx; background: #eef2f7; }
+.pay-qr image { width: 360rpx; height: 360rpx; margin: 24rpx auto; border: 2rpx solid #e8dcc2; border-radius: 16rpx; }
+.btn { font-size: 28rpx; padding: 20rpx 0; border-radius: 14rpx; background: #f0e7d2; }
 .btn::after { border: 0; }
-.btn.primary { background: #2563eb; color: #fff; }
-.btn.ghost { background: #fff; color: #64748b; border: 2rpx solid #e8edf4; }
+.btn.primary { background: #a62b2b; color: #fff; }
+.btn.ghost { background: #fff; color: #8a7355; border: 2rpx solid #e8dcc2; }
 .btn.block { width: 100%; }
 .mono { font-family: monospace; word-break: break-all; }
-.muted { color: #6b7688; }
+.muted { color: #8a7355; }
 .small { font-size: 22rpx; }
 </style>

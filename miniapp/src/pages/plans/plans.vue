@@ -69,19 +69,19 @@ async function buy(p) {
 .hint { background: #fffbeb; color: #92400e; font-size: 24rpx; padding: 20rpx 24rpx; line-height: 1.6; }
 .body { padding: 24rpx; }
 .plan { background: #fff; border-radius: 24rpx; padding: 28rpx; margin-bottom: 18rpx; position: relative; box-shadow: 0 8rpx 28rpx rgba(15,23,42,.05); }
-.plan:nth-child(3) { border: 2rpx solid #2563eb; }
-.hot { position: absolute; right: 24rpx; top: 24rpx; background: #2563eb; color: #fff; font-size: 20rpx; padding: 4rpx 14rpx; border-radius: 999rpx; }
+.plan:nth-child(3) { border: 2rpx solid #a62b2b; }
+.hot { position: absolute; right: 24rpx; top: 24rpx; background: #a62b2b; color: #fff; font-size: 20rpx; padding: 4rpx 14rpx; border-radius: 999rpx; }
 .name { font-size: 32rpx; font-weight: 800; }
 .price { font-size: 52rpx; font-weight: 800; margin: 16rpx 0 10rpx; letter-spacing: -2rpx; }
 .sym { font-size: 28rpx; }
-.unit { font-size: 24rpx; color: #6b7688; font-weight: 400; letter-spacing: 0; }
+.unit { font-size: 24rpx; color: #8a7355; font-weight: 400; letter-spacing: 0; }
 .feat { display: flex; flex-wrap: wrap; gap: 10rpx; margin-bottom: 22rpx; }
-.feat text { font-size: 22rpx; color: #64748b; background: #f1f5f9; padding: 6rpx 12rpx; border-radius: 8rpx; }
+.feat text { font-size: 22rpx; color: #8a7355; background: #f1f5f9; padding: 6rpx 12rpx; border-radius: 8rpx; }
 .btn { font-size: 28rpx; padding: 18rpx 0; border-radius: 14rpx; }
 .btn::after { border: 0; }
-.btn.primary { background: #2563eb; color: #fff; }
+.btn.primary { background: #a62b2b; color: #fff; }
 .btn.block { width: 100%; }
-.muted { color: #6b7688; }
+.muted { color: #8a7355; }
 .small { font-size: 22rpx; }
 .center { text-align: center; }
 </style>

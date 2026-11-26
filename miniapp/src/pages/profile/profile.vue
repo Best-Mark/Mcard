@@ -55,7 +55,7 @@
       <view class="cell" @tap="go('/pages/account/account')"><text class="ci">👤</text><text class="ct">账号资料</text><text class="ce">头像 · 昵称</text><text class="ca">›</text></view>
     </view>
 
-    <view class="version">MCard 电子名片</view>
+    <view class="version">唐笺 电子名片</view>
     </block>
 
     <TabBar active="profile" />
@@ -116,12 +116,12 @@ onShow(load)
 </script>
 
 <style scoped>
-.page { min-height: 100vh; background: #f5f7fb; padding-bottom: 160rpx; }
-.login-gate { padding: 160rpx 48rpx; text-align: center; color: #6b7688; }
+.page { min-height: 100vh; background: #f7f2e7; padding-bottom: 160rpx; }
+.login-gate { padding: 160rpx 48rpx; text-align: center; color: #8a7355; }
 .lg-ico { font-size: 96rpx; opacity: .25; }
-.lg-title { font-size: 34rpx; font-weight: 800; color: #162033; margin: 20rpx 0 8rpx; }
+.lg-title { font-size: 34rpx; font-weight: 800; color: #2b2118; margin: 20rpx 0 8rpx; }
 .lg-sub { font-size: 24rpx; line-height: 1.6; }
-.hero { background: linear-gradient(135deg,#17357c,#2563eb 60%,#3b82f6); color: #fff; padding: 40rpx 28rpx 90rpx; border-radius: 0 0 40rpx 40rpx; }
+.hero { background: linear-gradient(135deg,#7a1e15,#a62b2b 60%,#b03a2e); color: #fff; padding: 40rpx 28rpx 90rpx; border-radius: 0 0 40rpx 40rpx; }
 .user { display: flex; align-items: center; gap: 20rpx; }
 .avatar { width: 96rpx; height: 96rpx; border-radius: 50%; background: rgba(255,255,255,.2); flex-shrink: 0; }
 .avatar.ph { display: flex; align-items: center; justify-content: center; font-size: 42rpx; font-weight: 800; }
@@ -134,19 +134,19 @@ onShow(load)
 .plan-label { font-size: 22rpx; opacity: .85; }
 .plan-date { font-size: 32rpx; font-weight: 800; }
 .plan-sub { font-size: 21rpx; opacity: .8; }
-.plan-btn { flex-shrink: 0; font-size: 23rpx; font-weight: 700; color: #2563eb; background: #fff; border-radius: 999rpx; padding: 10rpx 24rpx; }
+.plan-btn { flex-shrink: 0; font-size: 23rpx; font-weight: 700; color: #a62b2b; background: #fff; border-radius: 999rpx; padding: 10rpx 24rpx; }
 .quick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12rpx; padding: 0 24rpx; margin-top: -56rpx; }
 .q { background: #fff; border-radius: 20rpx; padding: 22rpx 4rpx; text-align: center; font-size: 22rpx; box-shadow: 0 8rpx 24rpx rgba(15,23,42,.06); }
-.qi { width: 56rpx; height: 56rpx; border-radius: 16rpx; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 28rpx; margin: 0 auto 10rpx; }
-.group { background: #fff; margin: 20rpx 0 0; border-radius: 0; border-top: 2rpx solid #e8edf4; border-bottom: 2rpx solid #e8edf4; }
-.g-title { font-size: 23rpx; color: #94a3b8; letter-spacing: 2rpx; padding: 22rpx 28rpx 10rpx; }
+.qi { width: 56rpx; height: 56rpx; border-radius: 16rpx; background: #f7ecd9; color: #a62b2b; display: flex; align-items: center; justify-content: center; font-size: 28rpx; margin: 0 auto 10rpx; }
+.group { background: #fff; margin: 20rpx 0 0; border-radius: 0; border-top: 2rpx solid #e8dcc2; border-bottom: 2rpx solid #e8dcc2; }
+.g-title { font-size: 23rpx; color: #b09a72; letter-spacing: 2rpx; padding: 22rpx 28rpx 10rpx; }
 .cell { display: flex; align-items: center; gap: 18rpx; min-height: 96rpx; padding: 0 28rpx; border-top: 2rpx solid #f1f5f9; }
 .cell:first-of-type { border-top: 0; }
-.ci { width: 44rpx; text-align: center; font-size: 32rpx; color: #2563eb; }
+.ci { width: 44rpx; text-align: center; font-size: 32rpx; color: #a62b2b; }
 .ct { font-size: 28rpx; }
-.ce { margin-left: auto; font-size: 22rpx; color: #94a3b8; }
-.ca { font-size: 34rpx; color: #cbd5e1; }
-.cell.muted { color: #94a3b8; font-size: 25rpx; }
+.ce { margin-left: auto; font-size: 22rpx; color: #b09a72; }
+.ca { font-size: 34rpx; color: #d8c9a8; }
+.cell.muted { color: #b09a72; font-size: 25rpx; }
 .badge { margin-left: auto; min-width: 34rpx; height: 34rpx; line-height: 34rpx; padding: 0 8rpx; border-radius: 17rpx; background: #ef4444; color: #fff; font-size: 20rpx; text-align: center; }
-.version { text-align: center; font-size: 22rpx; color: #cbd5e1; padding: 40rpx 0 20rpx; }
+.version { text-align: center; font-size: 22rpx; color: #d8c9a8; padding: 40rpx 0 20rpx; }
 </style>

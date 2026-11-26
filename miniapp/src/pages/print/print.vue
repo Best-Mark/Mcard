@@ -6,7 +6,7 @@
       <block v-else>
         <view class="card">
           <view class="section">海报预览</view>
-          <view class="poster-preview" :style="{ background: card.accent || '#2563eb' }">
+          <view class="poster-preview" :style="{ background: card.accent || '#a62b2b' }">
             <view class="pp-head">
               <image v-if="card.logo" class="pp-logo" :src="card.logo" mode="aspectFit" />
               <view class="pp-name">{{ card.name }}</view>
@@ -83,7 +83,7 @@ async function savePoster() {
   const W = 375, H = 560
   ctx.setFillStyle('#ffffff')
   ctx.fillRect(0, 0, W, H)
-  ctx.setFillStyle(c.accent || '#2563eb')
+  ctx.setFillStyle(c.accent || '#a62b2b')
   ctx.fillRect(0, 0, W, 150)
   if (logoPath) ctx.drawImage(logoPath, 295, 22, 56, 56)
   ctx.setFillStyle('#ffffff')
@@ -92,10 +92,10 @@ async function savePoster() {
   ctx.setFontSize(13)
   ctx.fillText([c.title, c.company].filter(Boolean).join(' · ').slice(0, 22), 24, 105)
   ctx.drawImage(qrPath, 24, 175, 175, 175)
-  ctx.setFillStyle('#162033')
+  ctx.setFillStyle('#2b2118')
   ctx.setFontSize(15)
   wrapText(ctx, c.bio || c.company_intro || '', 320, 4).forEach((line, i) => ctx.fillText(line, 24, 390 + i * 22))
-  ctx.setFillStyle('#64748b')
+  ctx.setFillStyle('#8a7355')
   ctx.setFontSize(12)
   ctx.fillText(String(c.mobile || '').slice(0, 34), 24, 495)
   ctx.fillText('扫码存入通讯录 · 二维码永久不变', 24, 525)
@@ -112,7 +112,7 @@ async function savePoster() {
 </script>
 
 <style scoped>
-.hint { background: #eff6ff; color: #1e40af; font-size: 22rpx; padding: 20rpx 24rpx; line-height: 1.6; }
+.hint { background: #f7ecd9; color: #8c2318; font-size: 22rpx; padding: 20rpx 24rpx; line-height: 1.6; }
 .body { padding: 24rpx; }
 .card { background: #fff; border-radius: 24rpx; padding: 26rpx; margin-bottom: 18rpx; box-shadow: 0 8rpx 28rpx rgba(15,23,42,.05); }
 .section { font-size: 30rpx; font-weight: 700; margin-bottom: 16rpx; }
@@ -121,18 +121,18 @@ async function savePoster() {
 .pp-logo { width: 80rpx; height: 80rpx; background: rgba(255,255,255,.9); border-radius: 14rpx; padding: 6rpx; box-sizing: border-box; margin-bottom: 14rpx; }
 .pp-name { font-size: 38rpx; font-weight: 800; }
 .pp-title { font-size: 22rpx; opacity: .85; margin-top: 6rpx; }
-.pp-body { background: #fff; color: #162033; padding: 24rpx; }
+.pp-body { background: #fff; color: #2b2118; padding: 24rpx; }
 .pp-qr { width: 220rpx; height: 220rpx; display: block; margin: 0 auto; }
-.pp-intro { font-size: 24rpx; color: #475569; line-height: 1.6; margin-top: 18rpx; }
-.pp-contact { font-size: 22rpx; color: #64748b; margin-top: 10rpx; }
-.pp-tip { font-size: 20rpx; color: #94a3b8; margin-top: 18rpx; text-align: center; }
-.btn { font-size: 28rpx; padding: 20rpx 0; border-radius: 14rpx; background: #eef2f7; }
+.pp-intro { font-size: 24rpx; color: #5c4a35; line-height: 1.6; margin-top: 18rpx; }
+.pp-contact { font-size: 22rpx; color: #8a7355; margin-top: 10rpx; }
+.pp-tip { font-size: 20rpx; color: #b09a72; margin-top: 18rpx; text-align: center; }
+.btn { font-size: 28rpx; padding: 20rpx 0; border-radius: 14rpx; background: #f0e7d2; }
 .btn::after { border: 0; }
-.btn.primary { background: #2563eb; color: #fff; }
-.btn.ghost { background: #fff; color: #475569; border: 2rpx solid #e8edf4; }
+.btn.primary { background: #a62b2b; color: #fff; }
+.btn.ghost { background: #fff; color: #5c4a35; border: 2rpx solid #e8dcc2; }
 .btn.block { width: 100%; }
 .center { text-align: center; padding: 40rpx; }
 .hidden-canvas { position: fixed; left: -9999px; top: -9999px; width: 375px; height: 560px; }
-.muted { color: #6b7688; }
+.muted { color: #8a7355; }
 .small { font-size: 22rpx; }
 </style>

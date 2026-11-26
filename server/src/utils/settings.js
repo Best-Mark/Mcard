@@ -7,7 +7,88 @@ const config = require('../config')
 // 公开键：匿名接口 /api/public/config 仅下发这些
 // share_* 是分享素材池（标题/描述/图片，每行一条），匿名可读——对齐 MShop 的 share_config 白名单口径
 const SHARE_KEYS = ['share_title', 'share_desc', 'share_image']
-const PUBLIC_KEYS = ['site_name', 'site_logo', 'site_desc', 'contact', 'notice', 'qr_brand', 'miniapp_launch_image', ...SHARE_KEYS]
+const PUBLIC_KEYS = ['site_name', 'site_logo', 'site_desc', 'contact', 'notice', 'qr_brand', 'miniapp_launch_image', 'user_agreement', 'privacy_policy', ...SHARE_KEYS]
+// 用户协议 / 隐私政策：微信小程序审核硬性要求——登录前用户可查看并主动勾选同意，内容由后台维护。
+// 空值回落内置默认（LEGAL_DEFAULTS），保证任何时刻都有完整可读的协议正文。
+const LEGAL_KEYS = ['user_agreement', 'privacy_policy']
+// 协议/隐私默认正文：按行分段渲染。后台改写后以 DB 为准；此为兜底与首次可读内容。
+const LEGAL_DEFAULTS = {
+  user_agreement: [
+    '《唐笺·用户协议》',
+    '',
+    '欢迎您使用「唐笺」电子名片服务。请您在注册或使用本小程序前，仔细阅读并充分理解本协议。当您勾选同意并开始使用，即表示您已接受本协议的全部条款。',
+    '',
+    '一、服务内容',
+    '唐笺为您提供电子名片的创建、展示、分享、交换与管理服务，包括但不限于名片资料编辑、二维码生成、名片夹收藏、通讯录保存、实体名片版式导出等功能。具体服务内容以小程序实际提供的功能为准，我们可能根据运营需要对服务内容进行调整。',
+    '',
+    '二、账号与资料',
+    '您应保证注册资料与名片资料的真实性、准确性与合法性，不得冒用他人身份、不得发布违法违规或侵犯第三方权益的内容。您的账号仅限本人使用，请妥善保管登录凭证，因您保管不善造成的损失由您自行承担。名片展示的姓名、职位、公司、联系方式等信息由您自主填写并对外展示，请自行斟酌公开范围。',
+    '',
+    '三、用户行为规范',
+    '您在使用本服务时应遵守法律法规与公序良俗，不得利用本服务从事任何违法违规活动，包括但不限于发布虚假信息、骚扰他人、发送垃圾内容、侵犯他人隐私或知识产权、干扰服务正常运行等。若发现违规行为，我们有权视情节采取提示、限制功能、暂停或终止服务等措施。',
+    '',
+    '四、知识产权',
+    '本小程序的软件、界面、商标、标识等知识产权归平台所有，未经许可不得擅自使用。您上传的资料（文字、图片、联系方式等）的知识产权归您或合法权利人所有；为实现名片展示、分享等服务目的，您授予我们在必要范围内展示、处理上述内容的许可。',
+    '',
+    '五、免责声明',
+    '您理解并同意，因网络、设备、第三方服务等不可控因素可能导致服务中断或数据丢失，我们将尽合理努力保障服务稳定，但不对因此产生的直接或间接损失承担责任。您通过名片链接或二维码访问的第三方内容，其真实性与合法性由第三方负责。',
+    '',
+    '六、协议变更',
+    '我们可能根据法律法规或业务发展需要修订本协议，修订后的协议将在小程序内公示。若您不同意修订内容，可停止使用并注销账号；继续使用即视为接受修订后的协议。',
+    '',
+    '七、联系我们',
+    '如对本协议有任何疑问，可通过小程序内「联系客服」与我们取得联系。',
+    ''
+  ].join('\n'),
+  privacy_policy: [
+    '《唐笺·隐私政策》',
+    '',
+    '「唐笺」（以下简称"我们"）深知个人信息对您的重要性。我们将依据《中华人民共和国个人信息保护法》《网络安全法》《数据安全法》等法律法规，遵循合法、正当、必要与诚信原则处理您的个人信息。请您在使用本小程序前仔细阅读并理解本政策。',
+    '',
+    '一、我们收集的信息',
+    '为向您提供服务，我们可能收集以下信息：',
+    '1. 账号信息：手机号、微信授权信息（如昵称、头像）等，用于注册、登录与身份识别；',
+    '2. 名片资料：您主动填写的姓名、职位、公司、联系方式（手机、座机、邮箱、微信、地址等）、头像、公司标识、简介、链接等，用于生成与展示您的电子名片；',
+    '3. 设备与日志信息：设备型号、操作系统、网络状态、访问日志、IP 地址等，用于保障服务安全与优化体验；',
+    '4. 位置信息：在您主动授权后，获取大致或精准地理位置，用于按距离展示名片集市等基于位置的功能。您可拒绝授权，相关功能将不可用但不影响其它功能；',
+    '5. 您保存的他人名片信息：您通过扫码、搜索等方式收藏的名片资料，仅存储于您的账号名下用于名片夹管理。',
+    '',
+    '二、我们如何使用您的信息',
+    '1. 用于账号注册、登录、身份验证与账号安全；',
+    '2. 用于创建、展示、分享您的电子名片，生成二维码与名片链接；',
+    '3. 用于名片夹、收藏、交换、通讯录保存等名片管理功能；',
+    '4. 用于按您设置的展示范围，在名片集市中展示您的名片信息；',
+    '5. 用于发送服务通知、订单消息及必要的消息提醒；',
+    '6. 用于服务优化、故障排查、安全保障与防范违法违规行为；',
+    '7. 用于履行法律法规规定的义务。',
+    '',
+    '三、我们如何共享、转让、公开披露您的信息',
+    '1. 除获取您的明示同意外，我们不会向第三方共享您的个人信息，但以下情形除外：与授权合作伙伴为实现特定服务目的所必需（如短信服务商发送验证码）、根据法律法规或司法行政机关的强制性要求、为维护公共利益或您本人的生命财产安全等；',
+    '2. 您在名片中主动填写并选择展示的信息（如姓名、职位、联系方式），会按您的设置向名片访问者展示，请谨慎填写与设置；',
+    '3. 未经您的同意，我们不会转让、公开披露您的个人信息，法律法规另有规定的除外。',
+    '',
+    '四、我们如何存储与保护您的信息',
+    '1. 您的个人信息存储于中华人民共和国境内的服务器，法律法规另有规定的除外；',
+    '2. 我们采取加密存储、访问控制、安全审计等技术和管理措施保护您的信息安全；',
+    '3. 我们将在实现服务目的所必需的期限内保存您的个人信息，法律法规另有规定的从其规定。',
+    '',
+    '五、您的权利',
+    '1. 您有权查阅、复制、更正、补充您的个人信息；',
+    '2. 您有权删除您的账号与个人信息，可联系客服申请注销；',
+    '3. 您有权撤回授权或关闭个性化展示设置，撤回后相关功能将不可用但不影响此前授权的效力；',
+    '4. 您有权获取个人信息副本。',
+    '',
+    '六、未成年人保护',
+    '我们重视对未成年人个人信息的保护。若您为不满 14 周岁的未成年人，请您的监护人阅读本政策并代为作出同意；如发现未成年人个人信息被误收集，我们将依法删除。',
+    '',
+    '七、本政策的变更',
+    '我们可能适时修订本政策，修订内容将在小程序内公示。重大变更将以显著方式提示您，继续使用即视为接受修订后的政策。',
+    '',
+    '八、联系我们',
+    '如您对本政策有任何疑问、意见或建议，或需行使个人信息相关权利，可通过小程序内「联系客服」与我们取得联系。我们将在收到您的请求后 15 个工作日内予以答复。',
+    ''
+  ].join('\n')
+}
 // 公开派生键：由后端算好后下发，前端据此决定是否显示微信快捷登录入口（不下发任何 key/secret）
 const PUBLIC_DERIVED_KEYS = ['wechat_login_enabled']
 
@@ -24,6 +105,15 @@ const GROUPS = {
       { key: 'qr_brand', label: '二维码水印', type: 'text' },
       // 小程序启动图：配置后小程序启动页直接展示这张图（点击进入），不再显示内置推广页；留空走内置推广页。
       { key: 'miniapp_launch_image', label: '小程序启动图（图片地址，绝对路径 /uploads/... 或完整 URL；留空用内置推广页）', type: 'text' }
+    ]
+  },
+  legal: {
+    label: '协议与隐私',
+    fields: [
+      // 微信小程序审核硬要求：登录前须能查看并主动勾选同意《用户协议》《隐私政策》。
+      // 正文由后台编辑；留空时用内置默认（LEGAL_DEFAULTS），保证任何时刻都有完整可读正文。
+      { key: 'user_agreement', label: '用户协议正文（留空用内置默认模板）', type: 'textarea' },
+      { key: 'privacy_policy', label: '隐私政策正文（留空用内置默认模板）', type: 'textarea' }
     ]
   },
   payment: {
@@ -373,6 +463,8 @@ function notifyView() {
 function publicView() {
   const out = {}
   for (const k of PUBLIC_KEYS) out[k] = get(k, '')
+  // 协议/隐私：后台未填写时回落内置默认，保证登录前可查看完整正文（微信审核要求）
+  for (const k of LEGAL_KEYS) out[k] = String(out[k] || '').trim() || LEGAL_DEFAULTS[k]
   for (const k of PUBLIC_DERIVED_KEYS) {
     if (k === 'wechat_login_enabled') out[k] = wechatLoginEnabled()
   }
@@ -390,6 +482,8 @@ function adminView() {
   }))
   const out = {}
   for (const k of ALL_KEYS) out[k] = map[k] ?? ''
+  // 协议/隐私所见即所得：空值显示内置默认正文，后台直接改后保存即以 DB 为准
+  for (const k of LEGAL_KEYS) out[k] = String(out[k] || '').trim() || LEGAL_DEFAULTS[k]
   for (const k of SENSITIVE_KEYS) {
     const val = String(map[k] || '')
     out[k] = val ? MASK : ''
@@ -476,4 +570,4 @@ function seedDefaults() {
   tx()
 }
 
-module.exports = { PUBLIC_KEYS, PUBLIC_DERIVED_KEYS, SHARE_KEYS, SHARE_POOL_DEFAULTS, NOTIFY_KEYS, NOTIFY_TEMPLATE_DEFAULTS, GROUPS, SENSITIVE_KEYS, ALL_KEYS, MASK, fingerprint, get, normalizePool, shareView, notifyView, payConfig, payModeOf, payChannels, smsConfig, wechatOauthConfig, verifyFiles, wechatLoginEnabled, mapConfig, promoConfig, ossConfig, publicView, adminView, seedDefaults }
+module.exports = { PUBLIC_KEYS, PUBLIC_DERIVED_KEYS, SHARE_KEYS, SHARE_POOL_DEFAULTS, NOTIFY_KEYS, NOTIFY_TEMPLATE_DEFAULTS, GROUPS, SENSITIVE_KEYS, ALL_KEYS, LEGAL_KEYS, LEGAL_DEFAULTS, MASK, fingerprint, get, normalizePool, shareView, notifyView, payConfig, payModeOf, payChannels, smsConfig, wechatOauthConfig, verifyFiles, wechatLoginEnabled, mapConfig, promoConfig, ossConfig, publicView, adminView, seedDefaults }

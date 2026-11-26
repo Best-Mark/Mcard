@@ -49,14 +49,14 @@ function go(t) {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 90;
   display: grid; grid-template-columns: repeat(5, 1fr);
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  background: #fff; border-top: 2rpx solid #e8edf4;
+  background: #fff; border-top: 2rpx solid #e8dcc2;
   box-shadow: 0 -6rpx 24rpx rgba(15,23,42,.06);
 }
 .m-tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rpx; padding: 12rpx 0 10rpx; }
 .m-ico-wrap { position: relative; width: 44rpx; height: 44rpx; display: flex; align-items: center; justify-content: center; }
 .m-ico { width: 42rpx; height: 42rpx; }
-.m-label { font-size: 20rpx; color: #94a3b8; line-height: 1.2; }
-.m-tab.on .m-label { color: #2563eb; font-weight: 700; }
+.m-label { font-size: 20rpx; color: #b09a72; line-height: 1.2; }
+.m-tab.on .m-label { color: #a62b2b; font-weight: 700; }
 .m-badge {
   position: absolute; top: -8rpx; right: -20rpx; min-width: 30rpx; height: 30rpx; padding: 0 6rpx;
   border-radius: 15rpx; background: #ef4444; color: #fff; font-size: 18rpx; line-height: 30rpx; text-align: center;
@@ -64,7 +64,7 @@ function go(t) {
 /* 集市为重点入口：中间凸起蓝圆钮，不随页面主题变化 */
 .m-tab.feature .m-ico-wrap {
   width: 84rpx; height: 84rpx; margin-top: -34rpx; border-radius: 50%;
-  background: linear-gradient(135deg, #2563eb, #4338ca);
+  background: linear-gradient(135deg, #a62b2b, #8c2318);
   box-shadow: 0 8rpx 24rpx rgba(37,99,235,.42); border: 6rpx solid #fff; box-sizing: border-box;
 }
 .m-tab.feature .m-ico { width: 44rpx; height: 44rpx; }

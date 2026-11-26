@@ -1,5 +1,5 @@
 <template>
-  <view class="page" :class="'tpl-' + tpl" :style="{ '--t-accent': card?.accent || '#2563eb', '--glow-rgb': glowRgb }">
+  <view class="page" :class="'tpl-' + tpl" :style="{ '--t-accent': card?.accent || '#a62b2b', '--glow-rgb': glowRgb }">
     <view v-if="loading" class="state">名片加载中…</view>
     <view v-else-if="error" class="state">
       <view class="big">!</view>
@@ -10,7 +10,7 @@
 
     <block v-else-if="card">
       <view class="cover" :style="{ background: coverBg }">
-        <view class="brand">M<text class="em">Card</text></view>
+        <view class="brand">唐<text class="em">笺</text></view>
         <view v-if="!card.active" class="inactive">未开通 / 已到期</view>
       </view>
 
@@ -59,7 +59,7 @@
           <view v-for="l in siteLinks" :key="l.key" class="link" @tap="copyText(l.url, l.label + '已复制')">
             <text class="b">{{ l.label }}</text>
             <text class="muted small">{{ l.url }}</text>
-            <text class="small" style="color:#2563eb">点击复制 ↗</text>
+            <text class="small" style="color:#a62b2b">点击复制 ↗</text>
           </view>
         </view>
 
@@ -106,7 +106,7 @@
           </button>
         </view>
 
-        <view class="foot">由 MCard 提供技术支持</view>
+        <view class="foot">由 唐笺 提供技术支持</view>
       </view>
 
       <!-- 底部操作 dock：owner 对齐 H5（编辑/配色/集市/分享/管理），访客是联系操作（打电话/复制/存通讯录/导航/收藏/分享）。
@@ -157,14 +157,14 @@ const glowRgb = computed(() => {
   return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`
 })
 const coverBg = computed(() => {
-  const c = card.value?.accent || '#2563eb'
+  const c = card.value?.accent || '#a62b2b'
   if (tpl.value === 'minimal') return '#ffffff'
   if (tpl.value === 'elite') return 'linear-gradient(135deg,#18181b 0%,#27272a 55%,#0c0c0f 100%)'
   if (tpl.value === 'vivid') return `linear-gradient(135deg, ${c}, #db2777 60%, #f59e0b)`
   if (tpl.value === 'seal') return '#111827'
-  if (tpl.value === 'contact') return `linear-gradient(135deg, #0b1a3a 0%, ${c} 100%)`
+  if (tpl.value === 'contact') return `linear-gradient(135deg, #2b2118 0%, ${c} 100%)`
   if (tpl.value === 'navygold') return 'linear-gradient(135deg,#1d3a55 0%,#2f5a7d 40%,#d8bb85 78%,#b99355 100%)'
-  return `linear-gradient(135deg, ${c}, #0f172a)`
+  return `linear-gradient(135deg, ${c}, #2b2118)`
 })
 // 深蓝鎏金把公司从职位行拆成独立署名行，其余模板保持原拼接口径
 const titleText = computed(() => {
@@ -353,7 +353,7 @@ onShareAppMessage(() => {
   const absolute = u => (!u ? '' : /^https?:\/\//i.test(u) ? u : u.startsWith('/') ? baseUrl + u : '')
   const imageUrl = [c?.logo, c?.avatar].map(absolute).find(u => /\.(jpe?g|png|gif)(\?|$)/i.test(u)) || getShareCardImage()
   return {
-    title: c ? `${c.name}的名片` : 'MCard 电子名片',
+    title: c ? `${c.name}的名片` : '唐笺 电子名片',
     desc: introText.value,
     path: withInvite(`/pages/card/card?slug=${slug.value}`),
     imageUrl
@@ -362,8 +362,8 @@ onShareAppMessage(() => {
 </script>
 
 <style scoped>
-.state { padding: 120rpx 40rpx; text-align: center; color: #6b7688; }
-.state .big { font-size: 80rpx; color: #cbd5e1; }
+.state { padding: 120rpx 40rpx; text-align: center; color: #8a7355; }
+.state .big { font-size: 80rpx; color: #d8c9a8; }
 .state .muted { margin-top: 10rpx; }
 .cover { height: 240rpx; border-radius: 0 0 40rpx 40rpx; padding: 30rpx; color: #fff; position: relative; overflow: hidden; }
 /* 封面动态光晕：主题色柔光呼吸，只动 opacity 不动位移（避免被感知为遮罩在动） */
@@ -381,52 +381,52 @@ onShareAppMessage(() => {
 .tpl-contact .profile, .tpl-navygold .profile, .tpl-classic .profile {
   background-image: linear-gradient(180deg, rgba(255,255,255,.55), transparent 30%), repeating-linear-gradient(112deg, rgba(var(--glow-rgb, 37,99,235),.018) 0 1rpx, transparent 1rpx 6rpx);
 }
-.avatar { width: 120rpx; height: 120rpx; border-radius: 24rpx; background: #2563eb; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 52rpx; font-weight: 800; overflow: hidden; flex-shrink: 0; }
+.avatar { width: 120rpx; height: 120rpx; border-radius: 24rpx; background: #a62b2b; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 52rpx; font-weight: 800; overflow: hidden; flex-shrink: 0; }
 .avatar image { width: 100%; height: 100%; }
 /* LOGO 优先时白底完整展示；头像仍铺满 */
 .avatar.is-logo { background: #fff; padding: 10rpx; box-sizing: border-box; }
 .ident { flex: 1; min-width: 0; }
 .name-row { display: flex; align-items: center; gap: 14rpx; }
 .name { font-size: 38rpx; font-weight: 800; }
-.title { font-size: 24rpx; color: #6b7688; margin-top: 6rpx; }
+.title { font-size: 24rpx; color: #8a7355; margin-top: 6rpx; }
 .tags { width: 100%; display: flex; gap: 10rpx; flex-wrap: wrap; }
-.tags text { font-size: 20rpx; color: #2563eb; background: #eff6ff; padding: 4rpx 14rpx; border-radius: 999rpx; }
+.tags text { font-size: 20rpx; color: #a62b2b; background: #f7ecd9; padding: 4rpx 14rpx; border-radius: 999rpx; }
 .actions { display: grid; grid-template-columns: repeat(5, 1fr); padding: 16rpx 0; }
-.act { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8rpx; font-size: 22rpx; color: #6b7688; background: transparent; padding: 0; line-height: 1.3; }
+.act { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8rpx; font-size: 22rpx; color: #8a7355; background: transparent; padding: 0; line-height: 1.3; }
 .act::after { border: 0; }
-.ico { width: 68rpx; height: 68rpx; border-radius: 50%; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 30rpx; font-weight: 700; }
+.ico { width: 68rpx; height: 68rpx; border-radius: 50%; background: #f7ecd9; color: #a62b2b; display: flex; align-items: center; justify-content: center; font-size: 30rpx; font-weight: 700; }
 .section { font-size: 30rpx; font-weight: 700; margin-bottom: 12rpx; }
 /* 相册：图片点开用系统预览，链接/文档直接复制，不跳中间页 */
 .gal { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14rpx; }
-.gal-img { width: 100%; aspect-ratio: 1; border-radius: 12rpx; background: #eef2f7; }
-.gal-file { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8rpx; aspect-ratio: 1; border-radius: 12rpx; background: #eff6ff; padding: 10rpx; box-sizing: border-box; }
+.gal-img { width: 100%; aspect-ratio: 1; border-radius: 12rpx; background: #f0e7d2; }
+.gal-file { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8rpx; aspect-ratio: 1; border-radius: 12rpx; background: #f7ecd9; padding: 10rpx; box-sizing: border-box; }
 .gal-ico { font-size: 40rpx; }
 .gal-title { font-size: 22rpx; color: #334155; text-align: center; line-height: 1.3; max-height: 58rpx; overflow: hidden; }
-.content { font-size: 26rpx; color: #475569; line-height: 1.7; }
+.content { font-size: 26rpx; color: #5c4a35; line-height: 1.7; }
 .link { display: flex; flex-direction: column; padding: 14rpx 0; border-bottom: 2rpx solid #f1f5f9; }
 .link .b { font-size: 26rpx; font-weight: 600; }
-.region-line { font-size: 26rpx; font-weight: 700; color: #2563eb; margin-bottom: 10rpx; }
+.region-line { font-size: 26rpx; font-weight: 700; color: #a62b2b; margin-bottom: 10rpx; }
 .addr { display: flex; align-items: flex-start; justify-content: space-between; gap: 16rpx; }
-.hint { font-size: 22rpx; color: #94a3b8; margin-top: 14rpx; line-height: 1.6; }
+.hint { font-size: 22rpx; color: #b09a72; margin-top: 14rpx; line-height: 1.6; }
 .qr-card { display: flex; gap: 20rpx; align-items: center; }
-.qr { width: 200rpx; height: 200rpx; background: #fff; border: 2rpx solid #e8edf4; border-radius: 16rpx; flex-shrink: 0; }
+.qr { width: 200rpx; height: 200rpx; background: #fff; border: 2rpx solid #e8dcc2; border-radius: 16rpx; flex-shrink: 0; }
 .qr-info { flex: 1; min-width: 0; }
 .btn-row { display: flex; gap: 12rpx; margin-top: 16rpx; }
-.btn { font-size: 24rpx; padding: 16rpx 0; border-radius: 12rpx; background: #eef2f7; color: #162033; }
+.btn { font-size: 24rpx; padding: 16rpx 0; border-radius: 12rpx; background: #f0e7d2; color: #2b2118; }
 .btn::after { border: 0; }
-.btn.primary { background: #2563eb; color: #fff; }
+.btn.primary { background: #a62b2b; color: #fff; }
 .btn.tiny { padding: 8rpx 18rpx; font-size: 22rpx; flex-shrink: 0; }
 .btn.block { width: 100%; }
-.input { width: 100%; height: 84rpx; line-height: 84rpx; box-sizing: border-box; border: 2rpx solid #e8edf4; border-radius: 12rpx; padding: 0 20rpx; font-size: 26rpx; }
-.foot { text-align: center; font-size: 22rpx; color: #94a3b8; padding: 30rpx 0 280rpx; }
+.input { width: 100%; height: 84rpx; line-height: 84rpx; box-sizing: border-box; border: 2rpx solid #e8dcc2; border-radius: 12rpx; padding: 0 20rpx; font-size: 26rpx; }
+.foot { text-align: center; font-size: 22rpx; color: #b09a72; padding: 30rpx 0 280rpx; }
 .dock { position: fixed; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12rpx 16rpx; padding: 16rpx 24rpx 16rpx; padding-bottom: calc(16rpx + env(safe-area-inset-bottom, 0px)); background: rgba(255,255,255,.96); box-shadow: 0 -4rpx 20rpx rgba(15,23,42,.06); z-index: 50; }
-.dock-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4rpx; min-height: 96rpx; padding: 8rpx 0; border-radius: 14rpx; background: #eef2f7; color: #162033; font-size: 22rpx; line-height: 1.2; }
+.dock-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4rpx; min-height: 96rpx; padding: 8rpx 0; border-radius: 14rpx; background: #f0e7d2; color: #2b2118; font-size: 22rpx; line-height: 1.2; }
 .dock-btn::after { border: 0; }
-.dock-btn.primary { background: #2563eb; color: #fff; }
+.dock-btn.primary { background: #a62b2b; color: #fff; }
 .dock-btn[disabled] { opacity: .45; }
 .dico { font-size: 34rpx; line-height: 1.1; }
-.nav-mini { color: #2563eb; font-size: 22rpx; flex-shrink: 0; }
-.muted { color: #6b7688; }
+.nav-mini { color: #a62b2b; font-size: 22rpx; flex-shrink: 0; }
+.muted { color: #8a7355; }
 .small { font-size: 22rpx; }
 
 /* ============ 布局模板：template × theme 正交，模板只改布局/形状，颜色走 --t-accent ============ */
@@ -492,20 +492,20 @@ onShareAppMessage(() => {
 .tpl-seal .dock { background: #111827; box-shadow: none; }
 .tpl-seal .dock .btn { background: #fff; color: #111827; }
 .tpl-seal .dock .btn.primary { background: var(--t-accent); color: #fff; }
-.tpl-seal .foot { color: #64748b; letter-spacing: 2rpx; }
+.tpl-seal .foot { color: #8a7355; letter-spacing: 2rpx; }
 
 /* ⑤ 联络卡 contact：深蓝封面 + 居中身份 + 业务标签 */
 .tpl-contact .cover { height: 200rpx; border-radius: 0 0 28rpx 28rpx; }
 .tpl-contact .body { margin-top: -40rpx; }
-.tpl-contact .profile { border-radius: 18rpx; border: 2rpx solid #e8edf4; padding: 28rpx 20rpx; }
+.tpl-contact .profile { border-radius: 18rpx; border: 2rpx solid #e8dcc2; padding: 28rpx 20rpx; }
 .tpl-contact .avatar { border-radius: 14rpx; width: 124rpx; height: 124rpx; border: 4rpx solid #fff; }
 .tpl-contact .name { font-size: 40rpx; letter-spacing: 1rpx; }
 .tpl-contact .tags text { border-radius: 6rpx; border: 2rpx solid var(--t-accent); background: transparent; color: var(--t-accent); padding: 6rpx 16rpx; }
-.tpl-contact .actions { border-radius: 18rpx; border: 2rpx solid #e8edf4; }
+.tpl-contact .actions { border-radius: 18rpx; border: 2rpx solid #e8dcc2; }
 .tpl-contact .ico { border-radius: 14rpx; }
 .tpl-contact .card { border-radius: 18rpx; }
 .tpl-contact .section { border-left: 6rpx solid var(--t-accent); }
-.tpl-contact .dock { background: #0b1a3a; box-shadow: none; }
+.tpl-contact .dock { background: #2b2118; box-shadow: none; }
 .tpl-contact .dock .btn { background: rgba(255,255,255,.14); color: #fff; }
 
 /* 深蓝鎏金 navygold：深蓝放射底 + 白卡金线 + 沙金标签 + 表格化署名（与 Web 端同口径） */

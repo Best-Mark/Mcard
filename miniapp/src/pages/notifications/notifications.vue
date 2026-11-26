@@ -89,20 +89,20 @@ function timeOf(s) {
 </script>
 
 <style scoped>
-.page { min-height: 100vh; background: #f5f7fb; padding-bottom: 160rpx; }
-.bar { height: 88rpx; display: flex; align-items: center; gap: 20rpx; padding: 0 28rpx; background: #fff; border-bottom: 1rpx solid #e8edf4; }
-.back { font-size: 48rpx; color: #2563eb; line-height: 1; }
+.page { min-height: 100vh; background: #f7f2e7; padding-bottom: 160rpx; }
+.bar { height: 88rpx; display: flex; align-items: center; gap: 20rpx; padding: 0 28rpx; background: #fff; border-bottom: 1rpx solid #e8dcc2; }
+.back { font-size: 48rpx; color: #a62b2b; line-height: 1; }
 .title { font-size: 30rpx; font-weight: 700; }
-.mark { margin-left: auto; font-size: 24rpx; color: #2563eb; }
-.state { padding: 100rpx 40rpx; text-align: center; color: #64748b; }
-.muted { color: #94a3b8; }
+.mark { margin-left: auto; font-size: 24rpx; color: #a62b2b; }
+.state { padding: 100rpx 40rpx; text-align: center; color: #8a7355; }
+.muted { color: #b09a72; }
 .small { font-size: 24rpx; }
 .list { padding: 20rpx 0; }
 .item { display: flex; gap: 20rpx; padding: 26rpx 28rpx; background: #fff; margin-bottom: 2rpx; border-left: 6rpx solid transparent; }
-.item.unread { border-left-color: #2563eb; background: #f5f8ff; }
+.item.unread { border-left-color: #a62b2b; background: #f5f8ff; }
 .ico { font-size: 40rpx; }
 .body { flex: 1; min-width: 0; }
 .head { display: flex; justify-content: space-between; gap: 12rpx; }
 .b { font-size: 28rpx; font-weight: 600; }
-.content { margin-top: 8rpx; line-height: 1.5; color: #475569; }
+.content { margin-top: 8rpx; line-height: 1.5; color: #5c4a35; }
 </style>

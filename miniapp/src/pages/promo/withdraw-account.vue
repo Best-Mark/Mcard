@@ -61,15 +61,15 @@ async function unbind(a) {
 .card { background: #fff; border-radius: 24rpx; padding: 26rpx; margin-bottom: 18rpx; box-shadow: 0 8rpx 28rpx rgba(15,23,42,.05); }
 .head { display: flex; align-items: center; gap: 12rpx; font-size: 30rpx; }
 .tag { padding: 4rpx 12rpx; border-radius: 999rpx; background: #d1fae5; color: #059669; font-size: 20rpx; }
-.tag.off { background: #f1f5f9; color: #94a3b8; }
+.tag.off { background: #f1f5f9; color: #b09a72; }
 .acct { font-size: 34rpx; font-weight: 800; margin-top: 12rpx; }
 .acts { display: flex; gap: 12rpx; margin-top: 20rpx; }
 .tip { margin: 12rpx 6rpx; line-height: 1.6; }
 .btn { font-size: 26rpx; padding: 16rpx 0; border-radius: 14rpx; }
 .btn.sm { flex: 1; }
-.btn.primary { background: #2563eb; color: #fff; }
-.btn.ghost { background: #eef2f7; color: #334155; }
+.btn.primary { background: #a62b2b; color: #fff; }
+.btn.ghost { background: #f0e7d2; color: #334155; }
 .btn.danger { background: #fee2e2; color: #b91c1c; }
 .small { font-size: 24rpx; }
-.muted { color: #94a3b8; }
+.muted { color: #b09a72; }
 </style>

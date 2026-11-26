@@ -44,8 +44,8 @@ export default {
 
 <style>
 page {
-  background: #f5f7fb;
-  color: #162033;
+  background: #f7f2e7;
+  color: #2b2118;
   font-size: 28rpx;
 }
 </style>

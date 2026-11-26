@@ -8,7 +8,7 @@
 
     <block v-else>
     <view class="hero">
-      <view class="brand">M<text class="em">Card</text></view>
+      <view class="brand">唐<text class="em">笺</text></view>
       <view class="slogan">一扫即存 · 永久有效的电子名片</view>
       <view class="hero-card">
         <view class="avatar">李</view>
@@ -121,17 +121,17 @@ function scan() {
 <style scoped>
 .launch { position: relative; min-height: 100vh; background: #fff; display: flex; align-items: flex-start; justify-content: center; }
 .launch-img { width: 100%; }
-.launch-hint { position: fixed; left: 0; right: 0; bottom: calc(60rpx + env(safe-area-inset-bottom, 0px)); text-align: center; font-size: 24rpx; color: #64748b; letter-spacing: 2rpx; }
-.hero { background: linear-gradient(135deg,#17357c,#2563eb 55%,#38bdf8); padding: 60rpx 32rpx 90rpx; color: #fff; border-radius: 0 0 40rpx 40rpx; }
+.launch-hint { position: fixed; left: 0; right: 0; bottom: calc(60rpx + env(safe-area-inset-bottom, 0px)); text-align: center; font-size: 24rpx; color: #8a7355; letter-spacing: 2rpx; }
+.hero { background: linear-gradient(135deg,#7a1e15,#a62b2b 55%,#c9a227); padding: 60rpx 32rpx 90rpx; color: #fff; border-radius: 0 0 40rpx 40rpx; }
 .brand { font-size: 44rpx; font-weight: 800; }
 .em { opacity: .8; }
 .slogan { font-size: 24rpx; opacity: .85; margin-top: 6rpx; }
-.hero-card { display: flex; align-items: center; gap: 24rpx; background: rgba(255,255,255,.96); color: #162033; border-radius: 24rpx; padding: 24rpx; margin-top: 40rpx; }
-.avatar { width: 96rpx; height: 96rpx; border-radius: 24rpx; background: #2563eb; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 42rpx; font-weight: 800; flex-shrink: 0; }
+.hero-card { display: flex; align-items: center; gap: 24rpx; background: rgba(255,255,255,.96); color: #2b2118; border-radius: 24rpx; padding: 24rpx; margin-top: 40rpx; }
+.avatar { width: 96rpx; height: 96rpx; border-radius: 24rpx; background: #a62b2b; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 42rpx; font-weight: 800; flex-shrink: 0; }
 .name { font-size: 34rpx; font-weight: 800; }
-.title { font-size: 24rpx; color: #6b7688; margin-top: 4rpx; }
+.title { font-size: 24rpx; color: #8a7355; margin-top: 4rpx; }
 .tags { display: flex; gap: 10rpx; margin-top: 12rpx; flex-wrap: wrap; }
-.tags text { font-size: 20rpx; color: #2563eb; background: #eff6ff; padding: 4rpx 12rpx; border-radius: 999rpx; }
+.tags text { font-size: 20rpx; color: #a62b2b; background: #f7ecd9; padding: 4rpx 12rpx; border-radius: 999rpx; }
 .body { padding: 24rpx; margin-top: -50rpx; padding-bottom: 160rpx; }
 .card { background: #fff; border-radius: 24rpx; padding: 26rpx; margin-bottom: 20rpx; box-shadow: 0 8rpx 28rpx rgba(15,23,42,.05); }
 .section { font-size: 30rpx; font-weight: 700; margin-bottom: 16rpx; }
@@ -139,14 +139,14 @@ function scan() {
 .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18rpx; }
 .mini-qr { width: 110rpx; height: 110rpx; }
 .btn-row { display: flex; gap: 14rpx; margin-top: 14rpx; }
-.btn { flex: 1; font-size: 26rpx; padding: 14rpx 0; border-radius: 14rpx; background: #eef2f7; color: #162033; line-height: 1.4; }
+.btn { flex: 1; font-size: 26rpx; padding: 14rpx 0; border-radius: 14rpx; background: #f0e7d2; color: #2b2118; line-height: 1.4; }
 .btn::after { border: 0; }
-.btn.primary { background: #2563eb; color: #fff; }
+.btn.primary { background: #a62b2b; color: #fff; }
 .btn.block { width: 100%; }
-.input { height: 84rpx; line-height: 84rpx; border: 2rpx solid #e8edf4; border-radius: 14rpx; padding: 0 20rpx; font-size: 26rpx; box-sizing: border-box; }
+.input { height: 84rpx; line-height: 84rpx; border: 2rpx solid #e8dcc2; border-radius: 14rpx; padding: 0 20rpx; font-size: 26rpx; box-sizing: border-box; }
 .feature { display: flex; gap: 18rpx; align-items: center; padding: 14rpx 0; }
-.ico { width: 60rpx; height: 60rpx; border-radius: 16rpx; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 30rpx; flex-shrink: 0; }
-.muted { color: #6b7688; }
+.ico { width: 60rpx; height: 60rpx; border-radius: 16rpx; background: #f7ecd9; color: #a62b2b; display: flex; align-items: center; justify-content: center; font-size: 30rpx; flex-shrink: 0; }
+.muted { color: #8a7355; }
 .small { font-size: 22rpx; }
 .center-pad { text-align: center; padding: 40rpx 26rpx; }
 </style>

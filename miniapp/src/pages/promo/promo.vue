@@ -141,7 +141,7 @@ async function submitWithdraw() {
 </script>
 
 <style scoped>
-.state { padding: 140rpx 40rpx; text-align: center; color: #6b7688; }
+.state { padding: 140rpx 40rpx; text-align: center; color: #8a7355; }
 .body { padding: 24rpx; padding-bottom: 40rpx; }
 .hero { display: flex; align-items: center; gap: 20rpx; padding: 36rpx 30rpx; border-radius: 24rpx; color: #fff; background: linear-gradient(122deg,#7c5a12,#b8860b 52%,#d4a72c); box-shadow: 0 10rpx 28rpx rgba(184,134,11,.22); }
 .h-main { flex: 1; min-width: 0; }
@@ -151,12 +151,12 @@ async function submitWithdraw() {
 .h-amount { font-size: 68rpx; font-weight: 800; margin-top: 6rpx; }
 .h-sub { font-size: 24rpx; opacity: .92; margin-top: 8rpx; }
 .card { background: #fff; border-radius: 24rpx; padding: 26rpx; margin-top: 18rpx; box-shadow: 0 8rpx 28rpx rgba(15,23,42,.05); }
-.i-title { font-size: 24rpx; color: #94a3b8; }
+.i-title { font-size: 24rpx; color: #b09a72; }
 .i-tip { margin-top: 18rpx; line-height: 1.6; }
 .rule { margin: 18rpx 6rpx 0; line-height: 1.5; font-size: 22rpx; }
 .seg { display: flex; gap: 10rpx; margin-top: 24rpx; }
-.seg button { flex: 1; font-size: 24rpx; padding: 14rpx 0; border-radius: 14rpx; background: #eef2f7; color: #6b7688; }
-.seg button.on { background: #eff6ff; color: #2563eb; font-weight: 700; }
+.seg button { flex: 1; font-size: 24rpx; padding: 14rpx 0; border-radius: 14rpx; background: #f0e7d2; color: #8a7355; }
+.seg button.on { background: #f7ecd9; color: #a62b2b; font-weight: 700; }
 .list { padding-top: 8rpx; padding-bottom: 8rpx; }
 .item { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; padding: 22rpx 0; border-bottom: 2rpx solid #f1f5f9; }
 .item:last-child { border-bottom: 0; }
@@ -168,16 +168,16 @@ async function submitWithdraw() {
 .sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 121; background: #fff; border-radius: 28rpx 28rpx 0 0; transform: translateY(105%); transition: transform .24s ease; padding-bottom: env(safe-area-inset-bottom); }
 .sheet.show { transform: translateY(0); }
 .sh-head { display: flex; align-items: center; justify-content: space-between; padding: 28rpx 30rpx; border-bottom: 2rpx solid #f1f5f9; font-size: 30rpx; }
-.sh-head text { color: #2563eb; font-size: 26rpx; }
+.sh-head text { color: #a62b2b; font-size: 26rpx; }
 .sh-body { padding: 26rpx 30rpx 40rpx; }
 .field { margin-top: 24rpx; }
-.label { display: block; font-size: 24rpx; color: #6b7688; margin-bottom: 10rpx; font-weight: 600; }
-.input { width: 100%; height: 88rpx; line-height: 88rpx; box-sizing: border-box; border: 2rpx solid #e8edf4; border-radius: 14rpx; padding: 0 20rpx; font-size: 28rpx; }
-.picker { width: 100%; box-sizing: border-box; border: 2rpx solid #e8edf4; border-radius: 14rpx; padding: 18rpx 20rpx; font-size: 28rpx; }
-.link { display: block; margin-top: 12rpx; color: #2563eb; font-size: 24rpx; }
+.label { display: block; font-size: 24rpx; color: #8a7355; margin-bottom: 10rpx; font-weight: 600; }
+.input { width: 100%; height: 88rpx; line-height: 88rpx; box-sizing: border-box; border: 2rpx solid #e8dcc2; border-radius: 14rpx; padding: 0 20rpx; font-size: 28rpx; }
+.picker { width: 100%; box-sizing: border-box; border: 2rpx solid #e8dcc2; border-radius: 14rpx; padding: 18rpx 20rpx; font-size: 28rpx; }
+.link { display: block; margin-top: 12rpx; color: #a62b2b; font-size: 24rpx; }
 .btn { font-size: 28rpx; padding: 20rpx 0; border-radius: 14rpx; }
 .btn.sm { flex: 1; font-size: 26rpx; padding: 16rpx 0; }
-.btn.primary { background: #2563eb; color: #fff; }
-.btn.ghost { background: #eef2f7; color: #334155; }
+.btn.primary { background: #a62b2b; color: #fff; }
+.btn.ghost { background: #f0e7d2; color: #334155; }
 .btn.block { width: 100%; }
 </style>
