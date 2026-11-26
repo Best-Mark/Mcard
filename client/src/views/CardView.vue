@@ -416,6 +416,8 @@ async function applyQrStyle(patch) {
   } catch (e) { showToast(e.message, 'error') } finally { qrBusy.value = false }
 }
 const currentTheme = ref('ocean'); const isOwner = ref(false)
+// 当前登录用户是否已建自己的名片（看别人的名片时用来决定是否显示「免费创建我的名片」）
+const hasOwnCard = ref(false)
 const template = ref('contact')
 // 18 套模板统一同一套「连续大卡」骨架（2026-11-25 用户定稿）：模板切换只换 --cv-* 配色，不再有结构差异。
 // 旧版 6 套（classic/minimal/elite/vivid/seal/navygold）原先是分开的多张卡，现在也走 cv-clean 骨架，
@@ -551,9 +553,11 @@ function hexToRgb(hex) {
   return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`
 }
 const vars = computed(() => ({ ...themeVars(t.value), '--glow-rgb': hexToRgb(t.value.accent) }))
-// 访客点开分享的名片必须先看到名片本身；「我也要创建」只作为名片下方的次要入口（对所有非持有者显示，含已登录），
+// 访客点开分享的名片必须先看到名片本身；「我也要创建」只作为名片下方的次要入口，
 // 绝不能反过来一进来就拦去创建页——那会完全忽视「先看名片」的场景需要。
-const showCreateOwn = computed(() => !owner && !isOwner.value)
+// 「看场景」口径（2026-11-26 用户定）：已登录且自己已经建了名片的用户，去集市/分享看别人的名片时
+// 不再显示「免费创建我的名片」（人家已经有了，再引导是打扰）；只给未登录或已登录但尚无名片的人看。
+const showCreateOwn = computed(() => !owner && !isOwner.value && !(auth.token && hasOwnCard.value))
 const fullAddress = computed(() => {
   const c = card.value || {}
   return [c.province, c.city, c.district, c.street, c.address, c.address_detail].filter(Boolean).join('')
@@ -676,7 +680,11 @@ async function load() {
     // 访客转发/未登录场景也能用，彻底消灭空图。传作第 4 候选，前三档可用时自动优先。
     if (full) setCardShare(api, card.value, publicLink.value, `${qrApi.value}/share.png`)
     if (!embed && !owner && auth.token) {
-      try { const mine = await api.get('/api/cards/mine'); isOwner.value = mine.data.data?.slug === slug.value } catch { /* 忽略 */ }
+      try {
+        const mine = await api.get('/api/cards/mine')
+        hasOwnCard.value = !!mine.data.data
+        isOwner.value = mine.data.data?.slug === slug.value
+      } catch { /* 忽略：请求失败保持 hasOwnCard=false，引导仍显示，不误伤 */ }
       if (!isOwner.value) {
         try { favorite.value = !!(await api.get(`${qrApi.value}/favorite`)).data.data?.favorite } catch { /* 忽略 */ }
       }
@@ -722,7 +730,7 @@ watch(slug, () => {
   qrModal.value = false; guide.value = ''; exchangeOpen.value = false
   mapOpen.value = false; moreOpen.value = false; galleryIndex.value = -1
   dockMode.value = 'main'; qrSub.value = ''
-  favorite.value = false; isOwner.value = false; mySlug.value = ''
+  favorite.value = false; isOwner.value = false; hasOwnCard.value = false; mySlug.value = ''
   windowRef.scrollTo?.(0, 0)
   load()
 })
