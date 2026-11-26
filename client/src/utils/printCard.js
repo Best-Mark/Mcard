@@ -61,20 +61,14 @@ function qrBlock(qrText, x, y, size, fg = '#0f172a', pad = 1.5) {
 }
 
 // 公司标识位（2026-11-26 用户定稿）：实体名片只放公司 LOGO，不再出现用户头像。
-// 有 LOGO 图用 contain 完整展示（避免 slice 裁掉带字 LOGO），没有则用公司名首字占位，
-// 绝不回落到用户姓名首字——实体版式的图像位属于公司，不属于个人。
+// 有 LOGO 图用 contain 完整展示（避免 slice 裁掉带字 LOGO）；没有则整块不画——「一个或没有」，
+// 不摆公司名首字圆块冒充 LOGO（用户口径：一个或没有才对）。
 function companyMarkup(card, x, y, r, t, shape = 'circle', id = 'co') {
+  if (!card.logoData) return ''
   const clip = shape === 'rect'
     ? `<clipPath id="${id}"><rect x="${x - r}" y="${y - r}" width="${r * 2}" height="${r * 2}" rx="1.6"/></clipPath>`
     : `<clipPath id="${id}"><circle cx="${x}" cy="${y}" r="${r}"/></clipPath>`
-  const bg = shape === 'rect'
-    ? `<rect x="${x - r}" y="${y - r}" width="${r * 2}" height="${r * 2}" rx="1.6" fill="${t.accent}" opacity=".14"/>`
-    : `<circle cx="${x}" cy="${y}" r="${r}" fill="${t.accent}" opacity=".14"/>`
-  const initial = esc(String(card.company || '企').slice(0, 1))
-  const body = card.logoData
-    ? `<image href="${card.logoData}" x="${x - r}" y="${y - r}" width="${r * 2}" height="${r * 2}" preserveAspectRatio="xMidYMid meet" clip-path="url(#${id})"/>`
-    : `${bg}<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-size="${r * 0.9}" font-weight="700" fill="${t.accent}">${initial}</text>`
-  return `<defs>${clip}</defs>${body}`
+  return `<defs>${clip}</defs><image href="${card.logoData}" x="${x - r}" y="${y - r}" width="${r * 2}" height="${r * 2}" preserveAspectRatio="xMidYMid meet" clip-path="url(#${id})"/>`
 }
 
 function logoMarkup(card, x, y, size, onDark = false) {
@@ -111,7 +105,6 @@ function front(card, t, qrText) {
   if (tpl === 'classic') {
     return `${page(t.accent)}<rect x="${BLEED}" y="${BLEED}" width="${W - BLEED * 2}" height="${H - BLEED * 2}" fill="${t.surface}"/>
       <rect x="${BLEED}" y="${BLEED}" width="2.1" height="${H - BLEED * 2}" fill="${t.accent}"/>
-      ${logoMarkup(card, 80, 6, 9)}
       ${companyMarkup(card, 14, 17, 6.5, t, 'rect', 'co-classic')}
       ${nameTitle(card, 24, 16, 21.5, t)}
       ${contactLines(card, 10, 35, 5.2, t)}
@@ -125,7 +118,6 @@ function front(card, t, qrText) {
       ${logoMarkup(card, 79, 6, 9, true)}
       <text x="10" y="14" font-size="5.4" font-weight="700" fill="#fff">${esc(card.name || card.name_en || '你的姓名')}</text>
       <text x="10" y="20" font-size="2.7" fill="#fff" opacity=".92">${esc([card.title, card.company].filter(Boolean).join(' · ').slice(0, 34))}</text>
-      ${companyMarkup(card, 47, 33, 6.5, t, 'circle', 'co-modern')}
       <text x="10" y="36" font-size="2.6" fill="${t.text}">${esc(card.company || '')}</text>
       ${contactLines(card, 10, 42, 4, t, 2)}
       ${qr(72, 16, 21)}`
@@ -146,7 +138,6 @@ function front(card, t, qrText) {
   if (tpl === 'elite') {
     return `${page(INK.dark)}<rect x="${BLEED}" y="${BLEED}" width="${W - BLEED * 2}" height="${H - BLEED * 2}" fill="none" stroke="${INK.gold}" stroke-width=".4" opacity=".8"/>
       <rect x="${BLEED}" y="${BLEED}" width="${W - BLEED * 2}" height="1.1" fill="${INK.gold}"/>
-      ${logoMarkup(card, 11, 9, 9, true)}
       ${companyMarkup(card, 18, 28, 7, { ...t, accent: INK.gold }, 'circle', 'co-elite')}
       <text x="29" y="24" font-size="5.4" font-weight="700" fill="${INK.paper}">${esc(card.name || card.name_en || '你的姓名')}</text>
       <text x="29" y="30" font-size="2.7" fill="${INK.gold2}">${esc([card.title, card.company].filter(Boolean).join(' · ').slice(0, 34))}</text>
@@ -177,7 +168,6 @@ function front(card, t, qrText) {
       ${companyMarkup(card, 20, 16, 7, { ...t, accent: '#ffffff' }, 'circle', 'co-split')}
       <text x="20" y="30" font-size="5" font-weight="700" fill="#fff" text-anchor="middle">${esc(card.name || card.name_en || '你的姓名')}</text>
       <text x="20" y="36" font-size="2.5" fill="#fff" opacity=".9" text-anchor="middle">${esc(String(card.title || '').slice(0, 16))}</text>
-      ${logoMarkup(card, 43, 8, 9)}
       <text x="43" y="24" font-size="2.9" fill="${t.text}" font-weight="700">${esc(card.company || '')}</text>
       ${contactLines(card, 43, 31, 5, t, 4)}
       ${qr(71, 18, 19)}`
@@ -189,7 +179,6 @@ function front(card, t, qrText) {
       <circle cx="${W / 2}" cy="23" r="15" fill="none" stroke="${t.accent}" stroke-width=".35" opacity=".55"/>
       <circle cx="${W / 2}" cy="23" r="11.5" fill="none" stroke="${t.accent}" stroke-width=".25" opacity=".4"/>
       ${companyMarkup(card, W / 2, 23, 8.5, t, 'circle', 'co-badge')}
-      ${logoMarkup(card, 8, 7, 9)}
       <text x="${W / 2}" y="43" font-size="5" font-weight="700" fill="${t.text}" text-anchor="middle">${esc(card.name || card.name_en || '你的姓名')}</text>
       <text x="${W / 2}" y="48" font-size="2.6" fill="${t.accent}" text-anchor="middle">${esc([card.title, card.company].filter(Boolean).join(' · ').slice(0, 34))}</text>
       <line x1="${BLEED}" y1="51.5" x2="${W - BLEED}" y2="51.5" stroke="${t.accent}" stroke-width=".3" opacity=".5"/>
@@ -202,7 +191,6 @@ function front(card, t, qrText) {
     return `${page(t.surface)}
       <path d="M${BLEED},${BLEED} H93 V30 L${BLEED},44 Z" fill="${t.accent}"/>
       ${logoMarkup(card, 80, 6, 9, true)}
-      ${companyMarkup(card, 15, 20, 6, { ...t, accent: '#ffffff' }, 'circle', 'co-corner')}
       <text x="25" y="18" font-size="5.2" font-weight="700" fill="#fff">${esc(card.name || card.name_en || '你的姓名')}</text>
       <text x="25" y="24" font-size="2.7" fill="#fff" opacity=".9">${esc([card.title, card.company].filter(Boolean).join(' · ').slice(0, 34))}</text>
       <text x="${BLEED + 1}" y="50" font-size="2.9" fill="${t.text}" font-weight="700">${esc(card.company || '')}</text>
