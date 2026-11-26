@@ -398,8 +398,12 @@ async function createPayment(order, pkg, opts = {}) {
     return { mode: 'mock', payType: 'mock', payText: `/mock/${order.order_no}`, message: '模拟支付模式' }
   }
   const ctx = { ...opts, req: opts.req }
-  // 重付换新单号：订单已发起过支付（pay_no 有值）且非同一支付单号时换号，规避微信 201 重复单号
-  const outTradeNo = opts.reuseOutTradeNo || makeNewOutTradeNo(order)
+  // 首次下单（reuseOutTradeNo=true）复用订单号；重走 /:id/pay 才 makeNewOutTradeNo 换 _X 新号，
+  // 规避微信 v3 关单后同号重下报 201「商户订单号重复」。
+  // ⚠️ reuseOutTradeNo 是布尔开关，绝不能当订单号用：此前 `opts.reuseOutTradeNo || makeNewOutTradeNo(order)`
+  // 会把 true 塞进 out_trade_no，微信报 400「商户订单号必填性规则校验失败」（2026-11-27 实锤故障）。
+  const outTradeNo = opts.reuseOutTradeNo ? getOutTradeNo(order) : makeNewOutTradeNo(order)
+  if (!outTradeNo) throw new Error('订单号为空，无法发起支付')
   ctx.outTradeNo = outTradeNo
   if (method === 'wechat') {
     const scene = String(opts.scene || 'pc').toLowerCase()
