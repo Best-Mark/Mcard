@@ -6,10 +6,14 @@
       <button class="btn primary block" style="margin-top:24rpx" @tap="goLogin">登录 / 注册</button>
     </view>
     <view v-else-if="loading" class="state">加载中…</view>
-    <view v-else-if="!card" class="state">
-      <view>还没有名片</view>
-      <input v-model.trim="newSlug" class="input" style="margin:24rpx 0" placeholder="自定义短码（选填）" />
-      <button class="btn primary block" :disabled="busy" @tap="create">{{ busy ? '创建中…' : '立即创建名片' }}</button>
+    <!-- 无名片引导：对齐 H5 Dashboard 的温和卡片体验（有说明、短码明确选填），不是强制表单 -->
+    <view v-else-if="!card" class="create-card">
+      <view class="create-ico">▤</view>
+      <view class="create-title">还没有名片</view>
+      <view class="create-desc">创建后即可获得永久二维码，之后换资料不用换码。</view>
+      <input v-model.trim="newSlug" class="input" placeholder="自定义短码（选填，如 zhangsan）" />
+      <button class="btn primary block" :disabled="busy" @tap="create">{{ busy ? '创建中…' : '立即创建我的名片' }}</button>
+      <view class="create-tip">短码留空会自动生成，之后可在「编辑名片」里改</view>
     </view>
 
     <view v-else class="body">
@@ -122,6 +126,12 @@ async function create() {
 <style scoped>
 .state { padding: 140rpx 40rpx; text-align: center; color: #6b7688; }
 .state .big { font-size: 90rpx; opacity: .3; }
+/* 无名片引导卡：对齐 H5 Dashboard 的温和样式，不做强制表单观感 */
+.create-card { margin: 48rpx 24rpx; padding: 44rpx 32rpx; background: #fff; border-radius: 24rpx; text-align: center; box-shadow: 0 8rpx 28rpx rgba(15,23,42,.05); }
+.create-ico { font-size: 80rpx; opacity: .25; }
+.create-title { font-size: 34rpx; font-weight: 800; color: #162033; margin: 16rpx 0 10rpx; }
+.create-desc { font-size: 24rpx; color: #6b7688; line-height: 1.6; margin-bottom: 32rpx; }
+.create-tip { font-size: 22rpx; color: #94a3b8; margin-top: 20rpx; }
 .body { padding: 24rpx; }
 .card { background: #fff; border-radius: 24rpx; padding: 26rpx; margin-bottom: 18rpx; box-shadow: 0 8rpx 28rpx rgba(15,23,42,.05); }
 .row { display: flex; justify-content: space-between; align-items: center; }
@@ -151,7 +161,8 @@ async function create() {
 .order .b { font-size: 26rpx; font-weight: 600; }
 .order .right { text-align: right; }
 .mono { font-family: monospace; }
-.input { width: 100%; box-sizing: border-box; border: 2rpx solid #e8edf4; border-radius: 12rpx; padding: 16rpx; font-size: 26rpx; }
+/* 小程序 input 必须显式定高+line-height，否则原生渲染下文字半截被裁（与登录页同款修复） */
+.input { width: 100%; height: 84rpx; line-height: 84rpx; box-sizing: border-box; border: 2rpx solid #e8edf4; border-radius: 12rpx; padding: 0 20rpx; font-size: 26rpx; margin-bottom: 20rpx; }
 .btn { font-size: 28rpx; padding: 18rpx 0; border-radius: 14rpx; background: #eef2f7; }
 .btn::after { border: 0; }
 .btn.primary { background: #2563eb; color: #fff; }

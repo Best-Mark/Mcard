@@ -85,7 +85,7 @@ function back() { uni.navigateBack() }
 .btn.primary { background: #2563eb; color: #fff; }
 .btn.block { width: 100%; }
 .manual { display: flex; gap: 12rpx; margin-top: 20rpx; }
-.input { flex: 1; border: 1rpx solid #e2e8f0; border-radius: 10rpx; padding: 12rpx 16rpx; font-size: 26rpx; background: #fff; }
+.input { flex: 1; height: 76rpx; line-height: 76rpx; border: 1rpx solid #e2e8f0; border-radius: 10rpx; padding: 0 16rpx; font-size: 26rpx; background: #fff; box-sizing: border-box; }
 .lhead { display: flex; justify-content: space-between; margin-bottom: 12rpx; }
 .clear { color: #2563eb; font-size: 24rpx; }
 .chip { display: flex; justify-content: space-between; padding: 14rpx 18rpx; background: #f4f6fb; border-radius: 10rpx; margin-bottom: 10rpx; font-size: 26rpx; }

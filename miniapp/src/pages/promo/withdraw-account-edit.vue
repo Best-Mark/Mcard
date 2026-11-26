@@ -67,7 +67,7 @@ async function saveForm() {
 .card b { font-size: 32rpx; }
 .field { margin-top: 24rpx; }
 .label { display: block; font-size: 24rpx; color: #6b7688; margin-bottom: 10rpx; font-weight: 600; }
-.input { width: 100%; box-sizing: border-box; border: 2rpx solid #e8edf4; border-radius: 14rpx; padding: 18rpx 20rpx; font-size: 28rpx; }
+.input { width: 100%; height: 88rpx; line-height: 88rpx; box-sizing: border-box; border: 2rpx solid #e8edf4; border-radius: 14rpx; padding: 0 20rpx; font-size: 28rpx; }
 .btn { font-size: 28rpx; padding: 20rpx 0; border-radius: 14rpx; margin-top: 28rpx; }
 .btn.primary { background: #2563eb; color: #fff; }
 .btn.block { width: 100%; }

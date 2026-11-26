@@ -172,7 +172,8 @@ async function submitWithdraw() {
 .sh-body { padding: 26rpx 30rpx 40rpx; }
 .field { margin-top: 24rpx; }
 .label { display: block; font-size: 24rpx; color: #6b7688; margin-bottom: 10rpx; font-weight: 600; }
-.input, .picker { width: 100%; box-sizing: border-box; border: 2rpx solid #e8edf4; border-radius: 14rpx; padding: 18rpx 20rpx; font-size: 28rpx; }
+.input { width: 100%; height: 88rpx; line-height: 88rpx; box-sizing: border-box; border: 2rpx solid #e8edf4; border-radius: 14rpx; padding: 0 20rpx; font-size: 28rpx; }
+.picker { width: 100%; box-sizing: border-box; border: 2rpx solid #e8edf4; border-radius: 14rpx; padding: 18rpx 20rpx; font-size: 28rpx; }
 .link { display: block; margin-top: 12rpx; color: #2563eb; font-size: 24rpx; }
 .btn { font-size: 28rpx; padding: 20rpx 0; border-radius: 14rpx; }
 .btn.sm { flex: 1; font-size: 26rpx; padding: 16rpx 0; }

@@ -116,7 +116,7 @@ function scan() {
 .btn::after { border: 0; }
 .btn.primary { background: #2563eb; color: #fff; }
 .btn.block { width: 100%; }
-.input { border: 2rpx solid #e8edf4; border-radius: 14rpx; padding: 16rpx 20rpx; font-size: 26rpx; }
+.input { height: 84rpx; line-height: 84rpx; border: 2rpx solid #e8edf4; border-radius: 14rpx; padding: 0 20rpx; font-size: 26rpx; box-sizing: border-box; }
 .feature { display: flex; gap: 18rpx; align-items: center; padding: 14rpx 0; }
 .ico { width: 60rpx; height: 60rpx; border-radius: 16rpx; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 30rpx; flex-shrink: 0; }
 .muted { color: #6b7688; }

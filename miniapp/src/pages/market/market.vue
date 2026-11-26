@@ -264,7 +264,7 @@ onShareAppMessage(() => ({ title: '名片集市 · 发现附近业务对口伙�
 .card-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 20rpx; padding-top: 18rpx; border-top: 2rpx solid #f1f5f9; font-size: 24rpx; color: #2563eb; font-weight: 600; }
 .arrow { font-size: 34rpx; }
 .more { text-align: center; font-size: 24rpx; color: #94a3b8; padding: 24rpx; }
-.input { width: 100%; box-sizing: border-box; border: 2rpx solid #e8edf4; border-radius: 12rpx; padding: 16rpx 18rpx; font-size: 26rpx; }
+.input { width: 100%; height: 84rpx; line-height: 84rpx; box-sizing: border-box; border: 2rpx solid #e8edf4; border-radius: 12rpx; padding: 0 18rpx; font-size: 26rpx; }
 .btn { font-size: 24rpx; padding: 16rpx 0; border-radius: 12rpx; }
 .btn::after { border: 0; }
 .btn.primary { background: #2563eb; color: #fff; }

@@ -353,7 +353,7 @@ onShareAppMessage(() => {
 .btn.primary { background: #2563eb; color: #fff; }
 .btn.tiny { padding: 8rpx 18rpx; font-size: 22rpx; flex-shrink: 0; }
 .btn.block { width: 100%; }
-.input { width: 100%; box-sizing: border-box; border: 2rpx solid #e8edf4; border-radius: 12rpx; padding: 16rpx; font-size: 26rpx; }
+.input { width: 100%; height: 84rpx; line-height: 84rpx; box-sizing: border-box; border: 2rpx solid #e8edf4; border-radius: 12rpx; padding: 0 20rpx; font-size: 26rpx; }
 .foot { text-align: center; font-size: 22rpx; color: #94a3b8; padding: 30rpx 0 180rpx; }
 .dock { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 16rpx; padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom)); background: rgba(255,255,255,.96); box-shadow: 0 -4rpx 20rpx rgba(15,23,42,.06); }
 .dock .btn { flex: 1; padding: 20rpx 0; font-size: 28rpx; }

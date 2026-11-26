@@ -502,7 +502,9 @@ async function save() {
 .ph { background: #2563eb; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 42rpx; font-weight: 800; }
 .field { margin-bottom: 18rpx; }
 .label { display: block; font-size: 24rpx; color: #6b7688; margin-bottom: 8rpx; font-weight: 600; }
-.input, .textarea { width: 100%; box-sizing: border-box; border: 2rpx solid #e8edf4; border-radius: 12rpx; padding: 16rpx 18rpx; font-size: 26rpx; }
+/* input 显式定高+line-height 防文字半截；textarea 用 padding+固定高即可 */
+.input { width: 100%; height: 84rpx; line-height: 84rpx; box-sizing: border-box; border: 2rpx solid #e8edf4; border-radius: 12rpx; padding: 0 18rpx; font-size: 26rpx; }
+.textarea { width: 100%; box-sizing: border-box; border: 2rpx solid #e8edf4; border-radius: 12rpx; padding: 16rpx 18rpx; font-size: 26rpx; }
 .textarea { height: 160rpx; }
 .link-row { display: flex; gap: 10rpx; align-items: center; margin-bottom: 10rpx; }
 .link-row .input { flex: 1; min-width: 0; }
