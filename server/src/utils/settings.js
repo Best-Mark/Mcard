@@ -79,7 +79,9 @@ const GROUPS = {
       { key: 'wechat_oauth_scope', label: '授权范围（固定 snsapi_userinfo 以取昵称头像）', type: 'text' },
       { key: 'wechat_oauth_bind_phone', label: '新用户授权后必须绑定手机号（true / false）', type: 'text' },
       { key: 'wechat_oauth_verify_name', label: '域名校验文件名（上传后自动填入）', type: 'hidden' },
-      { key: 'wechat_oauth_verify_content', label: '域名校验文件（上传 MP_verify_xxx.txt）', type: 'file' }
+      // 同一份 MP_verify 文件同时服务两个场景：① 公众号网页授权域名 ② 小程序后台配置业务域名/服务器域名时
+      // 微信要求放到站点根的校验文件。上传后自动落盘到站点根并提供动态路由，保存即生效、重启自愈。
+      { key: 'wechat_oauth_verify_content', label: '域名校验文件（小程序/公众号配置域名时微信给的 MP_verify_xxx.txt，上传后自动放到站点根）', type: 'file' }
     ]
   },
   map: {

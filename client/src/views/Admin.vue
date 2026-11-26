@@ -403,6 +403,7 @@
                       {{ cfg.wechat_oauth_verify_name ? '重新选择文件' : '选择 MP_verify_xxx.txt' }}
                     </label>
                     <span class="small muted">{{ cfg.wechat_oauth_verify_name ? '已载入：' + cfg.wechat_oauth_verify_name + '（点保存后生效）' : '从微信公众平台下载后直接上传，无需填写路径或内容' }}</span>
+                    <span v-if="cfg.wechat_oauth_verify_name" class="small muted">校验地址：<a :href="'/' + cfg.wechat_oauth_verify_name" target="_blank" rel="noopener">{{ '/' + cfg.wechat_oauth_verify_name }}</a>（保存后应能打开且内容与微信给的一致，微信才能校验通过）</span>
                   </div>
                   <!-- 密钥文件：本地 FileReader 读原文填进 cfg，跟着「保存分组」一起 PUT；
                        不走 /api/upload、不产生公开 URL，避免密钥落到上传目录被 Static 服务出去。 -->

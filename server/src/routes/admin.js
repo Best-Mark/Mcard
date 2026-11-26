@@ -269,6 +269,11 @@ router.put('/config', superRequired, wrap((req, res) => {
   }
   const stmt = db.prepare("INSERT INTO site_config (key, value, updated_at) VALUES (?,?,datetime('now')) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')")
   db.transaction(() => { for (const [k, v] of entries) stmt.run(k, v) })()
+  // 校验文件落盘：DB 已写入权威底本，立即同步镜像到 client/dist（新增/替换/清空删除都在这里生效）。
+  // 落盘失败不影响配置保存成功——动态路由仍从 DB 下发，且下次启动会自愈重试。
+  if (entries.some(([k]) => k === 'wechat_oauth_verify_name' || k === 'wechat_oauth_verify_content')) {
+    try { require('../utils/verifyFile').syncVerifyFile() } catch (e) { console.error('[VerifyFile] 保存后同步失败', e.message) }
+  }
   // OSS 配置变更后立即失效客户端缓存，避免改了配置仍用旧密钥/旧路径
   const ossChanged = entries.some(([k]) => k.startsWith('oss_'))
   if (ossChanged) oss.clearCache()
