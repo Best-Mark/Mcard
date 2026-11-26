@@ -100,15 +100,6 @@
         </div>
       </div>
 
-      <div class="section-title">最近订单</div>
-      <div v-if="!orders.length" class="card card-pad small muted">还没有订单</div>
-      <div v-else class="order-list">
-        <div v-for="o in orders" :key="o.id" class="card order-item">
-          <div class="order-top"><span class="mono">{{ o.orderNo }}</span><span class="badge" :class="o.status === 'paid' ? 'ok' : 'warn'">{{ statusText(o.status) }}</span></div>
-          <div class="order-bottom"><b>{{ o.packageName }}</b><span class="order-amount">¥{{ (o.amountCents / 100).toFixed(2) }}</span></div>
-          <div class="order-time small muted">{{ o.createdAt }}</div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -123,7 +114,6 @@ import CountUp from '../components/CountUp.vue'
 const router = useRouter()
 const card = ref(null)
 const stats = ref({ views: 0, exchanges: 0, daily: [], sources: [], cities: [], hourly: [] })
-const orders = ref([])
 const loading = ref(true)
 const error = ref('')
 let loadStarted = false
@@ -153,16 +143,13 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const [s, o, c] = await Promise.all([api.get('/api/cards/mine/stats'), api.get('/api/orders/mine'), api.get('/api/cards/mine')])
+    const [s, c] = await Promise.all([api.get('/api/cards/mine/stats'), api.get('/api/cards/mine')])
     // 兜底：接口异常/无名片时字段一律给默认值，绝不把 null 丢给模板的 .length / .map
     stats.value = { views: 0, exchanges: 0, daily: [], sources: [], cities: [], hourly: [], ...(s.data?.data || {}) }
-    orders.value = Array.isArray(o.data?.data) ? o.data.data : []
     card.value = c.data?.data || null
   } catch (e) { error.value = e.message || '网络异常' } finally { loading.value = false }
 }
 onMounted(load)
-
-function statusText(s) { return ({ paid: '已支付', pending: '待支付', cancelled: '已取消' })[s] || s }
 </script>
 
 <style scoped>
@@ -219,14 +206,6 @@ function statusText(s) { return ({ paid: '已支付', pending: '待支付', canc
 .hour-bar { width: 100%; background: linear-gradient(180deg, #93c5fd, #2563eb); border-radius: 3px 3px 0 0; min-height: 3px; }
 .hour-axis { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10px; color: var(--muted, #6b7688); }
 .empty { padding: 10px 0; }
-
-/* 订单卡片化，替代难看的宽表格 */
-.order-list { display: flex; flex-direction: column; gap: 10px; }
-.order-item { padding: 14px; }
-.order-top, .order-bottom { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.order-bottom { margin-top: 8px; }
-.order-amount { color: var(--primary, #2563eb); font-weight: 800; }
-.order-time { margin-top: 6px; }
 
 @keyframes barFill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @keyframes barGrow { from { transform: scaleY(0); } to { transform: scaleY(1); } }

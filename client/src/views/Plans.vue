@@ -28,6 +28,21 @@
         </div>
       </div>
       <p class="center small muted" style="margin-top:18px">支付由微信支付 / 模拟支付完成，本系统不经手、不沉淀任何资金。</p>
+
+      <!-- 订单是「开通权益」的交易记录，属套餐管理范畴（原误放浏览统计，2026-11-26 用户定稿迁移至此） -->
+      <div class="section-title" style="margin:26px 0 12px">我的订单</div>
+      <div v-if="ordersError" class="card card-pad center">
+        <b>订单加载失败</b><p class="small muted">{{ ordersError }}</p>
+        <button class="btn btn-sm btn-primary" style="margin-top:10px" @click="loadOrders">重新加载</button>
+      </div>
+      <div v-else-if="!ordersLoading && !orders.length" class="card card-pad small muted">还没有订单</div>
+      <div v-else class="order-list">
+        <div v-for="o in orders" :key="o.id" class="card order-item">
+          <div class="order-top"><span class="mono">{{ o.orderNo }}</span><span class="badge" :class="o.status === 'paid' ? 'ok' : 'warn'">{{ statusText(o.status) }}</span></div>
+          <div class="order-bottom"><b>{{ o.packageName }}</b><span class="order-amount">¥{{ (o.amountCents / 100).toFixed(2) }}</span></div>
+          <div class="order-time small muted">{{ o.createdAt }}</div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -48,7 +63,20 @@ async function load() {
   catch (e) { loadError.value = e.message || '网络异常' }
   finally { loading.value = false }
 }
-onMounted(load)
+
+// 订单是「开通权益」的交易记录，属套餐管理范畴（原误放浏览统计，2026-11-26 迁移至此）
+const orders = ref([]); const ordersLoading = ref(true); const ordersError = ref('')
+async function loadOrders() {
+  ordersLoading.value = true; ordersError.value = ''
+  try {
+    const d = await api.get('/api/orders/mine')
+    orders.value = Array.isArray(d.data?.data) ? d.data.data : []
+  } catch (e) { ordersError.value = e.message || '网络异常' }
+  finally { ordersLoading.value = false }
+}
+function statusText(s) { return ({ paid: '已支付', pending: '待支付', cancelled: '已取消' })[s] || s }
+
+onMounted(() => { load(); loadOrders() })
 
 async function buy(p) {
   if (busy.value) return
@@ -76,4 +104,14 @@ async function buy(p) {
 .price span { font-size: 12px; color: var(--muted); font-weight: 400; letter-spacing: 0; margin-left: 4px; }
 .plan ul { list-style: none; margin: 0 0 18px; }
 .plan li { font-size: 12px; color: var(--muted); padding: 4px 0; }
+
+/* 订单卡片化（原在浏览统计页，属套餐/权益范畴，迁至本页） */
+.section-title { font-size: 15px; font-weight: 700; }
+.order-list { display: flex; flex-direction: column; gap: 10px; }
+.order-item { padding: 14px; }
+.order-top, .order-bottom { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.order-bottom { margin-top: 8px; }
+.order-amount { color: var(--primary); font-weight: 800; }
+.order-time { margin-top: 6px; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
 </style>
