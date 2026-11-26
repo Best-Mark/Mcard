@@ -81,6 +81,8 @@
         <view v-if="list.length && list.length < total" class="more">已显示 {{ list.length }} / {{ total }}，可缩小筛选范围</view>
       </block>
     </view>
+
+    <TabBar active="market" />
   </view>
 </template>
 
@@ -88,6 +90,7 @@
 import { ref, computed } from 'vue'
 import { onLoad, onPullDownRefresh, onShareAppMessage } from '@dcloudio/uni-app'
 import { api, toast, geoLocate, withInvite } from '../../utils/request'
+import TabBar from '../../components/TabBar/TabBar.vue'
 
 const meta = ref({ industries: [], cities: [], hotCities: [] })
 const list = ref([])
@@ -210,7 +213,7 @@ onShareAppMessage(() => ({ title: '名片集市 · 发现附近业务对口伙�
 </script>
 
 <style scoped>
-.page { min-height: 100vh; background: #f5f7fb; }
+.page { min-height: 100vh; background: #f5f7fb; padding-bottom: 160rpx; }
 .hero { background: linear-gradient(135deg, #1e3a8a, #2563eb 55%, #38bdf8); color: #fff; padding: 30rpx 24rpx 34rpx; }
 .slogan { font-size: 32rpx; font-weight: 800; margin-bottom: 22rpx; }
 .locate { display: flex; align-items: center; gap: 16rpx; background: rgba(255,255,255,.15); border: 2rpx solid rgba(255,255,255,.28); border-radius: 20rpx; padding: 18rpx 20rpx; }

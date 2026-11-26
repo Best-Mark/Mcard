@@ -76,6 +76,8 @@
         </view>
       </view>
     </view>
+
+    <TabBar active="card" />
   </view>
 </template>
 
@@ -83,6 +85,7 @@
 import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { api, baseUrl, isLogged, goLogin, toast, getUnreadCount, isPromoterUser } from '../../utils/request'
+import TabBar from '../../components/TabBar/TabBar.vue'
 
 const logged = ref(false); const loading = ref(true); const card = ref(null); const isPromoter = ref(false)
 const stats = ref({}); const orders = ref([]); const busy = ref(false)
@@ -128,6 +131,7 @@ async function create() {
 </script>
 
 <style scoped>
+.page { padding-bottom: 160rpx; }
 .state { padding: 140rpx 40rpx; text-align: center; color: #6b7688; }
 .state .big { font-size: 90rpx; opacity: .3; }
 /* 无名片引导卡：对齐 H5 Dashboard 的温和样式，不做强制表单观感 */

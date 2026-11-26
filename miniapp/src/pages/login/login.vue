@@ -39,17 +39,10 @@ const mode = ref('login')
 const phone = ref(''); const password = ref(''); const nickname = ref(''); const busy = ref(false)
 const wxBusy = ref(false)
 
-// 登录后去向（与 H5 一致）：已有名片直接看名片页，没名片才去建卡页。
-// redirectTo 替换登录页、不留返回栈；查卡失败按无名片处理，保证一定能进到可操作的页面。
-async function goAfterLogin(delay = 500) {
-  setTimeout(async () => {
-    let url = '/pages/me/me'
-    try {
-      const mine = await api.get('/api/cards/mine', true)
-      if (mine?.slug) url = `/pages/card/card?slug=${mine.slug}`
-    } catch { /* 查卡失败 → 建卡页兜底 */ }
-    uni.redirectTo({ url, fail: () => uni.navigateBack() })
-  }, delay)
+// 登录后去向（与 H5 一致）：回到集市主界面，底部 tabbar 可进名片夹/名片/消息/我的。
+// reLaunch 替换登录页、不留返回栈（登录页不能留在返回链里）。
+function goAfterLogin(delay = 500) {
+  setTimeout(() => uni.reLaunch({ url: '/pages/market/market' }), delay)
 }
 
 // 微信快捷登录：uni.login 一次性 code → 服务端 code2session → 建号/登录。

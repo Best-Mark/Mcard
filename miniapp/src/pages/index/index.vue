@@ -56,6 +56,8 @@
         <view class="feature"><text class="ico">▤</text><view><b>实体名片版式</b><view class="muted small">90×54mm 印刷稿与海报保存</view></view></view>
       </view>
     </view>
+
+    <TabBar active="" />
   </view>
 </template>
 
@@ -63,6 +65,7 @@
 import { ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { api, baseUrl, isLogged, goLogin, parseSlug, toast } from '../../utils/request'
+import TabBar from '../../components/TabBar/TabBar.vue'
 
 const logged = ref(false)
 const myCard = ref(null)
@@ -105,7 +108,7 @@ function scan() {
 .title { font-size: 24rpx; color: #6b7688; margin-top: 4rpx; }
 .tags { display: flex; gap: 10rpx; margin-top: 12rpx; flex-wrap: wrap; }
 .tags text { font-size: 20rpx; color: #2563eb; background: #eff6ff; padding: 4rpx 12rpx; border-radius: 999rpx; }
-.body { padding: 24rpx; margin-top: -50rpx; }
+.body { padding: 24rpx; margin-top: -50rpx; padding-bottom: 160rpx; }
 .card { background: #fff; border-radius: 24rpx; padding: 26rpx; margin-bottom: 20rpx; box-shadow: 0 8rpx 28rpx rgba(15,23,42,.05); }
 .section { font-size: 30rpx; font-weight: 700; margin-bottom: 16rpx; }
 .mini-title { font-size: 30rpx; font-weight: 700; }

@@ -1,7 +1,6 @@
 <template>
   <view class="page">
     <view class="bar">
-      <text class="back" @tap="back">‹</text>
       <text class="title">消息通知</text>
       <text v-if="unread" class="mark" @tap="markAll">全部已读</text>
     </view>
@@ -21,6 +20,8 @@
         </view>
       </view>
     </view>
+
+    <TabBar active="notifications" />
   </view>
 </template>
 
@@ -28,6 +29,7 @@
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getNotifications, markNotificationRead } from '../../utils/request'
+import TabBar from '../../components/TabBar/TabBar.vue'
 
 const list = ref([])
 const unread = ref(0)
@@ -43,7 +45,6 @@ async function load() {
   } finally { loading.value = false }
 }
 onLoad(load)
-function back() { uni.navigateBack() }
 async function open(n) {
   if (busy.value) return
   if (!n.isRead) {
@@ -73,7 +74,7 @@ function timeOf(s) {
 </script>
 
 <style scoped>
-.page { min-height: 100vh; background: #f5f7fb; padding-bottom: 40rpx; }
+.page { min-height: 100vh; background: #f5f7fb; padding-bottom: 160rpx; }
 .bar { height: 88rpx; display: flex; align-items: center; gap: 20rpx; padding: 0 28rpx; background: #fff; border-bottom: 1rpx solid #e8edf4; }
 .back { font-size: 48rpx; color: #2563eb; line-height: 1; }
 .title { font-size: 30rpx; font-weight: 700; }
