@@ -624,6 +624,25 @@ async function save() {
 .thumb-sidebar::before { inset: 0; }
 .thumb-sidebar .tpl-ava { border-radius: 0; width: 30rpx; height: 44rpx; left: 6rpx; background: rgba(216,187,133,.55); }
 .thumb-sidebar::after { left: auto; right: 14rpx; background: rgba(92,61,36,.4); }
+/* 新增六套缩略图（tang/vanna/phantom/lava/star/alas）：深底渐变 + 烫边浅卡 + 顶部色条，与正文 .tpl-x 对应 */
+.thumb-tang { background: radial-gradient(180rpx 100rpx at 50% -10%, #7a1e15, #a62b2b 45%, #5f160f); }
+.thumb-tang::before { inset: 10rpx 14rpx; background: #fffdf8; border: 2rpx solid rgba(201,162,39,.55); border-top: 5rpx solid #c9a227; border-radius: 10rpx; }
+.thumb-tang .tpl-ava { border-radius: 8rpx; background: linear-gradient(145deg, #a62b2b, #7a1e15); box-shadow: inset 0 0 0 3rpx rgba(212,175,55,.6); }
+.thumb-vanna { background: radial-gradient(180rpx 100rpx at 50% -10%, #0c2a4d, #155a96 45%, #08203a); }
+.thumb-vanna::before { inset: 10rpx 14rpx; background: #fff; border: 2rpx solid rgba(42,143,212,.5); border-top: 5rpx solid #2a8fd4; border-radius: 10rpx; }
+.thumb-vanna .tpl-ava { border-radius: 8rpx; background: linear-gradient(145deg, #2a8fd4, #0c2a4d); box-shadow: inset 0 0 0 3rpx rgba(91,182,232,.55); }
+.thumb-phantom { background: radial-gradient(180rpx 100rpx at 50% -10%, #052e1c, #0f6b3f 45%, #032013); }
+.thumb-phantom::before { inset: 10rpx 14rpx; background: #fff; border: 2rpx solid rgba(34,201,122,.5); border-top: 5rpx solid #22c97a; border-radius: 10rpx; }
+.thumb-phantom .tpl-ava { border-radius: 8rpx; background: linear-gradient(145deg, #22c97a, #052e1c); box-shadow: inset 0 0 0 3rpx rgba(91,232,160,.55); }
+.thumb-lava { background: radial-gradient(180rpx 100rpx at 50% -10%, #1a1a1e, #3a3a42 45%, #15151a); }
+.thumb-lava::before { inset: 10rpx 14rpx; background: #fff; border: 2rpx solid rgba(194,65,12,.5); border-top: 5rpx solid #c2410c; border-radius: 10rpx; }
+.thumb-lava .tpl-ava { border-radius: 8rpx; background: linear-gradient(145deg, #c2410c, #1a1a1e); box-shadow: inset 0 0 0 3rpx rgba(234,106,44,.5); }
+.thumb-star { background: radial-gradient(180rpx 100rpx at 50% -10%, #08080c, #2a2a38 45%, #06060a); }
+.thumb-star::before { inset: 10rpx 14rpx; background: #12121a; border: 2rpx solid rgba(200,200,220,.28); border-top: 5rpx solid #8a8aa0; border-radius: 10rpx; }
+.thumb-star .tpl-ava { border-radius: 8rpx; background: linear-gradient(145deg, #4a4a5e, #1a1a24); box-shadow: inset 0 0 0 3rpx rgba(200,200,220,.4); }
+.thumb-alas { background: radial-gradient(180rpx 100rpx at 50% -10%, #4a0d14, #a01722 45%, #30080e); }
+.thumb-alas::before { inset: 10rpx 14rpx; background: #fff; border: 2rpx solid rgba(224,50,60,.5); border-top: 5rpx solid #e0323c; border-radius: 10rpx; }
+.thumb-alas .tpl-ava { border-radius: 8rpx; background: linear-gradient(145deg, #e0323c, #4a0d14); box-shadow: inset 0 0 0 3rpx rgba(240,96,104,.55); }
 .tpl-name { font-size: 28rpx; font-weight: 700; }
 .tpl-desc { font-size: 22rpx; color: #8a7355; }
 .tpl-check { font-size: 22rpx; color: #a62b2b; font-weight: 700; }

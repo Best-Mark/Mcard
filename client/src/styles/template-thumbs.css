@@ -92,6 +92,27 @@
 .thumb-sidebar::before { inset: 0; }
 .thumb-sidebar .tpl-ava { border-radius: 0; width: 20px; height: 28px; left: 3px; background: rgba(216,187,133,.55); }
 .thumb-sidebar::after { left: auto; right: 8px; background: rgba(92,61,36,.4); box-shadow: 0 7px 0 rgba(92,61,36,.22); }
+/* ===== 新增六套：tang 唐红鎏金 / vanna 瓦纳蓝 / phantom 幻影绿 / lava 熔岩灰 / star 星钻黑 / alas 阿拉斯红 =====
+   统一「深底渐变 + 烫边浅卡 + 顶部色条 + 头像」骨架，各套只换色，与正文 .tpl-x 观感对应 */
+.thumb-tang { background: radial-gradient(120px 70px at 50% -10%,#7a1e15,#a62b2b 45%,#5f160f); }
+.thumb-tang::before { inset: 6px 8px; background: #fffdf8; border: 1px solid rgba(201,162,39,.55); border-top: 3px solid #c9a227; border-radius: 6px; }
+.thumb-tang .tpl-ava { border-radius: 5px; background: linear-gradient(145deg,#a62b2b,#7a1e15); box-shadow: inset 0 0 0 2px rgba(212,175,55,.6); }
+.thumb-vanna { background: radial-gradient(120px 70px at 50% -10%,#0c2a4d,#155a96 45%,#08203a); }
+.thumb-vanna::before { inset: 6px 8px; background: #fff; border: 1px solid rgba(42,143,212,.5); border-top: 3px solid #2a8fd4; border-radius: 6px; }
+.thumb-vanna .tpl-ava { border-radius: 5px; background: linear-gradient(145deg,#2a8fd4,#0c2a4d); box-shadow: inset 0 0 0 2px rgba(91,182,232,.55); }
+.thumb-phantom { background: radial-gradient(120px 70px at 50% -10%,#052e1c,#0f6b3f 45%,#032013); }
+.thumb-phantom::before { inset: 6px 8px; background: #fff; border: 1px solid rgba(34,201,122,.5); border-top: 3px solid #22c97a; border-radius: 6px; }
+.thumb-phantom .tpl-ava { border-radius: 5px; background: linear-gradient(145deg,#22c97a,#052e1c); box-shadow: inset 0 0 0 2px rgba(91,232,160,.55); }
+.thumb-lava { background: radial-gradient(120px 70px at 50% -10%,#1a1a1e,#3a3a42 45%,#15151a); }
+.thumb-lava::before { inset: 6px 8px; background: #fff; border: 1px solid rgba(194,65,12,.5); border-top: 3px solid #c2410c; border-radius: 6px; }
+.thumb-lava .tpl-ava { border-radius: 5px; background: linear-gradient(145deg,#c2410c,#1a1a1e); box-shadow: inset 0 0 0 2px rgba(234,106,44,.5); }
+.thumb-star { background: radial-gradient(120px 70px at 50% -10%,#08080c,#2a2a38 45%,#06060a); }
+.thumb-star::before { inset: 6px 8px; background: #12121a; border: 1px solid rgba(200,200,220,.28); border-top: 3px solid #8a8aa0; border-radius: 6px; }
+.thumb-star .tpl-ava { border-radius: 5px; background: linear-gradient(145deg,#4a4a5e,#1a1a24); box-shadow: inset 0 0 0 2px rgba(200,200,220,.4); }
+.thumb-star::after { background: rgba(200,200,220,.5); box-shadow: 0 7px 0 rgba(200,200,220,.28); }
+.thumb-alas { background: radial-gradient(120px 70px at 50% -10%,#4a0d14,#a01722 45%,#30080e); }
+.thumb-alas::before { inset: 6px 8px; background: #fff; border: 1px solid rgba(224,50,60,.5); border-top: 3px solid #e0323c; border-radius: 6px; }
+.thumb-alas .tpl-ava { border-radius: 5px; background: linear-gradient(145deg,#e0323c,#4a0d14); box-shadow: inset 0 0 0 2px rgba(240,96,104,.55); }
 .tpl-item b { font-size: 13px; }
 .tpl-desc { font-size: 11px; color: var(--muted); line-height: 1.45; min-height: 30px; }
 .tpl-check { font-size: 11px; color: var(--primary); font-weight: 700; }
