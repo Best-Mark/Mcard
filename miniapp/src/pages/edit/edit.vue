@@ -163,11 +163,21 @@ const themes = {
   ink: { label: '曜石黑金', accent: '#b99355' },
   sunset: { label: '活力橙', accent: '#ea580c' },
   mint: { label: '翡翠绿', accent: '#0f766e' },
-  royal: { label: '皇家紫', accent: '#7c3aed' }
+  royal: { label: '皇家紫', accent: '#7c3aed' },
+  vanna: { label: '瓦纳蓝', accent: '#155a96' },
+  phantom: { label: '幻影绿', accent: '#0f6b3f' },
+  lava: { label: '熔岩灰', accent: '#c2410c' },
+  star: { label: '星钻黑', accent: '#8a8aa0' },
+  alas: { label: '阿拉斯红', accent: '#a01722' }
 }
 // ⚠️ 与 client/src/utils/themes.js 的 TEMPLATE_PALETTES 保持同步
 const TEMPLATE_PALETTES = {
   tang: { theme: 'tang', qrFg: '#7a1e15', qrBg: '#f7ecd9' },
+  vanna: { theme: 'vanna', qrFg: '#0c2a4d', qrBg: '#eaf2f9' },
+  phantom: { theme: 'phantom', qrFg: '#052e1c', qrBg: '#e8f5ee' },
+  lava: { theme: 'lava', qrFg: '#1a1a1e', qrBg: '#f1f1f2' },
+  star: { theme: 'star', qrFg: '#8a8aa0', qrBg: '#12121a' },
+  alas: { theme: 'alas', qrFg: '#4a0d14', qrBg: '#f9eaea' },
   classic: { theme: 'ocean', qrFg: '#12306b', qrBg: '#f2f7ff' },
   minimal: { theme: 'ocean', qrFg: '#2b2118', qrBg: '#ffffff' },
   elite: { theme: 'ink', qrFg: '#b99355', qrBg: '#15171c' },

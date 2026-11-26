@@ -173,6 +173,11 @@ const coverBg = computed(() => {
   if (tpl.value === 'vivid') return `linear-gradient(135deg, ${c}, #db2777 60%, #f59e0b)`
   if (tpl.value === 'seal') return '#111827'
   if (tpl.value === 'tang') return 'linear-gradient(135deg,#7a1e15 0%,#a62b2b 55%,#c9a227 100%)'
+  if (tpl.value === 'vanna') return 'linear-gradient(135deg,#0c2a4d 0%,#155a96 55%,#2a8fd4 100%)'
+  if (tpl.value === 'phantom') return 'linear-gradient(135deg,#052e1c 0%,#0f6b3f 55%,#22c97a 100%)'
+  if (tpl.value === 'lava') return 'linear-gradient(135deg,#1a1a1e 0%,#3a3a42 55%,#c2410c 100%)'
+  if (tpl.value === 'star') return 'linear-gradient(135deg,#08080c 0%,#1a1a24 55%,#4a4a5e 100%)'
+  if (tpl.value === 'alas') return 'linear-gradient(135deg,#4a0d14 0%,#a01722 55%,#e0323c 100%)'
   if (tpl.value === 'contact') return `linear-gradient(135deg, #2b2118 0%, ${c} 100%)`
   if (tpl.value === 'navygold') return 'linear-gradient(135deg,#1d3a55 0%,#2f5a7d 40%,#d8bb85 78%,#b99355 100%)'
   return `linear-gradient(135deg, ${c}, #2b2118)`
@@ -536,6 +541,107 @@ onShareAppMessage(() => {
 .tpl-tang .section { color: #8c2318; border-left: 6rpx solid #c9a227; }
 .tpl-tang .btn.primary { background: linear-gradient(135deg, #d4af37, #c9a227); color: #fff; }
 .tpl-tang .qr { border: 4rpx solid rgba(201,162,39,.5); }
+
+/* ① 瓦纳蓝 vanna：深邃海蓝渐变底 + 冷白卡 + 湖蓝描边 */
+.tpl-vanna { background: radial-gradient(1200rpx 520rpx at 50% -12%, #0c2a4d 0%, #155a96 45%, #0e3a63 78%, #08203a 100%); min-height: 100vh; }
+.tpl-vanna .cover { height: 210rpx; border-radius: 0 0 40rpx 40rpx; position: relative; }
+.tpl-vanna .cover::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 8rpx; background: linear-gradient(90deg, #0c2a4d, #155a96 40%, #2a8fd4 80%, #5bb6e8); }
+.tpl-vanna .brand { color: #cfe8f6; letter-spacing: 4rpx; }
+.tpl-vanna .body { margin-top: -44rpx; }
+.tpl-vanna .card { border-radius: 22rpx; border: 2rpx solid rgba(42,143,212,.5); box-shadow: 0 26rpx 60rpx -22rpx rgba(8,32,58,.6); background: #fff; }
+.tpl-vanna .profile { position: relative; overflow: hidden; padding: 34rpx 26rpx 24rpx; border-radius: 18rpx; }
+.tpl-vanna .profile::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 10rpx; background: linear-gradient(90deg, #0c2a4d, #155a96 40%, #2a8fd4 80%, #5bb6e8); }
+.tpl-vanna .avatar { width: 116rpx; height: 116rpx; border-radius: 16rpx; background: linear-gradient(145deg, #2a8fd4, #0c2a4d); box-shadow: inset 0 0 0 4rpx rgba(91,182,232,.55), 0 8rpx 18rpx -8rpx rgba(8,32,58,.6); }
+.tpl-vanna .name { color: #0c2a4d; font-size: 48rpx; font-weight: 900; letter-spacing: 2rpx; }
+.tpl-vanna .title { color: #5b7c99; font-size: 24rpx; letter-spacing: 1rpx; }
+.tpl-vanna .tags text { border-radius: 999rpx; background: #eaf2f9; color: #1b5c8f; box-shadow: inset 0 0 0 2rpx rgba(42,143,212,.32); }
+.tpl-vanna .actions { border-radius: 18rpx; border: 2rpx solid rgba(42,143,212,.32); }
+.tpl-vanna .act:first-child { background: linear-gradient(135deg, #2a8fd4, #155a96); }
+.tpl-vanna .ico { border-radius: 14rpx; }
+.tpl-vanna .section { color: #155a96; border-left: 6rpx solid #2a8fd4; }
+.tpl-vanna .btn.primary { background: linear-gradient(135deg, #5bb6e8, #2a8fd4); color: #fff; }
+.tpl-vanna .qr { border: 4rpx solid rgba(42,143,212,.5); }
+
+/* ② 幻影绿 phantom：翡翠墨绿渐变底 + 象牙白卡 + 翠绿描边 */
+.tpl-phantom { background: radial-gradient(1200rpx 520rpx at 50% -12%, #052e1c 0%, #0f6b3f 45%, #0a4d2c 78%, #032013 100%); min-height: 100vh; }
+.tpl-phantom .cover { height: 210rpx; border-radius: 0 0 40rpx 40rpx; position: relative; }
+.tpl-phantom .cover::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 8rpx; background: linear-gradient(90deg, #052e1c, #0f6b3f 40%, #22c97a 80%, #5be8a0); }
+.tpl-phantom .brand { color: #c8f0da; letter-spacing: 4rpx; }
+.tpl-phantom .body { margin-top: -44rpx; }
+.tpl-phantom .card { border-radius: 22rpx; border: 2rpx solid rgba(34,201,122,.5); box-shadow: 0 26rpx 60rpx -22rpx rgba(3,32,19,.6); background: #fff; }
+.tpl-phantom .profile { position: relative; overflow: hidden; padding: 34rpx 26rpx 24rpx; border-radius: 18rpx; }
+.tpl-phantom .profile::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 10rpx; background: linear-gradient(90deg, #052e1c, #0f6b3f 40%, #22c97a 80%, #5be8a0); }
+.tpl-phantom .avatar { width: 116rpx; height: 116rpx; border-radius: 16rpx; background: linear-gradient(145deg, #22c97a, #052e1c); box-shadow: inset 0 0 0 4rpx rgba(91,232,160,.55), 0 8rpx 18rpx -8rpx rgba(3,32,19,.6); }
+.tpl-phantom .name { color: #052e1c; font-size: 48rpx; font-weight: 900; letter-spacing: 2rpx; }
+.tpl-phantom .title { color: #4e7a64; font-size: 24rpx; letter-spacing: 1rpx; }
+.tpl-phantom .tags text { border-radius: 999rpx; background: #e8f5ee; color: #17704a; box-shadow: inset 0 0 0 2rpx rgba(34,201,122,.32); }
+.tpl-phantom .actions { border-radius: 18rpx; border: 2rpx solid rgba(34,201,122,.32); }
+.tpl-phantom .act:first-child { background: linear-gradient(135deg, #22c97a, #0f6b3f); }
+.tpl-phantom .ico { border-radius: 14rpx; }
+.tpl-phantom .section { color: #0f6b3f; border-left: 6rpx solid #22c97a; }
+.tpl-phantom .btn.primary { background: linear-gradient(135deg, #5be8a0, #22c97a); color: #fff; }
+.tpl-phantom .qr { border: 4rpx solid rgba(34,201,122,.5); }
+
+/* ③ 熔岩灰 lava：火山岩灰渐变底 + 暖白卡 + 熔岩橙描边 */
+.tpl-lava { background: radial-gradient(1200rpx 520rpx at 50% -12%, #1a1a1e 0%, #2c2c33 45%, #3a3a42 78%, #15151a 100%); min-height: 100vh; }
+.tpl-lava .cover { height: 210rpx; border-radius: 0 0 40rpx 40rpx; position: relative; }
+.tpl-lava .cover::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 8rpx; background: linear-gradient(90deg, #1a1a1e, #3a3a42 40%, #c2410c 80%, #ea6a2c); }
+.tpl-lava .brand { color: #f5c8a8; letter-spacing: 4rpx; }
+.tpl-lava .body { margin-top: -44rpx; }
+.tpl-lava .card { border-radius: 22rpx; border: 2rpx solid rgba(194,65,12,.5); box-shadow: 0 26rpx 60rpx -22rpx rgba(10,10,14,.6); background: #fff; }
+.tpl-lava .profile { position: relative; overflow: hidden; padding: 34rpx 26rpx 24rpx; border-radius: 18rpx; }
+.tpl-lava .profile::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 10rpx; background: linear-gradient(90deg, #1a1a1e, #3a3a42 40%, #c2410c 80%, #ea6a2c); }
+.tpl-lava .avatar { width: 116rpx; height: 116rpx; border-radius: 16rpx; background: linear-gradient(145deg, #c2410c, #1a1a1e); box-shadow: inset 0 0 0 4rpx rgba(234,106,44,.5), 0 8rpx 18rpx -8rpx rgba(10,10,14,.6); }
+.tpl-lava .name { color: #1a1a1e; font-size: 48rpx; font-weight: 900; letter-spacing: 2rpx; }
+.tpl-lava .title { color: #6b6b76; font-size: 24rpx; letter-spacing: 1rpx; }
+.tpl-lava .tags text { border-radius: 999rpx; background: #f1f1f2; color: #b3481a; box-shadow: inset 0 0 0 2rpx rgba(194,65,12,.32); }
+.tpl-lava .actions { border-radius: 18rpx; border: 2rpx solid rgba(194,65,12,.32); }
+.tpl-lava .act:first-child { background: linear-gradient(135deg, #ea6a2c, #c2410c); }
+.tpl-lava .ico { border-radius: 14rpx; }
+.tpl-lava .section { color: #c2410c; border-left: 6rpx solid #ea6a2c; }
+.tpl-lava .btn.primary { background: linear-gradient(135deg, #f59264, #ea6a2c); color: #fff; }
+.tpl-lava .qr { border: 4rpx solid rgba(194,65,12,.5); }
+
+/* ④ 星钻黑 star：曜石黑渐变底 + 深空卡 + 碎钻银描边 */
+.tpl-star { background: radial-gradient(1200rpx 520rpx at 50% -12%, #08080c 0%, #1a1a24 45%, #2a2a38 78%, #06060a 100%); min-height: 100vh; }
+.tpl-star .cover { height: 210rpx; border-radius: 0 0 40rpx 40rpx; position: relative; }
+.tpl-star .cover::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 8rpx; background: linear-gradient(90deg, #08080c, #2a2a38 40%, #8a8aa0 80%, #c8c8dc); }
+.tpl-star .brand { color: #e0e0f0; letter-spacing: 4rpx; }
+.tpl-star .body { margin-top: -44rpx; }
+.tpl-star .card { border-radius: 22rpx; border: 2rpx solid rgba(200,200,220,.28); box-shadow: 0 30rpx 70rpx -30rpx #000; background: #12121a; }
+.tpl-star .profile { position: relative; overflow: hidden; padding: 34rpx 26rpx 24rpx; border-radius: 18rpx; background: linear-gradient(160deg, rgba(255,255,255,.08), rgba(255,255,255,.02)); }
+.tpl-star .profile::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 10rpx; background: linear-gradient(90deg, #08080c, #2a2a38 40%, #8a8aa0 80%, #c8c8dc); }
+.tpl-star .avatar { width: 116rpx; height: 116rpx; border-radius: 16rpx; background: linear-gradient(145deg, #4a4a5e, #1a1a24); box-shadow: inset 0 0 0 4rpx rgba(200,200,220,.4), 0 8rpx 18rpx -8rpx rgba(0,0,0,.6); }
+.tpl-star .name { color: #f2f0f8; font-size: 48rpx; font-weight: 900; letter-spacing: 2rpx; }
+.tpl-star .title { color: #8a8aa0; font-size: 24rpx; letter-spacing: 1rpx; }
+.tpl-star .tags text { border-radius: 999rpx; background: rgba(255,255,255,.07); color: #a8a8c0; box-shadow: inset 0 0 0 2rpx rgba(255,255,255,.1); }
+.tpl-star .actions { border-radius: 18rpx; border: 2rpx solid rgba(255,255,255,.12); }
+.tpl-star .act { background: rgba(255,255,255,.08); color: #dcdce8; }
+.tpl-star .act:first-child { background: linear-gradient(135deg, #4a4a5e, #2a2a38); color: #fff; }
+.tpl-star .ico { border-radius: 14rpx; }
+.tpl-star .section { color: #c8c8dc; border-left: 6rpx solid #8a8aa0; }
+.tpl-star .btn.primary { background: linear-gradient(135deg, #4a4a5e, #2a2a38); color: #fff; }
+.tpl-star .qr { border: 4rpx solid rgba(200,200,220,.35); }
+
+/* ⑤ 阿拉斯红 alas：深绯红渐变底 + 象牙白卡 + 亮红描边 */
+.tpl-alas { background: radial-gradient(1200rpx 520rpx at 50% -12%, #4a0d14 0%, #a01722 45%, #7a1220 78%, #30080e 100%); min-height: 100vh; }
+.tpl-alas .cover { height: 210rpx; border-radius: 0 0 40rpx 40rpx; position: relative; }
+.tpl-alas .cover::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 8rpx; background: linear-gradient(90deg, #4a0d14, #a01722 40%, #e0323c 80%, #f06068); }
+.tpl-alas .brand { color: #f5c8cc; letter-spacing: 4rpx; }
+.tpl-alas .body { margin-top: -44rpx; }
+.tpl-alas .card { border-radius: 22rpx; border: 2rpx solid rgba(224,50,60,.5); box-shadow: 0 26rpx 60rpx -22rpx rgba(48,8,14,.6); background: #fff; }
+.tpl-alas .profile { position: relative; overflow: hidden; padding: 34rpx 26rpx 24rpx; border-radius: 18rpx; }
+.tpl-alas .profile::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 10rpx; background: linear-gradient(90deg, #4a0d14, #a01722 40%, #e0323c 80%, #f06068); }
+.tpl-alas .avatar { width: 116rpx; height: 116rpx; border-radius: 16rpx; background: linear-gradient(145deg, #e0323c, #4a0d14); box-shadow: inset 0 0 0 4rpx rgba(240,96,104,.55), 0 8rpx 18rpx -8rpx rgba(48,8,14,.6); }
+.tpl-alas .name { color: #4a0d14; font-size: 48rpx; font-weight: 900; letter-spacing: 2rpx; }
+.tpl-alas .title { color: #96616a; font-size: 24rpx; letter-spacing: 1rpx; }
+.tpl-alas .tags text { border-radius: 999rpx; background: #f9eaea; color: #a02530; box-shadow: inset 0 0 0 2rpx rgba(224,50,60,.32); }
+.tpl-alas .actions { border-radius: 18rpx; border: 2rpx solid rgba(224,50,60,.32); }
+.tpl-alas .act:first-child { background: linear-gradient(135deg, #e0323c, #a01722); }
+.tpl-alas .ico { border-radius: 14rpx; }
+.tpl-alas .section { color: #a01722; border-left: 6rpx solid #e0323c; }
+.tpl-alas .btn.primary { background: linear-gradient(135deg, #f06068, #e0323c); color: #fff; }
+.tpl-alas .qr { border: 4rpx solid rgba(224,50,60,.5); }
 
 .tpl-contact .cover { height: 200rpx; border-radius: 0 0 28rpx 28rpx; }
 .tpl-contact .body { margin-top: -40rpx; }

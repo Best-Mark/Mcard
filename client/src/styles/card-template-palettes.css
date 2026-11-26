@@ -306,6 +306,136 @@
   --cv-wm-color: #d4af37; --cv-wm-opacity: .1;
   --cv-back-color: #f3e2b3; --cv-back-bg: rgba(92,22,15,.5); --cv-brand-color: rgba(255,255,255,.9);
 }
+/* 瓦纳蓝 vanna：深邃海蓝渐变底 + 冷白卡 + 湖蓝描边，沉稳知性商务范 */
+.cv-tpl-vanna {
+  --cv-page-bg: radial-gradient(1200px 520px at 50% -12%,#0c2a4d 0%,#155a96 45%,#0e3a63 78%,#08203a 100%);
+  --cv-ink: #0c2a4d; --cv-ink-2: #5b7c99; --cv-line: #dce8f2;
+  --cv-panel-bg: #f4f9fd; --cv-card-bg: #ffffff;
+  --cv-card-border: 2px solid rgba(42,143,212,.5); --cv-card-radius: 22px; --cv-card-x: 22px; --cv-card-pad: 32px 26px 24px;
+  --cv-card-shadow: 0 26px 60px -22px rgba(8,32,58,.6), 0 0 0 1px rgba(42,143,212,.18);
+  --cv-card-blur: none; --cv-topbar-h: 6px; --cv-topbar-x: 0;
+  --cv-topbar-bg: linear-gradient(90deg,#0c2a4d,#155a96 40%,#2a8fd4 80%,#5bb6e8);
+  --cv-logo-bg-solid: #155a96; --cv-logo-bg: linear-gradient(145deg,#2a8fd4,#0c2a4d); --cv-logo-radius: 14px;
+  --cv-logo-shadow: inset 0 0 0 2px rgba(91,182,232,.55), 0 8px 18px -8px rgba(8,32,58,.6);
+  --cv-name-size: 28px; --cv-name-weight: 900; --cv-name-spacing: .05em; --cv-name-color: #0c2a4d;
+  --cv-role-color: #5b7c99; --cv-role-size: 12.5px; --cv-role-spacing: .06em;
+  --cv-org-color: #155a96; --cv-org-border: 1px dashed #cfe2f0;
+  --cv-tag-bg: #eaf2f9; --cv-tag-color: #1b5c8f; --cv-tag-shadow: inset 0 0 0 1px rgba(42,143,212,.32); --cv-tag-radius: 99px;
+  --cv-btn-radius: 13px;
+  --cv-btn-main-solid: #155a96; --cv-btn-main-bg: linear-gradient(135deg,#2a8fd4,#155a96); --cv-btn-main-color: #fff; --cv-btn-main-shadow: 0 10px 22px -12px rgba(21,90,150,.85);
+  --cv-btn-ghost-bg: #eaf2f9; --cv-btn-ghost-color: #155a96; --cv-btn-ghost-shadow: inset 0 0 0 1px #cfe2f0;
+  --cv-btn-save-solid: #2a8fd4; --cv-btn-save-bg: linear-gradient(135deg,#5bb6e8,#2a8fd4); --cv-btn-save-color: #fff; --cv-btn-save-shadow: 0 12px 24px -14px rgba(42,143,212,.9);
+  --cv-steps-bg: #f4f9fd; --cv-steps-color: #5b7c99; --cv-steps-shadow: inset 0 0 0 1px #dce8f2; --cv-steps-radius: 12px; --cv-steps-title: #2a8fd4; --cv-steps-b: #155a96;
+  --cv-mini-bg: #eaf2f9; --cv-mini-color: #155a96; --cv-mini-shadow: inset 0 0 0 1px rgba(42,143,212,.32); --cv-mini-on-solid: #2a8fd4; --cv-mini-on-bg: linear-gradient(135deg,#5bb6e8,#2a8fd4); --cv-mini-on-color: #fff;
+  --cv-block-title: #2a8fd4; --cv-link-color: #155a96;
+  --cv-foot-color: #7f9cb3; --cv-foot-b: #2a8fd4; --cv-hint-color: #7f9cb3;
+  --cv-wm-color: #5bb6e8; --cv-wm-opacity: .1;
+  --cv-back-color: #cfe8f6; --cv-back-bg: rgba(8,32,58,.5); --cv-brand-color: rgba(255,255,255,.9);
+}
+/* 幻影绿 phantom：翡翠墨绿渐变底 + 象牙白卡 + 翠绿描边，沉静内敛高级感 */
+.cv-tpl-phantom {
+  --cv-page-bg: radial-gradient(1200px 520px at 50% -12%,#052e1c 0%,#0f6b3f 45%,#0a4d2c 78%,#032013 100%);
+  --cv-ink: #052e1c; --cv-ink-2: #4e7a64; --cv-line: #d8ece1;
+  --cv-panel-bg: #f3faf6; --cv-card-bg: #ffffff;
+  --cv-card-border: 2px solid rgba(34,201,122,.5); --cv-card-radius: 22px; --cv-card-x: 22px; --cv-card-pad: 32px 26px 24px;
+  --cv-card-shadow: 0 26px 60px -22px rgba(3,32,19,.6), 0 0 0 1px rgba(34,201,122,.18);
+  --cv-card-blur: none; --cv-topbar-h: 6px; --cv-topbar-x: 0;
+  --cv-topbar-bg: linear-gradient(90deg,#052e1c,#0f6b3f 40%,#22c97a 80%,#5be8a0);
+  --cv-logo-bg-solid: #0f6b3f; --cv-logo-bg: linear-gradient(145deg,#22c97a,#052e1c); --cv-logo-radius: 14px;
+  --cv-logo-shadow: inset 0 0 0 2px rgba(91,232,160,.55), 0 8px 18px -8px rgba(3,32,19,.6);
+  --cv-name-size: 28px; --cv-name-weight: 900; --cv-name-spacing: .05em; --cv-name-color: #052e1c;
+  --cv-role-color: #4e7a64; --cv-role-size: 12.5px; --cv-role-spacing: .06em;
+  --cv-org-color: #0f6b3f; --cv-org-border: 1px dashed #c8e6d5;
+  --cv-tag-bg: #e8f5ee; --cv-tag-color: #17704a; --cv-tag-shadow: inset 0 0 0 1px rgba(34,201,122,.32); --cv-tag-radius: 99px;
+  --cv-btn-radius: 13px;
+  --cv-btn-main-solid: #0f6b3f; --cv-btn-main-bg: linear-gradient(135deg,#22c97a,#0f6b3f); --cv-btn-main-color: #fff; --cv-btn-main-shadow: 0 10px 22px -12px rgba(15,107,63,.85);
+  --cv-btn-ghost-bg: #e8f5ee; --cv-btn-ghost-color: #0f6b3f; --cv-btn-ghost-shadow: inset 0 0 0 1px #c8e6d5;
+  --cv-btn-save-solid: #22c97a; --cv-btn-save-bg: linear-gradient(135deg,#5be8a0,#22c97a); --cv-btn-save-color: #fff; --cv-btn-save-shadow: 0 12px 24px -14px rgba(34,201,122,.9);
+  --cv-steps-bg: #f3faf6; --cv-steps-color: #4e7a64; --cv-steps-shadow: inset 0 0 0 1px #d8ece1; --cv-steps-radius: 12px; --cv-steps-title: #22c97a; --cv-steps-b: #0f6b3f;
+  --cv-mini-bg: #e8f5ee; --cv-mini-color: #0f6b3f; --cv-mini-shadow: inset 0 0 0 1px rgba(34,201,122,.32); --cv-mini-on-solid: #22c97a; --cv-mini-on-bg: linear-gradient(135deg,#5be8a0,#22c97a); --cv-mini-on-color: #fff;
+  --cv-block-title: #22c97a; --cv-link-color: #0f6b3f;
+  --cv-foot-color: #7a9c8b; --cv-foot-b: #22c97a; --cv-hint-color: #7a9c8b;
+  --cv-wm-color: #5be8a0; --cv-wm-opacity: .1;
+  --cv-back-color: #c8f0da; --cv-back-bg: rgba(3,32,19,.5); --cv-brand-color: rgba(255,255,255,.9);
+}
+/* 熔岩灰 lava：火山岩灰渐变底 + 暖白卡 + 熔岩橙描边，冷峻透张力 */
+.cv-tpl-lava {
+  --cv-page-bg: radial-gradient(1200px 520px at 50% -12%,#1a1a1e 0%,#2c2c33 45%,#3a3a42 78%,#15151a 100%);
+  --cv-ink: #1a1a1e; --cv-ink-2: #6b6b76; --cv-line: #e4e4e8;
+  --cv-panel-bg: #fafafa; --cv-card-bg: #ffffff;
+  --cv-card-border: 2px solid rgba(194,65,12,.5); --cv-card-radius: 22px; --cv-card-x: 22px; --cv-card-pad: 32px 26px 24px;
+  --cv-card-shadow: 0 26px 60px -22px rgba(10,10,14,.6), 0 0 0 1px rgba(194,65,12,.18);
+  --cv-card-blur: none; --cv-topbar-h: 6px; --cv-topbar-x: 0;
+  --cv-topbar-bg: linear-gradient(90deg,#1a1a1e,#3a3a42 40%,#c2410c 80%,#ea6a2c);
+  --cv-logo-bg-solid: #2c2c33; --cv-logo-bg: linear-gradient(145deg,#c2410c,#1a1a1e); --cv-logo-radius: 14px;
+  --cv-logo-shadow: inset 0 0 0 2px rgba(234,106,44,.5), 0 8px 18px -8px rgba(10,10,14,.6);
+  --cv-name-size: 28px; --cv-name-weight: 900; --cv-name-spacing: .05em; --cv-name-color: #1a1a1e;
+  --cv-role-color: #6b6b76; --cv-role-size: 12.5px; --cv-role-spacing: .06em;
+  --cv-org-color: #c2410c; --cv-org-border: 1px dashed #d9d9de;
+  --cv-tag-bg: #f1f1f2; --cv-tag-color: #b3481a; --cv-tag-shadow: inset 0 0 0 1px rgba(194,65,12,.32); --cv-tag-radius: 99px;
+  --cv-btn-radius: 13px;
+  --cv-btn-main-solid: #c2410c; --cv-btn-main-bg: linear-gradient(135deg,#ea6a2c,#c2410c); --cv-btn-main-color: #fff; --cv-btn-main-shadow: 0 10px 22px -12px rgba(194,65,12,.85);
+  --cv-btn-ghost-bg: #f1f1f2; --cv-btn-ghost-color: #c2410c; --cv-btn-ghost-shadow: inset 0 0 0 1px #d9d9de;
+  --cv-btn-save-solid: #ea6a2c; --cv-btn-save-bg: linear-gradient(135deg,#f59264,#ea6a2c); --cv-btn-save-color: #fff; --cv-btn-save-shadow: 0 12px 24px -14px rgba(234,106,44,.9);
+  --cv-steps-bg: #fafafa; --cv-steps-color: #6b6b76; --cv-steps-shadow: inset 0 0 0 1px #e4e4e8; --cv-steps-radius: 12px; --cv-steps-title: #c2410c; --cv-steps-b: #1a1a1e;
+  --cv-mini-bg: #f1f1f2; --cv-mini-color: #c2410c; --cv-mini-shadow: inset 0 0 0 1px rgba(194,65,12,.32); --cv-mini-on-solid: #c2410c; --cv-mini-on-bg: linear-gradient(135deg,#ea6a2c,#c2410c); --cv-mini-on-color: #fff;
+  --cv-block-title: #c2410c; --cv-link-color: #c2410c;
+  --cv-foot-color: #8a8a93; --cv-foot-b: #c2410c; --cv-hint-color: #8a8a93;
+  --cv-wm-color: #ea6a2c; --cv-wm-opacity: .1;
+  --cv-back-color: #f5c8a8; --cv-back-bg: rgba(10,10,14,.5); --cv-brand-color: rgba(255,255,255,.9);
+}
+/* 星钻黑 star：曜石黑渐变底 + 深空卡 + 碎钻银描边，璀璨内敛奢华 */
+.cv-tpl-star {
+  --cv-page-bg: radial-gradient(1200px 520px at 50% -12%,#08080c 0%,#1a1a24 45%,#2a2a38 78%,#06060a 100%);
+  --cv-ink: #eceaf2; --cv-ink-2: #8a8aa0; --cv-line: rgba(255,255,255,.1);
+  --cv-panel-bg: rgba(18,18,26,.82); --cv-card-bg: linear-gradient(160deg,rgba(255,255,255,.08),rgba(255,255,255,.02));
+  --cv-card-border: 1px solid rgba(200,200,220,.28); --cv-card-radius: 22px; --cv-card-x: 22px; --cv-card-pad: 32px 26px 24px;
+  --cv-card-shadow: 0 30px 70px -30px #000, inset 0 1px 0 rgba(255,255,255,.14); --cv-card-blur: blur(12px);
+  --cv-topbar-h: 6px; --cv-topbar-x: 0;
+  --cv-topbar-bg: linear-gradient(90deg,#08080c,#2a2a38 40%,#8a8aa0 80%,#c8c8dc);
+  --cv-logo-bg: rgba(200,200,220,.12); --cv-logo-radius: 16px; --cv-logo-shadow: inset 0 0 0 1px rgba(200,200,220,.4);
+  --cv-name-size: 28px; --cv-name-weight: 900; --cv-name-spacing: .06em; --cv-name-color: #f2f0f8;
+  --cv-role-color: #8a8aa0; --cv-role-size: 12.5px; --cv-role-spacing: .1em;
+  --cv-org-color: #c8c8dc; --cv-org-border: 1px solid rgba(255,255,255,.12);
+  --cv-tag-bg: rgba(255,255,255,.07); --cv-tag-color: #a8a8c0; --cv-tag-shadow: inset 0 0 0 1px rgba(255,255,255,.1); --cv-tag-radius: 99px;
+  --cv-btn-radius: 13px;
+  --cv-btn-main-solid: #2a2a38; --cv-btn-main-bg: linear-gradient(135deg,#4a4a5e,#2a2a38); --cv-btn-main-color: #fff; --cv-btn-main-shadow: 0 12px 26px -14px rgba(0,0,0,.9);
+  --cv-btn-ghost-bg: rgba(255,255,255,.08); --cv-btn-ghost-color: #dcdce8; --cv-btn-ghost-shadow: inset 0 0 0 1px rgba(255,255,255,.14);
+  --cv-btn-save-bg: rgba(255,255,255,.1); --cv-btn-save-color: #e8e8f0; --cv-btn-save-shadow: inset 0 0 0 1px rgba(255,255,255,.2);
+  --cv-steps-bg: rgba(255,255,255,.05); --cv-steps-color: #8a8aa0; --cv-steps-shadow: inset 0 0 0 1px rgba(255,255,255,.1); --cv-steps-radius: 12px; --cv-steps-title: #c8c8dc; --cv-steps-b: #eceaf2;
+  --cv-mini-bg: rgba(255,255,255,.07); --cv-mini-color: #c8c8dc; --cv-mini-shadow: inset 0 0 0 1px rgba(255,255,255,.12); --cv-mini-on-bg: linear-gradient(135deg,#4a4a5e,#2a2a38); --cv-mini-on-color: #fff;
+  --cv-block-title: #c8c8dc; --cv-link-color: #a8b8e8;
+  --cv-foot-color: #7a7a90; --cv-foot-b: #c8c8dc; --cv-hint-color: #7a7a90;
+  --cv-wm-color: #c8c8dc; --cv-wm-opacity: .08;
+  --cv-back-color: #e0e0f0; --cv-back-bg: rgba(6,6,10,.5); --cv-brand-color: rgba(255,255,255,.85);
+}
+/* 阿拉斯红 alas：深绯红渐变底 + 象牙白卡 + 亮红描边，热烈自信东方红 */
+.cv-tpl-alas {
+  --cv-page-bg: radial-gradient(1200px 520px at 50% -12%,#4a0d14 0%,#a01722 45%,#7a1220 78%,#30080e 100%);
+  --cv-ink: #4a0d14; --cv-ink-2: #96616a; --cv-line: #f0dde0;
+  --cv-panel-bg: #fdf5f5; --cv-card-bg: #ffffff;
+  --cv-card-border: 2px solid rgba(224,50,60,.5); --cv-card-radius: 22px; --cv-card-x: 22px; --cv-card-pad: 32px 26px 24px;
+  --cv-card-shadow: 0 26px 60px -22px rgba(48,8,14,.6), 0 0 0 1px rgba(224,50,60,.18);
+  --cv-card-blur: none; --cv-topbar-h: 6px; --cv-topbar-x: 0;
+  --cv-topbar-bg: linear-gradient(90deg,#4a0d14,#a01722 40%,#e0323c 80%,#f06068);
+  --cv-logo-bg-solid: #a01722; --cv-logo-bg: linear-gradient(145deg,#e0323c,#4a0d14); --cv-logo-radius: 14px;
+  --cv-logo-shadow: inset 0 0 0 2px rgba(240,96,104,.55), 0 8px 18px -8px rgba(48,8,14,.6);
+  --cv-name-size: 28px; --cv-name-weight: 900; --cv-name-spacing: .05em; --cv-name-color: #4a0d14;
+  --cv-role-color: #96616a; --cv-role-size: 12.5px; --cv-role-spacing: .06em;
+  --cv-org-color: #a01722; --cv-org-border: 1px dashed #eccdd1;
+  --cv-tag-bg: #f9eaea; --cv-tag-color: #a02530; --cv-tag-shadow: inset 0 0 0 1px rgba(224,50,60,.32); --cv-tag-radius: 99px;
+  --cv-btn-radius: 13px;
+  --cv-btn-main-solid: #a01722; --cv-btn-main-bg: linear-gradient(135deg,#e0323c,#a01722); --cv-btn-main-color: #fff; --cv-btn-main-shadow: 0 10px 22px -12px rgba(160,23,34,.85);
+  --cv-btn-ghost-bg: #f9eaea; --cv-btn-ghost-color: #a01722; --cv-btn-ghost-shadow: inset 0 0 0 1px #eccdd1;
+  --cv-btn-save-solid: #e0323c; --cv-btn-save-bg: linear-gradient(135deg,#f06068,#e0323c); --cv-btn-save-color: #fff; --cv-btn-save-shadow: 0 12px 24px -14px rgba(224,50,60,.9);
+  --cv-steps-bg: #fdf5f5; --cv-steps-color: #96616a; --cv-steps-shadow: inset 0 0 0 1px #f0dde0; --cv-steps-radius: 12px; --cv-steps-title: #e0323c; --cv-steps-b: #a01722;
+  --cv-mini-bg: #f9eaea; --cv-mini-color: #a01722; --cv-mini-shadow: inset 0 0 0 1px rgba(224,50,60,.32); --cv-mini-on-solid: #e0323c; --cv-mini-on-bg: linear-gradient(135deg,#f06068,#e0323c); --cv-mini-on-color: #fff;
+  --cv-block-title: #e0323c; --cv-link-color: #a01722;
+  --cv-foot-color: #b08890; --cv-foot-b: #e0323c; --cv-hint-color: #b08890;
+  --cv-wm-color: #f06068; --cv-wm-opacity: .1;
+  --cv-back-color: #f5c8cc; --cv-back-bg: rgba(48,8,14,.5); --cv-brand-color: rgba(255,255,255,.9);
+}
+
 /* 深蓝鎏金 navygold：沿用已有 --ng-* 色系 */
 .cv-tpl-navygold { --cv-page-bg:var(--ng-page-bg); --cv-panel-bg:#fff; --cv-card-bg:#fff; --cv-ink:var(--ng-ink); --cv-ink-2:var(--ng-ink-2); --cv-line:var(--ng-line); --cv-name-color:var(--ng-ink); --cv-role-color:var(--ng-ink-2); --cv-org-color:var(--ng-navy); --cv-tag-bg:var(--ng-paper); --cv-tag-color:#6b5a3c; --cv-topbar-bg:linear-gradient(90deg,var(--ng-navy),var(--ng-navy-2) 40%,var(--ng-gold-2) 78%,var(--ng-gold)); --cv-logo-bg:linear-gradient(145deg,#1d3a55,#0e2233); --cv-logo-bg-solid:#1d3a55; --cv-btn-main-solid:#1d3a55; --cv-btn-main-bg:linear-gradient(135deg,#1d3a55,#0f2739); --cv-btn-main-color:#fff; --cv-btn-ghost-bg:#f7f5f0; --cv-btn-ghost-color:#1d3a55; --cv-btn-save-bg:linear-gradient(135deg,#c9a163,#a8834a); --cv-btn-save-color:#fff; --cv-mini-bg:#f4f1ea; --cv-mini-color:#1d3a55; --cv-block-title:var(--ng-navy); --cv-link-color:var(--ng-navy); --cv-foot-color:#a9b1ba; --cv-foot-b:var(--ng-gold); --cv-back-color:var(--ng-gold-2); --cv-back-bg:rgba(12,26,38,.5); --cv-brand-color:rgba(255,255,255,.85); }
 
@@ -313,6 +443,11 @@
    信息区仍用各自的 --cv-panel-bg（浅色模板白卡、暗色模板沿用暗卡），原则一致但不强行同色。
    变量唯一真相源在这里，card-sheet.css 只负责使用。 */
 .cv-clean.cv-tpl-tang       { --cv-header-solid:#7a1e15; --cv-header-bg:linear-gradient(135deg,#7a1e15 0%,#a62b2b 58%,#8c2318 100%); --cv-header-accent:#e8c86a; }
+.cv-clean.cv-tpl-vanna      { --cv-header-solid:#0c2a4d; --cv-header-bg:linear-gradient(135deg,#0c2a4d 0%,#155a96 58%,#0e3a63 100%); --cv-header-accent:#5bb6e8; }
+.cv-clean.cv-tpl-phantom    { --cv-header-solid:#052e1c; --cv-header-bg:linear-gradient(135deg,#052e1c 0%,#0f6b3f 58%,#0a4d2c 100%); --cv-header-accent:#5be8a0; }
+.cv-clean.cv-tpl-lava       { --cv-header-solid:#1a1a1e; --cv-header-bg:linear-gradient(135deg,#1a1a1e 0%,#2c2c33 58%,#3a3a42 100%); --cv-header-accent:#ea6a2c; }
+.cv-clean.cv-tpl-star       { --cv-header-solid:#08080c; --cv-header-bg:linear-gradient(135deg,#08080c 0%,#1a1a24 58%,#2a2a38 100%); --cv-header-accent:#c8c8dc; }
+.cv-clean.cv-tpl-alas       { --cv-header-solid:#4a0d14; --cv-header-bg:linear-gradient(135deg,#4a0d14 0%,#a01722 58%,#7a1220 100%); --cv-header-accent:#f06068; }
 .cv-clean.cv-tpl-classic    { --cv-header-solid:#1e3a8a; --cv-header-bg:linear-gradient(135deg,#1e3a8a 0%,#122455 100%); --cv-header-accent:#93c5fd; }
 .cv-clean.cv-tpl-minimal    { --cv-header-solid:#111827; --cv-header-bg:linear-gradient(135deg,#111827 0%,#030712 100%); --cv-header-accent:#fff; }
 .cv-clean.cv-tpl-elite      { --cv-header-solid:#0b0d12; --cv-header-bg:linear-gradient(135deg,#0b0d12 0%,#1c1408 100%); --cv-header-accent:#d8bb85; }

@@ -13,6 +13,36 @@ const CARD_TEMPLATES = [
     cover: 'linear-gradient(135deg,#7a1e15 0%,#a62b2b 55%,#c9a227 100%)'
   },
   {
+    key: 'vanna',
+    label: '瓦纳蓝',
+    desc: '深邃海蓝渐变底 + 冷白卡 + 湖蓝描边，沉稳知性商务范',
+    cover: 'linear-gradient(135deg,#0c2a4d 0%,#155a96 55%,#2a8fd4 100%)'
+  },
+  {
+    key: 'phantom',
+    label: '幻影绿',
+    desc: '翡翠墨绿渐变底 + 象牙白卡 + 翠绿描边，沉静内敛的高级感',
+    cover: 'linear-gradient(135deg,#052e1c 0%,#0f6b3f 55%,#22c97a 100%)'
+  },
+  {
+    key: 'lava',
+    label: '熔岩灰',
+    desc: '火山岩灰渐变底 + 暖白卡 + 熔岩橙描边，冷峻中透着张力',
+    cover: 'linear-gradient(135deg,#1a1a1e 0%,#3a3a42 55%,#c2410c 100%)'
+  },
+  {
+    key: 'star',
+    label: '星钻黑',
+    desc: '曜石黑渐变底 + 深空卡 + 碎钻银描边，璀璨内敛的奢华气场',
+    cover: 'linear-gradient(135deg,#08080c 0%,#1a1a24 55%,#4a4a5e 100%)'
+  },
+  {
+    key: 'alas',
+    label: '阿拉斯红',
+    desc: '深绯红渐变底 + 象牙白卡 + 亮红描边，热烈自信的东方红',
+    cover: 'linear-gradient(135deg,#4a0d14 0%,#a01722 55%,#e0323c 100%)'
+  },
+  {
     key: 'classic',
     label: '经典商务',
     desc: '渐变封面 + 头像信息卡，最通用稳重的商务范式',

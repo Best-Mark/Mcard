@@ -32,6 +32,31 @@ export const THEMES = {
     label: '皇家紫', accent: '#7c3aed', surface: '#fbfaff', bg: '#f6f3ff',
     text: '#2e1065', muted: '#7c6a9c',
     cover: 'linear-gradient(135deg,#5b21b6 0%,#7c3aed 55%,#a78bfa 100%)'
+  },
+  vanna: {
+    label: '瓦纳蓝', accent: '#155a96', surface: '#f4f9fd', bg: '#eaf2f9',
+    text: '#0c2a4d', muted: '#5b7c99',
+    cover: 'linear-gradient(135deg,#0c2a4d 0%,#155a96 55%,#2a8fd4 100%)'
+  },
+  phantom: {
+    label: '幻影绿', accent: '#0f6b3f', surface: '#f3faf6', bg: '#e8f5ee',
+    text: '#052e1c', muted: '#4e7a64',
+    cover: 'linear-gradient(135deg,#052e1c 0%,#0f6b3f 55%,#22c97a 100%)'
+  },
+  lava: {
+    label: '熔岩灰', accent: '#c2410c', surface: '#fafafa', bg: '#f1f1f2',
+    text: '#1a1a1e', muted: '#6b6b76',
+    cover: 'linear-gradient(135deg,#1a1a1e 0%,#3a3a42 55%,#c2410c 100%)'
+  },
+  star: {
+    label: '星钻黑', accent: '#8a8aa0', surface: '#12121a', bg: '#0a0a10',
+    text: '#eceaf2', muted: '#8a8aa0',
+    cover: 'linear-gradient(135deg,#08080c 0%,#1a1a24 55%,#4a4a5e 100%)'
+  },
+  alas: {
+    label: '阿拉斯红', accent: '#a01722', surface: '#fdf5f5', bg: '#f9eaea',
+    text: '#4a0d14', muted: '#96616a',
+    cover: 'linear-gradient(135deg,#4a0d14 0%,#a01722 55%,#e0323c 100%)'
   }
 }
 
@@ -40,6 +65,11 @@ export const THEMES = {
 // ⚠️ 新增模板或调整模板配色时，需同步 miniapp/src/pages/edit/edit.vue 的 TEMPLATE_PALETTES。
 export const TEMPLATE_PALETTES = {
   tang: { theme: 'tang', qrFg: '#7a1e15', qrBg: '#f7ecd9' },
+  vanna: { theme: 'vanna', qrFg: '#0c2a4d', qrBg: '#eaf2f9' },
+  phantom: { theme: 'phantom', qrFg: '#052e1c', qrBg: '#e8f5ee' },
+  lava: { theme: 'lava', qrFg: '#1a1a1e', qrBg: '#f1f1f2' },
+  star: { theme: 'star', qrFg: '#8a8aa0', qrBg: '#12121a' },
+  alas: { theme: 'alas', qrFg: '#4a0d14', qrBg: '#f9eaea' },
   classic: { theme: 'ocean', qrFg: '#12306b', qrBg: '#f2f7ff' },
   minimal: { theme: 'ocean', qrFg: '#0f172a', qrBg: '#ffffff' },
   elite: { theme: 'ink', qrFg: '#b99355', qrBg: '#15171c' },
