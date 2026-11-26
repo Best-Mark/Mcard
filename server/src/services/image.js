@@ -25,6 +25,10 @@ function needsRaster(ext) {
   return ['.png', '.jpg', '.jpeg', '.webp', '.bmp', '.avif', '.tiff'].includes(e)
 }
 
+// keepFormat 场景（LOGO/分享图等给微信分享卡片、og 抓取方读取的图）保留的输出格式：
+// WebP 部分微信端/抓取方整张不显示，必须保留 PNG/JPG 原格式
+const KEEP_FORMAT_EXT = { '.png': 'png', '.jpg': 'jpeg', '.jpeg': 'jpeg' }
+
 // 压缩本地文件，产出新路径。返回 { file, filename, width, height, format, size, originalSize, converted }
 // file 为最终落盘的绝对路径；调用方负责上传入库/OSS 与响应 URL。
 async function normalizeImage(inputPath, originalName, opts = {}) {
@@ -35,6 +39,28 @@ async function normalizeImage(inputPath, originalName, opts = {}) {
   }
   const maxEdge = clampInt(opts.maxEdge, DEFAULT_MAX_EDGE, 64, MAX_EDGE_LIMIT)
   const quality = clampInt(opts.quality, DEFAULT_QUALITY, 30, 95)
+  const e = ext
+  // keepFormat：只缩边、保留原格式（PNG/JPG 原样输出，绝不转 WebP）——LOGO/分享图专用
+  if (opts.keepFormat && KEEP_FORMAT_EXT[e]) {
+    const format = KEEP_FORMAT_EXT[e]
+    const filename = `${Date.now()}-${randomHex(8)}.${format === 'jpeg' ? 'jpg' : 'png'}`
+    const outFile = path.join(config.UPLOAD_DIR, filename)
+    try {
+      const pipeline = sharp(inputPath)
+        .rotate() // 兼容手机 EXIF 方向
+        .resize({ width: maxEdge, height: maxEdge, fit: 'inside', withoutEnlargement: true })
+      const info = format === 'png' ? await pipeline.png().toFile(outFile) : await pipeline.jpeg({ quality }).toFile(outFile)
+      if (outFile !== inputPath && fs.existsSync(inputPath)) { try { fs.unlinkSync(inputPath) } catch {} }
+      return {
+        file: outFile, filename,
+        width: info.width || 0, height: info.height || 0,
+        format, size: info.size, originalSize, converted: true
+      }
+    } catch (err) {
+      // 自愈降级：keepFormat 处理失败仍用原图，不让用户上传失败
+      return { file: inputPath, filename: path.basename(inputPath), width: 0, height: 0, format: e.replace('.', ''), size: originalSize, originalSize, converted: false, error: err.message }
+    }
+  }
   const filename = `${Date.now()}-${randomHex(8)}.webp`
   const outFile = path.join(config.UPLOAD_DIR, filename)
   try {

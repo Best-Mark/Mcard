@@ -11,7 +11,9 @@ api.interceptors.request.use(cfg => {
   const url = cfg.url || ''
   const adminPath = url.startsWith('/api/admin') || url.startsWith('/api/geo/admin/') || /^\/api\/orders\/[^/]+\/mark-paid$/.test(url)
   const token = adminPath ? localStorage.getItem('mcard_admin_token') : localStorage.getItem('mcard_token')
-  if (token) cfg.headers.Authorization = `Bearer ${token}`
+  // 调用方显式指定的 Authorization 优先（如后台裁剪上传带 mcard_admin_token 调 /api/upload），
+  // 拦截器只在未指定时兜底，避免 C 端 token 覆盖后台 token
+  if (token && !cfg.headers?.Authorization) cfg.headers.Authorization = `Bearer ${token}`
   return cfg
 })
 // 网关/重启窗口：502/503/504 是 nginx「上游 pm2 进程正在重启」的暂时断连，不是业务错误。

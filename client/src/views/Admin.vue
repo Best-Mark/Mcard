@@ -430,6 +430,22 @@
                     <span class="small muted">{{ pendingSecrets[f.key] ? '已读取新文件，点「保存」后生效' : (cfg[f.key + '_fp'] ? '已配置，重新选择文件即覆盖' : (f.fileHint || '从支付平台下载后直接选择，无需粘贴')) }}</span>
                     <button class="cfg-manual-link" @click="manualSecrets[f.key] = true">手动粘贴</button>
                   </div>
+                  <!-- 图片类字段（站点 LOGO）：上传文件+裁剪，不再手填路径。
+                       点击上传框弹出裁剪弹窗，确认后上传并回填 URL，点「保存分组」才落库生效。 -->
+                  <div v-else-if="f.type === 'image'" class="cfg-image">
+                    <div class="cfg-image-row">
+                      <div v-if="cfg[f.key]" class="cfg-image-box has-img" @click="openImageCropper(f)" title="点击更换">
+                        <img :src="cfg[f.key]" :alt="f.label" />
+                        <span class="cfg-image-hint">点击更换</span>
+                      </div>
+                      <div v-else class="cfg-image-box add" @click="openImageCropper(f)">
+                        <span class="cfg-image-plus">＋</span>
+                        <span class="cfg-image-text">上传图片</span>
+                      </div>
+                      <button v-if="cfg[f.key]" type="button" class="link-btn small" @click="cfg[f.key] = ''">移除</button>
+                    </div>
+                    <span v-if="f.hint" class="small muted">{{ f.hint }}</span>
+                  </div>
                   <textarea v-else-if="f.large" v-model="cfg[f.key]" class="textarea" rows="5" :placeholder="f.type === 'secret' ? (cfg[f.key] ? '留空则不修改已保存的密钥' : '粘贴 PEM 全文') : ''"></textarea>
                   <input v-else v-model="cfg[f.key]" class="input" :type="f.type === 'secret' && !revealed[f.key] ? 'password' : 'text'"
                          :placeholder="f.type === 'secret' ? (cfg[f.key] ? '•••••• 已配置，留空不改' : '未配置') : ''" />
@@ -450,6 +466,9 @@
             </div>
           </div>
         </section>
+
+        <!-- 图片裁剪弹窗（站点 LOGO 上传后框选裁剪，Teleport 到 body） -->
+        <ImageCropper v-model="cropperShow" title="修改站点 LOGO" :output-size="512" @confirm="onImageCropped" />
 
         <!-- 版本更新 -->
         <section v-if="tab === 'update'">
@@ -584,6 +603,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import api from '../api'
 import ParticleField from '../components/ParticleField.vue'
+import ImageCropper from '../components/ImageCropper.vue'
 import { adminAuth, setAdminAuth, adminLogout, showToast, siteConfig } from '../store'
 
 const ICONS = {
@@ -632,6 +652,8 @@ const promoOverview = ref({}); const withdrawals = ref([]); const wdStatus = ref
 const wdChannelText = c => ({ wechat: '微信', alipay: '支付宝', bank: '银行卡' })[c] || c
 const activeGroup = ref('site'); const revealed = ref({}); const manualSecrets = ref({}); const pendingSecrets = ref({})
 const smsPhone = ref(''); const smsBusy = ref(false)
+// 图片字段裁剪弹窗（站点 LOGO 等 type=image 字段共用一个弹窗实例，cropperField 记录当前编辑的字段 key）
+const cropperShow = ref(false); const cropperField = ref('')
 const regions = ref([]); const regionLevel = ref(0); const regionBusy = ref(false)
 const regionForm = ref({ code: '', parent_code: '', name: '', level: 1, sort: 0, enabled: true }); const regionEditing = ref(false)
 const ossStatus = ref({ enabled: false, provider: 'local', pathPrefix: '', bucket: '', region: '', customDomain: '' })
@@ -1102,6 +1124,37 @@ function backToFileMode(f) {
   cfg.value[f.key] = '' // 未保存的手动输入直接丢弃，空值在服务端视为「不修改」
 }
 
+// ---------- 图片字段：上传 + 裁剪（站点 LOGO） ----------
+function openImageCropper(f) {
+  cropperField.value = f.key
+  cropperShow.value = true
+}
+// 裁剪弹窗确认 → 上传 PNG → 回填 URL；落库仍需点「保存分组」（与 MSHOP 同口径：上传成功≠已保存）
+async function onImageCropped(blob, resolve, reject) {
+  try {
+    // keepFormat=1：LOGO 给微信分享卡片 / og 抓取方读取，必须保留 PNG，不能被归一化转 WebP
+    const fd = new FormData()
+    fd.append('file', new File([blob], 'logo.png', { type: 'image/png' }))
+    fd.append('keepFormat', '1')
+    fd.append('maxEdge', '512')
+    // 后台会话只有 mcard_admin_token；显式带后台 token 上传（/api/upload 的 authRequired 与后台登录同一条 JWT 体系）
+    const { data } = await api.post('/api/upload', fd, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        Authorization: `Bearer ${localStorage.getItem('mcard_admin_token') || ''}`
+      }
+    })
+    const url = data?.data?.url
+    if (!url) throw new Error('上传未返回图片地址')
+    cfg.value[cropperField.value] = url
+    showToast('图片已上传，点「保存分组」后生效', 'success')
+    resolve()
+  } catch (e) {
+    showToast(e.message || '图片上传失败', 'error')
+    reject(e)
+  }
+}
+
 async function saveGroup() {
   if (busy.value || !currentGroup.value) return
   busy.value = true
@@ -1476,6 +1529,16 @@ async function saveUpdateConfig() {
 .eye .ico { width: 15px; height: 15px; }
 .cfg-static { display: flex; align-items: center; min-height: 38px; padding: 8px 12px; border: 1px dashed var(--line); border-radius: 8px; background: #f8fafc; color: var(--muted); font-size: 13px; word-break: break-all; }
 .cfg-file { display: flex; flex-direction: column; gap: 6px; }
+/* 图片字段（站点 LOGO）：上传框 + 说明，点击弹出裁剪弹窗 */
+.cfg-image { display: flex; flex-direction: column; gap: 6px; }
+.cfg-image-row { display: flex; align-items: center; gap: 10px; }
+.cfg-image-box { position: relative; width: 72px; height: 72px; border-radius: 10px; border: 1px dashed rgba(148,163,184,.45); background: rgba(148,163,184,.08); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer; overflow: hidden; }
+.cfg-image-box img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
+.cfg-image-box .cfg-image-hint { position: absolute; left: 0; right: 0; bottom: 0; padding: 2px 0; font-size: 11px; text-align: center; color: #fff; background: rgba(15,23,42,.62); opacity: 0; transition: opacity .15s; }
+.cfg-image-box.has-img:hover .cfg-image-hint { opacity: 1; }
+.cfg-image-plus { font-size: 22px; line-height: 1; color: var(--primary); }
+.cfg-image-text { font-size: 11px; color: var(--muted, #94a3b8); }
+.cfg-image-box.add:hover { border-color: var(--primary); }
 .cfg-file-btn { display: inline-flex; align-items: center; justify-content: center; width: fit-content; padding: 8px 14px; border: 1px solid var(--primary); border-radius: 8px; color: var(--primary); font-size: 13px; cursor: pointer; }
 .cfg-file-btn:hover { background: rgba(59,130,246,.06); }
 .cfg-file-btn input { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }

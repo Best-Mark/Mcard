@@ -41,9 +41,11 @@ async function publicUrlOf(file) {
 
 router.post('/', authRequired, upload.single('file'), wrap(async (req, res) => {
   if (!req.file) return fail(res, 400, '请选择文件')
-  // 归一化压缩：栅格图缩边转 WebP，动画 GIF/SVG 原样保留；失败降级原图
+  // 归一化压缩：栅格图缩边转 WebP，动画 GIF/SVG 原样保留；失败降级原图。
+  // keepFormat=1：只缩边、保留 PNG/JPG 原格式（LOGO/分享图给微信分享卡片读取，转 WebP 可能整张不显示）。
   const n = await imageService.normalizeImage(req.file.path, req.file.originalname, {
-    maxEdge: req.body.maxEdge, quality: req.body.quality
+    maxEdge: req.body.maxEdge, quality: req.body.quality,
+    keepFormat: req.body.keepFormat === '1' || req.body.keepFormat === 'true'
   })
   const out = await publicUrlOf({ path: n.file, filename: n.filename, size: n.size, originalname: req.file.originalname })
   ok(res, {

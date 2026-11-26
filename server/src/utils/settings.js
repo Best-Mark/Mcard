@@ -98,7 +98,9 @@ const GROUPS = {
     label: '站点基础',
     fields: [
       { key: 'site_name', label: '站点名称', type: 'text' },
-      { key: 'site_logo', label: '站点 LOGO 图片地址（绝对 URL 或 /uploads/ 路径，留空显示默认 M）', type: 'text' },
+      // 站点 LOGO：type=image → 后台渲染「上传+裁剪」控件，不再手填路径。
+      // 上传走 /api/upload?keepFormat=1（LOGO 给微信分享卡片/og 抓取方读取，必须保留 PNG 不能转 WebP）。
+      { key: 'site_logo', label: '站点 LOGO', type: 'image', hint: '点击上传并裁剪（方形 512×512 PNG）；用于登录页/后台侧栏/微信分享缩略图，留空显示默认 M' },
       { key: 'site_desc', label: '站点简介', type: 'text' },
       { key: 'contact', label: '联系方式', type: 'text' },
       { key: 'notice', label: '公告', type: 'textarea' },
