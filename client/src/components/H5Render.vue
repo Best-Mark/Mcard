@@ -27,8 +27,8 @@
               <p v-if="b.subtitle">{{ b.subtitle }}</p>
             </div>
           </div>
-          <!-- 文本 -->
-          <div v-else-if="b.type === 'text'" :class="blkCls(pi, bi, b)" :style="dragStyle(bi)" @click="pick(pi, bi)">
+          <!-- 文本（2026-11-27 路线④ 文字基础样式：align 左/中/右 + size 小/正常/大） -->
+          <div v-else-if="b.type === 'text'" :class="[blkCls(pi, bi, b), 'hp-align-' + (b.align || 'left'), 'hp-size-' + (b.size || 'md')]" :style="dragStyle(bi)" @click="pick(pi, bi)">
             <h2 v-if="b.heading">{{ b.heading }}</h2>
             <p v-if="b.body">{{ b.body }}</p>
           </div>
@@ -50,6 +50,18 @@
             </div>
             <div v-else-if="b.layout === 'swipe'" class="hp-gal-swipe">
               <div v-for="(img, gi) in galImgs(b)" :key="gi" class="hp-img" :style="bgStyle(img)"></div>
+            </div>
+            <!-- 错落瀑布（stagger，2026-11-27 路线④）：奇偶分两列、第二列整体下沉，错落有致 -->
+            <div v-else-if="b.layout === 'stagger'" class="hp-gal-stagger">
+              <template v-if="galImgs(b).length">
+                <div class="hp-gal-col">
+                  <div v-for="(img, gi) in stCol(galImgs(b), 0)" :key="gi" class="hp-img" :style="bgStyle(img)"></div>
+                </div>
+                <div class="hp-gal-col hp-gal-col-b">
+                  <div v-for="(img, gi) in stCol(galImgs(b), 1)" :key="gi" class="hp-img" :style="bgStyle(img)"></div>
+                </div>
+              </template>
+              <div v-else class="hp-img" :style="bgStyle('')"></div>
             </div>
             <div v-else class="hp-gal-grid">
               <div v-for="(img, gi) in galImgs(b)" :key="gi" class="hp-img" :style="bgStyle(img)"></div>
@@ -409,6 +421,8 @@ let copyTimer = 0
 // galImgs：source='card' 时取公司相册图（data.card.gallery，与名片页同源），否则用块自己的 images
 //（含空图位——bgStyle 渐变占位提示「这里该上传图」，与原行为一致，不过滤）。
 const galImgs = b => (b?.source === 'card' ? (card.value?.gallery || []) : (b?.images || []))
+// 错落布局（stagger）：奇偶分列——第一列偶数位、第二列奇数位，第二列 CSS 整体下沉形成错落
+const stCol = (imgs, col) => (imgs || []).filter((_, i) => i % 2 === col)
 // 展播当前页码（key = 页-块）：一个定时器驱动所有 showcase 块循环轮播（3.8s/张），
 // 编辑画布不自动播（editable 时只手动点进度点预览），避免画布里图片自己动干扰编辑。
 const scIdx = ref({})
@@ -567,6 +581,15 @@ function armMusic() {
 .hp-text h2, .hp-hero h2 { margin: 0 0 10px; font-size: 21px; color: var(--hp-accent); }
 .hp-text h2:after, .hp-hero h2:after { content: ''; display: block; width: 34px; height: 3px; margin-top: 9px; border-radius: 2px; background: var(--hp-accent); }
 .hp-text p, .hp-hero p { margin: 0; font-size: 15px; line-height: 1.85; white-space: pre-line; color: #d1d5db; }
+/* 文字基础样式（2026-11-27 路线④）：对齐（小下划线跟着标题走）+ 字号三档 */
+.hp-text.hp-align-center { text-align: center; }
+.hp-text.hp-align-right { text-align: right; }
+.hp-text.hp-align-center h2:after { margin-left: auto; margin-right: auto; }
+.hp-text.hp-align-right h2:after { margin-left: auto; margin-right: 0; }
+.hp-text.hp-size-sm h2 { font-size: 18px; }
+.hp-text.hp-size-sm p { font-size: 13px; }
+.hp-text.hp-size-lg h2 { font-size: 25px; }
+.hp-text.hp-size-lg p { font-size: 17px; line-height: 1.9; }
 .hp-hero .hp-img { margin-bottom: 14px; }
 
 .hp-gal-swipe { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
@@ -574,6 +597,14 @@ function armMusic() {
 .hp-gal-swipe .hp-img { flex: 0 0 82%; scroll-snap-align: center; aspect-ratio: 16 / 10; }
 .hp-gal-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 .hp-gal-grid .hp-img { aspect-ratio: 1; }
+/* 图集错落瀑布（stagger，2026-11-27 路线④）：双列奇偶分列、第二列整体下沉，高度随图交替；
+   老 WebView 不支持 flex/gap 只是竖排单列，无害 */
+.hp-gal-stagger { display: flex; gap: 10px; align-items: flex-start; }
+.hp-gal-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.hp-gal-col-b { margin-top: 26px; }
+.hp-gal-stagger .hp-img { width: 100%; aspect-ratio: 3 / 4; }
+.hp-gal-stagger .hp-img:nth-child(2n) { aspect-ratio: 1 / 1; }
+.hp-gal-stagger > .hp-img { aspect-ratio: 16 / 10; }
 /* 图集展播（showcase）：整幅舞台 + Ken Burns 缓推缓拉 + 底部进度点，纯 CSS 动效
    （老 WebView 不支持动画只是不动，无害）；prefers-reduced-motion 关闭 */
 .hp-show { position: relative; width: 100%; aspect-ratio: 16 / 10; border-radius: 14px; overflow: hidden; background: #1c2029; }

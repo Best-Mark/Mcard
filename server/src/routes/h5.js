@@ -43,12 +43,17 @@ function sanitizeSchema(raw, maxPages) {
       const type = BLOCK_TYPES.includes(b?.type) ? b.type : 'text'
       const out = { type, anim: BLOCK_ANIMS.includes(b?.anim) ? b.anim : '' }
       if (type === 'cover') Object.assign(out, { title: str(b.title, 40), subtitle: str(b.subtitle, 60), cover: str(b.cover, 500) })
-      if (type === 'text') Object.assign(out, { heading: str(b.heading, 40), body: str(b.body, 1200) })
+      if (type === 'text') Object.assign(out, {
+        heading: str(b.heading, 40), body: str(b.body, 1200),
+        // 文字基础样式（2026-11-27 路线④）：对齐 + 字号，脏值收敛默认
+        align: ['left', 'center', 'right'].includes(b.align) ? b.align : 'left',
+        size: ['sm', 'md', 'lg'].includes(b.size) ? b.size : 'md'
+      })
       if (type === 'hero') Object.assign(out, { image: str(b.image, 500), title: str(b.title, 40), desc: str(b.desc, 300) })
       if (type === 'gallery') Object.assign(out, {
         images: (Array.isArray(b.images) ? b.images : []).slice(0, 9).map(u => str(u, 500)),
-        // layout: showcase=动效展播（自动轮播，2026-11-27）/ swipe / grid；source: 'card'=图片自动取自公司相册
-        layout: ['showcase', 'swipe', 'grid'].includes(b.layout) ? b.layout : 'grid',
+        // layout: showcase=动效展播（自动轮播，2026-11-27）/ swipe / grid / stagger=错落双列（2026-11-27 路线④）；source: 'card'=图片自动取自公司相册
+        layout: ['showcase', 'swipe', 'grid', 'stagger'].includes(b.layout) ? b.layout : 'grid',
         source: b.source === 'card' ? 'card' : 'upload'
       })
       if (type === 'contact') Object.assign(out, { showMobile: b.showMobile !== false, showWechat: b.showWechat !== false, showAddress: b.showAddress !== false })
@@ -110,7 +115,8 @@ router.post('/', authRequired, (req, res) => {
   const count = db.prepare('SELECT COUNT(*) n FROM h5_pages WHERE user_id = ?').get(req.user.id).n
   if (count >= lim.maxH5) return fail(res, 400, lim.paid ? `最多创建 ${lim.maxH5} 个宣传页` : '免费版最多创建 1 个宣传页，开通套餐解锁更多')
   const tpl = req.body?.template_key ? getTemplate(req.body.template_key) : null
-  const schema = sanitizeSchema(tpl ? { pages: tpl.pages } : req.body?.schema, lim.maxPages)
+  // 模板的 accent/transition 要随 pages 一起进清洗（原先只传 pages，模板主色/切换动效建完即丢）
+  const schema = sanitizeSchema(tpl ? { accent: tpl.accent, transition: tpl.transition, pages: tpl.pages } : req.body?.schema, lim.maxPages)
   const title = str(req.body?.title || tpl?.name || '我的宣传页', 40)
   const card = db.prepare('SELECT id FROM cards WHERE user_id = ? ORDER BY id DESC LIMIT 1').get(req.user.id)
   const r = db.prepare("INSERT INTO h5_pages (user_id, card_id, slug, title, schema, status) VALUES (?,?,?,?,?,'draft')")

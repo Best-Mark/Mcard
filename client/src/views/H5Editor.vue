@@ -97,6 +97,12 @@
         <template v-else-if="block.type === 'text'">
           <label>小标题<input v-model="block.heading" maxlength="40" @input="markDirty" /></label>
           <label>正文<textarea v-model="block.body" rows="6" maxlength="1200" @input="markDirty" placeholder="支持换行"></textarea></label>
+          <div class="he-row"><span class="small muted">文字对齐</span>
+            <BottomSelect :model-value="block.align || 'left'" :options="TEXT_ALIGN_OPTS" title="文字对齐" @update:modelValue="block.align = $event; markDirty()" />
+          </div>
+          <div class="he-row"><span class="small muted">文字大小</span>
+            <BottomSelect :model-value="block.size || 'md'" :options="TEXT_SIZE_OPTS" title="文字大小" @update:modelValue="block.size = $event; markDirty()" />
+          </div>
         </template>
         <template v-else-if="block.type === 'hero'">
           <ImageField v-model="block.image" label="图片" @update:modelValue="markDirty" />
@@ -217,8 +223,11 @@ const ANIM_OPTS = [
 // 按钮动作（2026-11-27 新增 copy）：value 的语义随动作变化，输入框标签跟着换
 const ACTION_OPTS = [{ value: 'tel', label: '拨打电话' }, { value: 'wechat', label: '复制微信号' }, { value: 'link', label: '打开链接' }, { value: 'copy', label: '复制文本' }]
 const ACTION_VALUE_LABEL = { tel: '电话号码', wechat: '微信号（留空用名片微信号）', link: '链接地址', copy: '要复制的文本' }
-// 图集排列：展播=自动轮播+动效（2026-11-27 相册 H5 动效展示），swipe/grid 为原静态布局
-const GAL_LAYOUT_OPTS = [{ value: 'showcase', label: '动效展播（自动轮播）' }, { value: 'swipe', label: '横滑大图' }, { value: 'grid', label: '两列网格' }]
+// 图集排列：展播=自动轮播+动效（2026-11-27 相册 H5 动效展示），stagger=错落瀑布（2026-11-27 路线④），swipe/grid 为原静态布局
+const GAL_LAYOUT_OPTS = [{ value: 'showcase', label: '动效展播（自动轮播）' }, { value: 'stagger', label: '错落瀑布' }, { value: 'swipe', label: '横滑大图' }, { value: 'grid', label: '两列网格' }]
+// 文字基础样式（2026-11-27 路线④）：对齐 + 字号三档
+const TEXT_ALIGN_OPTS = [{ value: 'left', label: '左对齐' }, { value: 'center', label: '居中' }, { value: 'right', label: '右对齐' }]
+const TEXT_SIZE_OPTS = [{ value: 'sm', label: '小字' }, { value: 'md', label: '正常' }, { value: 'lg', label: '大字' }]
 // 主题色板：与名片模板色系呼应，点中即改全页 accent
 const COLORS = ['#a62b2b', '#c2410c', '#b45309', '#0f766e', '#4338ca', '#17357c', '#7c2d92', '#be185d']
 const FREE_MAX_PAGES = 3, PAID_MAX_PAGES = 12
@@ -302,7 +311,7 @@ async function copyLink() {
 // ---- 结构编辑 ----
 function blank(type) {
   if (type === 'cover') return { type, title: '', subtitle: '', cover: '' }
-  if (type === 'text') return { type, heading: '', body: '' }
+  if (type === 'text') return { type, heading: '', body: '', align: 'left', size: 'md' }
   if (type === 'hero') return { type, image: '', title: '', desc: '' }
   if (type === 'gallery') return { type, images: [''], layout: 'grid', source: 'upload' }
   if (type === 'contact') return { type, showMobile: true, showWechat: true, showAddress: true }
@@ -373,7 +382,7 @@ async function openTpls() {
 function applyTpl(t) {
   if (applying.value) return
   if (!confirm(`套用「${t.name}」会覆盖当前全部页面内容，确定？`)) return
-  schema.value = { accent: t.accent, pages: JSON.parse(JSON.stringify(t.pages)) }
+  schema.value = { accent: t.accent, transition: t.transition || 'scroll', pages: JSON.parse(JSON.stringify(t.pages)) }
   selPage.value = 0; selBlock.value = 0
   tplOpen.value = false; dockMode.value = 'main'
   markDirty()
