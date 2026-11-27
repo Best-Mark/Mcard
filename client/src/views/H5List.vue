@@ -35,7 +35,7 @@
             <button v-if="p.status === 'draft'" class="btn btn-sm btn-ghost" :disabled="busy === p.id" @click="toggle(p, 'publish')">{{ busy === p.id ? '…' : '发布' }}</button>
             <button v-else class="btn btn-sm btn-ghost" :disabled="busy === p.id" @click="toggle(p, 'unpublish')">下架</button>
             <button v-if="p.status === 'published'" class="btn btn-sm btn-ghost" @click="copyLink(p)">复制链接</button>
-            <button class="btn btn-sm btn-ghost" @click="openLeads(p)">线索{{ p.leads ? ` ${p.leads}` : '' }}</button>
+            <button class="btn btn-sm btn-ghost" @click="openLeads(p)">统计</button>
             <button class="btn btn-sm btn-ghost h5l-del" @click="remove(p)">删除</button>
           </div>
         </div>
@@ -58,10 +58,15 @@
         <button class="btn btn-ghost" style="margin-top:14px" @click="newOpen = false">取消</button>
       </div>
     </div>
-    <!-- 线索查看弹层（2026-11-27 表单留资）：访客表单提交的线索列表，电话可一键拨打/复制回访 -->
+    <!-- 统计弹层（2026-11-27 表单留资并入统计）：概览（浏览/线索）+ 线索明细，电话可一键拨打/复制回访 -->
     <BottomSheet :show="leadsOpen" @update:show="leadsOpen = $event">
       <div class="h5l-leads">
-        <div class="h5l-leads-head"><b>线索{{ leadsTotal ? ` · ${leadsTotal} 条` : '' }}</b><button type="button" @click="leadsOpen = false">×</button></div>
+        <div class="h5l-leads-head"><b>统计</b><button type="button" @click="leadsOpen = false">×</button></div>
+        <div class="h5l-stats-row">
+          <div class="h5l-stat"><b>{{ statsView }}</b><span>次浏览</span></div>
+          <div class="h5l-stat"><b>{{ leadsTotal }}</b><span>条线索</span></div>
+        </div>
+        <div class="h5l-stats-sub">线索明细</div>
         <p v-if="leadsLoading" class="small muted" style="padding:14px 2px">加载中…</p>
         <p v-else-if="!leads.length" class="small muted" style="padding:14px 2px">还没有线索。给宣传页加一个「表单留资」模块，访客填写后会出现在这里。</p>
         <div v-else class="h5l-lead-list">
@@ -140,15 +145,17 @@ async function copyLink(p) {
 }
 function fmt(s) { return String(s || '').replace('T', ' ').slice(5, 16) }
 
-// 线索查看（2026-11-27 表单留资）：打开弹层拉最新列表；删除成对防重入；复制电话回访
+// 统计弹层（2026-11-27 表单留资并入统计）：概览 + 线索明细；删除成对防重入；复制电话回访
 const leadsOpen = ref(false)
 const leads = ref([])
 const leadsTotal = ref(0)
 const leadsLoading = ref(false)
 const leadBusy = ref(0)
 const leadsPageId = ref(0)
+const statsView = ref(0) // 概览：浏览次数（列表行实测值）
 async function openLeads(p) {
   leadsPageId.value = p.id
+  statsView.value = p.view_count || 0
   leadsOpen.value = true
   leadsLoading.value = true
   leads.value = []
@@ -196,11 +203,16 @@ async function copyLeadPhone(l) {
 .h5l-tpl:active { border-color: var(--primary, #a62b2b); }
 .h5l-tpl-dot { width: 12px; height: 12px; border-radius: 50%; }
 @media (min-width: 720px) { .h5l-tpl-grid { grid-template-columns: repeat(3, 1fr); } }
-/* 线索弹层：列表滚动区 + 每条一行操作（电话直拨/复制、删除） */
-.h5l-leads { padding: 0 0 10px; }
-.h5l-leads-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 2px 10px; border-bottom: 1px solid var(--line); margin-bottom: 10px; }
+/* 统计弹层（对齐全站 BottomSheet 口径 18px 边距）：概览卡片 + 线索明细滚动区 */
+.h5l-leads { padding: 8px 18px 18px; }
+.h5l-leads-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 0 12px; }
 .h5l-leads-head b { font-size: 15px; }
 .h5l-leads-head button { width: 32px; height: 32px; border: 0; border-radius: 50%; background: #f1f4f9; font-size: 17px; color: #64748b; cursor: pointer; }
+.h5l-stats-row { display: flex; gap: 10px; margin-bottom: 14px; }
+.h5l-stat { flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 14px; border: 1px solid var(--line, #e8edf4); border-radius: 12px; background: var(--bg-page, #f8fafc); }
+.h5l-stat b { font-size: 22px; line-height: 1.2; }
+.h5l-stat span { font-size: 12px; color: var(--muted, #64748b); }
+.h5l-stats-sub { font-size: 13px; font-weight: 700; padding: 2px 0 6px; }
 .h5l-lead-list { max-height: 58vh; overflow-y: auto; overscroll-behavior: contain; }
 .h5l-lead { display: flex; align-items: flex-start; gap: 10px; padding: 12px 2px; border-bottom: 1px solid var(--line); }
 .h5l-lead:last-child { border-bottom: 0; }
