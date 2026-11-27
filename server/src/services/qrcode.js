@@ -155,57 +155,35 @@ function dataPath(bits, n, dot) {
   return `<defs><g id="qds">${shape}</g></defs>` + uses.join('')
 }
 
-// SVG 渲染（草料式美化）。logoImage 为 dataURL 或 /uploads/ 路径；brand 为无 LOGO 图时的文字。
+// SVG 渲染。【2026-11-27 用户定稿：识别率第一】中心 LOGO/品牌文字渲染已整体移除——
+// 遮挡数据区 + 强制 H 纠错是微信本地检测的头号杀手；纠错级别恒 M（标准识别码口径）。
+// 保留的美化只有码色（深码浅底）与方点/方眼（白名单已收敛到唯一标准值）。
+// 兼容说明：调用方传 logo/logoImage/brand 等参数会被忽略，无需各自清理。
 function svg(text, opts = {}) {
   const {
-    size = 360, fg = '#0f172a', bg = '#ffffff', margin = 2, logo = true,
-    brand = 'M', logoImage = '', logoScale = 0.17, style: rawStyle
+    size = 360, fg = '#0f172a', bg = '#ffffff', margin = 2, style: rawStyle
   } = opts
   const st = normalizeStyle(rawStyle)
-  const key = `svg2|${text}|${size}|${fg}|${bg}|${margin}|${logo}|${brand}|${logoImage}|${logoScale}|${JSON.stringify(st)}`
+  const key = `svg3|${text}|${size}|${fg}|${bg}|${margin}|${JSON.stringify(st)}`
   return cached(key, () => {
-    const { bits, n } = modulesOf(text, logo ? 'H' : 'M')
+    const { bits, n } = modulesOf(text, 'M')
     const total = n + margin * 2
-    const fid = 'qg' + Math.abs(hashCode(key)).toString(36)
-    const paint = st.gradTo ? `url(#${fid})` : fg
-    const defs = st.gradTo
-      ? `<defs><linearGradient id="${fid}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${fg}"/><stop offset="1" stop-color="${st.gradTo}"/></linearGradient></defs>`
-      : ''
-    const bgMarkup = st.bgImage
-      ? `<image href="${escapeXml(st.bgImage)}" x="0" y="0" width="${total}" height="${total}" preserveAspectRatio="xMidYMid slice"/><rect width="${total}" height="${total}" fill="${bg}" fill-opacity="0.86"/>`
-      : `<rect width="${total}" height="${total}" fill="${bg}"/>`
-    let logoMarkup = ''
-    if (logo) {
-      const ls = total * logoScale
-      const p = (total - ls) / 2
-      if (st.logoShape === 'none') {
-        logoMarkup = logoImage
-          ? `<image href="${logoImage}" x="${p}" y="${p}" width="${ls}" height="${ls}" preserveAspectRatio="xMidYMid meet"/>`
-          : `<text x="${total / 2}" y="${total / 2}" text-anchor="middle" dominant-baseline="central" font-family="Arial,Helvetica,sans-serif" font-size="${ls * 0.5}" font-weight="700" fill="${paint}">${escapeXml(brand)}</text>`
-      } else {
-        const rx = st.logoShape === 'circle' ? ls / 2 : ls * 0.22
-        logoMarkup = `<rect x="${p}" y="${p}" width="${ls}" height="${ls}" rx="${rx}" fill="#ffffff"/>`
-        logoMarkup += logoImage
-          ? `<image href="${logoImage}" x="${p + ls * 0.06}" y="${p + ls * 0.06}" width="${ls * 0.88}" height="${ls * 0.88}" preserveAspectRatio="xMidYMid meet" clip-path="inset(0 round ${rx}px)"/>`
-          : `<text x="${total / 2}" y="${total / 2}" text-anchor="middle" dominant-baseline="central" font-family="Arial,Helvetica,sans-serif" font-size="${ls * 0.5}" font-weight="700" fill="${fg}">${escapeXml(brand)}</text>`
-      }
-    }
-    const finder = finderMarkup(margin, margin, st.eye, paint) + '\n'
-      + finderMarkup(n - 7 + margin, margin, st.eye, paint) + '\n'
-      + finderMarkup(margin, n - 7 + margin, st.eye, paint)
+    const finder = finderMarkup(margin, margin, st.eye, fg) + '\n'
+      + finderMarkup(n - 7 + margin, margin, st.eye, fg) + '\n'
+      + finderMarkup(margin, n - 7 + margin, st.eye, fg)
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${total} ${total}" width="${size}" height="${size}" role="img" aria-label="名片二维码">
-${defs}${bgMarkup}
-<g transform="translate(${margin},${margin})" fill="${paint}">${dataPath(bits, n, st.dot)}</g>
-<g fill="${paint}">${finder}</g>${logoMarkup}
+<rect width="${total}" height="${total}" fill="${bg}"/>
+<g transform="translate(${margin},${margin})" fill="${fg}">${dataPath(bits, n, st.dot)}</g>
+<g fill="${fg}">${finder}</g>
 </svg>`
   })
 }
 
-// PNG：统一走 SVG → sharp 光栅化，保证 SVG/PNG 样式完全一致（码点/码眼/渐变/背景都生效）
+// PNG：统一走 SVG → sharp 光栅化，保证 SVG/PNG 样式完全一致（码色/方点生效；LOGO 已整体移除）
 async function png(text, opts = {}) {
   const size = opts.size || 720
   const st = normalizeStyle(opts.style)
-  const key = `png2|${text}|${size}|${opts.fg}|${opts.bg}|${opts.logo}|${opts.brand}|${opts.logoImage}|${opts.logoScale || 0.17}|${JSON.stringify(st)}`
+  const key = `png3|${text}|${size}|${opts.fg}|${opts.bg}|${JSON.stringify(st)}`
   const hit = cache.get(key)
   if (hit && Date.now() - hit.t < TTL_MS && hit.png) return hit.png
   const markup = svg(text, { ...opts, size: Math.max(size, 720) })

@@ -79,8 +79,7 @@
       </button>
       <!-- dock 四态翻转（2026-11-27 用户定稿）：main=编辑/配色/二维码/上架；
            点「配色」整行翻转成模板缩略行（点中即换、页面实时预览、可连着试）；
-           点「二维码」名片本体让位给顶部二维码大图，dock 分两级：
-             一级=风格预设/码点形状/码眼形状 三个分类入口；二级=该类选项行（点中即改、面板不关可连试）；
+           点「二维码」名片本体让位给顶部二维码大图，dock 二级=码色选项行（点中即改、面板不关可连试）；
            点「上架」整行翻转成上架操作行（开关/行业 chips 点中即保存、状态实时反映）——
              不再跳独立页、不再开底部弹层，与配色/二维码同一操作方式（用户 2026-11-27 定稿「往上抽取」）；
            ↙ 二维码二级退回一级（大码保持），一级 ↙ / 上架行 ↙ 收起回整体名片。
@@ -126,45 +125,16 @@
             </div>
           </div>
         </template>
-        <!-- 二维码一级：三个分类入口（风格预设 / 码点形状 / 码眼形状）。↙ 收起回整体名片 -->
-        <template v-else-if="dockMode === 'qr' && !qrSub">
+        <!-- 二维码调节（2026-11-27 识别率定稿）：码点/码眼已固定为标准方点、中心 LOGO 已移除，
+             只保留不伤识别率的码色。↙ 收起回整体名片 -->
+        <template v-else-if="dockMode === 'qr'">
           <button class="dock-back" @click="closeDock" aria-label="收起二维码调节，返回名片">↙</button>
           <div class="dock-scroll">
-            <div class="dock-flow dock-cats">
-              <button v-for="c in QR_CATS" :key="c.key" class="dock-cat" @click="qrSub = c.key">
-                <span class="dock-cat-ico">{{ c.ico }}</span>{{ c.label }}
-              </button>
-            </div>
-          </div>
-        </template>
-        <!-- 二维码二级：当前分类的选项行，点中即保存实时生效、面板不关可连着试。
-             ↙ 退回一级分类行（顶部大码全程保持） -->
-        <template v-else-if="dockMode === 'qr'">
-          <button class="dock-back" @click="qrSub = ''" aria-label="返回二维码分类入口">↙</button>
-          <div class="dock-scroll">
             <div class="dock-flow">
-              <template v-if="qrSub === 'preset'">
-                <button v-for="p in qrPresets" :key="p.key" :class="['dock-tpl', { on: qrPresetActive(p), busy: qrBusy }]" @click="applyQrStyle({ dot: p.dot, eye: p.eye, gradTo: p.gradTo })">
-                  <span class="qr-swatch" :style="{ background: p.swatch }"></span>
-                  <span class="dock-tpl-label">{{ p.label }}</span>
-                </button>
-              </template>
-              <template v-else-if="qrSub === 'color'">
+              <template v-if="qrSub === 'color'">
                 <button v-for="c in colorOpts" :key="'color-' + c.key" :class="['dock-tpl', { on: card.qr_fg === c.fg && card.qr_bg === c.bg, busy: qrBusy }]" @click="applyQrColor(c)">
                   <img class="qr-swatch qr-swatch-live" :src="qrStyleSwatch({}, c.fg, c.bg)" alt="" />
                   <span class="dock-tpl-label">{{ c.label }}</span>
-                </button>
-              </template>
-              <template v-else-if="qrSub === 'dot'">
-                <button v-for="o in dotOpts" :key="'dot-' + o.value" :class="['dock-tpl', { on: (card.qr_style?.dot || 'square') === o.value, busy: qrBusy }]" @click="applyQrStyle({ dot: o.value })">
-                  <img class="qr-swatch qr-swatch-live" :src="qrStyleSwatch({ dot: o.value, eye: card.qr_style?.eye || 'square' })" alt="" />
-                  <span class="dock-tpl-label">{{ o.label }}</span>
-                </button>
-              </template>
-              <template v-else-if="qrSub === 'eye'">
-                <button v-for="o in eyeOpts" :key="'eye-' + o.value" :class="['dock-tpl', { on: (card.qr_style?.eye || 'square') === o.value, busy: qrBusy }]" @click="applyQrStyle({ eye: o.value })">
-                  <img class="qr-swatch qr-swatch-live" :src="qrStyleSwatch({ dot: card.qr_style?.dot || 'square', eye: o.value })" alt="" />
-                  <span class="dock-tpl-label">{{ o.label }}</span>
                 </button>
               </template>
             </div>
@@ -240,10 +210,9 @@
           <button :class="['qr-mode-tab', { on: qrMode === 'link' }]" @click="qrMode = 'link'">名片链接码</button>
         </div>
         <img :src="qrModalSrc" style="width:264px;height:264px;margin:4px auto 10px;display:block" :alt="qrMode === 'vcard' ? '名片联系人二维码' : '名片地址二维码'" />
-        <!-- 微信长按识别兜底：美化码（圆角点/浅底）本地 QR 检测常失败，用户可一键切标准黑白方点码；
-             默认仍是用户设置的美化码，名片本体不受影响 -->
-        <button class="qr-plain-toggle" type="button" @click="qrPlain = !qrPlain">{{ qrPlain ? '← 返回美化码' : '长按没出现「识别图中二维码」？切换标准识别码' }}</button>
-        <p class="small muted center">{{ qrPlain ? '标准黑白码 · 长按图片即可识别；名片上的美化码不受影响' : (qrMode === 'vcard' ? '手机相机/微信扫一扫，直接把名片存入通讯录（已瘦身只含主流字段，保证可扫）' : '扫一扫打开名片页，名片里的资料随时更新、链接永久不变') }}</p>
+        <!-- 2026-11-27 识别率定稿：弹层大码/保存一律用纯黑白标准识别码（plain=1），微信长按 100% 出
+             「识别图中二维码」；名片本体码为标准方点 + 用户自选配色，不受影响 -->
+        <p class="small muted center">{{ qrMode === 'vcard' ? '标准识别码 · 长按图片「识别图中二维码」直接存入通讯录' : '标准识别码 · 长按图片即可「识别图中二维码」打开名片；名片上的码可自选配色' }}</p>
         <!-- 一个入口承载三件事：存联系人的码/打开名片的码、复制链接、公开页（关闭弹层即当前公开页） -->
         <div class="btn-row" style="justify-content:center;margin-top:14px;flex-wrap:wrap">
           <button class="btn btn-primary" @click="copy(publicLink, '名片链接')">复制名片链接</button>
@@ -387,18 +356,15 @@ const card = ref(null); const loading = ref(true); const error = ref('')
 // dock 四态翻转（owner「配色」/「二维码」/「上架」键，2026-11-27 用户定稿）：
 // main（编辑/配色/二维码/上架）→ tpl（模板缩略行，整张名片实时预览）/ qr（名片本体让位，顶部直视二维码大图 + 两级 dock）
 // / market（上架操作行：开关/行业点中即保存），↙ 收起。
-// 二维码 dock 二级：一级 = 风格预设/码点形状/码眼形状 三个入口（qrSub=''），二级 = 该类选项（qrSub='preset'|'dot'|'eye'）；
-// 二级 ↙ 回一级（大码保持），一级 ↙ 才 closeDock 回整体名片。
+// 二维码 dock：↙ 收起回整体名片；2026-11-27 识别率定稿后只剩码色一个分类。
 // 模板清单来自公开接口（与 CardStyle/CardEdit 同源，缓存一次）；
 // 点中即 PUT /api/cards/mine 应用整套配色（与 CardStyle done 同口径），card 就地合并 → 页面实时预览；
 // 条保持打开可连续切换对比。未开通由服务端套餐闸门拦（403 → toast）。
 const dockMode = ref('main')
 const qrSub = ref('')
+// 2026-11-27 识别率定稿：码点/码眼固定标准方点、LOGO 移除，调节面板只留码色（不伤识别率的美化）
 const QR_CATS = [
-  { key: 'preset', label: '风格预设', ico: '✦' },
-  { key: 'color', label: '码色', ico: '◐' },
-  { key: 'dot', label: '码点形状', ico: '⠿' },
-  { key: 'eye', label: '码眼形状', ico: '◎' }
+  { key: 'color', label: '码色', ico: '◐' }
 ]
 const tpls = ref([]); const tplBusy = ref(false)
 let tplsLoaded = false
@@ -440,25 +406,21 @@ async function chooseTpl(t) {
     qrStamp.value = Date.now()
   } catch (e) { showToast(e.message, 'error') } finally { tplBusy.value = false }
 }
-// 二维码预设/码点/码眼选项不再本地硬编码：服务端 /api/cards/public/meta 下发为唯一真相源，
-// 本页挂载时拉取一次（utils/qrStyles 带缓存+兜底），新增形状两端自动同步。
-const dotOpts = ref([]); const eyeOpts = ref([]); const qrPresets = ref([]); const colorOpts = ref([])
+// 码色选项由服务端 /api/cards/public/meta 下发（唯一真相源），本页挂载时拉取一次（utils/qrStyles 带缓存+兜底）。
+// 2026-11-27 识别率定稿：码点/码眼/预设清单已收敛到标准方点，面板只留码色。
+const colorOpts = ref([])
 const qrBusy = ref(false)
-// 二维码图 URL 缓存击穿：qr_style 等由服务端渲染，固定 URL 会被 CDN/浏览器缓存 60s，
-// 预设点中后必须换 query 才能立刻看到新码（2026-11-26）
+// 二维码图 URL 缓存击穿：qr_fg/qr_bg 由服务端渲染，固定 URL 会被 CDN/浏览器缓存 60s，
+// 换色后必须换 query 才能立刻看到新码
 const qrStamp = ref(0)
 // 弹层码显示 264px：按屏幕 DPR 请求原图尺寸（528/792），避免 640→264 浏览器降采样
 // 把码点间细缝糊掉——微信长按识别用的是屏幕截图做本地 QR 检测，糊掉的码点会检测失败。
+// 弹层大码恒用 plain=1 纯黑白标准识别码（2026-11-27 定稿：长按识别 100% 可用）。
 const qrImgSize = Math.round(264 * Math.min(3, Math.max(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 2)))
-const qrPlain = ref(false) // 用户主动切换的「标准识别码」（纯黑白方点，100% 可长按识别）
 const qrModalSrc = computed(() => scanQrUrl(slug.value, qrMode.value === 'vcard' ? 'vcard.png' : 'qr.png', qrImgSize)
-  + (qrPlain.value ? '&plain=1' : '') + '&v=' + qrStamp.value)
-function qrPresetActive(p) {
-  const s = card.value?.qr_style || {}
-  return s.dot === p.dot && s.eye === p.eye && (s.gradTo || '') === p.gradTo
-}
-// 码点/码眼缩略直接用服务端真实渲染（?style= 覆盖，无 logo），16+14 种形状零 CSS 维护、
-// 所见即所得；固定参数不跟着 qrStamp 变，浏览器/CDN 缓存即可。
+  + '&plain=1&v=' + qrStamp.value)
+// 码色缩略直接用服务端真实渲染（?style= 覆盖），所见即所得；
+// 固定参数不跟着 qrStamp 变，浏览器/CDN 缓存即可。
 function qrStyleSwatch(patch, fg, bg) {
   const s = { ...(card.value?.qr_style || {}), ...patch, logoShape: 'none', bgImage: '' }
   const f = encodeURIComponent(fg || card.value?.qr_fg || '#0f172a')
@@ -927,7 +889,7 @@ async function traceVisit() {
 onMounted(() => {
   load()
   // 样式选项独立启动，挂在 load 链尾会被前置请求拖住（同密钥加载教训）
-  loadQrStyles().then(s => { dotOpts.value = s.dots; eyeOpts.value = s.eyes; qrPresets.value = s.presets; colorOpts.value = s.colors })
+  loadQrStyles().then(s => { colorOpts.value = s.colors })
 })
 // 同组件参数变化（名片夹连续看 /c/a → /c/b）：组件复用不会重新 mounted，
 // 必须重置跟随名片的状态再重新加载，否则第二张名片显示第一张的内容。
@@ -972,10 +934,10 @@ async function copy(v, label) {
 }
 async function saveQr() {
   guideImage.value = ''
-  // 保存当前切换到的码：联系人码（vCard 瘦身版，扫=直接存通讯录）或名片链接码
+  // 保存当前 tab 的码：联系人码（vCard 瘦身版，扫=直接存通讯录）或名片链接码；一律纯黑白标准码
   const isVcard = qrMode.value === 'vcard'
   const r = await saveImageUrl(
-    scanQrUrl(slug.value, isVcard ? 'vcard.png' : 'qr.png', 900) + (qrPlain.value ? '&plain=1' : ''),
+    scanQrUrl(slug.value, isVcard ? 'vcard.png' : 'qr.png', 900) + '&plain=1',
     `${slug.value}-${isVcard ? '名片码' : '二维码'}.png`
   )
   if (r.kind === 'longpress') { await showGuide('qr'); return }

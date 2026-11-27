@@ -112,7 +112,8 @@ const previewQr = computed(() => {
   const c = card.value
   if (!c?.slug) return ''
   const st = encodeURIComponent(JSON.stringify(c.qr_style || {}))
-  return `/api/cards/public/${c.slug}/qr.svg?size=320&brand=M&fg=${encodeURIComponent(c.qr_fg || '#0f172a')}&bg=${encodeURIComponent(c.qr_bg || '#ffffff')}&logo=${c.qr_logo ? 1 : 0}&style=${st}`
+  // 中心 LOGO 已整体移除（2026-11-27 识别率定稿），预览恒 logo=0
+  return `/api/cards/public/${c.slug}/qr.svg?size=320&brand=M&fg=${encodeURIComponent(c.qr_fg || '#0f172a')}&bg=${encodeURIComponent(c.qr_bg || '#ffffff')}&logo=0&style=${st}`
 })
 
 async function load() {

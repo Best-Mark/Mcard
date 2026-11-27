@@ -34,7 +34,7 @@
         </div>
 
         <!-- 底部功能上弹面板：模板 / 二维码两个分区分开（按之前那样的交互）。
-             强调色不再单列；二维码只留预设/码点/定位角，中心 LOGO 固定居中常显。
+             二维码只留码色（2026-11-27 识别率定稿：码点/码眼固定标准方点、中心 LOGO 已移除）。
              分区清单唯一真相源 = SECTIONS：弹层内 tab 与底部入口都从它渲染，不各写一份。 -->
         <div class="sheet-mask" :class="{ show: sheetOpen }" @click="sheetOpen = false"></div>
         <div class="edit-sheet" :class="{ show: sheetOpen }" role="dialog" aria-label="配色风格设置">
@@ -64,29 +64,9 @@
             </template>
             <template v-else>
               <div class="section-title" style="margin-top:0">二维码</div>
-              <p class="small muted">形状只保留易扫款式；中心 LOGO 默认关（更易于识别），需要可自行开启。</p>
-              <div class="field"><label>一键预设</label>
-                <div class="qr-presets">
-                  <button v-for="p in qrPresets" :key="p.key" class="qr-preset" :class="{ on: qrPresetActive(p) }" @click="applyQrPreset(p)">
-                    <i :style="{ background: p.swatch }"></i>{{ p.label }}
-                  </button>
-                </div>
-              </div>
-              <div class="grid2">
-                <div class="field"><label>码点形状</label>
-                  <BottomSelect v-model="card.qr_style.dot" :options="dotOptions" title="码点形状" />
-                </div>
-                <div class="field"><label>定位角样式</label>
-                  <BottomSelect v-model="card.qr_style.eye" :options="eyeOptions" title="定位角样式" />
-                </div>
-              </div>
+              <p class="small muted">码点/码眼已固定为标准方点、中心 LOGO 已移除（2026-11-27 识别率优先定稿），保证微信扫一扫与长按识别；可自定义的只剩配色，不影响识别。</p>
               <div class="field"><label>码色（深码浅底成对，保证可扫）</label>
                 <BottomSelect v-model="colorKey" :options="colorKeyOptions" title="码色" />
-              </div>
-              <div class="field"><label>中心 LOGO</label>
-                <button type="button" class="btn btn-ghost btn-block" @click="card.qr_logo = !card.qr_logo">
-                  {{ card.qr_logo ? '已开启（点此关闭，更易扫）' : '已关闭（点此开启）' }}
-                </button>
               </div>
             </template>
             <!-- 只收起面板，不保存；保存统一走页面底部唯一「完成」按钮 -->
@@ -147,11 +127,9 @@ watch(sheetOpen, on => {
 })
 onBeforeUnmount(() => { document.body.style.overflow = bodyOverflowBefore })
 
-// 二维码可调：预设 + 码色 + 码点 + 定位角 + 中心 LOGO 开关。
-// 【2026-11-26 易扫收敛】中心 LOGO 默认关（最伤识别率），用户可自行开；码点/码眼选项由服务端 meta 下发，
-// 已剔除花哨形状，渐变/背景图也下线，故任意组合均可扫。
-// 选项清单由服务端 /api/cards/public/meta 下发（唯一真相源），本页不再硬编码取值。
-const dotOptions = ref([]); const eyeOptions = ref([]); const qrPresets = ref([]); const colorOptions = ref([])
+// 二维码可调：只剩码色（2026-11-27 识别率定稿：码点/码眼固定标准方点、中心 LOGO 渲染层移除、渐变/背景图已下线）。
+// 码色清单由服务端 /api/cards/public/meta 下发（唯一真相源）；码点/码眼/LOGO 已在渲染层收敛移除。
+const colorOptions = ref([])
 // 码色是 fg/bg 成对字段（cards.qr_fg / qr_bg），BottomSelect 单值用 key 代理，watch 写回两个字段。
 const colorKeyOptions = computed(() => colorOptions.value.map(c => ({ value: c.key, label: c.label })))
 const colorKey = computed({
@@ -161,23 +139,14 @@ const colorKey = computed({
     if (c && card.value) { card.value.qr_fg = c.fg; card.value.qr_bg = c.bg }
   }
 })
-// 中心 LOGO 默认关；用户可开（开关值来自 card.qr_logo，服务端已迁移存量关）。
 const currentTplLabel = computed(() => templates.value.find(t => t.key === card.value?.template)?.label || card.value?.template || '默认')
 const previewQr = computed(() => {
   const c = card.value
   if (!c?.slug) return ''
   const st = encodeURIComponent(JSON.stringify(c.qr_style || {}))
-  const logo = c.qr_logo ? '1' : '0'
-  return `/api/cards/public/${c.slug}/qr.svg?size=320&fg=${encodeURIComponent(c.qr_fg || '#0f172a')}&bg=${encodeURIComponent(c.qr_bg || '#ffffff')}&logo=${logo}&style=${st}`
+  // 中心 LOGO 已整体移除（2026-11-27 识别率定稿），预览恒 logo=0
+  return `/api/cards/public/${c.slug}/qr.svg?size=320&fg=${encodeURIComponent(c.qr_fg || '#0f172a')}&bg=${encodeURIComponent(c.qr_bg || '#ffffff')}&logo=0&style=${st}`
 })
-
-function qrPresetActive(p) {
-  const s = card.value?.qr_style || {}
-  return s.dot === p.dot && s.eye === p.eye && (s.gradTo || '') === p.gradTo
-}
-function applyQrPreset(p) {
-  card.value.qr_style = { ...(card.value.qr_style || {}), dot: p.dot, eye: p.eye, gradTo: p.gradTo }
-}
 function chooseTemplate(key) {
   const pal = paletteOf(key)
   card.value.template = key
@@ -198,8 +167,8 @@ async function load() {
     if (!data.data) return router.replace('/me')
     card.value = {
       ...data.data,
-      // 中心 LOGO 尊重用户开关（服务端已把存量统一迁到关）；qr_style 由服务端 normalizeStyle 归一，
-      // 渐变/背景图已下线、花哨码点码眼已回落，这里只补缺省值。
+      // qr_style 由服务端 normalizeStyle 归一（2026-11-27 识别率定稿：圆点/圆角眼自动回落标准方点），
+      // 中心 LOGO 渲染层已移除、渐变/背景图已下线，这里只补缺省值。
       qr_style: { dot: 'square', eye: 'square', gradTo: '', bgImage: '', ...(data.data.qr_style || {}) }
     }
     tags.value = data.data.tags || []
@@ -210,7 +179,7 @@ async function loadTemplates() {
 }
 onMounted(async () => {
   // 样式选项/模板清单独立启动，不挂在 load 链尾（前置请求失败/重启窗口会拖住关键选项）
-  loadQrStyles().then(s => { dotOptions.value = s.dots; eyeOptions.value = s.eyes; qrPresets.value = s.presets; colorOptions.value = s.colors })
+  loadQrStyles().then(s => { colorOptions.value = s.colors })
   loadTemplates()
   await load()
 })

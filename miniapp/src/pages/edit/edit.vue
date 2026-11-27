@@ -142,21 +142,7 @@
         <view class="field"><text class="label">强调色</text><input v-model="form.accent" class="input" placeholder="#a62b2b" /></view>
         <view class="field"><text class="label">二维码前景色</text><input v-model="form.qr_fg" class="input" placeholder="#2b2118" /></view>
         <view class="field"><text class="label">二维码背景色</text><input v-model="form.qr_bg" class="input" placeholder="#ffffff" /></view>
-        <view class="field"><text class="label">中心 Logo</text><switch :checked="form.qr_logo" @change="e => form.qr_logo = e.detail.value" /></view>
-
-        <view class="qr-beauty">
-          <view class="section" style="font-size:26rpx;margin-top:8rpx">🎨 二维码美化</view>
-          <view class="preset-row">
-            <text v-for="p in QR_PRESETS" :key="p.key" class="preset" :class="{ on: qrPresetActive(p) }" @tap="applyQrPreset(p)">{{ p.label }}</text>
-          </view>
-          <view class="field"><text class="label">码点形状</text>
-            <picker :range="dotLabels" :value="dotIdx" @change="e => form.qr_style.dot = dotValues[e.detail.value]"><view class="picker">{{ dotLabels[dotIdx] }} ▾</view></picker>
-          </view>
-          <view class="field"><text class="label">定位角样式</text>
-            <picker :range="eyeLabels" :value="eyeIdx" @change="e => form.qr_style.eye = eyeValues[e.detail.value]"><view class="picker">{{ eyeLabels[eyeIdx] }} ▾</view></picker>
-          </view>
-          <view class="muted small" style="margin-top:8rpx">仅保留易扫形状；渐变与背景图已下线。</view>
-        </view>
+        <view class="muted small" style="margin:8rpx 0 16rpx">码点/码眼已固定为标准方点、中心 Logo 已移除（识别率优先），保证微信扫一扫与长按识别；可自定义的只剩码色（请保持深码浅底）。</view>
         </view>
       </view>
 
@@ -168,7 +154,7 @@
 <script setup>
 import { ref, computed, onUnmounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { api, toast, uploadImage, uploadLogo, processLogo, geoLocate, reverseGeocode, geocodeAddress, getRegions, ensurePrivacy, loadQrStyles } from '../../utils/request'
+import { api, toast, uploadImage, uploadLogo, processLogo, geoLocate, reverseGeocode, geocodeAddress, getRegions, ensurePrivacy } from '../../utils/request'
 
 // ⚠️ 与 client/src/utils/themes.js 保持同步（小程序独立渲染，无 web-view）
 const themes = {
@@ -213,22 +199,8 @@ const TEMPLATE_PALETTES = {
 }
 const paletteOf = key => TEMPLATE_PALETTES[key] || { theme: 'ocean', qrFg: '#2b2118', qrBg: '#ffffff' }
 const DEFAULT_PAL = paletteOf('tang')
-// 预设/码点/码眼全部由服务端 /api/cards/public/meta 下发（唯一真相源），本页不再硬编码取值。
-const QR_PRESETS = ref([])
-const dotStyles = ref([]); const eyeStyles = ref([])
-const dotValues = computed(() => dotStyles.value.map(x => x.value))
-const dotLabels = computed(() => dotStyles.value.map(x => x.label))
-const eyeValues = computed(() => eyeStyles.value.map(x => x.value))
-const eyeLabels = computed(() => eyeStyles.value.map(x => x.label))
-function qrPresetActive(p) {
-  const s = form.value.qr_style || {}
-  return s.dot === p.dot && s.eye === p.eye && (s.gradTo || '') === p.gradTo
-}
-function applyQrPreset(p) {
-  form.value.qr_style = { ...(form.value.qr_style || {}), dot: p.dot, eye: p.eye, gradTo: p.gradTo }
-}
-const dotIdx = computed(() => Math.max(0, dotValues.value.indexOf(form.value.qr_style?.dot)))
-const eyeIdx = computed(() => Math.max(0, eyeValues.value.indexOf(form.value.qr_style?.eye)))
+// 2026-11-27 识别率定稿：码点/码眼/预设/中心 Logo 的设置项已全部移除（渲染层收敛为标准方点、无 LOGO），
+// 可自定义的只剩码色（qr_fg/qr_bg，深码浅底）。
 
 const blank = {
   slug: '', name: '', name_en: '', title: '', company: '', company_intro: '', department: '',
@@ -299,8 +271,6 @@ const logoModeIdx = ref(0)
 onLoad(async options => {
   loadTemplates()
   loadMarketMeta()
-  // 二维码选项独立启动，不挂在下面 /cards/mine 链尾（前置失败会拖住样式选项）
-  loadQrStyles().then(s => { dotStyles.value = s.dots; eyeStyles.value = s.eyes; QR_PRESETS.value = s.presets })
   try {
     const c = await api.get('/api/cards/mine')
     if (!c) return uni.redirectTo({ url: '/pages/me/me' })

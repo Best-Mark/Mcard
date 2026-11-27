@@ -22,15 +22,6 @@ const router = express.Router()
 // 超时/类型/大小/缓存逻辑（与打印、分享缩略图同一份真相源）。内部调用允许存量外链头像（仍拒绝内网/本机）。
 const { inlineImage } = require('../utils/inlineImage')
 
-async function qrCenterImage(row) {
-  for (const url of [row?.logo, row?.avatar]) {
-    if (!url) continue
-    const data = await inlineImage(url, { allowAny: true })
-    if (data) return data
-  }
-  return ''
-}
-
 // 名片头像 avatar 归名片层（cards 表），与账户头像 users.avatar 独立；编辑页在这里维护。
 const EDITABLE = ['name', 'name_en', 'title', 'company', 'company_intro', 'department', 'avatar', 'phone', 'mobile', 'email',
   'wechat', 'alipay', 'whatsapp', 'wechat_qr', 'alipay_qr', 'wechat_pay_qr', 'alipay_pay_qr',
@@ -266,42 +257,36 @@ router.get('/public/:slug', wrap((req, res) => {
   ok(res, { ...publicView(row, originOf(req)), promo })
 }))
 
-// 易扫模式（?scan=1）/ vCard 码统一渲染参数。
-// 【2026-11-26 用户终稿】弹层两个 tab 的码 = 用户最终保存的完整风格，与卡片右上角小码一致：
-// 码点/码眼/渐变/中心 LOGO/码色全部沿用 cards.qr_style + qr_fg/qr_bg + qr_logo，不再做硬化覆盖。
+// 码渲染统一参数。
+// 【2026-11-27 用户定稿（推翻 11-26「视觉与设置一致」终稿）：识别率第一】
+// 二维码以标准识别码为基底再做美化，凡影响微信本地检测的一律去掉：
+// 码点/码眼白名单收敛到标准方点（qrStyles.js）、中心 LOGO 渲染整体移除、渐变/背景图已下线；
+// 保留的美化 = 码色（深码浅底成对）。弹层大码/保存一律 plain=1 纯标准码。
 // 只保留静音区 4（QR 规范要求，苹果相机/微信扫一扫对静音区不足敏感，不影响观感）。
-// ⚠️ 不要为「易扫」再强制方点/去 LOGO/改色——用户明确要求视觉与设置一致，改回会被再次指出。
-function scanOptions({ fg, bg, style, logo, logoImage }) {
+function scanOptions({ fg, bg, style }) {
   return {
     fg: fg || '#0f172a',
     bg: bg || '#ffffff',
     margin: 4,
-    logo: !!logo,
-    logoImage: logoImage || '',
     style: normalizeStyle(style)
   }
 }
 
 // 二维码中心品牌字（唯一真相源 = settings.qr_brand，后台「二维码水印」）：query 可覆盖（编辑页预览）。
 // 【2026-11-26 修复】该设置此前只存不下发、从未被渲染读取（死配置），现接入全部二维码渲染端点。
-// 中心 LOGO 位很小，超 4 字符截断；后台留空回落 'M'。仅在有中心位且无 LOGO 图时显示（qrcode.js 内部判定）。
-const qrBrandText = q => String(q ?? settings.get('qr_brand') ?? '').trim().slice(0, 4) || 'M'
-
+// 中心 LOGO 位已整体移除（2026-11-27 识别率第一定稿）；qr_brand 后台设置保留但不参与码渲染。
 router.get('/public/:slug/qr.svg', wrap(async (req, res) => {
   const row = db.prepare('SELECT slug, qr_fg, qr_bg, qr_logo, qr_style, logo, avatar FROM cards WHERE slug = ?').get(req.params.slug)
   if (!row) return fail(res, 404, '名片不存在')
   const size = Math.min(2000, Math.max(64, Number(req.query.size) || 360))
-  const brand = qrBrandText(req.query.brand)
   // query 覆盖 DB：编辑页保存前实时预览用；公开访问不带 query 则用 DB 值
   const fg = /^#[0-9a-fA-F]{6}$/.test(req.query.fg || '') ? req.query.fg : row.qr_fg
   const bg = /^#[0-9a-fA-F]{6}$/.test(req.query.bg || '') ? req.query.bg : row.qr_bg
-  const logoOn = 'logo' in req.query ? req.query.logo !== '0' : !!row.qr_logo
-  const logoImage = logoOn ? await qrCenterImage(row) : ''
   let style = normalizeStyle(parseJson(row.qr_style, {}))
   if (req.query.style) { try { style = normalizeStyle(JSON.parse(String(req.query.style).slice(0, 4000))) } catch {} }
-  let opts = { size, fg, bg, logo: logoOn, brand, logoImage, style }
+  let opts = { size, fg, bg, style }
   const isScan = String(req.query.scan || '') === '1'
-  if (isScan) opts = { ...opts, ...scanOptions({ fg, bg, logo: logoOn, logoImage, style }) }
+  if (isScan) opts = { ...opts, ...scanOptions({ fg, bg, style }) }
   // 扫码主场景只缓存 60s：渲染逻辑升级后最多 1 分钟即可全网生效，
   // 不再像以前 max-age=3600 卡一小时旧码。装饰码仍在编辑预览里高频改色，走长缓存无意义但也无害。
   res.type('image/svg+xml').set('Cache-Control', isScan ? 'public, max-age=60' : 'public, max-age=3600')
@@ -312,16 +297,15 @@ router.get('/public/:slug/qr.png', wrap(async (req, res) => {
   const row = db.prepare('SELECT slug, qr_fg, qr_bg, qr_logo, qr_style, logo, avatar FROM cards WHERE slug = ?').get(req.params.slug)
   if (!row) return fail(res, 404, '名片不存在')
   const size = Math.min(2000, Math.max(128, Number(req.query.size) || 720))
-  // plain=1：标准黑白方点识别码（用户主动切换，仅用于长按识别兜底；默认美化码不变）
+  // plain=1：纯黑白标准识别码（弹层大码/保存一律用它，保证微信长按识别）
   if (String(req.query.plain || '') === '1') {
     const buf = await qr.plainPng(requestUrl(req, `/c/${row.slug}`), { size })
     return res.type('png').set('Cache-Control', 'public, max-age=60').send(buf)
   }
-  const logoImage = row.qr_logo ? await qrCenterImage(row) : ''
   const style = normalizeStyle(parseJson(row.qr_style, {}))
-  let opts = { size, fg: row.qr_fg, bg: row.qr_bg, logoImage, logo: !!row.qr_logo, brand: qrBrandText(), style }
+  let opts = { size, fg: row.qr_fg, bg: row.qr_bg, style }
   const isScan = String(req.query.scan || '') === '1'
-  if (isScan) opts = { ...opts, ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg, logo: !!row.qr_logo, logoImage, style }) }
+  if (isScan) opts = { ...opts, ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg, style }) }
   const buf = await qr.png(requestUrl(req, `/c/${row.slug}`), opts)
   res.type('png').set('Cache-Control', isScan ? 'public, max-age=60' : 'public, max-age=3600').send(buf)
 }))
@@ -361,12 +345,11 @@ router.get('/public/:slug/vcard.svg', wrap(async (req, res) => {
   const text = vcard.build(publicView(row, origin), origin, { slim: true })
   const size = Math.min(2000, Math.max(256, Number(req.query.size) || 520))
   const style = normalizeStyle(parseJson(row.qr_style, {}))
-  const logoImage = row.qr_logo ? await qrCenterImage(row) : ''
   res.type('image/svg+xml').set('Cache-Control', 'public, max-age=60')
-    .send(qr.svg(text, { size, brand: qrBrandText(), ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg, style, logo: !!row.qr_logo, logoImage }) }))
+    .send(qr.svg(text, { size, ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg, style }) }))
 }))
 
-// vCard 高清 PNG（保存用）：与 vcard.svg 同款，码点/码眼跟随用户风格，前端长按/保存一律用 PNG（微信「识别图中二维码」不认 SVG）
+// vCard 高清 PNG（保存用）：与 vcard.svg 同款，前端长按/保存一律用 PNG（微信「识别图中二维码」不认 SVG）
 router.get('/public/:slug/vcard.png', wrap(async (req, res) => {
   const row = db.prepare('SELECT * FROM cards WHERE slug = ?').get(req.params.slug)
   if (!row) return fail(res, 404, '名片不存在')
@@ -374,14 +357,13 @@ router.get('/public/:slug/vcard.png', wrap(async (req, res) => {
   // 二维码用瘦身版 vCard（只放主流联系人字段，2026-11-26 用户定稿：保证可扫性）
   const text = vcard.build(publicView(row, origin), origin, { slim: true })
   const size = Math.min(1600, Math.max(256, Number(req.query.size) || 720))
-  // plain=1：vCard 也走标准黑白方点识别码（切换后两个 tab 都能长按识别）
+  // plain=1：vCard 也走纯黑白标准码（弹层两个 tab 都用它，保证长按识别）
   if (String(req.query.plain || '') === '1') {
     const buf = await qr.plainPng(text, { size })
     return res.type('png').set('Cache-Control', 'public, max-age=60').send(buf)
   }
   const style = normalizeStyle(parseJson(row.qr_style, {}))
-  const logoImage = row.qr_logo ? await qrCenterImage(row) : ''
-  const buf = await qr.png(text, { size, brand: qrBrandText(), ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg, style, logo: !!row.qr_logo, logoImage }) })
+  const buf = await qr.png(text, { size, ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg, style }) })
   res.type('png').set('Cache-Control', 'public, max-age=60').send(buf)
 }))
 

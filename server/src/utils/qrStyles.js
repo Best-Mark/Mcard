@@ -1,32 +1,28 @@
-// 二维码美化样式的唯一真相源（2026-11-26 用户定稿）：
-// 码点/码眼取值与中文标签、一键预设全部只在这里定义一次。
-// 服务端用 DOT_VALUES / EYE_VALUES 做写入白名单与渲染分支；
-// 通过 GET /api/cards/public/meta 下发两端（client 与 miniapp 都不再硬编码），
-// 新增形状只需改本文件 + services/qrcode.js 的渲染分支，两端自动同步。
+// 二维码样式清单唯一真相源。
 //
-// ⚠️ 易扫收敛（2026-11-26 用户定稿）：真机实测过于花哨的码点/码眼导致微信「扫一扫」识别率极低、
-// 需要严格角度。只保留扫码友好的形状——码点覆盖率高、边缘规整；码眼保持「回」字定位特征。
-// 被剔除的旧值（如 smallDots/diamond/star/stripe/liquid/circle/bubble...）由 normalizeStyle
-// 白名单自动回落到 square，存量名片无需迁移即可自愈；两端清单从 meta 拉取自动同步。
+// 【2026-11-27 用户定稿：识别率第一】二维码直接以标准识别码为基底，在此前提下再美化；
+// 凡影响微信「扫一扫 / 长按识别」的美化一律去掉：
+//   - 码点：只保留普通方点（圆角/圆点的细缝在缩放与截图场景下检测失败）→ rounded/dots 由
+//     normalizeStyle 白名单自动回落 square，存量名片无需迁移即可自愈，两端清单从 meta 拉取自动同步
+//   - 码眼：只保留方正「回」字（圆角外框同样弱化定位特征）
+//   - 中心 LOGO / 品牌文字：渲染层已整体移除（遮挡数据区 + 强制 H 纠错是识别率头号杀手）
+//   - 渐变 / 背景图：2026-11-26 已下线（normalizeStyle 归一为空）
+// 保留的美化 = 码色（深码 + 浅底成对，亮度对比有硬口径），不影响识别。
+// 被剔除的旧值（smallDots/diamond/star/stripe/liquid/circle/bubble...）同样由白名单回落。
 
-// 码点：只用「实心/接近实心」的规则形状，保证模块边界清晰。
+// 码点：只保留覆盖率高、模块边界清晰的标准方点。
 const DOT_STYLES = [
-  { value: 'square', label: '普通方点' },
-  { value: 'rounded', label: '圆角方点' },
-  { value: 'dots', label: '大圆点' }
+  { value: 'square', label: '标准方点' }
 ]
 
-// 码眼：必须保留「回」字定位特征（微信/相机靠三个角定位），只用方正与圆角回字。
+// 码眼：只保留方正「回」字定位特征。
 const EYE_STYLES = [
-  { value: 'square', label: '方正' },
-  { value: 'rounded', label: '圆角' }
+  { value: 'square', label: '方正' }
 ]
 
-// 一键预设（组合值仍取自上面的清单，不另立取值）；只留易扫组合，不带渐变。
+// 一键预设：只剩标准方点一种（组合值仍取自上面的清单，不另立取值）。
 const QR_PRESETS = [
-  { key: 'classic', label: '经典方点', swatch: '#0f172a', dot: 'square', eye: 'square', gradTo: '' },
-  { key: 'rounded', label: '圆润', swatch: '#2563eb', dot: 'rounded', eye: 'rounded', gradTo: '' },
-  { key: 'dots', label: '圆点', swatch: '#0f766e', dot: 'dots', eye: 'square', gradTo: '' }
+  { key: 'classic', label: '标准方点', swatch: '#0f172a', dot: 'square', eye: 'square', gradTo: '' }
 ]
 
 // 码色（前景色 fg + 底色 bg 成对）：只用「深码 + 浅底」组合，保证任何主题下可扫。

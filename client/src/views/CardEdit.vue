@@ -240,7 +240,7 @@ const blank = {
   address: '', address_detail: '', province: '', city: '', district: '', street: '',
   avatar: '', logo: '', bio: '', tags: [], links: [], template: DEFAULT_TPL, theme: DEFAULT_PAL.theme, accent: THEMES[DEFAULT_PAL.theme].accent,
   industry: '', city: '', latitude: null, longitude: null, market_opt_in: false,
-  qr_fg: DEFAULT_PAL.qrFg, qr_bg: DEFAULT_PAL.qrBg, qr_logo: true,
+  qr_fg: DEFAULT_PAL.qrFg, qr_bg: DEFAULT_PAL.qrBg, qr_logo: false,
   qr_style: { dot: 'square', eye: 'square', gradTo: '', logoShape: 'rounded', bgImage: '' }
 }
 // 外观（模板/强调色/二维码）与集市已独立为 /me/card/style、/me/card/market 设计页，本页只保留字段默认值供预览。
@@ -322,7 +322,8 @@ const previewQr = computed(() => {
   const s = form.value.qr_style || {}
   const st = encodeURIComponent(JSON.stringify({ dot: s.dot, eye: s.eye, gradTo: s.gradTo || '', logoShape: s.logoShape, bgImage: s.bgImage || '' }))
   const f = form.value
-  return `/api/cards/public/${f.slug}/qr.svg?size=320&brand=M&fg=${encodeURIComponent(f.qr_fg)}&bg=${encodeURIComponent(f.qr_bg)}&logo=${f.qr_logo ? 1 : 0}&style=${st}`
+  // 中心 LOGO 已整体移除（2026-11-27 识别率定稿），预览恒 logo=0
+  return `/api/cards/public/${f.slug}/qr.svg?size=320&brand=M&fg=${encodeURIComponent(f.qr_fg)}&bg=${encodeURIComponent(f.qr_bg)}&logo=0&style=${st}`
 })
 
 async function loadCard() {
