@@ -25,12 +25,19 @@
     </div>
 
     <template v-else-if="card">
-      <!-- 二维码调节态（2026-11-26 用户定稿）：不再显示整张名片，把当前二维码放最上面直视；
-           大图与卡片右上角小码同源（qr.png 不带 scan=1，保留美化样式），qrStamp 击穿缓存，点选样式即时生效。
+      <!-- 二维码调节态（2026-11-26 定稿；2026-11-27 用户截图「二维码里没有功能了」修整）：
+           ① 下方码色选项行原先被 qrSub 死状态挡住（恒为 ''），整行空白——已去掉该状态，码色常显；
+           ② 大码不再光秃秃：白码卡外围加四个 L 形角框（扫码框观感），纯 DOM/CSS 装饰层，
+              只画在码图之外的 padding 区，不覆盖 PNG 任何像素、不侵占静音区 → 识别率 0 影响；
+           ③ 大图与卡片右上角小码同源（qr.png 不带 scan=1，保留美化样式），qrStamp 击穿缓存，点选码色即时生效。
            信息层只有码图+一句说明，所有操作留在底部翻转行，点行首↙退出才回到整体名片 -->
       <div v-if="dockMode === 'qr'" class="cv-qr-tune">
-        <div class="cv-qr-tune-card"><img :src="qrApi + '/qr.png?size=560&v=' + qrStamp" alt="当前名片二维码" /></div>
-        <p class="small muted cv-qr-tune-tip">当前二维码 · {{ qrSub ? '正在调整' + (QR_CATS.find(c => c.key === qrSub)?.label || '') : '调整下方样式即时生效' }}</p>
+        <div class="cv-qr-tune-card">
+          <span class="cv-qr-corner tl"></span><span class="cv-qr-corner tr"></span>
+          <img :src="qrApi + '/qr.png?size=560&v=' + qrStamp" alt="当前名片二维码" />
+          <span class="cv-qr-corner bl"></span><span class="cv-qr-corner br"></span>
+        </div>
+        <p class="small muted cv-qr-tune-tip">当前二维码 · 点下方码色即时生效</p>
       </div>
       <CardSheet
         v-else
@@ -126,17 +133,16 @@
           </div>
         </template>
         <!-- 二维码调节（2026-11-27 识别率定稿）：码点/码眼已固定为标准方点、中心 LOGO 已移除，
-             只保留不伤识别率的码色。↙ 收起回整体名片 -->
+             只保留不伤识别率的码色。2026-11-27 修：原 v-if="qrSub === 'color'" 的 qrSub 恒为 ''，
+             整行永远空白（用户截图「二维码里没有功能了」）——只剩一个分类，选项常显即可。↙ 收起回整体名片 -->
         <template v-else-if="dockMode === 'qr'">
           <button class="dock-back" @click="closeDock" aria-label="收起二维码调节，返回名片">↙</button>
           <div class="dock-scroll">
             <div class="dock-flow">
-              <template v-if="qrSub === 'color'">
-                <button v-for="c in colorOpts" :key="'color-' + c.key" :class="['dock-tpl', { on: card.qr_fg === c.fg && card.qr_bg === c.bg, busy: qrBusy }]" @click="applyQrColor(c)">
-                  <img class="qr-swatch qr-swatch-live" :src="qrStyleSwatch({}, c.fg, c.bg)" alt="" />
-                  <span class="dock-tpl-label">{{ c.label }}</span>
-                </button>
-              </template>
+              <button v-for="c in colorOpts" :key="'color-' + c.key" :class="['dock-tpl', { on: card.qr_fg === c.fg && card.qr_bg === c.bg, busy: qrBusy }]" @click="applyQrColor(c)">
+                <img class="qr-swatch qr-swatch-live" :src="qrStyleSwatch({}, c.fg, c.bg)" alt="" />
+                <span class="dock-tpl-label">{{ c.label }}</span>
+              </button>
             </div>
           </div>
         </template>
@@ -371,28 +377,25 @@ const vcfApi = computed(() => `${qrApi.value}/card.vcf`)
 const card = ref(null); const loading = ref(true); const error = ref('')
 
 // dock 四态翻转（owner「配色」/「二维码」/「上架」键，2026-11-27 用户定稿）：
-// main（编辑/配色/二维码/上架）→ tpl（模板缩略行，整张名片实时预览）/ qr（名片本体让位，顶部直视二维码大图 + 两级 dock）
+// main（编辑/配色/二维码/上架）→ tpl（模板缩略行，整张名片实时预览）/ qr（名片本体让位，顶部直视二维码大图 + 码色选项行）
 // / market（上架操作行：开关/行业点中即保存），↙ 收起。
-// 二维码 dock：↙ 收起回整体名片；2026-11-27 识别率定稿后只剩码色一个分类。
+// 二维码 dock：↙ 收起回整体名片；2026-11-27 识别率定稿后只剩码色一个分类（选项行常显，不再有二级分类状态）。
 // 模板清单来自公开接口（与 CardStyle/CardEdit 同源，缓存一次）；
 // 点中即 PUT /api/cards/mine 应用整套配色（与 CardStyle done 同口径），card 就地合并 → 页面实时预览；
 // 条保持打开可连续切换对比。未开通由服务端套餐闸门拦（403 → toast）。
 const dockMode = ref('main')
-const qrSub = ref('')
-// 2026-11-27 识别率定稿：码点/码眼固定标准方点、LOGO 移除，调节面板只留码色（不伤识别率的美化）
-const QR_CATS = [
-  { key: 'color', label: '码色', ico: '◐' }
-]
+// 2026-11-27 识别率定稿：码点/码眼固定标准方点、LOGO 移除，调节面板只留码色（不伤识别率的美化）。
+// 原 qrSub 二级分类状态在多分类下线后恒为 ''，导致码色选项整行空白 —— 已删除该死状态，选项常显。
 const tpls = ref([]); const tplBusy = ref(false)
 let tplsLoaded = false
 // 进入二维码调节态：名片本体让位，顶部直视大码；从任意滚动位置点底部 dock 都要先回页顶，
 // 否则用户下滑后点「二维码」只见调节行、看不到上方大码（2026-11-26 用户截图实锤）。
 function scrollPageTop() { try { windowRef.scrollTo?.(0, 0) } catch { /* 老 WebView 无 scrollTo 选项时忽略 */ } }
-function closeDock() { dockMode.value = 'main'; qrSub.value = ''; scrollPageTop() }
+function closeDock() { dockMode.value = 'main'; scrollPageTop() }
 function toggleDock(m) {
   dockMode.value = dockMode.value === m ? 'main' : m
-  if (dockMode.value === 'qr') { qrSub.value = ''; scrollPageTop() }
-  if (dockMode.value === 'market') { qrSub.value = ''; loadMarketMeta() }
+  if (dockMode.value === 'qr') scrollPageTop()
+  if (dockMode.value === 'market') loadMarketMeta()
   if (dockMode.value === 'tpl' && !tplsLoaded) {
     api.get(`/api/cards/public/templates?t=${Date.now()}`).then(({ data }) => {
       const list = data?.data?.templates || []
@@ -934,7 +937,7 @@ watch(slug, () => {
   materialsList.value = []
   qrModal.value = false; guide.value = ''; exchangeOpen.value = false
   mapOpen.value = false; moreOpen.value = false; galleryIndex.value = -1
-  dockMode.value = 'main'; qrSub.value = ''
+  dockMode.value = 'main'
   favorite.value = false; isOwner.value = false; hasOwnCard.value = false; mySlug.value = ''
   windowRef.scrollTo?.(0, 0)
   load()

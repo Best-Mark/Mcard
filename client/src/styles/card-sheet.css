@@ -14,11 +14,22 @@
 /* padding-top 用页面背景色给出与顶栏的间距（不用 margin，避免透出 body 白色） */
 .cv-page.cv-owner { padding-top: 12px; padding-bottom: 148px; }
 .cv-owner .cv-dock { bottom: 56px; }
-/* 二维码调节态（2026-11-26 用户定稿）：名片本体让位，顶部只留当前二维码大图直视（调样式即时可见）；
+/* 二维码调节态（2026-11-26 定稿；2026-11-27 用户截图「二维码里没有功能了」修整）：
+   名片本体让位，顶部只留当前二维码大图直视（调码色即时可见）；四角框是扫码框式外围装饰。
    大图与卡片右上角小码同源（qr.png 不带 scan=1，保留美化样式），v=qrStamp 击穿服务端缓存。
    信息层只有码图 + 一句说明，所有操作在底部翻转行，↙ 收起才回到整张名片。 */
 .cv-qr-tune { padding: 22px 16px 8px; text-align: center; }
-.cv-qr-tune-card { display: inline-block; padding: 12px; background: #fff; border-radius: 16px; box-shadow: 0 8px 28px rgba(15,23,42,.14); }
+/* 四角框外围装饰（2026-11-27 用户定稿「放外框四角框，但不能影响识别率」）：
+   ① 纯 DOM/CSS 层，二维码 PNG 一个像素都不改，保存/长按识别拿到的仍是原图；
+   ② 只画在码图之外的白卡 padding 区：padding 26px，角标 6px 起 18px 见方 → 内缘 24px < 26px，
+      与码图之间还留 2px 间隙，不覆盖码点、不侵占码自带静音区 → 识别率 0 影响；
+   ③ pointer-events:none 不挡点击；颜色跟主题强调色（--t-accent），不用半透明压低对比。 */
+.cv-qr-tune-card { position: relative; display: inline-block; padding: 26px; background: #fff; border-radius: 16px; box-shadow: 0 8px 28px rgba(15,23,42,.14); }
+.cv-qr-corner { position: absolute; width: 18px; height: 18px; box-sizing: border-box; border: 3px solid var(--t-accent, #a62b2b); pointer-events: none; }
+.cv-qr-corner.tl { top: 6px; left: 6px; border-right: 0; border-bottom: 0; border-radius: 8px 0 0 0; }
+.cv-qr-corner.tr { top: 6px; right: 6px; border-left: 0; border-bottom: 0; border-radius: 0 8px 0 0; }
+.cv-qr-corner.bl { bottom: 6px; left: 6px; border-right: 0; border-top: 0; border-radius: 0 0 0 8px; }
+.cv-qr-corner.br { bottom: 6px; right: 6px; border-left: 0; border-top: 0; border-radius: 0 0 8px 0; }
 .cv-qr-tune-card img { display: block; width: 66vw; max-width: 300px; height: auto; }
 .cv-qr-tune-tip { margin-top: 12px; }
 /* dock 翻转态行（owner「配色」/「二维码」键）：
