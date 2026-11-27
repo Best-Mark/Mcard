@@ -259,7 +259,11 @@ router.get('/public/:slug', wrap((req, res) => {
       try { notify.notifyViewed(row, viewer) } catch { /* 通知失败不影响名片读取 */ }
     }
   }
-  ok(res, publicView(row, originOf(req)))
+  // 宣传页挂钩（2026-11-27）：持有者最新一条已发布的宣传页随名片下发，
+  // 访客在名片公开页可直接跳看图文介绍；下架/删除后入口自动消失。
+  // 反向已有：宣传页尾页名片卡带二维码跳回名片——双向转化。
+  const promo = db.prepare("SELECT slug, title FROM h5_pages WHERE user_id = ? AND status = 'published' ORDER BY updated_at DESC LIMIT 1").get(row.user_id) || null
+  ok(res, { ...publicView(row, originOf(req)), promo })
 }))
 
 // 易扫模式（?scan=1）/ vCard 码统一渲染参数。

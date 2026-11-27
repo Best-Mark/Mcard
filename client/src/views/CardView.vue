@@ -70,6 +70,13 @@
           <button @click="moreOpen = false; openExchange()">交换名片</button>
         </div>
       </div>
+      <!-- 宣传页挂钩（2026-11-27）：持有者发布的最新宣传页自动出现在名片公开页，
+           访客点开即看图文介绍；宣传页尾页也有名片码跳回来——双向转化 -->
+      <button v-if="full && !owner && card.promo?.slug" class="cv-promo-entry" @click="router.push('/h5/' + card.promo.slug)">
+        <span class="cv-pe-ico">◈</span>
+        <span class="cv-pe-t"><b>{{ card.promo.title || '企业宣传页' }}</b><small>图文介绍 · 点开看看</small></span>
+        <i>›</i>
+      </button>
       <!-- dock 四态翻转（2026-11-27 用户定稿）：main=编辑/配色/二维码/上架；
            点「配色」整行翻转成模板缩略行（点中即换、页面实时预览、可连着试）；
            点「二维码」名片本体让位给顶部二维码大图，dock 分两级：

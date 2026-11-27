@@ -75,6 +75,14 @@
 .cv-dock.cv-dock-flip .dock-mk-chip.on { background: rgba(15,23,42,.88); box-shadow: inset 0 0 0 1.5px var(--t-accent, #a62b2b); font-weight: 700; }
 .cv-dock.cv-dock-flip .dock-mk-chip.warn { color: #fde68a; }
 .cv-dock.cv-dock-flip .dock-mk-status { flex: 0 0 auto; align-self: center; padding: 0 8px; font-size: 10.5px; color: #fff; opacity: .85; white-space: nowrap; }
+/* 宣传页挂钩入口（2026-11-27）：持有者发布的宣传页自动出现在名片公开页（访客视图），
+   白卡一行式，通用深浅主题都成立；点击进 /h5/:slug 公开宣传页 */
+.cv-promo-entry { display: flex; align-items: center; gap: 12px; width: calc(100% - 24px); max-width: 560px; margin: 12px auto; padding: 13px 15px; border: 1px solid var(--line, #e5e7eb); border-radius: 14px; background: #fff; box-shadow: 0 6px 18px rgba(15,23,42,.08); color: var(--text, #0f172a); text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.cv-pe-ico { width: 34px; height: 34px; flex: 0 0 34px; border-radius: 10px; display: grid; place-items: center; background: #fbeedc; color: var(--t-accent, #a62b2b); font-size: 16px; font-style: normal; }
+.cv-pe-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cv-pe-t b { font-size: 14px; }
+.cv-pe-t small { color: #6b7280; font-size: 11.5px; }
+.cv-promo-entry i { font-style: normal; color: #9ca3af; }
 .cv-owner .cv-fab { bottom: calc(128px + env(safe-area-inset-bottom)); }
 .cv-owner .cv-fab-menu { bottom: calc(180px + env(safe-area-inset-bottom)); }
 /* 高档商务名片：卡片大圆角 + 轻阴影，浅灰蓝底衬托层次 */

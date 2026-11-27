@@ -6,26 +6,28 @@
     <div class="hp-pages" ref="pagesEl" @scroll.passive="onScroll">
       <section v-for="(p, pi) in pages" :key="pi" class="hp-page">
         <template v-for="(b, bi) in p.blocks" :key="bi">
+          <!-- editable（编辑器画布）模式：点任意块选中（emit pick），块内动作全部短路；
+               公开页不传 editable，行为与此前完全一致 -->
           <!-- 封面 -->
-          <div v-if="b.type === 'cover'" class="hp-block hp-cover" :style="bgStyle(b.cover)">
+          <div v-if="b.type === 'cover'" :class="['hp-block hp-cover', { 'hp-sel': editable && selKey === pi + '-' + bi }]" :style="bgStyle(b.cover)" @click="pick(pi, bi)">
             <div class="hp-cover-in">
               <h1>{{ b.title || '点击编辑标题' }}</h1>
               <p v-if="b.subtitle">{{ b.subtitle }}</p>
             </div>
           </div>
           <!-- 文本 -->
-          <div v-else-if="b.type === 'text'" class="hp-block hp-text">
+          <div v-else-if="b.type === 'text'" :class="['hp-block hp-text', { 'hp-sel': editable && selKey === pi + '-' + bi }]" @click="pick(pi, bi)">
             <h2 v-if="b.heading">{{ b.heading }}</h2>
             <p v-if="b.body">{{ b.body }}</p>
           </div>
           <!-- 图文 -->
-          <div v-else-if="b.type === 'hero'" class="hp-block hp-hero">
+          <div v-else-if="b.type === 'hero'" :class="['hp-block hp-hero', { 'hp-sel': editable && selKey === pi + '-' + bi }]" @click="pick(pi, bi)">
             <div class="hp-img" :style="bgStyle(b.image)"></div>
             <h2 v-if="b.title">{{ b.title }}</h2>
             <p v-if="b.desc">{{ b.desc }}</p>
           </div>
           <!-- 图集：swipe=横滑条 / grid=两列 -->
-          <div v-else-if="b.type === 'gallery'" class="hp-block hp-gallery">
+          <div v-else-if="b.type === 'gallery'" :class="['hp-block hp-gallery', { 'hp-sel': editable && selKey === pi + '-' + bi }]" @click="pick(pi, bi)">
             <div v-if="b.layout === 'swipe'" class="hp-gal-swipe">
               <div v-for="(img, gi) in b.images" :key="gi" class="hp-img" :style="bgStyle(img)"></div>
             </div>
@@ -34,26 +36,26 @@
             </div>
           </div>
           <!-- 联系方式：拨号 / 复制微信 / 地址 -->
-          <div v-else-if="b.type === 'contact'" class="hp-block hp-contact">
+          <div v-else-if="b.type === 'contact'" :class="['hp-block hp-contact', { 'hp-sel': editable && selKey === pi + '-' + bi }]" @click="pick(pi, bi)">
             <button v-if="b.showMobile && tel" class="hp-act" @click="call(tel)"><span class="hp-act-ico">☎</span>{{ tel }}<small>拨打电话</small></button>
             <button v-if="b.showWechat && wechat" class="hp-act" @click="copyWechat"><span class="hp-act-ico">◌</span>微信号：{{ wechat }}<small>{{ copied ? '已复制' : '点击复制' }}</small></button>
             <p v-if="b.showAddress && (card?.address || card?.company)" class="hp-addr">◉ {{ card?.address || card?.company }}</p>
           </div>
           <!-- 地图：有坐标跳高德坐标点，无坐标按关键字搜索 -->
-          <div v-else-if="b.type === 'map'" class="hp-block hp-map">
+          <div v-else-if="b.type === 'map'" :class="['hp-block hp-map', { 'hp-sel': editable && selKey === pi + '-' + bi }]" @click="pick(pi, bi)">
             <p class="hp-map-label">◉ {{ b.label || '位置待完善' }}</p>
-            <a v-if="b.label || (b.lat && b.lng)" class="hp-act" :href="mapHref(b)" target="_blank" rel="noopener">导航到这里</a>
+            <a v-if="b.label || (b.lat && b.lng)" class="hp-act" :href="editable ? 'javascript:;' : mapHref(b)" target="_blank" rel="noopener">导航到这里</a>
           </div>
           <!-- 按钮组 -->
-          <div v-else-if="b.type === 'buttons'" class="hp-block hp-buttons">
+          <div v-else-if="b.type === 'buttons'" :class="['hp-block hp-buttons', { 'hp-sel': editable && selKey === pi + '-' + bi }]" @click="pick(pi, bi)">
             <button v-for="(it, ii) in (b.items || [])" :key="ii" class="hp-btn" @click="runAction(it)">{{ it.label || '按钮' }}</button>
           </div>
           <!-- 视频 -->
-          <div v-else-if="b.type === 'video'" class="hp-block hp-video">
+          <div v-else-if="b.type === 'video'" :class="['hp-block hp-video', { 'hp-sel': editable && selKey === pi + '-' + bi }]" @click="pick(pi, bi)">
             <video v-if="b.url" :src="b.url" :poster="b.poster" controls playsinline preload="metadata"></video>
           </div>
           <!-- 尾页名片卡：转化关键——访客看完直接进名片/拨号；watermark 为免费版品牌尾注 -->
-          <div v-else-if="b.type === 'endcard'" class="hp-block hp-endcard">
+          <div v-else-if="b.type === 'endcard'" :class="['hp-block hp-endcard', { 'hp-sel': editable && selKey === pi + '-' + bi }]" @click="pick(pi, bi)">
             <div class="hp-end-card">
               <img v-if="card?.avatar" :src="card.avatar" alt="头像" />
               <div v-else class="hp-end-ava">{{ (card?.name || '名')[0] }}</div>
@@ -81,9 +83,16 @@ import { useRouter } from 'vue-router'
 import { scanQrUrl } from '../utils/qr'
 
 const props = defineProps({
-  data: { type: Object, required: true } // { schema, card, watermark }
+  data: { type: Object, required: true }, // { schema, card, watermark }
+  // 编辑器画布模式（2026-11-27 用户定稿「所见即所得」）：块可点选（emit pick），选中描边，块内动作短路。
+  // 公开页不传，零影响。
+  editable: { type: Boolean, default: false },
+  selKey: { type: String, default: '' }
 })
+const emit = defineEmits(['pick'])
 const router = useRouter()
+
+function pick(pi, bi) { if (props.editable) emit('pick', pi + '-' + bi) }
 
 const schema = computed(() => props.data?.schema || {})
 const pages = computed(() => (Array.isArray(schema.value.pages) && schema.value.pages.length) ? schema.value.pages : [{ blocks: [{ type: 'cover' }] }])
@@ -118,9 +127,10 @@ async function copyText(t) {
     try { document.execCommand('copy') } catch {} ta.remove()
   }
 }
-async function copyWechat() { await copyText(wechat.value); copied.value = true; clearTimeout(copyTimer); copyTimer = setTimeout(() => (copied.value = false), 1500) }
-function call(t) { window.location.href = `tel:${t}` }
+async function copyWechat() { if (props.editable) return; await copyText(wechat.value); copied.value = true; clearTimeout(copyTimer); copyTimer = setTimeout(() => (copied.value = false), 1500) }
+function call(t) { if (props.editable) return; window.location.href = `tel:${t}` }
 function runAction(it) {
+  if (props.editable) return
   if (it.action === 'tel' && it.value) return call(it.value)
   if (it.action === 'wechat') return copyText(it.value || wechat.value)
   if (it.action === 'link' && it.value) window.open(it.value, '_blank', 'noopener')
@@ -129,7 +139,7 @@ function mapHref(b) {
   if (b.lat && b.lng) return `https://uri.amap.com/marker?position=${b.lng},${b.lat}&name=${encodeURIComponent(b.label || '位置')}`
   return `https://uri.amap.com/search?keyword=${encodeURIComponent(b.label || '')}`
 }
-function goCard() { router.push(`/c/${card.value.slug}`) }
+function goCard() { if (props.editable) return; router.push(`/c/${card.value.slug}`) }
 </script>
 
 <style scoped>
@@ -137,7 +147,9 @@ function goCard() { router.push(`/c/${card.value.slug}`) }
 .hp { position: relative; height: 100%; }
 .hp-pages { height: 100%; overflow-y: auto; scroll-snap-type: y mandatory; -webkit-overflow-scrolling: touch; background: #0f1115; }
 .hp-page { min-height: 100svh; scroll-snap-align: start; scroll-snap-stop: always; display: flex; flex-direction: column; justify-content: center; gap: 22px; padding: 64px 22px 56px; box-sizing: border-box; color: #f3f4f6; }
-.hp-block { width: 100%; max-width: 560px; margin: 0 auto; }
+.hp-block { width: 100%; max-width: 560px; margin: 0 auto; position: relative; }
+/* 编辑器画布选中态：琥珀虚线描边（深浅底都可见），不参与公开页 */
+.hp-sel:after { content: ''; position: absolute; inset: -6px; border: 2px dashed #fbbf24; border-radius: 14px; pointer-events: none; z-index: 5; }
 .hp-img { width: 100%; aspect-ratio: 4 / 3; border-radius: 14px; background-size: cover; background-position: center; background-color: #1c2029; }
 
 .hp-cover { min-height: 78svh; display: flex; align-items: flex-end; border-radius: 16px; background-size: cover; background-position: center; padding: 30px 24px; box-sizing: border-box; }
