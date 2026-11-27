@@ -29,16 +29,17 @@
     <block v-else>
       <CardBody :card="card" :materials="materials" :is-self="true" :self-check-done="true" :top-inset="topInset"
         @edit="go('/pages/edit/edit')" @activate="go('/pages/plans/plans')" @update="onCardPatch" />
-      <!-- dock 三态翻转（2026-11-26 用户定稿，2026-11-27 补上架入口）：main=编辑/配色/二维码/上架；点「配色」整行翻转成模板缩略行
-           （与 H5 配色风格页同款 template-thumbs 缩略，点中即换、上面名片实时变、可连着试）；
-           点「二维码」翻转成二维码预设调节行（改的是二维码风格本身，不是弹码展示）；行首 ✕ 收起回 main。
-           底部 TabBar 的「集市」是逛别人的名片，dock 第 4 键管「让别人找到我」（跳编辑页集市卡片），
+      <!-- dock 四态翻转（2026-11-27 用户定稿「上架往上抽取」）：main=编辑/配色/二维码/上架；
+           点「配色」整行翻转成模板缩略行（点中即换、上面名片实时变、可连着试）；
+           点「二维码」翻转成二维码预设调节行（改的是二维码风格本身，不是弹码展示）；
+           点「上架」翻转成上架操作行（开关/行业点中即保存、状态实时反映，不再跳编辑页）——与配色/二维码同一操作方式；
+           行首 ✕ 收起回 main。底部 TabBar 的「集市」是逛别人的名片，dock 第 4 键管「让别人找到我」；
            文案随 market_opt_in 反映上架状态；分享走右上角 ⋯ 菜单，不占 dock -->
       <view v-if="dockMode === 'main'" class="dock">
         <button class="dock-btn primary" @tap="go('/pages/edit/edit')"><text class="dico">✎</text><text>编辑</text></button>
         <button class="dock-btn" @tap="toggleDock('tpl')"><text class="dico">▦</text><text>配色</text></button>
         <button class="dock-btn" @tap="toggleDock('qr')"><text class="dico">▣</text><text>二维码</text></button>
-        <button class="dock-btn" @tap="go('/pages/edit/edit?focus=market')"><text class="dico">◎</text><text>{{ card?.market_opt_in ? '已上架' : '上架' }}</text></button>
+        <button class="dock-btn" @tap="toggleDock('market')"><text class="dico">◎</text><text>{{ card?.market_opt_in ? '已上架' : '上架' }}</text></button>
       </view>
       <!-- 模板行：左右滑动点中即应用整套配色并保存，页面即实时预览 -->
       <view v-else-if="dockMode === 'tpl'" class="dock dock-flip">
@@ -53,8 +54,25 @@
           <view v-if="!tpls.length" class="dock-tpl-loading">模板清单加载中…</view>
         </scroll-view>
       </view>
+      <!-- 上架集市行（2026-11-27 用户定稿「往上抽取」）：开关 + 行业 chips 点中即 PUT 保存、card 就地合并，
+           dock 第 4 键实时变「已上架」；完成度(行业/地区/坐标)与地区文案同行尾静态展示；
+           未开通套餐显示「去开通套餐」引导；完整设置仍走编辑页集市卡片。 -->
+      <view v-else-if="dockMode === 'market'" class="dock dock-flip">
+        <button class="dock-back" @tap="dockMode = 'main'">✕</button>
+        <scroll-view scroll-x class="dock-scroll" :show-scrollbar="false">
+          <view class="dock-flow">
+            <button :class="['dock-mk-btn', { on: !!card?.market_opt_in, busy: marketBusy }]" @tap="toggleMarket"><text>{{ card?.market_opt_in ? '✓ 已上架' : '○ 加入集市' }}</text></button>
+            <text class="dock-mk-grp">行业</text>
+            <button v-for="i in marketIndustries" :key="i.key" :class="['dock-mk-chip', { on: card?.industry === i.key }]" @tap="chooseIndustry(i.key)"><text>{{ i.label }}</text></button>
+            <text v-if="!marketIndustries.length" class="dock-tpl-loading">行业清单加载中…</text>
+            <button v-if="!card?.active" class="dock-mk-chip warn" @tap="go('/pages/plans/plans')"><text>去开通套餐 ›</text></button>
+            <button class="dock-mk-chip" @tap="go('/pages/edit/edit?focus=market')"><text>完整设置 ↗</text></button>
+            <text class="dock-mk-status">{{ marketStatusText }}</text>
+          </view>
+        </scroll-view>
+      </view>
       <!-- 二维码调节行：一键风格预设（码点/定位角/渐变组合，与 H5 配色风格页同款 4 个），点中即保存实时生效 -->
-      <view v-else class="dock dock-flip">
+      <view v-else-if="dockMode === 'qr'" class="dock dock-flip">
         <button class="dock-back" @tap="dockMode = 'main'">✕</button>
         <scroll-view scroll-x class="dock-scroll" :show-scrollbar="false">
           <view class="dock-flow">
@@ -85,11 +103,13 @@ const card = ref(null)
 const materials = ref([])
 const busy = ref(false)
 
-// ===== dock 翻转状态机：main（编辑/配色/二维码）→ tpl（模板缩略行）/ qr（二维码预设行），✕ 收起 =====
+// ===== dock 翻转状态机（2026-11-27 四态）：main（编辑/配色/二维码/上架）→ tpl（模板缩略行）
+// / qr（二维码预设行）/ market（上架操作行），✕ 收起 =====
 const dockMode = ref('main')
 function toggleDock(m) {
   dockMode.value = dockMode.value === m ? 'main' : m
   if (dockMode.value === 'tpl') loadTpls()
+  if (dockMode.value === 'market') loadMarketMeta()
 }
 
 // 模板清单（与 H5 CardStyle/CardEdit 同源公开接口，缓存一次）
@@ -171,6 +191,48 @@ async function applyQrPreset(p) {
     card.value = { ...(card.value || {}), qr_style }
     toast(`二维码风格「${p.label}」已应用`, 'success')
   } catch (e) { toast(e.message) } finally { qrBusy.value = false }
+}
+
+// 上架集市翻转行（2026-11-27 用户定稿「往上抽取」）：与配色/二维码同款「点中即保存」。
+// 开关/行业 chips 直接 PUT /api/cards/mine 并就地合并 card → dock 第 4 键文案实时反映状态，不跳页。
+// 行业清单来自公开 meta（唯一真相源，缓存一次）；完成度只展示行业/地区/坐标，维护仍在编辑资料页。
+// 套餐闸门：开启上架但套餐无效 → 引导开通且不发请求（关闭下架放行，与服务端 PLAN_GATED_FIELDS 同口径）。
+const marketBusy = ref(false)
+const marketIndustries = ref([])
+let marketMetaLoaded = false
+function loadMarketMeta() {
+  if (marketMetaLoaded) return
+  api.get('/api/cards/public/market/meta', false).then(r => {
+    const list = r?.industries || []
+    if (list.length) { marketIndustries.value = list; marketMetaLoaded = true }
+  }).catch(() => { /* 拉取失败静默，收起再开重试 */ })
+}
+const marketStatusText = computed(() => {
+  const c = card.value || {}
+  const region = [c.province, c.city, c.district].filter(Boolean).join('·')
+  return `${c.industry ? '✓' : '○'}行业 ${region ? '✓' : '○'}地区 ${c.latitude != null ? '✓' : '○'}坐标${region ? ' · ' + region : ''}`
+})
+async function saveMarket(patch, tip) {
+  if (marketBusy.value || !card.value) return
+  if (patch.market_opt_in && !card.value.active) {
+    toast('上架集市需要先开通套餐')
+    setTimeout(() => uni.navigateTo({ url: '/pages/plans/plans' }), 800)
+    return
+  }
+  marketBusy.value = true
+  try {
+    await api.put('/api/cards/mine', patch, true)
+    card.value = { ...(card.value || {}), ...patch }
+    if (tip) toast(tip, 'success')
+  } catch (e) { toast(e.message) } finally { marketBusy.value = false }
+}
+function toggleMarket() {
+  const next = !card.value?.market_opt_in
+  saveMarket({ market_opt_in: next }, next ? '已上架名片集市' : '已下架名片集市')
+}
+function chooseIndustry(key) {
+  if (card.value?.industry === key) return
+  saveMarket({ industry: key })
 }
 
 const tpl = computed(() => card.value?.template || 'classic')
@@ -274,8 +336,19 @@ onShareAppMessage(() => {
 /* owner 编辑 dock（页面级，非名片正文；tpl-X 覆写跟模板走，与 card.vue 同口径） */
 /* 四键单行等大：编辑 + 配色 + 二维码 + 上架集市（2026-11-27 补，与 H5 dock 同款）；主键只做填色区分不做尺寸区分 */
 .dock { position: fixed; left: 0; right: 0; bottom: calc(110rpx + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: repeat(4, 1fr); gap: 10rpx; padding: 16rpx 20rpx; background: rgba(255,255,255,.96); box-shadow: 0 -4rpx 20rpx rgba(15,23,42,.06); z-index: 50; }
-/* 翻转态行：模板缩略 / 二维码预设，横滑点选即换；缩略 thumb 用 px（与 H5 同源样式），选中主色描边 */
+/* 翻转态行：模板缩略 / 二维码预设 / 上架开关行业 chips，横滑点选即换；缩略 thumb 用 px（与 H5 同源样式），选中主色描边 */
 .dock-flip { display: flex; align-items: center; gap: 16rpx; --ng-gold: #d8bb85; }
+/* 上架集市行（2026-11-27 与 H5 四态同款）：米黄浅底深字胶囊，选中主题红描边；button 默认边框清掉 */
+.dock-mk-btn { height: 96rpx; padding: 0 24rpx; border-radius: 14rpx; background: #f0e7d2; color: #2b2118; font-size: 24rpx; font-weight: 700; display: inline-flex; align-items: center; white-space: nowrap; }
+.dock-mk-btn::after { border: 0; }
+.dock-mk-btn.on { background: #a62b2b; color: #fff; box-shadow: inset 0 0 0 3rpx #fff; }
+.dock-mk-btn.busy { opacity: .55; }
+.dock-mk-grp { align-self: center; font-size: 20rpx; color: #b09a72; padding: 6rpx 12rpx; border-radius: 8rpx; background: #faf6ec; white-space: nowrap; }
+.dock-mk-chip { height: 72rpx; padding: 0 22rpx; border-radius: 999rpx; background: #fff; color: #6b5a3e; border: 2rpx solid #e8dcc2; font-size: 22rpx; display: inline-flex; align-items: center; white-space: nowrap; }
+.dock-mk-chip::after { border: 0; }
+.dock-mk-chip.on { color: #a62b2b; font-weight: 700; box-shadow: inset 0 0 0 3rpx #a62b2b; }
+.dock-mk-chip.warn { color: #b45309; background: #fff7ed; border-color: #fde68a; }
+.dock-mk-status { align-self: center; font-size: 20rpx; color: #8a7355; white-space: nowrap; }
 .dock-back { flex: 0 0 72rpx; height: 116rpx; font-size: 30rpx; color: #8a7355; background: #f0e7d2; border-radius: 14rpx; display: flex; align-items: center; justify-content: center; }
 .dock-back::after { border: 0; }
 .dock-scroll { flex: 1; width: 0; white-space: nowrap; }

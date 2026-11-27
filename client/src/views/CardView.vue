@@ -70,22 +70,22 @@
           <button @click="moreOpen = false; openExchange()">交换名片</button>
         </div>
       </div>
-      <!-- dock 三态翻转（2026-11-26 用户终稿，2026-11-27 补上架入口）：main=编辑/配色/二维码/上架；
-           点「配色」整行翻转成模板缩略行（H5 同款 template-thumbs 缩略，点中即换、页面实时预览、可连着试）；
+      <!-- dock 四态翻转（2026-11-27 用户定稿）：main=编辑/配色/二维码/上架；
+           点「配色」整行翻转成模板缩略行（点中即换、页面实时预览、可连着试）；
            点「二维码」名片本体让位给顶部二维码大图，dock 分两级：
-             一级=风格预设/码点形状/码眼形状 三个分类入口；
-             二级=该类选项行（点中即改、大图即时刷新，面板不关可连试）；
-             ↙ 二级退回一级（大码保持），一级 ↙ 才收起回整体名片。
+             一级=风格预设/码点形状/码眼形状 三个分类入口；二级=该类选项行（点中即改、面板不关可连试）；
+           点「上架」整行翻转成上架操作行（开关/行业 chips 点中即保存、状态实时反映）——
+             不再跳独立页、不再开底部弹层，与配色/二维码同一操作方式（用户 2026-11-27 定稿「往上抽取」）；
+           ↙ 二维码二级退回一级（大码保持），一级 ↙ / 上架行 ↙ 收起回整体名片。
            公开页 dock 不变：打电话 / 复制号码 / 存入通讯录 / 分享 -->
       <div v-if="full && owner" :class="['cv-dock cv-dock-glass', { 'cv-dock-flip': dockMode !== 'main' }]">
         <template v-if="dockMode === 'main'">
           <button class="btn btn-primary dock-btn" @click="router.push('/me/card')"><span class="dock-ico">✎</span>编辑</button>
           <button class="btn btn-ghost dock-btn" @click="toggleDock('tpl')"><span class="dock-ico">▦</span>配色</button>
           <button class="btn btn-ghost dock-btn" @click="toggleDock('qr')"><span class="dock-ico">▣</span>二维码</button>
-          <!-- 上架集市（2026-11-27）：底部 tab 的「集市」是逛别人的名片，这里管「让别人找到我」，
-               与编辑/配色/二维码同为名片级操作，放主场 dock 最顺手；文案随 market_opt_in 反映当前上架状态。
-               公开页 dock 本就 4 键等分（flex:1），加第 4 键无需改样式。 -->
-          <button class="btn btn-ghost dock-btn" @click="router.push('/me/card/market')"><span class="dock-ico">◎</span>{{ card.market_opt_in ? '已上架' : '上架' }}</button>
+          <!-- 上架集市：底部 tab 的「集市」是逛别人的名片，这里管「让别人找到我」；
+               文案随 market_opt_in 反映当前上架状态；公开页 dock 本就 4 键等分（flex:1）。 -->
+          <button class="btn btn-ghost dock-btn" @click="toggleDock('market')"><span class="dock-ico">◎</span>{{ card.market_opt_in ? '已上架' : '上架' }}</button>
         </template>
         <!-- 模板行：左右滑动点中即应用整套配色并保存，页面即实时预览 -->
         <template v-else-if="dockMode === 'tpl'">
@@ -100,8 +100,27 @@
             <div v-if="!tpls.length" class="dock-tpl-loading">模板清单加载中…</div>
           </div>
         </template>
+        <!-- 上架集市行（2026-11-27 用户定稿「往上抽取」）：开关 + 行业 chips 点中即 PUT 保存、card 就地合并，
+             dock 第 4 键实时变「已上架」；完成度(行业/地区/坐标)与地区文案同行尾静态展示；
+             未开通套餐显示「去开通套餐」引导（服务端也有硬闸门）；完整设置仍走独立页。 -->
+        <template v-else-if="dockMode === 'market'">
+          <button class="dock-back" @click="closeDock" aria-label="收起上架设置，返回名片">↙</button>
+          <div class="dock-scroll">
+            <div class="dock-flow dock-market-flow">
+              <button :class="['dock-mk-btn', { on: !!card.market_opt_in, busy: marketBusy }]" @click="toggleMarket">
+                {{ card.market_opt_in ? '✓ 已上架' : '○ 加入集市' }}
+              </button>
+              <span class="dock-grp">行业</span>
+              <button v-for="i in marketIndustries" :key="i.key" :class="['dock-mk-chip', { on: card.industry === i.key }]" @click="chooseIndustry(i.key)">{{ i.label }}</button>
+              <span v-if="!marketIndustries.length" class="dock-tpl-loading">行业清单加载中…</span>
+              <button v-if="!card.active" class="dock-mk-chip warn" @click="router.push('/me/plans')">去开通套餐 ›</button>
+              <button class="dock-mk-chip" @click="router.push('/me/card/market')">完整设置 ↗</button>
+              <span class="dock-mk-status">{{ marketStatusText }}</span>
+            </div>
+          </div>
+        </template>
         <!-- 二维码一级：三个分类入口（风格预设 / 码点形状 / 码眼形状）。↙ 收起回整体名片 -->
-        <template v-else-if="!qrSub">
+        <template v-else-if="dockMode === 'qr' && !qrSub">
           <button class="dock-back" @click="closeDock" aria-label="收起二维码调节，返回名片">↙</button>
           <div class="dock-scroll">
             <div class="dock-flow dock-cats">
@@ -113,7 +132,7 @@
         </template>
         <!-- 二维码二级：当前分类的选项行，点中即保存实时生效、面板不关可连着试。
              ↙ 退回一级分类行（顶部大码全程保持） -->
-        <template v-else>
+        <template v-else-if="dockMode === 'qr'">
           <button class="dock-back" @click="qrSub = ''" aria-label="返回二维码分类入口">↙</button>
           <div class="dock-scroll">
             <div class="dock-flow">
@@ -322,8 +341,9 @@ const vcfApi = computed(() => `${qrApi.value}/card.vcf`)
 // 调码型时上面实时可见；要绝对稳妥的扫码用弹层大码（点小码即开，scanOptions 硬化）。
 const card = ref(null); const loading = ref(true); const error = ref('')
 
-// dock 三态翻转（owner「配色」/「二维码」键）：
-// main（编辑/配色/二维码）→ tpl（模板缩略行，整张名片实时预览）/ qr（名片本体让位，顶部直视二维码大图 + 两级 dock），↙ 收起。
+// dock 四态翻转（owner「配色」/「二维码」/「上架」键，2026-11-27 用户定稿）：
+// main（编辑/配色/二维码/上架）→ tpl（模板缩略行，整张名片实时预览）/ qr（名片本体让位，顶部直视二维码大图 + 两级 dock）
+// / market（上架操作行：开关/行业点中即保存），↙ 收起。
 // 二维码 dock 二级：一级 = 风格预设/码点形状/码眼形状 三个入口（qrSub=''），二级 = 该类选项（qrSub='preset'|'dot'|'eye'）；
 // 二级 ↙ 回一级（大码保持），一级 ↙ 才 closeDock 回整体名片。
 // 模板清单来自公开接口（与 CardStyle/CardEdit 同源，缓存一次）；
@@ -346,6 +366,7 @@ function closeDock() { dockMode.value = 'main'; qrSub.value = ''; scrollPageTop(
 function toggleDock(m) {
   dockMode.value = dockMode.value === m ? 'main' : m
   if (dockMode.value === 'qr') { qrSub.value = ''; scrollPageTop() }
+  if (dockMode.value === 'market') { qrSub.value = ''; loadMarketMeta() }
   if (dockMode.value === 'tpl' && !tplsLoaded) {
     api.get(`/api/cards/public/templates?t=${Date.now()}`).then(({ data }) => {
       const list = data?.data?.templates || []
@@ -419,6 +440,49 @@ async function applyQrStyle(patch) {
     card.value = { ...card.value, qr_style }
     qrStamp.value = Date.now()
   } catch (e) { showToast(e.message, 'error') } finally { qrBusy.value = false }
+}
+
+// 上架集市翻转行（2026-11-27 用户定稿「往上抽取」）：与配色/二维码同款「点中即保存」。
+// 开关/行业 chips 直接 PUT /api/cards/mine 并就地合并 card → dock 第 4 键文案实时反映状态，不跳页、不弹层。
+// 行业清单来自公开 meta（唯一真相源，缓存一次）；完成度只展示行业/地区/坐标，地区与坐标的维护仍在编辑资料页。
+// 套餐闸门：开启上架但套餐无效 → 引导开通且不发请求（关闭下架放行，与服务端 PLAN_GATED_FIELDS 同口径）。
+// 完整设置（集市展示预览/地区坐标检查）保留独立页 /me/card/market，与配色既有独立页双入口同构。
+const marketBusy = ref(false)
+const marketIndustries = ref([])
+let marketMetaLoaded = false
+function loadMarketMeta() {
+  if (marketMetaLoaded) return
+  api.get('/api/cards/public/market/meta').then(({ data }) => {
+    const list = data?.data?.industries || []
+    if (list.length) { marketIndustries.value = list; marketMetaLoaded = true }
+  }).catch(() => { /* 清单拉取失败静默，行内显示「加载中」可收起再开重试 */ })
+}
+const marketStatusText = computed(() => {
+  const c = card.value || {}
+  const region = [c.province, c.city, c.district].filter(Boolean).join('·')
+  return `${c.industry ? '✓' : '○'}行业 ${region ? '✓' : '○'}地区 ${c.latitude != null ? '✓' : '○'}坐标${region ? ' · ' + region : ''}`
+})
+async function saveMarket(patch, tip) {
+  if (marketBusy.value || !card.value) return
+  if (patch.market_opt_in && !card.value.active) {
+    showToast('上架集市需要先开通套餐', 'error')
+    router.push('/me/plans')
+    return
+  }
+  marketBusy.value = true
+  try {
+    await api.put('/api/cards/mine', patch)
+    card.value = { ...card.value, ...patch }
+    if (tip) showToast(tip, 'success')
+  } catch (e) { showToast(e.message, 'error') } finally { marketBusy.value = false }
+}
+function toggleMarket() {
+  const next = !card.value?.market_opt_in
+  saveMarket({ market_opt_in: next }, next ? '已上架名片集市' : '已下架名片集市')
+}
+function chooseIndustry(key) {
+  if (card.value?.industry === key) return
+  saveMarket({ industry: key })
 }
 const currentTheme = ref('ocean'); const isOwner = ref(false)
 // 当前登录用户是否已建自己的名片（看别人的名片时用来决定是否显示「免费创建我的名片」）

@@ -65,6 +65,16 @@
 .cv-dock.cv-dock-flip .qs-eye.qs-rounded i { border-radius: 10px; }
 .cv-dock.cv-dock-flip .qs-eye.qs-circle i { border-radius: 50%; }
 .cv-dock.cv-dock-flip .dock-tpl-loading { display: inline-block; color: #fff; background: rgba(15,23,42,.5); border-radius: 6px; font-size: 12px; padding: 6px 10px; margin: 10px; }
+/* 上架集市翻转行（2026-11-27）：开关/行业/入口都是深色半透明胶囊+白字，与配色/二维码行同口径，
+   深浅 dock 底都清晰；选中态用主题色内描边，不写死白字白描边。 */
+.cv-dock.cv-dock-flip .dock-market-flow { align-items: center; gap: 8px; }
+.cv-dock.cv-dock-flip .dock-mk-btn { flex: 0 0 auto; height: 54px; padding: 0 14px; display: inline-flex; align-items: center; gap: 5px; border: 1px solid rgba(255,255,255,.28); border-radius: 10px; background: rgba(15,23,42,.55); color: #fff; font-size: 12.5px; font-weight: 700; white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.cv-dock.cv-dock-flip .dock-mk-btn.on { background: var(--t-accent, #a62b2b); box-shadow: inset 0 0 0 1.5px #fff; }
+.cv-dock.cv-dock-flip .dock-mk-btn.busy { opacity: .55; }
+.cv-dock.cv-dock-flip .dock-mk-chip { flex: 0 0 auto; height: 40px; padding: 0 12px; display: inline-flex; align-items: center; border: 1px solid rgba(255,255,255,.28); border-radius: 999px; background: rgba(15,23,42,.55); color: #fff; font-size: 11.5px; white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.cv-dock.cv-dock-flip .dock-mk-chip.on { background: rgba(15,23,42,.88); box-shadow: inset 0 0 0 1.5px var(--t-accent, #a62b2b); font-weight: 700; }
+.cv-dock.cv-dock-flip .dock-mk-chip.warn { color: #fde68a; }
+.cv-dock.cv-dock-flip .dock-mk-status { flex: 0 0 auto; align-self: center; padding: 0 8px; font-size: 10.5px; color: #fff; opacity: .85; white-space: nowrap; }
 .cv-owner .cv-fab { bottom: calc(128px + env(safe-area-inset-bottom)); }
 .cv-owner .cv-fab-menu { bottom: calc(180px + env(safe-area-inset-bottom)); }
 /* 高档商务名片：卡片大圆角 + 轻阴影，浅灰蓝底衬托层次 */
