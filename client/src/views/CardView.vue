@@ -250,7 +250,7 @@
         <img :src="qrModalSrc" style="width:264px;height:264px;margin:4px auto 10px;display:block" :alt="qrMode === 'vcard' ? '名片联系人二维码' : '名片地址二维码'" />
         <!-- 2026-11-27 识别率定稿：弹层大码/保存一律用纯黑白标准识别码（plain=1），微信长按 100% 出
              「识别图中二维码」；名片本体码为标准方点 + 用户自选配色，不受影响 -->
-        <p class="small muted center">{{ qrMode === 'vcard' ? '标准识别码 · 微信扫一扫打开名片页，点「存入通讯录」即可保存' : '标准识别码 · 扫一扫打开名片页，资料随时更新、链接永久不变' }}</p>
+        <p class="small muted center">扫一扫</p>
         <!-- 一个入口承载三件事：存联系人的码/打开名片的码、复制链接、公开页（关闭弹层即当前公开页） -->
         <div class="btn-row" style="justify-content:center;margin-top:14px;flex-wrap:wrap">
           <button class="btn btn-primary" @click="copy(publicLink, '名片链接')">复制名片链接</button>
