@@ -331,7 +331,6 @@
             <div class="guide-steps-t">{{ contactSteps.title }}</div>
             <ol><li v-for="(s, i) in contactSteps.lines" :key="i" v-html="s"></li></ol>
           </div>
-          <p class="small muted" style="margin-top:10px">{{ guideWithLogin ? '已自动带上登录状态，在浏览器里无需再次登录。' : '访客无需登录，在浏览器里一样能保存名片。' }}</p>
         </template>
         <template v-else-if="inWeChat">
           <p>微信内置浏览器限制下载。请点右上角「···」→ <b>在浏览器中打开</b>{{ guideWithLogin ? '（已自动带上登录状态）' : '（无需登录）' }}，再点保存。</p>
@@ -340,7 +339,7 @@
           <p v-html="saveTip"></p>
         </template>
         <img v-if="guide !== 'contact'" :src="guideImage || scanQrUrl(slug, 'vcard.png', 520)" style="width:200px;height:200px;margin:10px auto;object-fit:contain" alt="二维码" />
-        <div class="btn-row">
+        <div class="btn-row" style="justify-content:flex-end">
           <button class="btn btn-ghost" @click="closeGuide">知道了</button>
         </div>
       </div>
@@ -937,7 +936,7 @@ const contactPhone = computed(() => String(card.value?.mobile || card.value?.pho
 // 卡内「按环境」操作指引：参考简洁联络卡的 steps 区块，文案按当前环境给可操作步骤
 const CONTACT_STEPS = {
   wechat: { title: '微信内 · 推荐这样存', lines: [
-    '点右上角「···」→ <b>在浏览器中打开</b>（已自动带上登录状态，无需再次登录）',
+    '点右上角「···」→ <b>在浏览器中打开</b>',
     '在浏览器页面底部点「存入通讯录」',
     '按系统提示添加；或先点底部「复制号码」，再去通讯录新建联系人粘贴'
   ] },
@@ -962,19 +961,8 @@ const CONTACT_STEPS = {
     '到通讯录 / Outlook 新建联系人，粘贴保存即可'
   ] }
 }
-const contactSteps = computed(() => {
-  const base = CONTACT_STEPS[deviceEnvKey] || CONTACT_STEPS.other
-  if (deviceEnvKey !== 'wechat') return base
-  // 未登录访客拿不到 wx_ticket，文案不能谎称「已自动带上登录状态」——
-  // 保存名片到通讯录本就不需要登录，访客在浏览器里照样能保存。
-  return {
-    title: base.title,
-    lines: [
-      `点右上角「···」→ <b>在浏览器中打开</b>${guideWithLogin.value ? '（已自动带上登录状态，无需再次登录）' : '（无需登录，访客也能保存）'}`,
-      ...base.lines.slice(1)
-    ]
-  }
-})
+// 保存名片到通讯录本就不需要登录（登录用户/访客一样能存），步骤文案不提登录状态（2026-11-27 用户定稿）
+const contactSteps = computed(() => CONTACT_STEPS[deviceEnvKey] || CONTACT_STEPS.other)
 
 // 微信内显示「去浏览器打开」引导前，尝试把登录凭证写进当前 URL，外部浏览器打开即免二次登录。
 // 未登录访客（含非注册用户）拿不到 ticket——记录结果，文案据实说明，不能谎称已带登录态。
