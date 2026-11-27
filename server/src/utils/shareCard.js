@@ -123,7 +123,8 @@ async function buildSharePng(card, headUrl, palette = {}) {
   } catch { /* 无二维码也保留名片信息 */ }
 
   const svg = markup(card, avatarData, qrData, p)
-  const png = await sharp(Buffer.from(svg), { density: 220 }).resize(S, S).png().toBuffer()
+  // flatten 去 alpha：分享卡保存后长按识别内嵌二维码同样受透明通道影响（2026-11-27）
+  const png = await sharp(Buffer.from(svg), { density: 220 }).resize(S, S).flatten({ background: '#ffffff' }).png().toBuffer()
   if (cache.size >= MAX_CACHE) cache.delete(cache.keys().next().value)
   cache.set(key, { t: Date.now(), png })
   return png

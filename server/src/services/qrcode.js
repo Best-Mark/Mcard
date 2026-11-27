@@ -209,7 +209,11 @@ async function png(text, opts = {}) {
   const hit = cache.get(key)
   if (hit && Date.now() - hit.t < TTL_MS && hit.png) return hit.png
   const markup = svg(text, { ...opts, size: Math.max(size, 720) })
-  const buf = await sharp(Buffer.from(markup), { density: 300 }).resize(size, size).png().toBuffer()
+  // flatten 去 alpha 通道（2026-11-27）：sharp 光栅化 SVG 默认输出 RGBA，带透明通道的 PNG
+  // 微信 iOS「长按识别图中二维码」经常不出现选项/识别失败；合成到码底色输出 3 通道 PNG 即恢复。
+  // SVG 内已有不透明背景 rect（bgImage 分支是背景图+0.86 蒙层），flatten 不改变视觉。
+  const buf = await sharp(Buffer.from(markup), { density: 300 }).resize(size, size)
+    .flatten({ background: opts.bg || '#ffffff' }).png().toBuffer()
   const prev = cache.get(key)
   cache.set(key, { t: Date.now(), v: prev?.v, png: buf })
   if (cache.size > MAX_CACHE) cache.delete(cache.keys().next().value)
