@@ -11,7 +11,11 @@
        ④ schema.transition：scroll=原生滚动（默认，存量页零变化）/ slide / fade / flip 控制式翻页
           （触摸/滚轮/圆点驱动 + CSS 过渡，页内超高先内滚、到边才翻；入场动效改按页显隐，回翻重播）；
        ⑤ music 块（url+autoplay）：编辑画布静态卡，公开页块本身不占位、控制统一在右下浮动 ♪
-          （操作层），浏览器禁带声自动播 → 首触解锁起播，循环播放。 -->
+          （操作层），浏览器禁带声自动播 → 首触解锁起播，循环播放。
+       2026-11-27 画布直操化（用户对比 MAKA「体验差太多」）：
+       ⑥ 选中块上方浮动快捷条（✎编辑/▣换图/⧉复制/✕，MAKA 同款就近操作）；
+       ⑦ 封面/文本/图文的文字就地编辑（contenteditable，改完失焦即落字段，输入不回写防光标跳动）；
+       ⑧ emit quick（edit/image/dup/del）与 inplace（变更通知 markDirty）给编辑器。 -->
   <div class="hp" :class="{ 'hp-editable': editable }" :style="{ '--hp-accent': accent }">
     <div class="hp-pages" ref="pagesEl" :class="pagesCls" @scroll.passive="onScroll"
       @touchstart="onPgTouchStart" @touchmove="onPgTouchMove" @touchend="onPgTouchEnd" @touchcancel="onPgTouchEnd" @wheel="onWheel">
@@ -23,20 +27,20 @@
           <!-- 封面 -->
           <div v-if="b.type === 'cover'" :class="blkCls(pi, bi, b)" :style="[bgStyle(b.cover), dragStyle(bi)]" @click="pick(pi, bi)">
             <div class="hp-cover-in">
-              <h1>{{ b.title || '点击编辑标题' }}</h1>
-              <p v-if="b.subtitle">{{ b.subtitle }}</p>
+              <h1 :contenteditable="inEd(pi, bi) ? 'true' : null" :class="{ 'hp-inplace': inEd(pi, bi) }" @input="onIn(pi, bi, b, 'title', $event)" @blur="onInBlur(pi, bi, b, 'title')">{{ inEd(pi, bi) ? b.title : (b.title || '点击编辑标题') }}</h1>
+              <p v-if="b.subtitle || inEd(pi, bi)" :contenteditable="inEd(pi, bi) ? 'true' : null" :class="{ 'hp-inplace': inEd(pi, bi) }" @input="onIn(pi, bi, b, 'subtitle', $event)" @blur="onInBlur(pi, bi, b, 'subtitle')">{{ b.subtitle }}</p>
             </div>
           </div>
           <!-- 文本（2026-11-27 路线④ 文字基础样式：align 左/中/右 + size 小/正常/大） -->
           <div v-else-if="b.type === 'text'" :class="[blkCls(pi, bi, b), 'hp-align-' + (b.align || 'left'), 'hp-size-' + (b.size || 'md')]" :style="dragStyle(bi)" @click="pick(pi, bi)">
-            <h2 v-if="b.heading">{{ b.heading }}</h2>
-            <p v-if="b.body">{{ b.body }}</p>
+            <h2 v-if="b.heading || inEd(pi, bi)" :contenteditable="inEd(pi, bi) ? 'true' : null" :class="{ 'hp-inplace': inEd(pi, bi) }" @input="onIn(pi, bi, b, 'heading', $event)" @blur="onInBlur(pi, bi, b, 'heading')">{{ b.heading }}</h2>
+            <p v-if="b.body || inEd(pi, bi)" :contenteditable="inEd(pi, bi) ? 'true' : null" :class="{ 'hp-inplace': inEd(pi, bi) }" @input="onIn(pi, bi, b, 'body', $event)" @blur="onInBlur(pi, bi, b, 'body')">{{ b.body }}</p>
           </div>
           <!-- 图文 -->
           <div v-else-if="b.type === 'hero'" :class="blkCls(pi, bi, b)" :style="dragStyle(bi)" @click="pick(pi, bi)">
             <div class="hp-img" :style="bgStyle(b.image)"></div>
-            <h2 v-if="b.title">{{ b.title }}</h2>
-            <p v-if="b.desc">{{ b.desc }}</p>
+            <h2 v-if="b.title || inEd(pi, bi)" :contenteditable="inEd(pi, bi) ? 'true' : null" :class="{ 'hp-inplace': inEd(pi, bi) }" @input="onIn(pi, bi, b, 'title', $event)" @blur="onInBlur(pi, bi, b, 'title')">{{ b.title }}</h2>
+            <p v-if="b.desc || inEd(pi, bi)" :contenteditable="inEd(pi, bi) ? 'true' : null" :class="{ 'hp-inplace': inEd(pi, bi) }" @input="onIn(pi, bi, b, 'desc', $event)" @blur="onInBlur(pi, bi, b, 'desc')">{{ b.desc }}</p>
           </div>
           <!-- 图集：showcase=动效展播（自动轮播+Ken Burns）/ swipe=横滑条 / grid=两列；
                source='card' 时图片自动取自公司相册（data.card.gallery），与名片页同一份数据 -->
@@ -129,6 +133,20 @@
             <p v-if="watermark" class="hp-watermark">免费版由 MCard 制作 · 开通会员可去水印</p>
           </div>
         </template>
+        <!-- 选中元素浮动快捷条（2026-11-27 画布直操化，仅编辑画布）：MAKA 同款贴选中块上方，
+             编辑/换图/复制/删除就近操作；就地编辑时换「✓ 完成 / Aa 样式」。JS 量位置，随内容滚动 -->
+        <div v-if="editable && selOn(pi)" class="hp-quickbar" :style="{ top: qbTop + 'px' }" @click.stop>
+          <template v-if="inplaceKey">
+            <button class="hp-qb done" @click="finishInplace">✓ 完成</button>
+            <button class="hp-qb" @click="quickStyleOpen">Aa 样式</button>
+          </template>
+          <template v-else>
+            <button class="hp-qb" @click="quickEdit">✎ 编辑</button>
+            <button v-if="selHasImg" class="hp-qb" @click="emit('quick', { action: 'image' })">▣ 换图</button>
+            <button class="hp-qb" @click="emit('quick', { action: 'dup' })">⧉ 复制</button>
+            <button class="hp-qb warn" @click="emit('quick', { action: 'del' })">✕</button>
+          </template>
+        </div>
       </section>
     </div>
     <!-- 页码指示 + 下滑提示（圆点可点直达） -->
@@ -158,14 +176,94 @@ const props = defineProps({
   pageOffset: { type: Number, default: 0 },
   selKey: { type: String, default: '' }
 })
-const emit = defineEmits(['pick', 'reorder'])
+const emit = defineEmits(['pick', 'reorder', 'quick', 'inplace'])
 const router = useRouter()
 
 const kOf = (pi, bi) => (pi + props.pageOffset) + '-' + bi
 function pick(pi, bi) {
   if (!props.editable) return
   if (Date.now() < coolUntil) return // 长按拖动刚结束，抑制误触 click
-  emit('pick', kOf(pi, bi))
+  const k = kOf(pi, bi)
+  if (inplaceKey.value && inplaceKey.value !== k) finishInplace()
+  if (props.selKey === k) {
+    const b = pages.value[pi] && pages.value[pi].blocks ? pages.value[pi].blocks[bi] : null
+    if (b && INPLACE_TYPES.includes(b.type)) { startInplace(); return } // 二次点文字类块 = 就地编辑
+  }
+  emit('pick', k)
+}
+
+// ---- 画布直操化（2026-11-27 MAKA 对标）：选中块浮动快捷条 + 文字就地编辑 ----
+const INPLACE_TYPES = ['cover', 'text', 'hero'] // 文字可就地改的块；结构块仍走表单弹层
+const inplaceKey = ref('')
+const inBuf = {} // 就地输入缓冲（不回写响应式，防 contenteditable 光标跳动），失焦时落字段
+const inEd = (pi, bi) => inplaceKey.value === kOf(pi, bi)
+// 选中块对象（编辑画布只渲染一页：pi 恒为当前渲染页，真实页号由 pageOffset 对齐）
+const selBlockObj = computed(() => {
+  const parts = String(props.selKey || '').split('-')
+  const pi = Number(parts[0]) - props.pageOffset, bi = Number(parts[1])
+  if (isNaN(pi) || isNaN(bi)) return null
+  const pg = pages.value[pi]
+  return (pg && pg.blocks) ? (pg.blocks[bi] || null) : null
+})
+const selHasImg = computed(() => {
+  const t = selBlockObj.value?.type
+  return t === 'cover' || t === 'hero'
+})
+function selOn(pi) {
+  return !!(props.editable && props.selKey && Number(String(props.selKey).split('-')[0]) === pi + props.pageOffset)
+}
+function startInplace() {
+  const b = selBlockObj.value
+  if (!b || !INPLACE_TYPES.includes(b.type)) return
+  if (inplaceKey.value === props.selKey) return
+  inplaceKey.value = props.selKey
+  nextTick(() => {
+    const el = pagesEl.value && pagesEl.value.querySelector('.hp-sel .hp-inplace')
+    if (el && el.focus) { try { el.focus() } catch {} }
+  })
+}
+function onIn(pi, bi, b, field, e) {
+  inBuf[kOf(pi, bi) + '|' + field] = { b, field, v: (e.target.innerText != null ? e.target.innerText : e.target.textContent) || '' }
+}
+function onInBlur(pi, bi, b, field) {
+  const key = kOf(pi, bi) + '|' + field
+  const rec = inBuf[key]
+  if (rec && rec.v !== b[field]) { b[field] = rec.v; emit('inplace') }
+  delete inBuf[key]
+}
+function finishInplace() {
+  // 兜底落盘：正常走 blur 逐字段提交，这里防未失焦就点「完成/样式」
+  const keys = Object.keys(inBuf)
+  let changed = false
+  keys.forEach(key => {
+    const rec = inBuf[key]
+    if (rec && rec.v !== rec.b[rec.field]) { rec.b[rec.field] = rec.v; changed = true }
+    delete inBuf[key]
+  })
+  if (changed) emit('inplace')
+  inplaceKey.value = ''
+}
+function quickEdit() {
+  const b = selBlockObj.value
+  if (!b) return
+  if (INPLACE_TYPES.includes(b.type)) startInplace()
+  else emit('quick', { action: 'edit' })
+}
+function quickStyleOpen() {
+  finishInplace()
+  emit('quick', { action: 'edit' })
+}
+// 快捷条位置：量选中块相对所在页的偏移，贴块上方 54px（页有 64px 顶部内边距，不会顶出界）
+const qbTop = ref(-100)
+function positionQuick() {
+  nextTick(() => {
+    if (!props.editable || !props.selKey || !pagesEl.value) return
+    const selEl = pagesEl.value.querySelector('.hp-sel')
+    const sec = selEl && selEl.closest ? selEl.closest('.hp-page') : null
+    if (!selEl || !sec) return
+    const top = selEl.getBoundingClientRect().top - sec.getBoundingClientRect().top - 54
+    qbTop.value = Math.max(6, top)
+  })
 }
 
 // ---- 块 class：基础样式 + 选中描边 + 入场动效（shown 命中后加 in 触发 CSS 动画） ----
@@ -216,12 +314,17 @@ function mountIo() {
     if (Object.keys(patch).length) shown.value = { ...shown.value, ...patch }
   }, { root: pagesEl.value, threshold: 0.12 }) } catch { io = null }
 }
-watch(() => props.data, () => nextTick(scanAnims), { deep: true })
+watch(() => props.data, () => { nextTick(scanAnims); positionQuick() }, { deep: true })
+watch(() => props.selKey, k => {
+  if (inplaceKey.value && inplaceKey.value !== k) finishInplace()
+  positionQuick()
+})
 onMounted(() => {
   if (!isPaged.value) mountIo()
   nextTick(scanAnims)
   if (!props.editable) scTimer = setInterval(scAdvance, 3800) // 展播自动轮播（编辑画布不播）
   armMusic()
+  positionQuick()
 })
 onBeforeUnmount(() => {
   if (io) io.disconnect()
@@ -237,6 +340,7 @@ let dragTimer = 0, coolUntil = 0
 const biOf = el => (el && el.parentElement) ? Array.prototype.indexOf.call(el.parentElement.children, el) : -1
 function onDragStart(e) {
   if (!props.editable) return
+  if (inplaceKey.value && e.target && e.target.closest && e.target.closest('.hp-inplace')) return // 就地编辑中，长按是选字不是拖块
   const blk = e.target && e.target.closest ? e.target.closest('.hp-block') : null
   drag.cur = biOf(blk)
   drag.startY = e.touches && e.touches[0] ? e.touches[0].clientY : 0
@@ -538,12 +642,21 @@ function armMusic() {
 /* 翻页容器：scroll-snap 全页翻页；每页最小一屏，块少时内容垂直居中 */
 .hp { position: relative; height: 100%; }
 .hp-pages { height: 100%; overflow-y: auto; scroll-snap-type: y mandatory; -webkit-overflow-scrolling: touch; background: #0f1115; }
-.hp-page { min-height: 100svh; scroll-snap-align: start; scroll-snap-stop: always; display: flex; flex-direction: column; justify-content: center; gap: 22px; padding: 64px 22px 56px; box-sizing: border-box; color: #f3f4f6; }
+.hp-page { position: relative; min-height: 100svh; scroll-snap-align: start; scroll-snap-stop: always; display: flex; flex-direction: column; justify-content: center; gap: 22px; padding: 64px 22px 56px; box-sizing: border-box; color: #f3f4f6; }
 .hp-block { width: 100%; max-width: 560px; margin: 0 auto; position: relative; }
 /* 编辑器画布选中态：琥珀虚线描边（深浅底都可见），不参与公开页 */
 .hp-sel:after { content: ''; position: absolute; top: -6px; right: -6px; bottom: -6px; left: -6px; border: 2px dashed #fbbf24; border-radius: 14px; pointer-events: none; z-index: 5; }
 /* 编辑器画布：禁止长按呼出系统菜单/选中文字，保证长按=拖动手势干净 */
 .hp-editable { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+/* 画布直操化（2026-11-27 MAKA 对标）：选中块浮动快捷条（白胶囊，编辑画布专用）+ 文字就地编辑态 */
+.hp-quickbar { position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 7px 10px; border-radius: 999px; background: rgba(255,255,255,.97); box-shadow: 0 10px 30px rgba(0,0,0,.35); z-index: 32; white-space: nowrap; }
+.hp-qb { border: 0; border-radius: 999px; background: #eef1f6; color: #1f2937; font-size: 13px; font-weight: 700; padding: 8px 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.hp-qb:active { filter: brightness(.94); }
+.hp-qb.warn { background: #fee2e2; color: #b91c1c; }
+.hp-qb.done { background: var(--hp-accent, #a62b2b); color: #fff; padding: 8px 18px; }
+/* 就地编辑：文字可输入（覆盖 .hp-editable 的 user-select:none），焦点环提示在改哪个字段 */
+.hp-inplace { -webkit-user-select: text; user-select: text; cursor: text; }
+.hp-inplace:focus { outline: 2px solid #fbbf24; outline-offset: 3px; border-radius: 4px; }
 .hp-img { width: 100%; aspect-ratio: 4 / 3; border-radius: 14px; background-size: cover; background-position: center; background-color: #1c2029; }
 
 /* 控制式翻页（transition=slide/fade/flip，2026-11-27 路线③）：

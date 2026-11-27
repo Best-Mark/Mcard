@@ -14,6 +14,8 @@
     <header class="he-top">
       <button class="he-back" @click="router.push('/me/h5')">‹</button>
       <input v-model="title" class="he-title" placeholder="宣传页标题" @input="markDirty" />
+      <button class="he-back" :disabled="!canUndo" @click="undo" aria-label="撤销">↶</button>
+      <button class="he-back" :disabled="!canRedo" @click="redo" aria-label="重做">↷</button>
       <span class="he-save small muted">{{ saveState }}</span>
     </header>
 
@@ -21,7 +23,7 @@
     <div class="he-canvas" v-if="loaded">
       <div class="he-canvas-in">
         <!-- page-offset：画布只渲染当前页，offset 让块的 key 与真实页号对齐（选中态/拖动不串页） -->
-        <H5Render :data="curPageData" editable :page-offset="selPage" :sel-key="selKey" @pick="onPick" @reorder="onReorder" />
+        <H5Render :data="curPageData" editable :page-offset="selPage" :sel-key="selKey" @pick="onPick" @reorder="onReorder" @quick="onQuick" @inplace="markDirty" />
       </div>
       <div class="he-hint small muted">点模块选中 · 再点一下直接改内容 · 长按模块拖动排序{{ block ? ` · 当前：第 ${selPage + 1} 页 ${TYPE_LABEL[block.type]}` : '' }}</div>
     </div>
@@ -193,6 +195,14 @@
         </div>
       </div>
     </BottomSheet>
+
+    <!-- 换图弹层（2026-11-27 画布直操化）：快捷条「▣ 换图」直达，不进通用表单 -->
+    <BottomSheet :show="imgOpen" @update:show="imgOpen = $event">
+      <div class="he-form" v-if="block && imgField">
+        <div class="he-f-head"><b>更换图片</b><button class="he-mini" @click="imgOpen = false">完成</button></div>
+        <ImageField :model-value="block[imgField]" label="图片（不传用主题色渐变）" @update:modelValue="block[imgField] = $event; markDirty()" />
+      </div>
+    </BottomSheet>
   </div>
 </template>
 
@@ -273,6 +283,7 @@ function onPick(key) {
 let saveTimer = 0
 function markDirty() {
   clearTimeout(saveTimer)
+  scheduleSnap()
   saveState.value = '有未保存的修改…'
   saveTimer = setTimeout(save, 1200)
 }
@@ -355,6 +366,51 @@ function onReorder({ from, to }) {
   selBlock.value = to
   markDirty()
 }
+
+// ---- 画布直操化（2026-11-27 MAKA 对标）：浮动快捷条动作 + 换图直达弹层 ----
+const imgOpen = ref(false)
+const imgField = ref('') // 'cover' | 'image'：当前换图目标字段
+function openImageSheet() {
+  const b = block.value
+  if (!b) return
+  imgField.value = b.type === 'cover' ? 'cover' : 'image'
+  imgOpen.value = true
+}
+function onQuick({ action }) {
+  if (action === 'dup') duplicateBlock()
+  else if (action === 'del') removeBlock()
+  else if (action === 'edit') formOpen.value = true
+  else if (action === 'image') openImageSheet()
+}
+
+// ---- 撤销/重做（时间线快照，MAKA 同款顶栏 ↶↷）：变更停 600ms 落一档，undo 前先冲掉未落档的改动 ----
+const hist = ref([])
+const histIdx = ref(-1)
+const canUndo = computed(() => histIdx.value > 0)
+const canRedo = computed(() => histIdx.value < hist.value.length - 1)
+function snapNow() {
+  const s = JSON.stringify({ title: title.value, schema: schema.value })
+  const cur = hist.value[histIdx.value]
+  if (cur && cur.s === s) return // 与当前档相同不重复落档
+  hist.value = hist.value.slice(0, histIdx.value + 1).concat({ s })
+  if (hist.value.length > 50) hist.value = hist.value.slice(-50)
+  histIdx.value = hist.value.length - 1
+}
+let histTimer = 0
+function scheduleSnap() { clearTimeout(histTimer); histTimer = setTimeout(snapNow, 600) }
+function applyHist(i) {
+  const rec = hist.value[i]
+  if (!rec) return
+  const st = JSON.parse(rec.s)
+  title.value = st.title
+  schema.value = st.schema
+  histIdx.value = i
+  selBlock.value = 0
+  if (selPage.value >= schema.value.pages.length) selPage.value = Math.max(0, schema.value.pages.length - 1)
+  markDirty()
+}
+function undo() { snapNow(); if (canUndo.value) applyHist(histIdx.value - 1) }
+function redo() { snapNow(); if (canRedo.value) applyHist(histIdx.value + 1) }
 function removeBlock() { curPage.value.blocks.splice(selBlock.value, 1); selBlock.value = Math.max(0, selBlock.value - 1); markDirty() }
 function moveBlock(d) {
   const arr = curPage.value.blocks
@@ -396,6 +452,7 @@ onMounted(async () => {
     title.value = page.value.title
     schema.value = page.value.schema || { pages: [{ blocks: [blank('cover')] }] }
     loaded.value = true
+    snapNow() // 撤销栈初始档：此后每次改动停顿落一档
     // 预览数据：名片公开资料 + 套餐闸门口径（服务端实测，含水印开关）
     try {
       const mine = (await api.get('/api/h5/mine')).data.data
@@ -424,6 +481,7 @@ watch(() => route.params.id, () => { if (route.name === 'h5-editor') location.re
 .he { min-height: 100vh; padding-bottom: 76px; padding-bottom: calc(76px + env(safe-area-inset-bottom)); background: var(--bg-page, #f4f6fb); display: flex; flex-direction: column; }
 .he-top { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 8px; padding: calc(10px + var(--safe-top, 0px)) 12px 10px; background: rgba(255,255,255,.95); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
 .he-back { width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 9px; background: #fff; font-size: 19px; color: #374151; cursor: pointer; flex: 0 0 34px; }
+.he-back:disabled { opacity: .35; cursor: default; }
 .he-title { flex: 1; min-width: 0; padding: 9px 12px; border: 1px solid var(--line); border-radius: 9px; font-size: 15px; font-weight: 700; }
 .he-save { flex: 0 0 auto; white-space: nowrap; padding-right: 2px; }
 
