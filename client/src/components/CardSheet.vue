@@ -32,6 +32,10 @@
         <button v-if="qeOn('company')" class="cv-qe-tag" type="button" @click.stop="editField('company')">✎ 改公司</button>
         <div v-if="tagList.length" :class="['cv-tags', { 'cv-qe-on': qeOn('tags') }]" @click="qeTap($event,'tags')"><span v-for="tag in tagList" :key="tag">{{ tag }}</span></div>
         <button v-if="qeOn('tags')" class="cv-qe-tag" type="button" @click.stop="editField('tags')">✎ 改标签</button>
+        <!-- 未填字段的占位胶囊：点中直接弹编辑层 -->
+        <div v-if="ghostFields('identity').length" class="cv-qe-ghosts">
+          <button v-for="g in ghostFields('identity')" :key="g.key" class="cv-qe-ghost" type="button" @click.stop="editField(g.key)">＋ {{ g.label }}</button>
+        </div>
       </div>
       <!-- 二维码是信息入口：小图常驻姓名区右上角，点击弹层放大；正文不摆大块二维码卡 -->
       <button v-if="qrUrl" class="cv-qr-entry" type="button" @click="$emit('qr')" title="扫码打开名片 · 点击放大" aria-label="查看名片二维码">
@@ -44,8 +48,8 @@
     <slot name="after-profile" />
 
     <!-- 地址本身属于联系信息，作为本卡最后一行（2026-11-26 用户定），不再单独成块 -->
-    <div v-if="full && (contactFields.length || fullAddress)" class="card card-pad cv-block" data-sec="contact">
-      <h3>联系方式 <span class="small muted">· {{ quickEdit ? '点字段出「✎ 改这项」' : '点一行即复制该字段' }}</span></h3>
+    <div v-if="full && (contactFields.length || fullAddress || quickEdit)" class="card card-pad cv-block" data-sec="contact">
+      <h3>联系方式 <span class="small muted">· {{ quickEdit ? '点字段或＋号即可修改' : '点一行即复制该字段' }}</span></h3>
       <div v-for="f in contactFields" :key="f.key" :class="['cv-contact-row', { 'cv-qe-on': qeOn(f.key) }]" @click="onRowTap(f)">
         <div class="cv-contact-label">{{ f.label }}：</div>
         <div class="cv-contact-value">{{ f.value }}</div>
@@ -67,13 +71,21 @@
         </div>
         <button v-if="qeOn('address')" class="cv-qe-tag" type="button" @click.stop="editField('address')">✎ 改地址</button>
       </div>
+      <!-- 未填的联系方式/地址占位胶囊 -->
+      <div v-if="ghostFields('contact').length || !hasAddress" class="cv-qe-ghosts">
+        <button v-for="g in ghostFields('contact')" :key="g.key" class="cv-qe-ghost" type="button" @click.stop="editField(g.key)">＋ {{ g.label }}</button>
+        <button v-if="!hasAddress" class="cv-qe-ghost" type="button" @click.stop="editField('address')">＋ 地址</button>
+      </div>
     </div>
 
     <template v-if="full">
-      <div v-if="introText" class="card card-pad cv-block" data-sec="bio">
+      <div v-if="introText || quickEdit" class="card card-pad cv-block" data-sec="bio">
         <h3>简介</h3>
-        <p :class="['cv-bio', { 'cv-qe-on': qeOn('bio') }]" @click="qeTap($event,'bio')">{{ introText }}</p>
-        <button v-if="qeOn('bio')" class="cv-qe-tag" type="button" @click.stop="editField('bio')">✎ 改简介</button>
+        <template v-if="introText">
+          <p :class="['cv-bio', { 'cv-qe-on': qeOn('bio') }]" @click="qeTap($event,'bio')">{{ introText }}</p>
+          <button v-if="qeOn('bio')" class="cv-qe-tag" type="button" @click.stop="editField('bio')">✎ 改简介</button>
+        </template>
+        <button v-else class="cv-qe-ghost cv-qe-ghost-block" type="button" @click.stop="editField('bio')">＋ 简介</button>
       </div>
 
       <div v-if="card.links?.length" class="card card-pad cv-block" data-sec="links">
@@ -85,7 +97,7 @@
         </div>
       </div>
 
-      <div v-if="siteLinks.length" class="card card-pad cv-block" data-sec="links">
+      <div v-if="siteLinks.length || quickEdit" class="card card-pad cv-block" data-sec="links">
         <h3>主页与店铺</h3>
         <div v-for="l in siteLinks" :key="l.key" class="cv-site">
           <div :class="{ 'cv-qe-on': qeOn(l.key) }" @click="qeTap($event,l.key)"><b>{{ l.label }}</b><span class="small muted">{{ shortUrl(l.url) }}</span></div>
@@ -94,6 +106,10 @@
             <a :href="safeUrl(l.url)" target="_blank" rel="noopener" class="btn btn-sm btn-primary btn-icon" :title="'打开' + l.label" :aria-label="'打开' + l.label"><AppIcon name="link" :size="15" /></a>
             <button class="btn btn-sm btn-ghost btn-icon" type="button" :title="'复制' + l.label" :aria-label="'复制' + l.label" @click="onCopy(l.url, l.label)"><AppIcon name="copy" :size="15" /></button>
           </div>
+        </div>
+        <!-- 未填的主页/店铺占位胶囊 -->
+        <div v-if="ghostFields('links').length" class="cv-qe-ghosts">
+          <button v-for="g in ghostFields('links')" :key="g.key" class="cv-qe-ghost" type="button" @click.stop="editField(g.key)">＋ {{ g.label }}</button>
         </div>
       </div>
 
@@ -190,6 +206,31 @@ const siteLinks = computed(() => {
   if (c.shop_url) arr.push({ key: 'shop', label: '店铺主页', url: c.shop_url })
   return arr
 })
+
+// 空字段占位（2026-11-27 用户追问）：快捷编辑模式下没填的字段原来根本不渲染、点不到，
+// 现在渲染虚线占位胶囊「＋ 字段名」，点击直接弹编辑层——空字段意图明确，无需两段式选中。
+// 公开页 quickEdit=false，占位一个都不渲染，零影响。
+const QE_GHOSTS = {
+  identity: [
+    { key: 'name_en', label: '英文名', test: c => !c.name_en },
+    { key: 'company', label: '公司 / 品牌', test: c => !c.company },
+    { key: 'tags', label: '标签', test: c => !(Array.isArray(c.tags) ? c.tags.length : c.tags) }
+  ],
+  contact: [
+    { key: 'mobile', label: '手机号', test: c => !c.mobile },
+    { key: 'phone', label: '座机', test: c => !c.phone },
+    { key: 'email', label: '邮箱', test: c => !c.email },
+    { key: 'wechat', label: '微信号', test: c => !c.wechat },
+    { key: 'alipay', label: '支付宝', test: c => !c.alipay },
+    { key: 'whatsapp', label: 'WhatsApp', test: c => !c.whatsapp }
+  ],
+  links: [
+    { key: 'website', label: '公司主页', test: c => !c.website },
+    { key: 'shop_url', label: '店铺主页', test: c => !c.shop_url }
+  ]
+}
+const ghostFields = grp => (props.quickEdit ? QE_GHOSTS[grp].filter(g => g.test(props.card || {})) : [])
+const hasAddress = computed(() => !!(regionLine.value || detailAddress.value))
 const regionLine = computed(() => {
   const c = props.card || {}
   return [c.province, c.city, c.district, c.street].filter(Boolean).join(' · ')
