@@ -202,6 +202,10 @@
     <BottomSheet :show="qeOpen" @update:show="qeOpen = $event">
       <div class="qe-sheet" v-if="qeConf">
         <div class="qe-head"><b>修改{{ qeConf.label }}</b><button type="button" @click="qeOpen = false">×</button></div>
+        <label v-if="qeKey === 'address'" class="qe-field">
+          <span>省 / 市 / 区（三联选择）</span>
+          <button type="button" class="qe-region-btn" @click="qeRegionOpen = true">{{ qeRegionPath }}</button>
+        </label>
         <label v-for="f in qeConf.fields" :key="f.key" class="qe-field">
           <span>{{ f.label }}</span>
           <ImageField v-if="f.type === 'image'" v-model="qeForm[f.key]" />
@@ -213,6 +217,16 @@
           <button class="btn btn-primary" type="button" :disabled="qeSaving" @click="saveQuickEdit">{{ qeSaving ? '保存中…' : '保存' }}</button>
         </div>
       </div>
+    </BottomSheet>
+
+    <!-- 省市区三列滚轮（复用编辑页同款组件，2026-11-27 用户追问「改地址没有三联联动吗」）：
+         后渲染 Teleport 在上层，盖住快捷编辑弹层；确定即回填并按地址补坐标 -->
+    <BottomSheet :show="qeRegionOpen" @update:show="qeRegionOpen = $event">
+      <RegionPicker
+        :province="qeRegion.province" :city="qeRegion.city" :district="qeRegion.district" :street="qeRegion.street"
+        @confirm="onQeRegionPicked"
+        @close="qeRegionOpen = false"
+      />
     </BottomSheet>
 
     <!-- 名片二维码双码弹层（2026-11-26 用户定稿：两个都要）：联系人码=vCard 瘦身版（只放主流字段，
@@ -319,7 +333,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 // embed：嵌入模式（只渲染封面+身份区，其余由宿主页呈现）；owner：持有者预览（/me 我的名片）。
@@ -341,7 +355,7 @@ import { scanQrUrl } from '../utils/qr'
 import { loadQrStyles } from '../utils/qrStyles'
 // dock 翻转行的模板缩略（与配色风格页/编辑页同一份唯一真相源）
 import '../styles/template-thumbs.css'
-import { getCachedPosition } from '../utils/geo'
+import { getCachedPosition, geocode } from '../utils/geo'
 import BottomSheet from '../components/BottomSheet.vue'
 import CardSheet from '../components/CardSheet.vue'
 import ImageField from '../components/ImageField.vue'
@@ -547,12 +561,34 @@ const qeKey = ref('')
 const qeForm = ref({})
 const qeSaving = ref(false)
 const qeConf = computed(() => QE_CONF[qeKey.value] || null)
+// 地址弹层的省市区三联（2026-11-27 用户追问）：复用编辑页同款 RegionPicker 三列滚轮，
+// 确定后按地址补坐标（与编辑页「选地区→自动定位」同一口径），保存随 patch 一起提交。
+// 服务端 EDITABLE 白名单本就含 province/city/district/street/latitude/longitude。
+const RegionPicker = defineAsyncComponent(() => import('../components/RegionPicker.vue'))
+const qeRegionOpen = ref(false)
+const qeRegion = ref({ province: '', city: '', district: '', street: '' })
+const qeGeo = ref(null) // geocode 成功的坐标 { latitude, longitude }；失败不动原坐标（与编辑页一致不阻塞）
+const qeRegionPath = computed(() => {
+  const r = qeRegion.value
+  return [r.province, r.city, r.district, r.street].filter(Boolean).join(' / ') || '请选择省 / 市 / 区'
+})
+function onQeRegionPicked(r) {
+  qeRegion.value = { province: r.province || '', city: r.city || '', district: r.district || '', street: r.street || '' }
+  qeRegionOpen.value = false
+  const text = [r.province, r.city, r.district, r.street, qeForm.value.address].filter(Boolean).join('')
+  if (!text) return
+  geocode(text, r.city).then(g => { if (g) qeGeo.value = { latitude: g.lat, longitude: g.lng } }).catch(() => {})
+}
 function openQuickEdit(key) {
   const k = key === 'shop' ? 'shop_url' : key // CardSheet 的 siteLinks 用 'shop' 短名
   const conf = QE_CONF[k]
   if (!conf) return
   qeKey.value = k
   const c = card.value || {}
+  if (k === 'address') {
+    qeRegion.value = { province: c.province || '', city: c.city || '', district: c.district || '', street: c.street || '' }
+    qeGeo.value = null
+  }
   const form = {}
   for (const f of conf.fields) {
     const raw = c[f.key] ?? ''
@@ -573,6 +609,10 @@ async function saveQuickEdit() {
     let v = qeForm.value[f.key] ?? ''
     if (f.type === 'tags') v = String(v).split(/[,，]/).map(s => s.trim()).filter(Boolean).slice(0, 8)
     patch[f.key] = v
+  }
+  if (qeKey.value === 'address') {
+    Object.assign(patch, qeRegion.value)
+    if (qeGeo.value) Object.assign(patch, qeGeo.value)
   }
   qeSaving.value = true
   try {
