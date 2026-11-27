@@ -227,6 +227,22 @@ CREATE TABLE IF NOT EXISTS card_snapshots (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- H5 宣传页（2026-11-27 新模块）：JSON schema 驱动（pages→blocks），名片附属营销页，
+-- 公开访问 /h5/:slug；套餐权益分层：免费 1 个/≤3 页带尾页水印，付费 10 个/≤12 页可去水印。
+CREATE TABLE IF NOT EXISTS h5_pages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  card_id INTEGER,
+  slug TEXT UNIQUE NOT NULL,
+  title TEXT NOT NULL DEFAULT '',
+  schema TEXT NOT NULL DEFAULT '{}',
+  status TEXT NOT NULL DEFAULT 'draft',
+  view_count INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_h5_user ON h5_pages(user_id, id);
+
 CREATE TABLE IF NOT EXISTS site_config (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL,

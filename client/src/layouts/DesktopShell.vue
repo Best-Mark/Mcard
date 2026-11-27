@@ -20,6 +20,7 @@
               <button class="ds-user" @click="userMenuOpen = !userMenuOpen">{{ (auth.user?.phone || '我').slice(0, 1) }} <span class="ds-caret">▾</span></button>
               <div v-if="userMenuOpen" class="ds-user-menu">
                 <button @click="menuGo('/me/profile')">◉ 账户信息</button>
+                <button @click="menuGo('/me/h5')">◈ 宣传页制作</button>
                 <button @click="menuGo('/me/plans')">💎 我的套餐</button>
                 <button v-if="auth.user?.is_promoter" @click="menuGo('/me/withdraw-account')">💰 收款账户</button>
                 <button @click="menuDo('public')">↗ 我的公开名片</button>

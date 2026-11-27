@@ -67,6 +67,7 @@
          四项 = 名片夹 / 套餐续期 / 实体版式 / 扫一扫（展会连扫）；浏览统计仍留在抽屉，入口不丢。 -->
     <div class="pf-quick">
       <router-link to="/me/contacts" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="grid" :size="22" /></i><span>名片夹</span></router-link>
+      <router-link to="/me/h5" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="file" :size="22" /></i><span>宣传页</span></router-link>
       <router-link to="/me/plans" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="yen" :size="22" /></i><span>我的套餐</span></router-link>
       <router-link to="/me/print" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="list" :size="22" /></i><span>实体版式</span></router-link>
       <router-link to="/me/batch-scan" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="scan" :size="22" /></i><span>扫一扫</span></router-link>
@@ -271,11 +272,11 @@ function goQr() {
 /* ===== 快捷入口：四张白卡紧凑并排（2026-11-26 截图定稿） =====
    排列口径：紧贴头卡下缘（负 margin 压在渐变头卡上，z-index 提到光效之上），
    卡片白底圆角 + 米黄圆角图标底 + 深红描边图标，一眼一块、左右留出安全边距。 */
-.pf-quick { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: -10px 12px 0; }
+.pf-quick { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: -10px 12px 0; }
 .pf-quick-item { display: flex; flex-direction: column; align-items: center; gap: 9px; padding: 15px 4px 13px; border-radius: 15px; background: #fff; border: 1px solid rgba(15,23,42,.05); box-shadow: 0 6px 18px rgba(15,23,42,.10); font-size: 12px; font-weight: 600; color: #1f2937; text-decoration: none; }
 .pf-qi-ico { width: 46px; height: 46px; border-radius: 14px; background: #fbeedc; color: #9a3412; display: grid; place-items: center; font-style: normal; }
 .pf-quick-item:active { transform: scale(.96); }
-@media (max-width: 520px) { .pf-quick { grid-template-columns: repeat(2, 1fr); gap: 8px; } }
+@media (max-width: 520px) { .pf-quick { grid-template-columns: repeat(3, 1fr); gap: 8px; } }
 
 /* ===== 下半部分：App 分组 cell（按用户端约定卡片左右贴边、方角） ===== */
 .pf-group { margin: 14px 0 0; background: var(--card, #fff); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }

@@ -21,7 +21,9 @@
     { "path": "pages/print/print", "style": { "navigationBarTitleText": "实体名片版式" } },
     { "path": "pages/promo/promo", "style": { "navigationBarTitleText": "推广中心" } },
     { "path": "pages/promo/withdraw-account", "style": { "navigationBarTitleText": "收款账户" } },
-    { "path": "pages/promo/withdraw-account-edit", "style": { "navigationBarTitleText": "绑定收款账户" } }
+    { "path": "pages/promo/withdraw-account-edit", "style": { "navigationBarTitleText": "绑定收款账户" } },
+    { "path": "pages/h5/list/list", "style": { "navigationBarTitleText": "宣传页制作" } },
+    { "path": "pages/h5/edit/edit", "style": { "navigationBarTitleText": "编辑宣传页" } }
   ],
   "globalStyle": {
     "navigationBarTextStyle": "black",

@@ -20,6 +20,9 @@ const AccountProfile = () => import('../views/AccountProfile.vue')
 const CardEdit = () => import('../views/CardEdit.vue')
 const CardStyle = () => import('../views/CardStyle.vue')
 const CardMarket = () => import('../views/CardMarket.vue')
+const H5Page = () => import('../views/H5Page.vue')
+const H5List = () => import('../views/H5List.vue')
+const H5Editor = () => import('../views/H5Editor.vue')
 const Plans = () => import('../views/Plans.vue')
 const PayResult = () => import('../views/PayResult.vue')
 const Contacts = () => import('../views/Contacts.vue')
@@ -40,6 +43,9 @@ const routes = [
   { path: '/c/:slug', name: 'card', component: CardView },
   { path: '/m/:slug', name: 'material', component: MaterialView },
   { path: '/market', name: 'market', component: Market },
+  { path: '/h5/:slug', name: 'h5-page', component: H5Page },
+  { path: '/me/h5', name: 'h5-list', component: H5List, meta: { auth: true } },
+  { path: '/me/h5/:id', name: 'h5-editor', component: H5Editor, meta: { auth: true } },
   { path: '/login', name: 'login', component: Login },
   { path: '/wechat/callback', name: 'wechat-callback', component: WechatCallback },
   { path: '/wechat/qr-login', name: 'wechat-qr-login', component: WechatQrLogin },

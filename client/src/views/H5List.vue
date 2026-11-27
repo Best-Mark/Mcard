@@ -1,0 +1,141 @@
+<template>
+  <!-- 宣传页列表（/me/h5）：新建（选官方模板）+ 管理（编辑/发布/预览/复制链接/删除）。
+       套餐权益分层口径与服务端一致：免费 1 个/≤3 页/带水印，付费 10 个/≤12 页。 -->
+  <div class="h5l">
+    <header class="h5l-top">
+      <button class="h5l-back" @click="router.push('/me')">‹</button>
+      <span class="h5l-title">宣传页制作</span>
+      <button class="h5l-new" @click="newOpen = true">＋ 新建</button>
+    </header>
+
+    <div class="container">
+      <div class="h5l-quota card card-pad small muted">
+        {{ paid ? `已开通套餐：可创建 ${maxH5} 个宣传页、每个最多 ${maxPages} 页，发布无水印。` : `免费版：1 个宣传页、最多 ${maxPages} 页，尾页带品牌水印。开通套餐解锁更多。` }}
+        <router-link v-if="!paid" to="/me/plans" class="h5l-up">去开通 ›</router-link>
+      </div>
+
+      <div v-if="loading" class="card card-pad">加载中…</div>
+      <div v-else-if="!list.length" class="card card-pad center" style="padding:44px 20px">
+        <div style="font-size:44px;opacity:.28">◈</div>
+        <h3 style="margin:10px 0 4px">还没有宣传页</h3>
+        <p class="small muted">从官方模板一键创建，改改文字就能发布，访客看完直接跳你的名片。</p>
+        <button class="btn btn-primary" style="margin-top:14px" @click="newOpen = true">从模板创建 →</button>
+      </div>
+      <div v-else class="h5l-list">
+        <div v-for="p in list" :key="p.id" class="card card-pad h5l-item">
+          <div class="h5l-head">
+            <b class="h5l-name">{{ p.title }}</b>
+            <span class="badge small" :class="{ on: p.status === 'published' }">{{ p.status === 'published' ? '已发布' : '草稿' }}</span>
+          </div>
+          <div class="small muted h5l-meta">{{ p.pages }} 页 · {{ p.view_count }} 次浏览 · 更新于 {{ fmt(p.updated_at) }}</div>
+          <div class="h5l-ops">
+            <button class="btn btn-sm btn-primary" @click="router.push(`/me/h5/${p.id}`)">编辑</button>
+            <button v-if="p.status === 'published'" class="btn btn-sm btn-ghost" @click="preview(p)">预览</button>
+            <button v-else class="btn btn-sm btn-ghost" @click="router.push(`/me/h5/${p.id}`)">预览</button>
+            <button v-if="p.status === 'draft'" class="btn btn-sm btn-ghost" :disabled="busy === p.id" @click="toggle(p, 'publish')">{{ busy === p.id ? '…' : '发布' }}</button>
+            <button v-else class="btn btn-sm btn-ghost" :disabled="busy === p.id" @click="toggle(p, 'unpublish')">下架</button>
+            <button v-if="p.status === 'published'" class="btn btn-sm btn-ghost" @click="copyLink(p)">复制链接</button>
+            <button class="btn btn-sm btn-ghost h5l-del" @click="remove(p)">删除</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 新建：官方模板选择弹层 -->
+    <div v-if="newOpen" class="modal-mask" @click.self="newOpen = false">
+      <div class="modal h5l-modal">
+        <h3>选择模板</h3>
+        <p class="small muted" style="margin-top:-4px">套用后所有文字图片都能改</p>
+        <div class="h5l-tpl-grid">
+          <button v-for="t in templates" :key="t.key" class="h5l-tpl" :disabled="creating" @click="create(t)">
+            <span class="h5l-tpl-dot" :style="{ background: t.accent }"></span>
+            <b>{{ t.name }}</b>
+            <span class="small muted">{{ t.industry }} · {{ t.desc }}</span>
+          </button>
+          <button class="h5l-tpl" :disabled="creating" @click="create(null)"><b>空白页</b><span class="small muted">从零开始搭</span></button>
+        </div>
+        <button class="btn btn-ghost" style="margin-top:14px" @click="newOpen = false">取消</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import api from '../api'
+import { showToast } from '../store'
+
+const router = useRouter()
+const list = ref([])
+const templates = ref([])
+const loading = ref(true)
+const busy = ref(0)
+const creating = ref(false)
+const newOpen = ref(false)
+// 闸门口径展示值（与服务端一致）；paid 以服务端实测为准：创建失败时会带提示回传
+const paid = ref(false)
+const maxH5 = 10, maxPages = 12
+
+onMounted(async () => {
+  try { templates.value = (await api.get('/api/h5/templates')).data.data.list } catch { /* 模板失败不阻断列表 */ }
+  await load()
+})
+async function load() {
+  loading.value = true
+  try {
+    const { data } = await api.get('/api/h5/mine')
+    list.value = data.data.list
+    paid.value = !!data.data.limits?.paid
+  } catch (e) { showToast(e.message || '加载失败', 'error') } finally { loading.value = false }
+}
+async function create(tpl) {
+  if (creating.value) return
+  creating.value = true
+  try {
+    const { data } = await api.post('/api/h5', tpl ? { template_key: tpl.key, title: tpl.name } : {})
+    newOpen.value = false
+    router.push(`/me/h5/${data.data.page.id}`)
+  } catch (e) { showToast(e.message || '创建失败', 'error') } finally { creating.value = false }
+}
+async function toggle(p, action) {
+  busy.value = p.id
+  try { await api.post(`/api/h5/${p.id}/${action}`); await load(); showToast(action === 'publish' ? '已发布，链接已生效' : '已下架', 'success') }
+  catch (e) { showToast(e.message, 'error') } finally { busy.value = 0 }
+}
+async function remove(p) {
+  if (!confirm(`删除「${p.title}」？发布中的链接也会失效，不可恢复。`)) return
+  busy.value = p.id
+  try { await api.delete(`/api/h5/${p.id}`); await load() } catch (e) { showToast(e.message, 'error') } finally { busy.value = 0 }
+}
+function preview(p) { window.open(`/h5/${p.slug}`, '_blank') }
+async function copyLink(p) {
+  const link = `${window.location.origin}/h5/${p.slug}`
+  try { await navigator.clipboard.writeText(link); showToast('链接已复制', 'success') } catch { showToast(link) }
+}
+function fmt(s) { return String(s || '').replace('T', ' ').slice(5, 16) }
+</script>
+
+<style scoped>
+.h5l { min-height: 100vh; background: var(--bg-page, #f4f6fb); padding-bottom: 80px; }
+.h5l-top { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 10px; padding: calc(10px + var(--safe-top, 0px)) 14px 10px; background: rgba(255,255,255,.94); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.h5l-back { width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 9px; background: #fff; font-size: 19px; color: #374151; cursor: pointer; }
+.h5l-title { font-weight: 800; font-size: 16px; flex: 1; }
+.h5l-new { padding: 8px 14px; border: 0; border-radius: 999px; background: var(--primary, #a62b2b); color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
+.h5l-quota { margin-top: 12px; line-height: 1.6; }
+.h5l-up { color: var(--primary, #a62b2b); font-weight: 700; }
+.h5l-list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.h5l-head { display: flex; align-items: center; gap: 8px; }
+.h5l-name { font-size: 15px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.badge.on { color: #15803d; background: #dcfce7; }
+.badge { color: #92400e; background: #fef3c7; padding: 2px 8px; border-radius: 999px; font-weight: 700; }
+.h5l-meta { margin-top: 4px; }
+.h5l-ops { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.h5l-del { color: #b91c1c !important; }
+.h5l-modal { width: min(92vw, 560px); }
+.h5l-tpl-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 12px; }
+.h5l-tpl { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; text-align: left; cursor: pointer; }
+.h5l-tpl:active { border-color: var(--primary, #a62b2b); }
+.h5l-tpl-dot { width: 12px; height: 12px; border-radius: 50%; }
+@media (min-width: 720px) { .h5l-tpl-grid { grid-template-columns: repeat(3, 1fr); } }
+</style>

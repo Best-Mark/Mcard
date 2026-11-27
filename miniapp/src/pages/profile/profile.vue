@@ -30,6 +30,7 @@
 
     <view class="quick">
       <view class="q" @tap="switchTab('/pages/contacts/contacts')"><text class="qi">▦</text><text>名片夹</text></view>
+      <view class="q" @tap="go('/pages/h5/list/list')"><text class="qi">◈</text><text>宣传页</text></view>
       <view class="q" @tap="go('/pages/plans/plans')"><text class="qi">¥</text><text>我的套餐</text></view>
       <view class="q" @tap="go('/pages/print/print')"><text class="qi">▤</text><text>实体版式</text></view>
       <view class="q" @tap="go('/pages/index/index')"><text class="qi">⌗</text><text>扫一扫</text></view>
@@ -135,7 +136,7 @@ onShow(load)
 .plan-date { font-size: 32rpx; font-weight: 800; }
 .plan-sub { font-size: 21rpx; opacity: .8; }
 .plan-btn { flex-shrink: 0; font-size: 23rpx; font-weight: 700; color: #a62b2b; background: #fff; border-radius: 999rpx; padding: 10rpx 24rpx; }
-.quick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12rpx; padding: 0 24rpx; margin-top: -56rpx; }
+.quick { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10rpx; padding: 0 24rpx; margin-top: -56rpx; }
 .q { background: #fff; border-radius: 20rpx; padding: 22rpx 4rpx; text-align: center; font-size: 22rpx; box-shadow: 0 8rpx 24rpx rgba(15,23,42,.06); }
 .qi { width: 56rpx; height: 56rpx; border-radius: 16rpx; background: #f7ecd9; color: #a62b2b; display: flex; align-items: center; justify-content: center; font-size: 28rpx; margin: 0 auto 10rpx; }
 .group { background: #fff; margin: 20rpx 0 0; border-radius: 0; border-top: 2rpx solid #e8dcc2; border-bottom: 2rpx solid #e8dcc2; }
