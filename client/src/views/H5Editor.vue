@@ -142,6 +142,16 @@
         <template v-else-if="block.type === 'video'">
           <label>视频地址<input v-model="block.url" @input="markDirty" placeholder="mp4 链接" /></label>
         </template>
+        <template v-else-if="block.type === 'form'">
+          <label>小标题<input v-model="block.heading" maxlength="40" @input="markDirty" placeholder="如：预约到店 / 留下您的需求" /></label>
+          <label>说明文字<input v-model="block.desc" maxlength="120" @input="markDirty" placeholder="一句引导文案（选填）" /></label>
+          <label class="he-switch"><input type="checkbox" v-model="block.showName" @change="markDirty" />收集姓名</label>
+          <label class="he-switch"><input type="checkbox" v-model="block.showPhone" @change="markDirty" />收集电话</label>
+          <label class="he-switch"><input type="checkbox" v-model="block.showMessage" @change="markDirty" />收集留言</label>
+          <label>按钮文字<input v-model="block.buttonText" maxlength="12" @input="markDirty" placeholder="提交" /></label>
+          <label>提交成功提示<input v-model="block.successText" maxlength="60" @input="markDirty" placeholder="已收到，我们会尽快联系你" /></label>
+          <p class="small muted" style="margin:0">访客提交后自动存入线索，可在宣传页列表「线索」里查看、复制电话回访。</p>
+        </template>
         <template v-else-if="block.type === 'endcard'">
           <p class="small muted" style="margin:0">尾页自动展示你的名片卡与二维码，访客看完直接跳名片。{{ watermark ? '免费版尾页带品牌水印，开通套餐后自动去除。' : '当前套餐：无水印。' }}</p>
         </template>
@@ -185,8 +195,8 @@ import BottomSelect from '../components/BottomSelect.vue'
 const route = useRoute()
 const router = useRouter()
 
-const TYPE_LABEL = { cover: '封面', text: '文本', hero: '图文', gallery: '图集', contact: '联系方式', map: '位置', buttons: '按钮组', video: '视频', endcard: '名片尾页' }
-const ADDABLE = ['cover', 'text', 'hero', 'gallery', 'contact', 'map', 'buttons', 'video', 'endcard']
+const TYPE_LABEL = { cover: '封面', text: '文本', hero: '图文', gallery: '图集', contact: '联系方式', map: '位置', buttons: '按钮组', video: '视频', form: '表单留资', endcard: '名片尾页' }
+const ADDABLE = ['cover', 'text', 'hero', 'gallery', 'contact', 'map', 'buttons', 'video', 'form', 'endcard']
 // 入场动效选项（'' = 智能默认，与渲染层 animOf 的类型默认一致；none = 关闭）
 const ANIM_OPTS = [
   { value: '', label: '默认（智能）' }, { value: 'none', label: '无动效' }, { value: 'up', label: '向上浮入' },
@@ -287,6 +297,7 @@ function blank(type) {
   if (type === 'map') return { type, lat: null, lng: null, label: '' }
   if (type === 'buttons') return { type, items: [{ label: '', action: 'tel', value: '' }] }
   if (type === 'video') return { type, url: '', poster: '' }
+  if (type === 'form') return { type, heading: '', desc: '', showName: true, showPhone: true, showMessage: true, buttonText: '提交', successText: '' }
   return { type: 'endcard' }
 }
 // 插入位置：有选中块（非尾页卡）→ 插到其后，跟着当前编辑焦点走；否则插到尾页卡之前

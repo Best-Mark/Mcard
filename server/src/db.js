@@ -243,6 +243,18 @@ CREATE TABLE IF NOT EXISTS h5_pages (
 );
 CREATE INDEX IF NOT EXISTS idx_h5_user ON h5_pages(user_id, id);
 
+-- H5 表单留资（2026-11-27 表单留资块）：宣传页访客提交的线索（姓名/电话/留言），
+-- 归属 h5_pages，页主在宣传页管理里查看；匿名提交、软鉴权读取。
+CREATE TABLE IF NOT EXISTS h5_leads (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  page_id INTEGER NOT NULL,
+  name TEXT NOT NULL DEFAULT '',
+  phone TEXT NOT NULL DEFAULT '',
+  message TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_h5_leads_page ON h5_leads(page_id, id);
+
 CREATE TABLE IF NOT EXISTS site_config (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL,

@@ -68,6 +68,23 @@
           <div v-else-if="b.type === 'video'" :class="blkCls(pi, bi, b)" :style="dragStyle(bi)" @click="pick(pi, bi)">
             <video v-if="b.url" :src="b.url" :poster="b.poster" controls playsinline preload="metadata"></video>
           </div>
+          <!-- 表单留资（2026-11-27）：姓名/电话/留言收集线索；提交成功换成功态，操作全在块内表单层 -->
+          <div v-else-if="b.type === 'form'" :class="blkCls(pi, bi, b)" :style="dragStyle(bi)" @click="pick(pi, bi)">
+            <template v-if="formDone(kOf(pi, bi))">
+              <div class="hp-form-done">
+                <span class="hp-form-done-ico">✓</span>
+                <p>{{ b.successText || '已收到，我们会尽快联系你' }}</p>
+              </div>
+            </template>
+            <template v-else>
+              <h2 v-if="b.heading">{{ b.heading }}</h2>
+              <p v-if="b.desc" class="hp-form-desc">{{ b.desc }}</p>
+              <input v-if="b.showName" class="hp-input" type="text" maxlength="30" placeholder="姓名" :value="formVal(kOf(pi, bi), 'name')" @input="setFormVal(kOf(pi, bi), 'name', $event.target.value)" />
+              <input v-if="b.showPhone" class="hp-input" type="tel" maxlength="30" placeholder="电话" :value="formVal(kOf(pi, bi), 'phone')" @input="setFormVal(kOf(pi, bi), 'phone', $event.target.value)" />
+              <textarea v-if="b.showMessage" class="hp-input hp-textarea" rows="3" maxlength="300" placeholder="留言（选填）" :value="formVal(kOf(pi, bi), 'message')" @input="setFormVal(kOf(pi, bi), 'message', $event.target.value)"></textarea>
+              <button class="hp-btn" :disabled="formBusy(kOf(pi, bi))" @click="submitForm(pi, bi, b)">{{ formBusy(kOf(pi, bi)) ? '提交中…' : (b.buttonText || '提交') }}</button>
+            </template>
+          </div>
           <!-- 尾页名片卡：转化关键——访客看完直接进名片/拨号；watermark 为免费版品牌尾注 -->
           <div v-else-if="b.type === 'endcard'" :class="blkCls(pi, bi, b)" :style="dragStyle(bi)" @click="pick(pi, bi)">
             <div class="hp-end-card">
@@ -94,6 +111,7 @@
 <script setup>
 import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
+import api from '../api'
 import { scanQrUrl } from '../utils/qr'
 import { showToast } from '../store'
 
@@ -220,11 +238,13 @@ function dragStyle(bi) {
   return { transform: `translateY(${drag.dy}px) scale(1.02)`, zIndex: 30, boxShadow: '0 18px 44px rgba(0,0,0,.5)' }
 }
 
-const schema = computed(() => props.data?.schema || {})
+const schema = computed(() => props.data?.page?.schema || props.data?.schema || {})
 const pages = computed(() => (Array.isArray(schema.value.pages) && schema.value.pages.length) ? schema.value.pages : [{ blocks: [{ type: 'cover' }] }])
 const accent = computed(() => /^#[0-9a-fA-F]{6}$/.test(schema.value.accent || '') ? schema.value.accent : '#a62b2b')
 const card = computed(() => props.data?.card || {})
-const watermark = computed(() => !!props.data?.watermark)
+// 公开页数据是 { page:{schema,watermark,slug}, card }（服务端 /h5/public/:slug 形态），编辑器传扁平 { schema, card, watermark }——两种形态都认
+const watermark = computed(() => !!(props.data?.page ? props.data.page.watermark : props.data?.watermark))
+const pageSlug = computed(() => props.data?.page?.slug || props.data?.slug || '')
 const tel = computed(() => card.value.mobile || card.value.phone || '')
 const wechat = computed(() => card.value.wechat || '')
 const cardQr = computed(() => card.value.slug ? scanQrUrl(card.value.slug, 'qr.png', 240) : '')
@@ -290,6 +310,39 @@ function mapHref(b) {
   return `https://uri.amap.com/search?keyword=${encodeURIComponent(b.label || '')}`
 }
 function goCard() { if (props.editable) return; router.push(`/c/${card.value.slug}`) }
+
+// ---- 表单留资（2026-11-27）：访客填姓名/电话/留言 → POST /api/h5/public/:slug/leads 落 h5_leads ----
+// 状态按块 key 隔离（一页可放多个表单）；成对防重入（按钮 disabled + busy 守卫），成功换成功态不再可提交。
+const formVals = ref({})
+const formBusyMap = ref({})
+const formDoneMap = ref({})
+const formVal = (k, f) => (formVals.value[k] || {})[f] || ''
+function setFormVal(k, f, v) {
+  const cur = formVals.value[k] || {}
+  formVals.value = { ...formVals.value, [k]: { ...cur, [f]: v } }
+}
+const formBusy = k => !!formBusyMap.value[k]
+const formDone = k => !!formDoneMap.value[k]
+async function submitForm(pi, bi, b) {
+  if (props.editable) return // 编辑画布短路，不真提交
+  const k = kOf(pi, bi)
+  if (formBusyMap.value[k] || formDoneMap.value[k]) return
+  const v = formVals.value[k] || {}
+  const name = String(v.name || '').trim().slice(0, 30)
+  const phone = String(v.phone || '').trim().slice(0, 30)
+  const message = String(v.message || '').trim().slice(0, 300)
+  if (!name && !phone) { showToast('请至少填写姓名或电话', 'error'); return }
+  if (!pageSlug.value) { showToast('页面未发布，暂不能提交', 'error'); return }
+  formBusyMap.value = { ...formBusyMap.value, [k]: true }
+  try {
+    await api.post(`/api/h5/public/${encodeURIComponent(pageSlug.value)}/leads`, { name, phone, message })
+    formDoneMap.value = { ...formDoneMap.value, [k]: true }
+  } catch (e) {
+    showToast(e?.message || '提交失败，请稍后重试', 'error')
+  } finally {
+    formBusyMap.value = { ...formBusyMap.value, [k]: false }
+  }
+}
 </script>
 
 <style scoped>
@@ -355,6 +408,16 @@ function goCard() { if (props.editable) return; router.push(`/c/${card.value.slu
 .hp-buttons { display: flex; flex-direction: column; gap: 12px; }
 .hp-btn { width: 100%; padding: 15px; border: 0; border-radius: 999px; background: var(--hp-accent); color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; }
 .hp-btn:active { filter: brightness(.92); }
+.hp-btn:disabled { opacity: .6; cursor: default; }
+
+/* 表单留资块：深底输入框 + 主题色提交钮；成功态居中对勾 */
+.hp-form-desc { margin: -4px 0 12px; font-size: 13px; line-height: 1.7; color: #9ca3af; white-space: pre-line; }
+.hp-input { display: block; width: 100%; box-sizing: border-box; margin-bottom: 12px; padding: 13px 15px; border: 1px solid rgba(255,255,255,.16); border-radius: 12px; background: rgba(255,255,255,.07); color: #f3f4f6; font-size: 15px; }
+.hp-input::placeholder { color: #6b7280; }
+.hp-textarea { resize: none; line-height: 1.6; }
+.hp-form-done { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 26px 16px; border-radius: 14px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); }
+.hp-form-done-ico { width: 46px; height: 46px; border-radius: 50%; background: var(--hp-accent); color: #fff; display: grid; place-items: center; font-size: 22px; font-weight: 700; }
+.hp-form-done p { margin: 0; font-size: 15px; color: #d1d5db; text-align: center; }
 
 .hp-video video { width: 100%; border-radius: 14px; background: #000; display: block; }
 

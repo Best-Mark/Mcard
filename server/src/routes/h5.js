@@ -13,7 +13,7 @@ const router = express.Router()
 // 套餐权益分层（唯一真相源）：与 cardPlanActive 同口径（cards.status=active 且未过期或终身）
 const FREE_MAX_PAGES = 3, PAID_MAX_PAGES = 12
 const FREE_MAX_H5 = 1, PAID_MAX_H5 = 10
-const BLOCK_TYPES = ['cover', 'text', 'hero', 'gallery', 'contact', 'map', 'buttons', 'video', 'endcard']
+const BLOCK_TYPES = ['cover', 'text', 'hero', 'gallery', 'contact', 'map', 'buttons', 'video', 'form', 'endcard']
 // 块入场动效白名单（2026-11-27 编辑体验一流化）：'' = 未设置（渲染层按块类型智能默认），'none' = 显式关闭
 const BLOCK_ANIMS = ['none', 'up', 'fade', 'zoom', 'left', 'right']
 const str = (v, max) => String(v ?? '').slice(0, max)
@@ -52,6 +52,16 @@ function sanitizeSchema(raw, maxPages) {
       // 按钮 action 白名单 2026-11-27 加 copy（复制任意文本）
       if (type === 'buttons') Object.assign(out, { items: (Array.isArray(b.items) ? b.items : []).slice(0, 3).map(i => ({ label: str(i?.label, 12), action: ['tel', 'wechat', 'link', 'copy'].includes(i?.action) ? i.action : 'tel', value: str(i?.value, 200) })) })
       if (type === 'video') Object.assign(out, { url: str(b.url, 500), poster: str(b.poster, 500) })
+      // 表单留资块（2026-11-27）：字段开关+按钮/成功文案；提交内容落 h5_leads，schema 只存展示配置
+      if (type === 'form') Object.assign(out, {
+        heading: str(b.heading, 40),
+        desc: str(b.desc, 120),
+        showName: b.showName !== false,
+        showPhone: b.showPhone !== false,
+        showMessage: b.showMessage !== false,
+        buttonText: str(b.buttonText, 12) || '提交',
+        successText: str(b.successText, 60) || '已收到，我们会尽快联系你'
+      })
       if (type === 'endcard') Object.assign(out, {})
       return out
     })
@@ -61,7 +71,11 @@ function sanitizeSchema(raw, maxPages) {
 }
 const pageCount = s => Array.isArray(s?.pages) ? s.pages.length : 0
 
-const listView = r => ({ id: r.id, title: r.title, slug: r.slug, status: r.status, view_count: r.view_count, pages: pageCount(JSON.parse(r.schema || '{}')), updated_at: r.updated_at })
+const listView = r => ({
+  id: r.id, title: r.title, slug: r.slug, status: r.status, view_count: r.view_count,
+  pages: pageCount(JSON.parse(r.schema || '{}')), updated_at: r.updated_at,
+  leads: db.prepare('SELECT COUNT(*) n FROM h5_leads WHERE page_id = ?').get(r.id).n
+})
 
 function uniqueSlug() {
   for (let i = 0; i < 10; i++) {
@@ -170,6 +184,37 @@ router.get('/public/:slug', (req, res) => {
     } : null
   })
   db.prepare('UPDATE h5_pages SET view_count = view_count + 1 WHERE id = ?').run(row.id)
+})
+
+// ---------- 表单留资（2026-11-27）：访客匿名提交 → h5_leads；页主查看/删除 ----------
+// 公开提交：published 页才收；姓名/电话至少一项、留言可选，字段截断防脏数据；无鉴权（访客不登录）。
+router.post('/public/:slug/leads', (req, res) => {
+  const row = db.prepare("SELECT id FROM h5_pages WHERE slug = ? AND status = 'published'").get(req.params.slug)
+  if (!row) return fail(res, 404, '宣传页不存在或未发布')
+  const name = str(req.body?.name, 30)
+  const phone = str(req.body?.phone, 30)
+  const message = str(req.body?.message, 300)
+  if (!name && !phone) return fail(res, 400, '请至少填写姓名或电话')
+  db.prepare('INSERT INTO h5_leads (page_id, name, phone, message) VALUES (?,?,?,?)').run(row.id, name, phone, message)
+  ok(res, {})
+})
+
+// 页主查看线索（分页，最新在前）
+router.get('/:id/leads', authRequired, (req, res) => {
+  const row = owned(req, res); if (!row) return
+  const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50))
+  const offset = Math.max(0, Number(req.query.offset) || 0)
+  const total = db.prepare('SELECT COUNT(*) n FROM h5_leads WHERE page_id = ?').get(row.id).n
+  const list = db.prepare('SELECT id, name, phone, message, created_at FROM h5_leads WHERE page_id = ? ORDER BY id DESC LIMIT ? OFFSET ?')
+    .all(row.id, limit, offset)
+  ok(res, { list, total })
+})
+
+// 删除单条线索（误提交/骚扰信息可清）
+router.delete('/:id/leads/:leadId', authRequired, (req, res) => {
+  const row = owned(req, res); if (!row) return
+  db.prepare('DELETE FROM h5_leads WHERE id = ? AND page_id = ?').run(req.params.leadId, row.id)
+  ok(res, {})
 })
 
 module.exports = router
