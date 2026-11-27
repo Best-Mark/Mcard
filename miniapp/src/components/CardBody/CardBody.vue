@@ -95,9 +95,11 @@
         </view>
       </view>
 
-      <!-- 名片二维码弹层（2026-11-26 用户定稿：只显示二维码效果）：双码切换（联系人码=vCard 瘦身版/
-           链接码=地址短链）+ 大图，其余全免；保存/转发靠长按图片（show-menu-by-longpress 系统菜单），
-           关闭点遮罩。入口两处：身份卡右上小码 + dock「二维码」键（页面经 defineExpose 的 openQr 唤起） -->
+      <!-- 名片二维码弹层（2026-11-26 定稿：只显示二维码效果）：双码切换 + 大图，其余全免。
+           2026-11-27 修正：联系人码内容 = 名片页 URL + contact=1（微信扫码打开页面弹「存入通讯录」入口），
+           不再是微信不解析的 vCard 文本码；链接码 = 名片页 URL。服务端 vcard.png 已改内容，本页 URL 不变。
+           保存/转发靠长按图片（show-menu-by-longpress 系统菜单），关闭点遮罩。入口两处：身份卡右上小码 +
+           dock「二维码」键（页面经 defineExpose 的 openQr 唤起） -->
       <view v-if="qrOpen" class="mask" @tap="qrOpen = false">
         <view class="qr-modal" @tap.stop>
           <view class="qr-tabs">

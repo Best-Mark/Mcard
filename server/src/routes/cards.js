@@ -323,7 +323,8 @@ router.get('/public/:slug/share.png', wrap(async (req, res) => {
   res.type('png').set('Cache-Control', 'public, max-age=600').send(buf)
 }))
 
-// vCard 文本（唯一真相源仍是 services/vcard.build，前端拿它本地生成二维码，避免依赖图片接口）
+// vCard 文本（唯一真相源仍是 services/vcard.build；2026-11-27 起二维码不再用 vCard 文本，
+// 微信扫一扫不解析。此端点保留给第三方工具/系统相机本地生成 vCard 码、以及存量调用兼容）
 router.get('/public/:slug/vcard.txt', wrap((req, res) => {
   const row = db.prepare('SELECT * FROM cards WHERE slug = ?').get(req.params.slug)
   if (!row) return fail(res, 404, '名片不存在')
@@ -331,33 +332,32 @@ router.get('/public/:slug/vcard.txt', wrap((req, res) => {
   res.type('text/plain; charset=utf-8').send(vcard.build(publicView(row, origin), origin))
 }))
 
-// vCard 内容二维码：扫码得到的是完整联系人数据（BEGIN:VCARD...），
-// iOS/Android 相机扫一扫会直接弹出「添加到通讯录」——2026-11-26 用户定稿：名片码唯一职责就是存联系人
-// （打开名片靠分享链接点击即可，不需要二维码承担）。用瘦身版 vCard 保证码点不过密。
-// 【2026-11-26 口径修正】码点/码眼跟随用户 qr_style（弹层两个 tab 调完风格要立刻可见），
-// 仍走 scanOptions 硬化：高对比 + 静音区4 + 无 LOGO + 清渐变/背景图，微信扫一扫可正常识别。
-// 渲染逻辑升级会改同 URL 图案：缓存只给 60s（与 scan 模式一致），前端另带 qv 击穿缓存。
+// 联系人码（2026-11-27 微信真机实测定稿，推翻 11-26「vCard 文本码」口径）：
+// 微信扫一扫**不解析 vCard**，扫 BEGIN:VCARD 纯文本只显示「微信暂不支持展示二维码中的文本内容」
+// 黑屏（只有 iOS/系统相机能弹「添加到通讯录」）。因此联系人码改为「名片页 URL + contact=1」——
+// 微信扫一扫 100% 打开 H5 名片页，页面自动弹「存入通讯录」入口（微信内引导去浏览器，与 dock 同口径）。
+// 端点名 vcard.svg/png 保留：存量 H5/小程序弹层与保存码无需改 URL 即自动受益；
+// 完整 vCard 仍由 card.vcf 下载 / vcard.txt 文本提供（不走二维码）。
+// 码点/码眼/配色沿用 scanOptions（标准方点 + 深码浅底），plain=1 为纯黑白标准码。
+// 缓存只给 60s（渲染逻辑升级可快速全网生效），前端另带 qv 击穿缓存。
+const contactQrText = req => requestUrl(req, `/c/${req.params.slug}?contact=1`)
+
 router.get('/public/:slug/vcard.svg', wrap(async (req, res) => {
-  const row = db.prepare('SELECT * FROM cards WHERE slug = ?').get(req.params.slug)
+  const row = db.prepare('SELECT slug, qr_fg, qr_bg, qr_style FROM cards WHERE slug = ?').get(req.params.slug)
   if (!row) return fail(res, 404, '名片不存在')
-  const origin = originOf(req)
-  // 二维码用瘦身版 vCard（只放主流联系人字段，2026-11-26 用户定稿：码点不过密）
-  const text = vcard.build(publicView(row, origin), origin, { slim: true })
   const size = Math.min(2000, Math.max(256, Number(req.query.size) || 520))
   const style = normalizeStyle(parseJson(row.qr_style, {}))
   res.type('image/svg+xml').set('Cache-Control', 'public, max-age=60')
-    .send(qr.svg(text, { size, ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg, style }) }))
+    .send(qr.svg(contactQrText(req), { size, ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg, style }) }))
 }))
 
-// vCard 高清 PNG（保存用）：与 vcard.svg 同款，前端长按/保存一律用 PNG（微信「识别图中二维码」不认 SVG）
+// 联系人码高清 PNG（保存用）：与 vcard.svg 同内容；前端长按/保存一律用 PNG（微信不认 SVG）
 router.get('/public/:slug/vcard.png', wrap(async (req, res) => {
-  const row = db.prepare('SELECT * FROM cards WHERE slug = ?').get(req.params.slug)
+  const row = db.prepare('SELECT slug, qr_fg, qr_bg, qr_style FROM cards WHERE slug = ?').get(req.params.slug)
   if (!row) return fail(res, 404, '名片不存在')
-  const origin = originOf(req)
-  // 二维码用瘦身版 vCard（只放主流联系人字段，2026-11-26 用户定稿：保证可扫性）
-  const text = vcard.build(publicView(row, origin), origin, { slim: true })
   const size = Math.min(1600, Math.max(256, Number(req.query.size) || 720))
-  // plain=1：vCard 也走纯黑白标准码（弹层两个 tab 都用它，保证长按识别）
+  const text = contactQrText(req)
+  // plain=1：纯黑白标准码（弹层两个 tab 都用它，保证长按识别）
   if (String(req.query.plain || '') === '1') {
     const buf = await qr.plainPng(text, { size })
     return res.type('png').set('Cache-Control', 'public, max-age=60').send(buf)

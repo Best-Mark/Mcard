@@ -236,7 +236,8 @@ export function scanQrUrl(slug, ext, size) {
 }
 
 export function saveQrImage(slug, ext = 'vcard.png') {
-  // 默认保存联系人码（vCard 瘦身版，扫=直接存通讯录）；链接码由调用方传 'qr.png'，与弹层当前切换一致
+  // 默认保存联系人码（2026-11-27 修正：内容是名片页 URL + contact=1，微信扫码打开页面弹「存入通讯录」入口，
+  // 不再是微信不解析的 vCard 文本码）；链接码由调用方传 'qr.png'，与弹层当前切换一致
   const url = scanQrUrl(slug, ext, 720)
   uni.downloadFile({
     url,

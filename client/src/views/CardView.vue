@@ -199,8 +199,10 @@
       />
     </BottomSheet>
 
-    <!-- 名片二维码双码弹层（2026-11-26 用户定稿：两个都要）：联系人码=vCard 瘦身版（只放主流字段，
-         扫一扫直接弹「添加到通讯录」）；名片链接码=地址短链（扫了打开名片页）。默认联系人码。
+    <!-- 名片二维码双码弹层（2026-11-26 定稿「两个都要」；2026-11-27 微信真机实测修正）：
+         联系人码 = 名片页 URL + contact=1（微信扫一扫打开页面后自动弹「存入通讯录」入口）；
+         名片链接码 = 名片页 URL（扫了看名片）。默认联系人码。
+         ⚠️ 不再是 vCard 文本码：微信不解析 BEGIN:VCARD，扫了只显示「暂不支持展示二维码中的文本内容」黑屏。
          一律 PNG（微信「识别图中二维码」不认 SVG），链接仅作文案可复制 -->
     <div v-if="qrModal" class="modal-mask" @click.self="qrModal = false">
       <div class="modal center">
@@ -212,12 +214,27 @@
         <img :src="qrModalSrc" style="width:264px;height:264px;margin:4px auto 10px;display:block" :alt="qrMode === 'vcard' ? '名片联系人二维码' : '名片地址二维码'" />
         <!-- 2026-11-27 识别率定稿：弹层大码/保存一律用纯黑白标准识别码（plain=1），微信长按 100% 出
              「识别图中二维码」；名片本体码为标准方点 + 用户自选配色，不受影响 -->
-        <p class="small muted center">{{ qrMode === 'vcard' ? '标准识别码 · 长按图片「识别图中二维码」直接存入通讯录' : '标准识别码 · 长按图片即可「识别图中二维码」打开名片；名片上的码可自选配色' }}</p>
+        <p class="small muted center">{{ qrMode === 'vcard' ? '标准识别码 · 微信扫一扫打开名片页，点「存入通讯录」即可保存' : '标准识别码 · 扫一扫打开名片页，资料随时更新、链接永久不变' }}</p>
         <!-- 一个入口承载三件事：存联系人的码/打开名片的码、复制链接、公开页（关闭弹层即当前公开页） -->
         <div class="btn-row" style="justify-content:center;margin-top:14px;flex-wrap:wrap">
           <button class="btn btn-primary" @click="copy(publicLink, '名片链接')">复制名片链接</button>
           <button class="btn btn-ghost" @click="saveQr">保存二维码</button>
           <button class="btn btn-ghost" @click="qrModal = false">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 联系人码落地页（?contact=1，2026-11-27）：微信扫一扫打开名片页后自动弹「存入通讯录」入口。
+         引导与操作按钮只在弹层（不铺在信息区），与底部 dock「存入通讯录」同一入口/同一口径。 -->
+    <div v-if="contactAutoOpen" class="modal-mask" @click.self="contactAutoOpen = false">
+      <div class="modal center">
+        <h3>存入通讯录</h3>
+        <p class="small muted center">已扫「联系人码」{{ card && card.name ? ' · ' + card.name : '' }}{{ contactPhone ? ' · ' + contactPhone : '' }}</p>
+        <p class="small muted center">微信内无法直接写入通讯录，点按钮按提示在浏览器中打开即可一步添加。</p>
+        <div class="btn-row" style="justify-content:center;margin-top:14px;flex-wrap:wrap">
+          <a v-if="contactNative" class="btn btn-primary" :href="contactHref" @click="contactAutoOpen = false">存入通讯录</a>
+          <button v-else class="btn btn-primary" :disabled="contactAutoBusy" @click="onContactAutoSave">存入通讯录</button>
+          <button class="btn btn-ghost" @click="contactAutoOpen = false">稍后再说</button>
         </div>
       </div>
     </div>
@@ -346,11 +363,11 @@ const full = !embed
 const slug = computed(() => props.embedSlug || route.params.slug)
 const qrApi = computed(() => `/api/cards/public/${slug.value}`)
 const vcfApi = computed(() => `${qrApi.value}/card.vcf`)
-// 二维码分工（2026-11-26 用户定稿）：弹层大码/保存码 = vCard 联系人码（扫一扫直接存通讯录，
-// 服务端 scanOptions 硬化保证可扫）；身份卡右上角小装饰码仍用地址短链（尺寸小，vCard 太密难扫），
-// 打开名片由分享链接点击承担，不需要二维码。此前的「vCard 太密不用」结论仅针对小尺寸场景。
-// 小装饰码带用户美化码型（不带 scan=1，与服务端「装饰性小码保留美化样式」口径一致）：
-// 调码型时上面实时可见；要绝对稳妥的扫码用弹层大码（点小码即开，scanOptions 硬化）。
+// 二维码分工（2026-11-26 定稿双 tab；2026-11-27 微信真机实测修正内容口径）：
+// 弹层大码/保存码两 tab 的内容都是「名片页 URL」——联系人码多带 contact=1（落地自动弹存入通讯录入口），
+// 链接码直接看名片。微信不解析 vCard 文本码（扫了黑屏「暂不支持展示二维码中的文本内容」），故已下线。
+// 身份卡右上角小装饰码仍是 qr.png 链接码（尺寸小、信息量小），小码带用户美化码型；
+// 弹层大码/保存一律 plain=1 纯黑白标准码，保证长按识别。
 const card = ref(null); const loading = ref(true); const error = ref('')
 
 // dock 四态翻转（owner「配色」/「二维码」/「上架」键，2026-11-27 用户定稿）：
@@ -593,6 +610,14 @@ const template = ref('contact')
 // 配色在样式表末尾「全模板统一层」里给出；原模板专属结构规则被该统一层按特异性覆盖，不逐条删除以便回滚。
 const isCleanTpl = computed(() => true)
 const qrModal = ref(false); const qrMode = ref('vcard'); const guide = ref(''); const guideImage = ref(''); const exchangeOpen = ref(false)
+// 联系人码落地弹层（?contact=1）：微信扫一扫打开名片页自动弹；成对防重入（disabled + busy 守卫）
+const contactAutoOpen = ref(false); const contactAutoBusy = ref(false)
+async function onContactAutoSave() {
+  if (contactAutoBusy.value) return
+  contactAutoBusy.value = true
+  contactAutoOpen.value = false
+  try { await saveContact() } finally { contactAutoBusy.value = false }
+}
 const contactFallbackOpen = ref(false) // 安卓 intent 拉不起通讯录时的兜底：复制基本信息卡片（全程不下载）
 const mapOpen = ref(false); const moreOpen = ref(false)
 const mySlug = ref(''); const exchanging = ref(false)
@@ -867,6 +892,17 @@ async function load() {
       for (const k of ['save', 'wx_ticket']) if (u.searchParams.has(k)) { u.searchParams.delete(k); changed = true }
       if (changed) windowRef.history.replaceState(null, '', u.toString())
     }
+    // 联系人码落地（2026-11-27）：扫码 URL 带 contact=1 → 名片页加载完自动弹「存入通讯录」入口。
+    // 读真实 URL 而非 route.query：replaceState 后 vue-router 的 query 不会更新，切名片重跑 load 会重复弹。
+    // 只删 contact，不碰 wx_ticket（微信内「去浏览器打开」的一次性凭证由 closeGuide 负责清）。
+    {
+      const u = new URL(windowRef.location.href)
+      if (u.searchParams.get('contact') === '1') {
+        contactAutoOpen.value = true
+        u.searchParams.delete('contact')
+        windowRef.history.replaceState(null, '', u.toString())
+      }
+    }
   } catch (e) { error.value = e.message } finally { loading.value = false }
   // 资料夹是名片正文的一部分：owner 预览也要拉，否则「公司相册」在 /me 永远空白。
   // 嵌入预览（只裁头部的旧用法）才整段跳过。失败静默不阻塞主流程。
@@ -934,7 +970,7 @@ async function copy(v, label) {
 }
 async function saveQr() {
   guideImage.value = ''
-  // 保存当前 tab 的码：联系人码（vCard 瘦身版，扫=直接存通讯录）或名片链接码；一律纯黑白标准码
+  // 保存当前 tab 的码：联系人码（名片页 URL + contact=1，扫=打开页面弹存通讯录入口）或链接码；一律纯黑白标准码
   const isVcard = qrMode.value === 'vcard'
   const r = await saveImageUrl(
     scanQrUrl(slug.value, isVcard ? 'vcard.png' : 'qr.png', 900) + '&plain=1',

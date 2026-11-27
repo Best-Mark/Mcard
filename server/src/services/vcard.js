@@ -19,9 +19,11 @@ function splitName(name) {
   return ['', n, n]
 }
 
-// opts.slim = true：二维码专用瘦身版——只保留主流联系人字段（姓名/公司/部门/职位/手机/座机/邮箱），
-// 砍掉简介/地址/微信支付宝/标签/URL/NOTE 等拉长内容（2026-11-26 用户定稿：vCard 码只放主流字段保证可扫性）。
-// 完整版仍用于 card.vcf 下载与 vcard.txt（这两个不走二维码，信息越全越好）。
+// opts.slim = true：瘦身版——只保留主流联系人字段（姓名/公司/部门/职位/手机/座机/邮箱），
+// 砍掉简介/地址/微信支付宝/标签/URL/NOTE 等拉长内容。
+// 【2026-11-27】vCard 文本码已下线（微信扫一扫不解析 BEGIN:VCARD，只显示「暂不支持展示文本内容」黑屏），
+// 本分支保留供第三方工具/系统相机本地生成 vCard 码使用；二维码端点一律改用名片页 URL。
+// 完整版仍用于 card.vcf 下载与 vcard.txt（信息越全越好）。
 function build(card, baseUrl, opts = {}) {
   const [family, given, formatted] = splitName(card.name || card.name_en)
   const url = `${baseUrl}/c/${card.slug}`
