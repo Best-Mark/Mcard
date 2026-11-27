@@ -13,9 +13,11 @@ const router = express.Router()
 // 套餐权益分层（唯一真相源）：与 cardPlanActive 同口径（cards.status=active 且未过期或终身）
 const FREE_MAX_PAGES = 3, PAID_MAX_PAGES = 12
 const FREE_MAX_H5 = 1, PAID_MAX_H5 = 10
-const BLOCK_TYPES = ['cover', 'text', 'hero', 'gallery', 'contact', 'map', 'buttons', 'video', 'form', 'endcard']
+const BLOCK_TYPES = ['cover', 'text', 'hero', 'gallery', 'contact', 'map', 'buttons', 'video', 'music', 'form', 'endcard']
 // 块入场动效白名单（2026-11-27 编辑体验一流化）：'' = 未设置（渲染层按块类型智能默认），'none' = 显式关闭
 const BLOCK_ANIMS = ['none', 'up', 'fade', 'zoom', 'left', 'right']
+// 页面切换过渡（2026-11-27 路线③）：scroll=跟随滚动（默认/兼容）/ slide=滑动推入 / fade=淡入淡出 / flip=3D 翻页
+const TRANSITIONS = ['scroll', 'slide', 'fade', 'flip']
 const str = (v, max) => String(v ?? '').slice(0, max)
 
 function planActiveOf(userId) {
@@ -32,8 +34,10 @@ function limitsOf(userId) {
 // schema 校验与瘦身：块类型白名单、字符串截断、数量上限——脏数据在门口拦住，渲染层永远拿到干净结构
 function sanitizeSchema(raw, maxPages) {
   const accent = /^#[0-9a-fA-F]{6}$/.test(String(raw?.accent || '')) ? String(raw.accent) : ''
+  // 页面切换过渡动效（2026-11-27 路线③）：scroll=原生滚动（默认兼容）/ slide / fade / flip
+  const transition = TRANSITIONS.includes(raw?.transition) ? raw.transition : 'scroll'
   const pagesIn = Array.isArray(raw?.pages) ? raw.pages.slice(0, maxPages) : []
-  if (!pagesIn.length) return { pages: [{ blocks: [{ type: 'cover', title: '', subtitle: '', cover: '' }] }] }
+  if (!pagesIn.length) return { transition: 'scroll', pages: [{ blocks: [{ type: 'cover', title: '', subtitle: '', cover: '' }] }] }
   const pages = pagesIn.map(p => {
     const blocks = (Array.isArray(p?.blocks) ? p.blocks : []).slice(0, 8).map(b => {
       const type = BLOCK_TYPES.includes(b?.type) ? b.type : 'text'
@@ -62,12 +66,14 @@ function sanitizeSchema(raw, maxPages) {
         buttonText: str(b.buttonText, 12) || '提交',
         successText: str(b.successText, 60) || '已收到，我们会尽快联系你'
       })
+      // 背景音乐块（2026-11-27 路线③）：仅存音频地址与自动播放意愿，公开页浮动 ♪ 开关承载播放控制
+      if (type === 'music') Object.assign(out, { url: str(b.url, 500), autoplay: b.autoplay !== false })
       if (type === 'endcard') Object.assign(out, {})
       return out
     })
     return { blocks: blocks.length ? blocks : [{ type: 'text', heading: '', body: '' }] }
   })
-  return { accent, pages }
+  return { accent, transition, pages }
 }
 const pageCount = s => Array.isArray(s?.pages) ? s.pages.length : 0
 

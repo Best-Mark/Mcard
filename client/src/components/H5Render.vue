@@ -6,10 +6,16 @@
        ① editable 模式长按块 350ms 进入拖动（震动反馈），跟手位移 + 命中即实时重排（emit reorder），
           短手势不拦截滚动；② 块入场动效（IntersectionObserver 进入视口播放，无 IO 老 WebView 降级直接显示），
           anim 字段白名单 none/up/fade/zoom/left/right，未设置按块类型智能默认（cover=zoom、endcard=fade、
-          其余 up），显式 none 才关闭；③ 按钮组新增 copy 动作。公开页不传 editable/pageOffset，行为同前。 -->
+          其余 up），显式 none 才关闭；③ 按钮组新增 copy 动作。公开页不传 editable/pageOffset，行为同前。
+       2026-11-27 路线③（页面切换过渡动效 + 背景音乐）：
+       ④ schema.transition：scroll=原生滚动（默认，存量页零变化）/ slide / fade / flip 控制式翻页
+          （触摸/滚轮/圆点驱动 + CSS 过渡，页内超高先内滚、到边才翻；入场动效改按页显隐，回翻重播）；
+       ⑤ music 块（url+autoplay）：编辑画布静态卡，公开页块本身不占位、控制统一在右下浮动 ♪
+          （操作层），浏览器禁带声自动播 → 首触解锁起播，循环播放。 -->
   <div class="hp" :class="{ 'hp-editable': editable }" :style="{ '--hp-accent': accent }">
-    <div class="hp-pages" ref="pagesEl" @scroll.passive="onScroll">
-      <section v-for="(p, pi) in pages" :key="pi" class="hp-page"
+    <div class="hp-pages" ref="pagesEl" :class="pagesCls" @scroll.passive="onScroll"
+      @touchstart="onPgTouchStart" @touchmove="onPgTouchMove" @touchend="onPgTouchEnd" @touchcancel="onPgTouchEnd" @wheel="onWheel">
+      <section v-for="(p, pi) in pages" :key="pi" class="hp-page" :class="{ on: pi === cur }" :style="pageStyle(pi)"
         @touchstart="onDragStart" @touchmove="onDragMove" @touchend="onDragEnd" @touchcancel="onDragEnd">
         <template v-for="(b, bi) in p.blocks" :key="bi">
           <!-- editable（编辑器画布）模式：点任意块选中（emit pick），长按拖动重排（emit reorder），块内动作全部短路；
@@ -85,6 +91,17 @@
               <button class="hp-btn" :disabled="formBusy(kOf(pi, bi))" @click="submitForm(pi, bi, b)">{{ formBusy(kOf(pi, bi)) ? '提交中…' : (b.buttonText || '提交') }}</button>
             </template>
           </div>
+          <!-- 背景音乐（2026-11-27 路线③）：配置载体块。编辑画布显示静态卡；公开页块本身不占内容位
+               （display:none，DOM 保留保证块索引一致），播放控制统一在右下浮动 ♪（操作层） -->
+          <div v-else-if="b.type === 'music'" :class="blkCls(pi, bi, b)" :style="dragStyle(bi)" @click="pick(pi, bi)">
+            <div class="hp-music-card">
+              <span class="hp-music-ico">♪</span>
+              <div class="hp-music-info">
+                <b>背景音乐</b>
+                <span class="small">{{ b.url ? (b.autoplay !== false ? '已设置 · 访客打开页面自动播放' : '已设置 · 访客点右下 ♪ 播放') : '未设置音频地址' }}</span>
+              </div>
+            </div>
+          </div>
           <!-- 尾页名片卡：转化关键——访客看完直接进名片/拨号；watermark 为免费版品牌尾注 -->
           <div v-else-if="b.type === 'endcard'" :class="blkCls(pi, bi, b)" :style="dragStyle(bi)" @click="pick(pi, bi)">
             <div class="hp-end-card">
@@ -102,9 +119,14 @@
         </template>
       </section>
     </div>
-    <!-- 页码指示 + 下滑提示 -->
-    <div v-if="pages.length > 1" class="hp-dots"><i v-for="(p, i) in pages" :key="i" :class="{ on: i === cur }"></i></div>
+    <!-- 页码指示 + 下滑提示（圆点可点直达） -->
+    <div v-if="pages.length > 1" class="hp-dots"><i v-for="(p, i) in pages" :key="i" :class="{ on: i === cur }" @click="goPage(i)"></i></div>
     <div v-if="cur === 0 && pages.length > 1" class="hp-more">︾</div>
+    <!-- 背景音乐（路线③）：音频本体隐藏；公开页右下浮动 ♪ 承载播放/暂停（操作层，不占内容区）。
+         autoplay 时挂一次首触解锁（浏览器禁带声自动播），循环播放 -->
+    <audio v-if="musicUrl && !editable" ref="audioEl" class="hp-audio" :src="musicUrl" loop preload="auto"
+      @play="musicPlaying = true" @pause="musicPlaying = false"></audio>
+    <button v-if="musicUrl && !editable" class="hp-music-btn" :class="{ on: musicPlaying }" @click="toggleMusic" aria-label="背景音乐开关">♪</button>
   </div>
 </template>
 
@@ -138,6 +160,7 @@ function pick(pi, bi) {
 const ANIMS = ['none', 'up', 'fade', 'zoom', 'left', 'right']
 const shown = ref({})
 const animOf = b => {
+  if (b?.type === 'music') return 'none' // 背景音乐块公开页不占位，不播入场
   const a = String(b?.anim || '')
   if (ANIMS.includes(a)) return a // 显式设置（含 none=关闭）
   return b?.type === 'cover' ? 'zoom' : b?.type === 'endcard' ? 'fade' : 'up' // 未设置按类型智能默认
@@ -163,6 +186,7 @@ function keyOfEl(el) {
 }
 function scanAnims() {
   if (!pagesEl.value) return
+  if (isPaged.value) { markPageShown(cur.value); return } // 控制式翻页：按页显隐，不走 IO
   const els = pagesEl.value.querySelectorAll('.hp-anim:not(.in)')
   if (!io) { // 降级：直接全部显示，不做动画
     const patch = {}
@@ -182,10 +206,18 @@ function mountIo() {
 }
 watch(() => props.data, () => nextTick(scanAnims), { deep: true })
 onMounted(() => {
-  mountIo(); nextTick(scanAnims)
+  if (!isPaged.value) mountIo()
+  nextTick(scanAnims)
   if (!props.editable) scTimer = setInterval(scAdvance, 3800) // 展播自动轮播（编辑画布不播）
+  armMusic()
 })
-onBeforeUnmount(() => { if (io) io.disconnect(); clearInterval(scTimer) })
+onBeforeUnmount(() => {
+  if (io) io.disconnect()
+  clearInterval(scTimer)
+  clearTimeout(pgReplayTimer)
+  disarmUnlock()
+  if (audioEl.value) { try { audioEl.value.pause() } catch {} }
+})
 
 // ---- 编辑器长按拖动排序（editable only）：短手势不拦截滚动，长按 350ms 进入拖动态 ----
 const drag = reactive({ on: false, cur: -1, dy: 0, startY: 0 })
@@ -263,6 +295,111 @@ const cur = ref(0)
 function onScroll(e) {
   const el = e.target
   cur.value = Math.round(el.scrollTop / Math.max(1, el.clientHeight))
+}
+
+// ---- 页面切换过渡动效（2026-11-27 路线③）：scroll=原生滚动（默认，存量页零变化），
+//      slide/fade/flip = 控制式翻页（触摸/滚轮/圆点驱动 + CSS 过渡；编辑画布单页渲染不参与） ----
+const TRANSITIONS = ['scroll', 'slide', 'fade', 'flip']
+const transition = computed(() => TRANSITIONS.includes(schema.value.transition) ? schema.value.transition : 'scroll')
+const isPaged = computed(() => !props.editable && transition.value !== 'scroll')
+const pagesCls = computed(() => (isPaged.value ? 'hp-paged hp-' + transition.value : ''))
+// slide：每页按 (页号-当前) 百分比位移，方向天然感知（上一页向上让位、下一页从下补位）；
+// 拖动跟手时叠加 dragDy 且停过渡，松手过阈值才真正翻页
+const pageStyle = pi => {
+  if (!isPaged.value || transition.value !== 'slide') return null
+  const off = dragging.value ? ` + ${dragDy.value}px` : ''
+  return { transform: `translateY(calc(${(pi - cur.value) * 100}%${off}))`, transition: dragging.value ? 'none' : '' }
+}
+const dragging = ref(false)
+const dragDy = ref(0)
+const pg = { active: false, axis: '', startY: 0, startX: 0, dy: 0, hold: false }
+let pgReplayTimer = 0, wheelLock = 0
+function pageEl(pi) { return pagesEl.value ? pagesEl.value.querySelectorAll('.hp-page')[pi] : null }
+function pageScrollable(pi) { const el = pageEl(pi); return !!(el && el.scrollHeight > el.clientHeight + 2) }
+function pageAtEdge(pi, dir) {
+  const el = pageEl(pi)
+  if (!el) return true
+  return dir > 0 ? el.scrollTop + el.clientHeight >= el.scrollHeight - 2 : el.scrollTop <= 2
+}
+// 入场动效按页显隐：进页播一次，离场页复位、回翻再播（H5 通行手感）
+function markPageShown(pi) {
+  const p = pages.value[pi]
+  if (!p) return
+  const patch = {}
+  ;(p.blocks || []).forEach((b, bi) => { patch[kOf(pi, bi)] = true })
+  if (Object.keys(patch).length) shown.value = { ...shown.value, ...patch }
+}
+function resetOtherPages(pi) {
+  const patch = {}
+  pages.value.forEach((p, idx) => {
+    if (idx === pi) return
+    ;(p.blocks || []).forEach((b, bi) => { patch[kOf(idx, bi)] = false })
+  })
+  if (Object.keys(patch).length) shown.value = { ...shown.value, ...patch }
+}
+function goPage(i) {
+  const t = Math.max(0, Math.min(pages.value.length - 1, i))
+  if (isPaged.value) {
+    if (t === cur.value) return
+    cur.value = t
+    markPageShown(t)
+    clearTimeout(pgReplayTimer)
+    pgReplayTimer = setTimeout(() => resetOtherPages(t), 700)
+    return
+  }
+  if (!pagesEl.value) return
+  cur.value = t
+  const top = t * pagesEl.value.clientHeight
+  try { pagesEl.value.scrollTo({ top, behavior: 'smooth' }) } catch { pagesEl.value.scrollTop = top }
+}
+function onPgTouchStart(e) {
+  if (!isPaged.value) return
+  const t = e.touches && e.touches[0]
+  if (!t) return
+  pg.active = true; pg.axis = ''; pg.hold = false; pg.dy = 0
+  pg.startY = t.clientY; pg.startX = t.clientX
+}
+function onPgTouchMove(e) {
+  if (!isPaged.value || !pg.active) return
+  const t = e.touches && e.touches[0]
+  if (!t) return
+  const dy = t.clientY - pg.startY, dx = t.clientX - pg.startX
+  if (!pg.axis) {
+    if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy)) { pg.axis = 'x'; return } // 横滑（图集横滑条）放行
+    if (Math.abs(dy) > 12) pg.axis = 'y'
+    else return
+  }
+  if (pg.axis !== 'y') return
+  pg.dy = dy
+  // 页内内容还能滚就交给内滚，滚到边才翻页
+  if (pageScrollable(cur.value) && !pageAtEdge(cur.value, dy < 0 ? 1 : -1)) { pg.active = false; return }
+  if (!pg.hold && ((dy > 0 && cur.value === 0) || (dy < 0 && cur.value >= pages.value.length - 1))) pg.hold = true
+  if (pg.hold) return
+  e.preventDefault()
+  dragging.value = true
+  dragDy.value = dy
+}
+function onPgTouchEnd() {
+  if (!isPaged.value) return
+  const dy = pg.dy
+  const moved = dragging.value
+  dragging.value = false
+  dragDy.value = 0
+  pg.active = false; pg.hold = false; pg.axis = ''; pg.dy = 0
+  const need = transition.value === 'slide' ? 60 : 36 // slide 有跟手反馈阈值可大些；fade/flip 无跟手，小些
+  if (!moved || Math.abs(dy) < need) return
+  goPage(cur.value + (dy < 0 ? 1 : -1))
+}
+function onWheel(e) {
+  if (!isPaged.value) return
+  if (Math.abs(e.deltaY) < 8) return
+  const dir = e.deltaY > 0 ? 1 : -1
+  if (pageScrollable(cur.value) && !pageAtEdge(cur.value, dir)) return
+  e.preventDefault()
+  const now = Date.now()
+  if (now < wheelLock) return
+  wheelLock = now + 650
+  goPage(cur.value + dir)
 }
 
 const copied = ref(false)
@@ -343,6 +480,44 @@ async function submitForm(pi, bi, b) {
     formBusyMap.value = { ...formBusyMap.value, [k]: false }
   }
 }
+
+// ---- 背景音乐（2026-11-27 路线③）：music 块存 url+autoplay，公开页右下浮动 ♪ 承载播放控制 ----
+const musicBlock = computed(() => {
+  for (const p of pages.value) for (const b of (p.blocks || [])) if (b.type === 'music' && b.url) return b
+  return null
+})
+const musicUrl = computed(() => musicBlock.value?.url || '')
+const musicPlaying = ref(false)
+const audioEl = ref(null)
+let unlockHandler = null
+function startMusic() {
+  const a = audioEl.value
+  if (!a || !musicUrl.value || musicPlaying.value) return
+  try {
+    const pr = a.play()
+    if (pr && pr.catch) pr.catch(() => {}) // 被浏览器拦截时保持暂停态，等首触解锁再试
+  } catch {}
+}
+function disarmUnlock() {
+  if (!unlockHandler) return
+  document.removeEventListener('touchend', unlockHandler)
+  document.removeEventListener('click', unlockHandler)
+  unlockHandler = null
+}
+function toggleMusic() {
+  const a = audioEl.value
+  if (!a) return
+  disarmUnlock() // 手动接管后不再自动起播（避免点暂停又被解锁钩子拉回播放）
+  if (musicPlaying.value) { try { a.pause() } catch {} }
+  else startMusic()
+}
+function armMusic() {
+  if (props.editable || !musicUrl.value || musicBlock.value?.autoplay === false) return
+  startMusic() // 桌面端可能直接成功
+  unlockHandler = () => { disarmUnlock(); startMusic() } // 移动端首触解锁自动播放
+  document.addEventListener('touchend', unlockHandler)
+  document.addEventListener('click', unlockHandler)
+}
 </script>
 
 <style scoped>
@@ -352,10 +527,24 @@ async function submitForm(pi, bi, b) {
 .hp-page { min-height: 100svh; scroll-snap-align: start; scroll-snap-stop: always; display: flex; flex-direction: column; justify-content: center; gap: 22px; padding: 64px 22px 56px; box-sizing: border-box; color: #f3f4f6; }
 .hp-block { width: 100%; max-width: 560px; margin: 0 auto; position: relative; }
 /* 编辑器画布选中态：琥珀虚线描边（深浅底都可见），不参与公开页 */
-.hp-sel:after { content: ''; position: absolute; inset: -6px; border: 2px dashed #fbbf24; border-radius: 14px; pointer-events: none; z-index: 5; }
+.hp-sel:after { content: ''; position: absolute; top: -6px; right: -6px; bottom: -6px; left: -6px; border: 2px dashed #fbbf24; border-radius: 14px; pointer-events: none; z-index: 5; }
 /* 编辑器画布：禁止长按呼出系统菜单/选中文字，保证长按=拖动手势干净 */
 .hp-editable { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .hp-img { width: 100%; aspect-ratio: 4 / 3; border-radius: 14px; background-size: cover; background-position: center; background-color: #1c2029; }
+
+/* 控制式翻页（transition=slide/fade/flip，2026-11-27 路线③）：
+   页绝对定位满屏叠放；slide 按页内联 transform 位移（方向天然感知），fade/flip 按 .on 显隐/翻转过渡；
+   无 3D 的老 WebView 上 flip 退化为淡入淡出（rotateX 不生效只剩 opacity），无害；
+   页内内容超高可内滚（到边才触发翻页手势）。prefers-reduced-motion 关闭过渡 */
+.hp-paged { overflow: hidden; }
+.hp-paged .hp-page { position: absolute; top: 0; left: 0; right: 0; height: 100%; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; justify-content: center; justify-content: safe center; }
+.hp-slide .hp-page { transition: transform .52s cubic-bezier(.22, .8, .3, 1); }
+.hp-fade .hp-page, .hp-flip .hp-page { opacity: 0; pointer-events: none; transition: opacity .5s ease; }
+.hp-fade .hp-page.on, .hp-flip .hp-page.on { opacity: 1; pointer-events: auto; }
+.hp-flip { perspective: 1100px; -webkit-perspective: 1100px; }
+.hp-flip .hp-page { transform: rotateX(72deg); transition: opacity .45s ease, transform .55s ease; }
+.hp-flip .hp-page.on { transform: rotateX(0deg); }
+@media (prefers-reduced-motion: reduce) { .hp-paged .hp-page { transition: none !important; } }
 
 /* 入场动效：进入视口加 .in 播放一次；prefers-reduced-motion 用户直接显示 */
 .hp-anim { opacity: 0; }
@@ -437,6 +626,21 @@ async function submitForm(pi, bi, b) {
 .hp-more { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); color: rgba(255,255,255,.55); font-size: 18px; animation: hp-bob 1.4s ease-in-out infinite; pointer-events: none; }
 @keyframes hp-bob { 50% { transform: translate(-50%, 6px); } }
 @media (prefers-reduced-motion: reduce) { .hp-more { animation: none; } }
+
+/* 背景音乐块（路线③）：编辑画布静态卡；公开页块本身隐藏（DOM 保留保证块索引一致），控制在浮动 ♪。
+   浮动钮挂 .hp 内绝对定位（.hp 高度=整视口），限宽 560px 手机列内；env 两级兜底 */
+.hp-music { display: none; }
+.hp-editable .hp-music { display: block; }
+.hp-music-card { display: flex; align-items: center; gap: 12px; padding: 16px; border-radius: 14px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); }
+.hp-music-ico { width: 42px; height: 42px; flex: 0 0 42px; border-radius: 50%; background: var(--hp-accent); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+.hp-music-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.hp-music-info b { font-size: 15px; }
+.hp-music-info .small { font-size: 12px; color: #9ca3af; }
+.hp-audio { display: none; }
+.hp-music-btn { position: absolute; right: 16px; bottom: 20px; bottom: calc(20px + env(safe-area-inset-bottom)); width: 46px; height: 46px; padding: 0; border-radius: 50%; border: 1px solid rgba(255,255,255,.22); background: rgba(15,23,42,.72); color: #fff; font-size: 20px; line-height: 1; cursor: pointer; z-index: 40; }
+.hp-music-btn.on { color: var(--hp-accent); border-color: var(--hp-accent); animation: hp-music-pulse 2.6s ease-in-out infinite; }
+@keyframes hp-music-pulse { 50% { transform: scale(1.08); } }
+@media (prefers-reduced-motion: reduce) { .hp-music-btn.on { animation: none; } }
 
 /* PC 桌面浏览：内容居中成手机宽度卡片，不铺满全屏 */
 @media (min-width: 720px) {

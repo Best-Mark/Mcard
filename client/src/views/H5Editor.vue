@@ -59,11 +59,13 @@
               <button v-else class="he-chip" @click="showToast(paid ? `最多 ${maxPages} 页` : `免费版最多 ${maxPages} 页，开通套餐解锁`, 'error')">已达上限</button>
               <button v-if="pagesCount > 1" class="he-chip warn" @click="removePage">✕ 删本页</button>
             </template>
-            <!-- 配色行：主题色点中即改 + 套用官方模板 -->
+            <!-- 配色行：主题色点中即改 + 套用官方模板 + 页面切换过渡动效 -->
             <template v-else-if="dockMode === 'theme'">
               <button v-for="c in COLORS" :key="c" :class="['he-dot', { on: (schema.accent || '') === c }]" :style="{ background: c }" @click="setAccent(c)"></button>
               <span class="he-grp">模板</span>
               <button class="he-chip" @click="openTpls">套用官方模板…</button>
+              <span class="he-grp">切换动效</span>
+              <BottomSelect :model-value="schema.transition || 'scroll'" :options="TRANSITION_OPTS" title="页面切换动效" @update:modelValue="schema.transition = $event; markDirty()" />
             </template>
             <!-- 发布行：状态 + 发布/更新 + 复制链接 + 下架 -->
             <template v-else>
@@ -152,6 +154,12 @@
           <label>提交成功提示<input v-model="block.successText" maxlength="60" @input="markDirty" placeholder="已收到，我们会尽快联系你" /></label>
           <p class="small muted" style="margin:0">访客提交后自动存入线索，可在宣传页列表「线索」里查看、复制电话回访。</p>
         </template>
+        <template v-else-if="block.type === 'music'">
+          <label>音频地址<input v-model="block.url" @input="markDirty" placeholder="mp3 链接（需可公开访问）" /></label>
+          <label class="he-switch"><input type="checkbox" v-model="block.autoplay" @change="markDirty" />访客打开页面自动播放</label>
+          <p class="small muted" style="margin:0 0 8px">音乐在公开页以右下角 ♪ 按钮承载播放/暂停。手机浏览器禁止带声自动播放时，访客首次触摸页面后自动起播、循环播放。</p>
+          <audio v-if="block.url" :src="block.url" controls class="he-audio"></audio>
+        </template>
         <template v-else-if="block.type === 'endcard'">
           <p class="small muted" style="margin:0">尾页自动展示你的名片卡与二维码，访客看完直接跳名片。{{ watermark ? '免费版尾页带品牌水印，开通套餐后自动去除。' : '当前套餐：无水印。' }}</p>
         </template>
@@ -195,8 +203,12 @@ import BottomSelect from '../components/BottomSelect.vue'
 const route = useRoute()
 const router = useRouter()
 
-const TYPE_LABEL = { cover: '封面', text: '文本', hero: '图文', gallery: '图集', contact: '联系方式', map: '位置', buttons: '按钮组', video: '视频', form: '表单留资', endcard: '名片尾页' }
-const ADDABLE = ['cover', 'text', 'hero', 'gallery', 'contact', 'map', 'buttons', 'video', 'form', 'endcard']
+const TYPE_LABEL = { cover: '封面', text: '文本', hero: '图文', gallery: '图集', contact: '联系方式', map: '位置', buttons: '按钮组', video: '视频', form: '表单留资', music: '背景音乐', endcard: '名片尾页' }
+const ADDABLE = ['cover', 'text', 'hero', 'gallery', 'contact', 'map', 'buttons', 'video', 'form', 'music', 'endcard']
+// 页面切换过渡动效（2026-11-27 路线③）：scroll=原生滚动（默认兼容存量页）/ slide / fade / flip
+const TRANSITION_OPTS = [
+  { value: 'scroll', label: '上下滚动（默认）' }, { value: 'slide', label: '滑动翻页' }, { value: 'fade', label: '淡入淡出' }, { value: 'flip', label: '翻页动效' }
+]
 // 入场动效选项（'' = 智能默认，与渲染层 animOf 的类型默认一致；none = 关闭）
 const ANIM_OPTS = [
   { value: '', label: '默认（智能）' }, { value: 'none', label: '无动效' }, { value: 'up', label: '向上浮入' },
@@ -298,6 +310,7 @@ function blank(type) {
   if (type === 'buttons') return { type, items: [{ label: '', action: 'tel', value: '' }] }
   if (type === 'video') return { type, url: '', poster: '' }
   if (type === 'form') return { type, heading: '', desc: '', showName: true, showPhone: true, showMessage: true, buttonText: '提交', successText: '' }
+  if (type === 'music') return { type, url: '', autoplay: true }
   return { type: 'endcard' }
 }
 // 插入位置：有选中块（非尾页卡）→ 插到其后，跟着当前编辑焦点走；否则插到尾页卡之前
@@ -399,7 +412,7 @@ watch(() => route.params.id, () => { if (route.name === 'h5-editor') location.re
 /* 底部操作条 fixed 贴底（与配色/资料编辑页同款，2026-11-27 实修）：
    原 sticky bottom:0 在老微信 X5 WebView 上可能不贴视口底、且会被全局 tabbar 盖住；
    页面留 76px 空位，画布与提示行不会被操作条遮住。 */
-.he { min-height: 100vh; padding-bottom: calc(76px + env(safe-area-inset-bottom)); background: var(--bg-page, #f4f6fb); display: flex; flex-direction: column; }
+.he { min-height: 100vh; padding-bottom: 76px; padding-bottom: calc(76px + env(safe-area-inset-bottom)); background: var(--bg-page, #f4f6fb); display: flex; flex-direction: column; }
 .he-top { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 8px; padding: calc(10px + var(--safe-top, 0px)) 12px 10px; background: rgba(255,255,255,.95); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
 .he-back { width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 9px; background: #fff; font-size: 19px; color: #374151; cursor: pointer; flex: 0 0 34px; }
 .he-title { flex: 1; min-width: 0; padding: 9px 12px; border: 1px solid var(--line); border-radius: 9px; font-size: 15px; font-weight: 700; }
@@ -430,6 +443,13 @@ watch(() => route.params.id, () => { if (route.name === 'h5-editor') location.re
 .he-dot.on { box-shadow: 0 0 0 3px #fff; }
 .he-status { flex: 0 0 auto; font-size: 11.5px; color: #9ca3af; white-space: nowrap; padding: 0 2px; }
 .he-status.on { color: #4ade80; font-weight: 700; }
+/* dock 行里的 BottomSelect（切换动效）：触发项压成深色胶囊，与 chips 同语言（浅字浅描边，深底自带对比） */
+.he-dock-flow .bsel { display: inline-block; flex: 0 0 auto; }
+.he-dock-flow :deep(.bsel-trigger) { height: 44px; width: auto; padding: 0 14px; border: 1px solid rgba(255,255,255,.28); border-radius: 999px; background: rgba(255,255,255,.08); color: #fff; font-size: 12.5px; white-space: nowrap; }
+.he-dock-flow :deep(.bsel-label) { max-width: 110px; }
+.he-dock-flow :deep(.bsel-arrow) { color: rgba(255,255,255,.6); }
+/* 背景音乐块表单试听 */
+.he-audio { width: 100%; margin-top: 6px; }
 
 /* 内容编辑弹层表单 */
 .he-form { padding: 4px 2px 8px; max-height: 72vh; overflow-y: auto; overscroll-behavior: contain; }
