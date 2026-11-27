@@ -41,7 +41,12 @@ function sanitizeSchema(raw, maxPages) {
       if (type === 'cover') Object.assign(out, { title: str(b.title, 40), subtitle: str(b.subtitle, 60), cover: str(b.cover, 500) })
       if (type === 'text') Object.assign(out, { heading: str(b.heading, 40), body: str(b.body, 1200) })
       if (type === 'hero') Object.assign(out, { image: str(b.image, 500), title: str(b.title, 40), desc: str(b.desc, 300) })
-      if (type === 'gallery') Object.assign(out, { images: (Array.isArray(b.images) ? b.images : []).slice(0, 9).map(u => str(u, 500)), layout: b.layout === 'swipe' ? 'swipe' : 'grid' })
+      if (type === 'gallery') Object.assign(out, {
+        images: (Array.isArray(b.images) ? b.images : []).slice(0, 9).map(u => str(u, 500)),
+        // layout: showcase=动效展播（自动轮播，2026-11-27）/ swipe / grid；source: 'card'=图片自动取自公司相册
+        layout: ['showcase', 'swipe', 'grid'].includes(b.layout) ? b.layout : 'grid',
+        source: b.source === 'card' ? 'card' : 'upload'
+      })
       if (type === 'contact') Object.assign(out, { showMobile: b.showMobile !== false, showWechat: b.showWechat !== false, showAddress: b.showAddress !== false })
       if (type === 'map') Object.assign(out, { lat: Number.isFinite(+b.lat) ? +b.lat : null, lng: Number.isFinite(+b.lng) ? +b.lng : null, label: str(b.label, 80) })
       // 按钮 action 白名单 2026-11-27 加 copy（复制任意文本）
@@ -142,6 +147,16 @@ router.get('/public/:slug', (req, res) => {
   const row = db.prepare("SELECT * FROM h5_pages WHERE slug = ? AND status = 'published'").get(req.params.slug)
   if (!row) return fail(res, 404, '宣传页不存在或未发布')
   const card = db.prepare('SELECT id, user_id, slug, name, title, company, avatar, logo, mobile, phone, wechat, address FROM cards WHERE id = ?').get(row.card_id)
+  // 公司相册图（2026-11-27）：图集块 source='card' 的图片源——与名片页同一份 card_materials，
+  // 图片 URL 列表挂到 card.gallery，前端 H5Render galImgs 消费；无相册时为 []，块渲染占位。
+  let gallery = []
+  if (card) {
+    try {
+      gallery = db.prepare("SELECT url FROM card_materials WHERE card_id = ? AND type = 'file' ORDER BY sort ASC, id ASC").all(card.id)
+        .map(r => String(r.url || ''))
+        .filter(u => /\.(png|jpe?g|gif|webp|bmp|svg)(\?|$)/i.test(u))
+    } catch { gallery = [] }
+  }
   ok(res, {
     page: {
       title: row.title, schema: JSON.parse(row.schema || '{}'), slug: row.slug, view_count: row.view_count,
@@ -150,7 +165,8 @@ router.get('/public/:slug', (req, res) => {
     },
     card: card ? {
       slug: card.slug, name: card.name, title: card.title, company: card.company,
-      avatar: card.avatar, logo: card.logo, mobile: card.mobile, phone: card.phone, wechat: card.wechat, address: card.address
+      avatar: card.avatar, logo: card.logo, mobile: card.mobile, phone: card.phone, wechat: card.wechat, address: card.address,
+      gallery
     } : null
   })
   db.prepare('UPDATE h5_pages SET view_count = view_count + 1 WHERE id = ?').run(row.id)

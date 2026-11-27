@@ -115,8 +115,12 @@
 
       <slot name="after-address" />
 
-      <div v-if="materials.length" class="card card-pad cv-block" data-sec="materials">
-        <h3>相册 <span class="small muted">· 点开直接看</span></h3>
+      <!-- 快捷编辑·公司相册（2026-11-27）：quickEdit 模式下区块常驻（空相册也能点进来传图），
+           头部「✎ 管理相册」直接弹管理弹层（集合型数据不做两段式选中）；公开页行为不变。 -->
+      <div v-if="materials.length || quickEdit" class="card card-pad cv-block" data-sec="materials">
+        <h3>相册 <span class="small muted">· {{ quickEdit ? '点「管理相册」上传图片' : '点开直接看' }}</span>
+          <button v-if="quickEdit" class="cv-qe-tag" type="button" @click.stop="editField('gallery')">✎ 管理相册</button>
+        </h3>
         <div class="cv-gallery">
           <template v-for="m in materials" :key="m.id || m.title">
             <button v-if="isImageMaterial(m)" class="cv-gallery-cell" type="button" @click="$emit('open-gallery', m)">
@@ -129,6 +133,7 @@
               <small>{{ m.type === 'link' ? '网页链接' : '文件' }}</small>
             </button>
           </template>
+          <button v-if="quickEdit && !materials.length" class="cv-qe-ghost cv-qe-ghost-block" type="button" @click.stop="editField('gallery')">＋ 上传公司相册图片</button>
         </div>
       </div>
     </template>

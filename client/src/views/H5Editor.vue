@@ -103,13 +103,19 @@
         </template>
         <template v-else-if="block.type === 'gallery'">
           <div class="he-row"><span class="small muted">排列方式</span>
-            <button class="he-btn ghost sm" @click="block.layout = block.layout === 'swipe' ? 'grid' : 'swipe'; markDirty()">{{ block.layout === 'swipe' ? '横滑大图' : '两列网格' }}</button>
+            <BottomSelect v-model="block.layout" :options="GAL_LAYOUT_OPTS" title="图集排列方式" @update:modelValue="markDirty" />
           </div>
-          <div v-for="(img, gi) in block.images" :key="gi" class="he-gal-row">
-            <ImageField v-model="block.images[gi]" @update:modelValue="markDirty" />
-            <button class="he-mini danger" @click="block.images.splice(gi, 1); markDirty()">✕</button>
+          <div class="he-row"><span class="small muted">图片来源</span>
+            <button class="he-btn ghost sm" @click="block.source = block.source === 'card' ? 'upload' : 'card'; markDirty()">{{ block.source === 'card' ? '公司相册（自动同步）' : '手动上传' }}</button>
           </div>
-          <button v-if="block.images.length < 9" class="he-btn ghost block" @click="block.images.push(''); markDirty()">＋ 添加图片位</button>
+          <p v-if="block.source === 'card'" class="small muted" style="margin:0 0 8px">图片自动来自名片页「公司相册」，在名片里上传一次，这里与名片页两处同步展示、无需重复传图。</p>
+          <template v-else>
+            <div v-for="(img, gi) in block.images" :key="gi" class="he-gal-row">
+              <ImageField v-model="block.images[gi]" @update:modelValue="markDirty" />
+              <button class="he-mini danger" @click="block.images.splice(gi, 1); markDirty()">✕</button>
+            </div>
+            <button v-if="block.images.length < 9" class="he-btn ghost block" @click="block.images.push(''); markDirty()">＋ 添加图片位</button>
+          </template>
         </template>
         <template v-else-if="block.type === 'contact'">
           <p class="small muted" style="margin:0 0 8px">联系方式自动来自你的名片资料，这里只控制展示项。</p>
@@ -189,6 +195,8 @@ const ANIM_OPTS = [
 // 按钮动作（2026-11-27 新增 copy）：value 的语义随动作变化，输入框标签跟着换
 const ACTION_OPTS = [{ value: 'tel', label: '拨打电话' }, { value: 'wechat', label: '复制微信号' }, { value: 'link', label: '打开链接' }, { value: 'copy', label: '复制文本' }]
 const ACTION_VALUE_LABEL = { tel: '电话号码', wechat: '微信号（留空用名片微信号）', link: '链接地址', copy: '要复制的文本' }
+// 图集排列：展播=自动轮播+动效（2026-11-27 相册 H5 动效展示），swipe/grid 为原静态布局
+const GAL_LAYOUT_OPTS = [{ value: 'showcase', label: '动效展播（自动轮播）' }, { value: 'swipe', label: '横滑大图' }, { value: 'grid', label: '两列网格' }]
 // 主题色板：与名片模板色系呼应，点中即改全页 accent
 const COLORS = ['#a62b2b', '#c2410c', '#b45309', '#0f766e', '#4338ca', '#17357c', '#7c2d92', '#be185d']
 const FREE_MAX_PAGES = 3, PAID_MAX_PAGES = 12
@@ -274,7 +282,7 @@ function blank(type) {
   if (type === 'cover') return { type, title: '', subtitle: '', cover: '' }
   if (type === 'text') return { type, heading: '', body: '' }
   if (type === 'hero') return { type, image: '', title: '', desc: '' }
-  if (type === 'gallery') return { type, images: [''], layout: 'grid' }
+  if (type === 'gallery') return { type, images: [''], layout: 'grid', source: 'upload' }
   if (type === 'contact') return { type, showMobile: true, showWechat: true, showAddress: true }
   if (type === 'map') return { type, lat: null, lng: null, label: '' }
   if (type === 'buttons') return { type, items: [{ label: '', action: 'tel', value: '' }] }
@@ -362,7 +370,15 @@ onMounted(async () => {
       watermark.value = !mine.limits?.paid
       maxPages.value = mine.limits?.maxPages || (paid.value ? PAID_MAX_PAGES : FREE_MAX_PAGES)
     } catch {}
-    try { cardData.value = (await api.get('/api/cards/mine')).data.data } catch {}
+    try {
+      cardData.value = (await api.get('/api/cards/mine')).data.data
+      // 图集 source='card'（公司相册）预览图源：与名片页同一份 card_materials，图片 URL 挂到 card.gallery
+      try {
+        const mats = (await api.get('/api/cards/mine/materials')).data.data?.list || []
+        const gallery = mats.filter(m => m.type === 'file' && /\.(png|jpe?g|gif|webp|bmp|svg)(\?|$)/i.test(m.url || '')).map(m => m.url)
+        if (gallery.length) cardData.value = { ...cardData.value, gallery }
+      } catch {}
+    } catch {}
   } catch (e) { showToast(e?.message || '加载失败', 'error'); router.push('/me/h5') }
 })
 watch(() => route.params.id, () => { if (route.name === 'h5-editor') location.reload() })

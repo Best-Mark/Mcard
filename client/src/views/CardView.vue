@@ -205,6 +205,33 @@
       />
     </BottomSheet>
 
+    <!-- 快捷编辑·公司相册管理弹层（2026-11-27）：集合型数据不走单字段表单，独立管理弹层。
+         与 CardEdit「公司相册」同口径：独立上传（/api/upload）、保存整份替换 PUT /api/cards/mine/materials；
+         只管理图片行，链接/文件行原样保留。 -->
+    <BottomSheet :show="qeGalOpen" @update:show="qeGalOpen = $event">
+      <div class="qe-sheet">
+        <div class="qe-head"><b>管理公司相册</b><button type="button" @click="qeGalOpen = false">×</button></div>
+        <div class="qe-gal-wrap">
+          <p class="small muted" style="margin:0 0 8px">已上传 {{ qeGalImages.length }} / {{ GALLERY_MAX }} 张，访客点开进全屏展播。</p>
+          <div class="qe-gal-grid">
+            <div v-for="(m, i) in qeGalImages" :key="m.url" class="qe-gal-cell">
+              <img :src="fullUrl(m.url)" :alt="'相册图片 ' + (i + 1)" loading="lazy" />
+              <button class="qe-gal-del" type="button" aria-label="移除此图" @click="removeGalImage(m.url)">✕</button>
+            </div>
+            <label v-if="qeGalImages.length < GALLERY_MAX" class="qe-gal-add" :class="{ disabled: qeGalUploading }" :aria-label="qeGalUploading ? '图片上传中' : '上传图片'">
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple :disabled="qeGalUploading" @change="onGalUpload" />
+              <span>{{ qeGalUploading ? '…' : '＋' }}</span>
+              <small v-if="qeGalUploading">上传中</small>
+            </label>
+          </div>
+        </div>
+        <div class="qe-actions">
+          <button class="btn btn-ghost" type="button" @click="qeGalOpen = false">取消</button>
+          <button class="btn btn-primary" type="button" :disabled="qeGalSaving || qeGalUploading" @click="saveGalleryEdit">{{ qeGalSaving ? '保存中…' : '保存' }}</button>
+        </div>
+      </div>
+    </BottomSheet>
+
     <!-- 名片二维码双码弹层（2026-11-26 定稿「两个都要」；2026-11-27 微信真机实测修正）：
          联系人码 = 名片页 URL + contact=1（微信扫一扫打开页面后自动弹「存入通讯录」入口）；
          名片链接码 = 名片页 URL（扫了看名片）。默认联系人码。
@@ -245,7 +272,9 @@
       </div>
     </div>
 
-    <!-- 全屏看图：左右滑动切换、下滑关闭、双击缩放、底部缩略图条；操作全在这一层，不铺在名片内容区 -->
+    <!-- 全屏看图·相册展播（2026-11-27 用户定稿「H5 式动效展示」）：自动轮播（4.2s/张，可循环）+
+         Ken Burns 缓推缓拉动效，点图暂停/继续、左右滑手动切换、双击缩放、下滑关闭；
+         进度点在翻页栏，保存/返回等操作全在这一层，不铺在名片内容区。 -->
     <div v-if="galleryIndex >= 0" class="gallery-fullscreen" role="dialog" aria-label="相册大图浏览">
       <div class="gf-top">
         <button class="gf-back" aria-label="返回名片" @click="closeGallery">‹ 返回</button>
@@ -257,15 +286,17 @@
         <img
           v-if="!gfFailed"
           :key="gfRetryKey + '-' + galleryIndex"
-          :class="{ 'is-zoomed': gfZoom }"
+          :class="{ 'is-zoomed': gfZoom, 'gf-kb': imageMaterials.length > 1 && !gfZoom, 'gf-kb-pause': !gfPlaying }"
           :src="fullUrl(imageMaterials[galleryIndex]?.url)"
           :alt="imageMaterials[galleryIndex]?.title"
           @error="gfFailed = true"
+          @click="onGfClick"
         />
         <div v-else class="gf-error">
           <span>图片加载失败</span>
           <button type="button" @click="retryGalleryImage">重试</button>
         </div>
+        <div class="gf-hint">点图暂停/播放 · 左右滑切换 · 双击缩放 · 下滑关闭</div>
       </div>
       <div v-if="imageMaterials.length > 1" ref="gfThumbs" class="gf-thumbs">
         <button
@@ -279,7 +310,10 @@
       </div>
       <div class="gf-nav">
         <button :disabled="galleryIndex <= 0" @click="stepGallery(-1)">‹ 上一张</button>
-        <span class="gf-hint">左右滑动切换 · 双击缩放 · 下滑关闭</span>
+        <button v-if="imageMaterials.length > 1" class="gf-play" type="button" :aria-label="gfPlaying ? '暂停自动播放' : '自动播放'" @click="toggleGfPlay">{{ gfPlaying ? '❚❚' : '▶' }}</button>
+        <div v-if="imageMaterials.length > 1" class="gf-dots" aria-hidden="true">
+          <i v-for="(m, i) in imageMaterials" :key="m.id || (m.url + '-' + i)" :class="{ on: i === galleryIndex }"></i>
+        </div>
         <button :disabled="galleryIndex >= imageMaterials.length - 1" @click="stepGallery(1)">下一张 ›</button>
       </div>
     </div>
@@ -563,6 +597,8 @@ function onQeRegionPicked(r) {
 }
 function openQuickEdit(key) {
   const k = key === 'shop' ? 'shop_url' : key // CardSheet 的 siteLinks 用 'shop' 短名
+  // 公司相册：集合型数据走独立管理弹层（上传网格 + 整份替换保存），不进单字段表单
+  if (k === 'gallery') { openGalleryEdit(); return }
   const conf = QE_CONF[k]
   if (!conf) return
   qeKey.value = k
@@ -604,6 +640,58 @@ async function saveQuickEdit() {
     showToast(`已保存${conf.label}`, 'success')
   } catch (e) { showToast(e.message, 'error') } finally { qeSaving.value = false }
 }
+
+// 快捷编辑·公司相册管理（2026-11-27）：与 CardEdit「公司相册」同口径——独立上传（/api/upload）、
+// 保存走 PUT /api/cards/mine/materials 整份替换；只动图片行（type:'file' 且是图），链接/文件行原样保留。
+// 保存成功后就地刷新 materialsList，相册区与展播入口立即可见。
+const GALLERY_MAX = 20
+const qeGalOpen = ref(false)
+const qeGalList = ref([]) // 打开弹层时的全量快照（含非图片行，保存时合并回去）
+const qeGalUploading = ref(false)
+const qeGalSaving = ref(false)
+const qeGalImages = computed(() => qeGalList.value.filter(m => isImageMaterial(m)))
+function openGalleryEdit() {
+  qeGalList.value = materialsList.value.map(m => ({ ...m }))
+  qeGalOpen.value = true
+}
+function removeGalImage(url) { qeGalList.value = qeGalList.value.filter(m => !(m.url === url && isImageMaterial(m))) }
+// 相册上传：多选、逐张串行上传（严格按选择顺序追加）；成对防重入（disabled + busy 守卫），
+// 达上限停止；单张失败提示但不中断整批，已成功的照常入相册。
+async function onGalUpload(e) {
+  if (qeGalUploading.value) return
+  const files = Array.from(e.target.files || [])
+  e.target.value = ''
+  if (!files.length) return
+  const room = GALLERY_MAX - qeGalImages.value.length
+  if (room <= 0) { showToast(`相册最多 ${GALLERY_MAX} 张`, 'error'); return }
+  const picked = files.slice(0, room)
+  if (files.length > room) showToast(`最多 ${GALLERY_MAX} 张，本次只上传 ${room} 张`, 'error')
+  qeGalUploading.value = true
+  try {
+    for (const file of picked) {
+      const fd = new FormData()
+      fd.append('file', file)
+      try {
+        const { data } = await api.post('/api/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+        if (data?.data?.url) qeGalList.value.push({ type: 'file', title: '', url: data.data.url })
+      } catch (err) { showToast(`${file.name} 上传失败：${err.message || '网络异常'}`, 'error') }
+    }
+  } finally { qeGalUploading.value = false }
+}
+async function saveGalleryEdit() {
+  if (qeGalSaving.value || qeGalUploading.value) return
+  qeGalSaving.value = true
+  try {
+    // 图片行重排在前（按网格顺序），非图片行按原序垫后——访客展播只看图片，链接/文件不受影响
+    const imgs = qeGalList.value.filter(m => isImageMaterial(m))
+    const others = qeGalList.value.filter(m => !isImageMaterial(m) && m.url)
+    const items = [...imgs, ...others].map((m, i) => ({ ...m, sort: i }))
+    const { data } = await api.put('/api/cards/mine/materials', { items })
+    materialsList.value = data.data?.list || materialsList.value
+    qeGalOpen.value = false
+    showToast('公司相册已保存', 'success')
+  } catch (e) { showToast(e.message || '相册保存失败，请重试', 'error') } finally { qeGalSaving.value = false }
+}
 const currentTheme = ref('ocean'); const isOwner = ref(false)
 // 当前登录用户是否已建自己的名片（看别人的名片时用来决定是否显示「免费创建我的名片」）
 const hasOwnCard = ref(false)
@@ -644,6 +732,7 @@ function isImageMaterial(m) {
 function openGallery(m) {
   const idx = imageMaterials.value.findIndex(x => x.id === m.id)
   galleryIndex.value = idx < 0 ? 0 : idx
+  gfPlaying.value = imageMaterials.value.length > 1 // 展播默认自动播放，单图无需轮播
   countMaterialView(m)
 }
 async function openMaterial(m) {
@@ -657,13 +746,28 @@ async function countMaterialView(m) {
 }
 
 // 看图操作层：手势/按钮/键盘三条入口共用同一组状态，切换时统一复位（加载失败、缩放、双击计时）。
+// 相册展播（2026-11-27）：gfPlaying 自动轮播（4.2s/张，到尾回绕循环），点图暂停/继续（双击缩放优先），
+// Ken Burns 动效由 .gf-kb / .gf-kb-pause 两个类驱动（CSS 动画，老 WebView 不支持时只是不动，无害）。
 const gfZoom = ref(false)
 const gfFailed = ref(false)
 const gfRetryKey = ref(0)
 const gfThumbs = ref(null)
+const gfPlaying = ref(false)
+let gfTimer = 0
+let gfTapTimer = 0
 let gfTouch = null
 let gfLastTap = 0
 let gfKeyHandler = null
+const GF_SLIDE_MS = 4200
+function gfSchedule() {
+  clearTimeout(gfTimer)
+  if (!gfPlaying.value || imageMaterials.value.length < 2) return
+  gfTimer = setTimeout(() => {
+    galleryIndex.value = (galleryIndex.value + 1) % imageMaterials.value.length // 循环展播
+    gfSchedule()
+  }, GF_SLIDE_MS)
+}
+function toggleGfPlay() { gfPlaying.value = !gfPlaying.value; gfSchedule() }
 function closeGallery() { galleryIndex.value = -1 }
 function stepGallery(step) {
   const next = galleryIndex.value + step
@@ -695,15 +799,26 @@ function onGfTouchEnd(e) {
   const dy = pt.clientY - gfTouch.y
   const quick = Date.now() - gfTouch.at < 400
   gfTouch = null
-  // 轻点：300ms 内第二次即双击缩放；单击只记录时间，不误触关闭
+  // 轻点：320ms 内第二次即双击缩放（取消待定的单击动作）；单击延迟一拍执行播放/暂停，避免与双击打架。
+  // gfLastTap 每次轻点都刷新（含双击的第二下），让触屏后的合成 click（onGfClick 600ms 守卫）全部跳过。
   if (Math.abs(dx) < 14 && Math.abs(dy) < 14) {
-    if (quick && Date.now() - gfLastTap < 320) { gfLastTap = 0; gfZoom.value = !gfZoom.value }
-    else gfLastTap = Date.now()
+    if (quick && Date.now() - gfLastTap < 320) {
+      clearTimeout(gfTapTimer); gfZoom.value = !gfZoom.value
+    } else {
+      clearTimeout(gfTapTimer)
+      gfTapTimer = setTimeout(() => toggleGfPlay(), 320)
+    }
+    gfLastTap = Date.now()
     return
   }
   if (gfZoom.value) return
   if (Math.abs(dy) > 90 && Math.abs(dy) > Math.abs(dx) * 1.2) { closeGallery(); return }
   if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.2) stepGallery(dx < 0 ? 1 : -1)
+}
+function onGfClick() {
+  // 触屏 tap 刚由 onGfTouchEnd 延迟处理过，这里合成 click 跳过，避免一次触摸切换两次
+  if (Date.now() - gfLastTap < 600) return
+  toggleGfPlay()
 }
 function preloadNeighbors() {
   const i = galleryIndex.value
@@ -731,13 +846,25 @@ watch(galleryIndex, v => {
   if (v >= 0) {
     preloadNeighbors()
     nextTick(centerGalleryThumb)
+    gfSchedule() // 手动切换/自动轮播都从这一刻重新计时
     if (!gfKeyHandler) { gfKeyHandler = onGalleryKey; window.addEventListener('keydown', gfKeyHandler) }
-  } else if (gfKeyHandler) {
-    window.removeEventListener('keydown', gfKeyHandler)
-    gfKeyHandler = null
+  } else {
+    gfPlaying.value = false
+    clearTimeout(gfTimer)
+    if (gfKeyHandler) {
+      window.removeEventListener('keydown', gfKeyHandler)
+      gfKeyHandler = null
+    }
   }
 })
+// 缩放查看时暂停轮播，收起缩放恢复（避免看着图被自动翻走）
+watch(gfZoom, z => {
+  if (z) clearTimeout(gfTimer)
+  else gfSchedule()
+})
 onBeforeUnmount(() => {
+  clearTimeout(gfTimer)
+  clearTimeout(gfTapTimer)
   if (gfKeyHandler) window.removeEventListener('keydown', gfKeyHandler)
 })
 

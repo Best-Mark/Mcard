@@ -32,13 +32,21 @@
             <h2 v-if="b.title">{{ b.title }}</h2>
             <p v-if="b.desc">{{ b.desc }}</p>
           </div>
-          <!-- 图集：swipe=横滑条 / grid=两列 -->
+          <!-- 图集：showcase=动效展播（自动轮播+Ken Burns）/ swipe=横滑条 / grid=两列；
+               source='card' 时图片自动取自公司相册（data.card.gallery），与名片页同一份数据 -->
           <div v-else-if="b.type === 'gallery'" :class="blkCls(pi, bi, b)" :style="dragStyle(bi)" @click="pick(pi, bi)">
-            <div v-if="b.layout === 'swipe'" class="hp-gal-swipe">
-              <div v-for="(img, gi) in b.images" :key="gi" class="hp-img" :style="bgStyle(img)"></div>
+            <div v-if="b.layout === 'showcase'" class="hp-show">
+              <div v-for="(img, gi) in galImgs(b)" :key="gi" class="hp-show-img" :class="{ on: scOf(pi, bi) === gi }" :style="bgStyle(img)"></div>
+              <div v-if="!galImgs(b).length" class="hp-img" :style="bgStyle('')"></div>
+              <div v-if="galImgs(b).length > 1" class="hp-show-dots">
+                <i v-for="(img, gi) in galImgs(b)" :key="gi" :class="{ on: scOf(pi, bi) === gi }" @click.stop="setSc(pi, bi, gi)"></i>
+              </div>
+            </div>
+            <div v-else-if="b.layout === 'swipe'" class="hp-gal-swipe">
+              <div v-for="(img, gi) in galImgs(b)" :key="gi" class="hp-img" :style="bgStyle(img)"></div>
             </div>
             <div v-else class="hp-gal-grid">
-              <div v-for="(img, gi) in b.images" :key="gi" class="hp-img" :style="bgStyle(img)"></div>
+              <div v-for="(img, gi) in galImgs(b)" :key="gi" class="hp-img" :style="bgStyle(img)"></div>
             </div>
           </div>
           <!-- 联系方式：拨号 / 复制微信 / 地址 -->
@@ -155,8 +163,11 @@ function mountIo() {
   }, { root: pagesEl.value, threshold: 0.12 }) } catch { io = null }
 }
 watch(() => props.data, () => nextTick(scanAnims), { deep: true })
-onMounted(() => { mountIo(); nextTick(scanAnims) })
-onBeforeUnmount(() => { if (io) io.disconnect() })
+onMounted(() => {
+  mountIo(); nextTick(scanAnims)
+  if (!props.editable) scTimer = setInterval(scAdvance, 3800) // 展播自动轮播（编辑画布不播）
+})
+onBeforeUnmount(() => { if (io) io.disconnect(); clearInterval(scTimer) })
 
 // ---- 编辑器长按拖动排序（editable only）：短手势不拦截滚动，长按 350ms 进入拖动态 ----
 const drag = reactive({ on: false, cur: -1, dy: 0, startY: 0 })
@@ -236,6 +247,29 @@ function onScroll(e) {
 
 const copied = ref(false)
 let copyTimer = 0
+
+// ---- 图集展播（2026-11-27 用户定稿「公司相册 H5 式动效展示」）----
+// galImgs：source='card' 时取公司相册图（data.card.gallery，与名片页同源），否则用块自己的 images
+//（含空图位——bgStyle 渐变占位提示「这里该上传图」，与原行为一致，不过滤）。
+const galImgs = b => (b?.source === 'card' ? (card.value?.gallery || []) : (b?.images || []))
+// 展播当前页码（key = 页-块）：一个定时器驱动所有 showcase 块循环轮播（3.8s/张），
+// 编辑画布不自动播（editable 时只手动点进度点预览），避免画布里图片自己动干扰编辑。
+const scIdx = ref({})
+const scOf = (pi, bi) => scIdx.value[kOf(pi, bi)] || 0
+function setSc(pi, bi, i) { scIdx.value = { ...scIdx.value, [kOf(pi, bi)]: i } }
+function scAdvance() {
+  if (props.editable) return
+  const patch = {}
+  const ps = pages.value || []
+  ps.forEach((p, pi) => (p.blocks || []).forEach((b, bi) => {
+    if (b.type === 'gallery' && b.layout === 'showcase') {
+      const n = galImgs(b).length
+      if (n > 1) patch[kOf(pi, bi)] = (scOf(pi, bi) + 1) % n
+    }
+  }))
+  if (Object.keys(patch).length) scIdx.value = { ...scIdx.value, ...patch }
+}
+let scTimer = 0
 async function copyText(t) {
   try { await navigator.clipboard.writeText(t) } catch {
     const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select()
@@ -298,6 +332,16 @@ function goCard() { if (props.editable) return; router.push(`/c/${card.value.slu
 .hp-gal-swipe .hp-img { flex: 0 0 82%; scroll-snap-align: center; aspect-ratio: 16 / 10; }
 .hp-gal-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 .hp-gal-grid .hp-img { aspect-ratio: 1; }
+/* 图集展播（showcase）：整幅舞台 + Ken Burns 缓推缓拉 + 底部进度点，纯 CSS 动效
+   （老 WebView 不支持动画只是不动，无害）；prefers-reduced-motion 关闭 */
+.hp-show { position: relative; width: 100%; aspect-ratio: 16 / 10; border-radius: 14px; overflow: hidden; background: #1c2029; }
+.hp-show-img { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-size: cover; background-position: center; opacity: 0; transition: opacity .7s ease; }
+.hp-show-img.on { opacity: 1; animation: hp-show-kb 4.2s linear both; }
+@keyframes hp-show-kb { from { transform: scale(1) translate(0, 0); } to { transform: scale(1.1) translate(-1.5%, -1%); } }
+.hp-show-dots { position: absolute; left: 0; right: 0; bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; z-index: 2; }
+.hp-show-dots i { width: 7px; height: 7px; border-radius: 999px; background: rgba(255,255,255,.45); transition: all .25s; cursor: pointer; }
+.hp-show-dots i.on { width: 18px; background: #fff; }
+@media (prefers-reduced-motion: reduce) { .hp-show-img.on { animation: none; } }
 
 .hp-act { display: flex; align-items: center; gap: 10px; width: 100%; padding: 14px 16px; border: 1px solid rgba(255,255,255,.14); border-radius: 12px; background: rgba(255,255,255,.06); color: #f3f4f6; font-size: 15px; text-align: left; text-decoration: none; cursor: pointer; }
 .hp-act small { margin-left: auto; font-size: 12px; color: var(--hp-accent); font-weight: 700; }
