@@ -741,21 +741,25 @@ watch(() => route.params.id, () => { if (route.name === 'h5-editor') location.re
 /* 背景音乐块表单试听 */
 .he-audio { width: 100%; margin-top: 6px; }
 
-/* 内容编辑弹层表单 */
-.he-form { padding: 4px 2px 8px; max-height: 72vh; overflow-y: auto; overscroll-behavior: contain; }
-.he-f-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid var(--line); margin-bottom: 10px; }
+/* 内容编辑弹层表单（对齐全站 BottomSheet 弹层组件口径：18px 侧边距 + 头部行 + 卡片式行，
+   与 Profile avatar-sheet / CardEdit logo-sheet 同语言，不再贴边） */
+.he-form { padding: 8px 18px 18px; max-height: 72vh; overflow-y: auto; overscroll-behavior: contain; }
+.he-f-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 0 12px; font-size: 15px; }
 .he-f-head b { font-size: 15px; }
 .he-f-actions { display: flex; gap: 8px; }
-.he-anim-row { margin-top: 4px; padding-top: 10px; border-top: 1px dashed var(--line); }
-.he-form label { display: block; margin-bottom: 10px; font-size: 12.5px; color: #6b7280; }
-.he-form input, .he-form textarea, .he-form select { display: block; width: 100%; box-sizing: border-box; margin-top: 5px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; font-size: 14px; background: #fff; }
-.he-form .he-switch { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #374151; }
-.he-form .he-switch input { width: auto; margin: 0; }
+.he-anim-row { margin-top: 6px; padding-top: 12px; border-top: 1px dashed var(--line); }
+.he-form label { display: block; margin-bottom: 12px; font-size: 12.5px; color: #6b7280; }
+.he-form input, .he-form textarea, .he-form select { display: block; width: 100%; box-sizing: border-box; margin-top: 6px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; background: #fff; }
+/* 开关行：卡片式选择行（avatar-sheet-item 同语言），替代裸 checkbox 贴边 */
+.he-form .he-switch { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; padding: 12px 14px; border: 1px solid var(--line, #e8edf4); border-radius: 10px; background: var(--bg-page, #f8fafc); font-size: 13.5px; color: var(--text, #0f172a); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.he-form .he-switch:active { background: #eef2f7; }
+.he-form .he-switch input { width: auto; margin: 0; flex: 0 0 auto; accent-color: var(--primary, #a62b2b); }
 .he-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .he-gal-row { display: flex; align-items: center; gap: 8px; }
 .he-gal-row > *:first-child { flex: 1; }
 .he-btn-edit { border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 10px; }
-.he-mini { padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: #374151; font-size: 12px; cursor: pointer; }
+.he-mini { padding: 7px 14px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: #374151; font-size: 12.5px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.he-mini:active { background: #eef2f7; }
 .he-btn { padding: 10px 14px; border: 0; border-radius: 9px; background: var(--primary, #a62b2b); color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
 .he-btn.ghost { background: #fff; color: #374151; border: 1px solid var(--line); }
 .he-btn.sm { padding: 6px 10px; font-size: 12px; }
