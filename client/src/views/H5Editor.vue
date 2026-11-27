@@ -41,15 +41,56 @@
         <button class="he-dock-back" @click="dockMode = 'main'" aria-label="收起，返回主操作条">↙</button>
         <div class="he-dock-scroll">
           <div class="he-dock-flow">
-            <!-- 编辑行（自由画布）：加元素 chips + 选中元素操作（层级在属性面板里调） -->
+            <!-- 编辑行（自由画布，2026-11-27 用户定稿）：选中元素 → 上下文调节选项（点中即改，› 为循环切换）；
+                 未选中 → 加元素。透明度/层级/行高/完整属性在「⋯ 属性」面板 -->
             <template v-if="dockMode === 'edit'">
-              <span class="he-grp">加元素</span>
-              <button v-for="t in ADDABLE" :key="t" class="he-chip" @click="addBlock(t)">＋{{ TYPE_LABEL[t] }}</button>
               <template v-if="block">
                 <span class="he-grp">{{ TYPE_LABEL[block.type] }}</span>
-                <button class="he-chip on" @click="openEdit">{{ FREE_TYPES.includes(block.type) ? '✎ 属性' : '编辑内容' }}</button>
+                <!-- 文本：字体/字号/粗体/对齐/颜色 -->
+                <template v-if="block.type === 'text'">
+                  <button class="he-chip" @click="cycleFont">字·{{ fontLabel }} ›</button>
+                  <button class="he-chip" @click="stepSize(-4)" :disabled="Number(block.size) <= 12">A−</button>
+                  <button class="he-chip" @click="stepSize(4)" :disabled="Number(block.size) >= 160">A＋</button>
+                  <button class="he-chip" :class="{ on: block.bold }" @click="block.bold = !block.bold; markDirty()">B 粗体</button>
+                  <button class="he-chip" @click="cycleAlign">{{ alignLabel }} ›</button>
+                  <span class="he-grp">颜色</span>
+                  <button v-for="c in EL_COLORS" :key="'t' + c" class="he-dot he-dot-sm" :class="{ on: block.color === c }" :style="{ background: c }" @click="block.color = c; markDirty()"></button>
+                </template>
+                <!-- 图片：换图/圆角/适配 -->
+                <template v-else-if="block.type === 'image'">
+                  <button class="he-chip" @click="openImageSheet">▣ 换图</button>
+                  <button class="he-chip" @click="stepRadius(-8)" :disabled="Number(block.radius) <= 0">圆角−</button>
+                  <button class="he-chip" @click="stepRadius(8)" :disabled="Number(block.radius) >= 200">圆角＋</button>
+                  <button class="he-chip" @click="block.fit = block.fit === 'contain' ? 'cover' : 'contain'; markDirty()">{{ block.fit === 'contain' ? '完整显示 ›' : '裁切填满 ›' }}</button>
+                </template>
+                <!-- 形状：形状循环/填充色/圆角 -->
+                <template v-else-if="block.type === 'shape'">
+                  <button class="he-chip" @click="cycleShape">{{ shapeLabel }} ›</button>
+                  <span class="he-grp">填充</span>
+                  <button v-for="c in EL_COLORS" :key="'s' + c" class="he-dot he-dot-sm" :class="{ on: block.color === c }" :style="{ background: c }" @click="block.color = c; markDirty()"></button>
+                  <template v-if="block.shape !== 'circle'">
+                    <button class="he-chip" @click="stepRadius(-8)" :disabled="Number(block.radius) <= 0">圆角−</button>
+                    <button class="he-chip" @click="stepRadius(8)" :disabled="Number(block.radius) >= 400">圆角＋</button>
+                  </template>
+                </template>
+                <!-- 按钮：填充色/文字色/圆角（文字与动作进属性面板） -->
+                <template v-else-if="block.type === 'button'">
+                  <span class="he-grp">填充</span>
+                  <button v-for="c in EL_COLORS" :key="'b' + c" class="he-dot he-dot-sm" :class="{ on: block.bg === c }" :style="{ background: c }" @click="block.bg = c; markDirty()"></button>
+                  <span class="he-grp">文字色</span>
+                  <button v-for="c in EL_COLORS" :key="'bc' + c" class="he-dot he-dot-sm" :class="{ on: block.color === c }" :style="{ background: c }" @click="block.color = c; markDirty()"></button>
+                  <button class="he-chip" @click="stepRadius(-8)" :disabled="Number(block.radius) <= 0">圆角−</button>
+                  <button class="he-chip" @click="stepRadius(8)" :disabled="Number(block.radius) >= 400">圆角＋</button>
+                </template>
+                <!-- 通用：入场动效循环 + 完整面板 + 复制/删除 -->
+                <button class="he-chip" @click="cycleAnim">动·{{ animLabel }} ›</button>
+                <button class="he-chip on" @click="openEdit">{{ FREE_TYPES.includes(block.type) ? '⋯ 属性' : '✎ 编辑内容' }}</button>
                 <button class="he-chip" @click="duplicateBlock" :disabled="curEls.length >= 40">⧉ 复制</button>
                 <button class="he-chip warn" @click="removeBlock">✕ 删除</button>
+              </template>
+              <template v-else>
+                <span class="he-grp">加元素</span>
+                <button v-for="t in ADDABLE" :key="t" class="he-chip" @click="addBlock(t)">＋{{ TYPE_LABEL[t] }}</button>
               </template>
             </template>
             <!-- 页面行：切页 / 加页 / 删本页（单页单页做） -->
@@ -400,6 +441,49 @@ function onPick(key) {
   if (selPage.value === pi && selBlock.value === bi && block.value) { openEdit(); return }
   selPage.value = pi
   selBlock.value = bi
+  // 选中元素 → 工具栏自动变成该元素的调节选项（2026-11-27 用户定稿）
+  if (dockMode.value !== 'edit') dockMode.value = 'edit'
+}
+
+// ---- 选中元素快捷调节（dock 上下文行，点中即改、› 为循环切换） ----
+const fontLabel = computed(() => (FONT_OPTS.find(o => o.value === (block.value?.font || '')) || FONT_OPTS[0]).label)
+function cycleFont() {
+  const b = block.value; if (!b) return
+  const i = FONT_OPTS.findIndex(o => o.value === (b.font || ''))
+  b.font = FONT_OPTS[(i + 1) % FONT_OPTS.length].value
+  markDirty()
+}
+function stepSize(d) {
+  const b = block.value; if (!b) return
+  b.size = Math.max(12, Math.min(160, (Number(b.size) || 32) + d))
+  markDirty()
+}
+const alignLabel = computed(() => (TEXT_ALIGN_OPTS.find(o => o.value === (block.value?.align || 'left')) || TEXT_ALIGN_OPTS[0]).label)
+function cycleAlign() {
+  const b = block.value; if (!b) return
+  const i = TEXT_ALIGN_OPTS.findIndex(o => o.value === (b.align || 'left'))
+  b.align = TEXT_ALIGN_OPTS[(i + 1) % TEXT_ALIGN_OPTS.length].value
+  markDirty()
+}
+function stepRadius(d) {
+  const b = block.value; if (!b) return
+  const max = b.type === 'shape' || b.type === 'button' ? 400 : 200
+  b.radius = Math.max(0, Math.min(max, (Number(b.radius) || 0) + d))
+  markDirty()
+}
+const shapeLabel = computed(() => (SHAPE_OPTS.find(o => o.value === (block.value?.shape || 'rect')) || SHAPE_OPTS[0]).label)
+function cycleShape() {
+  const b = block.value; if (!b) return
+  const i = SHAPE_OPTS.findIndex(o => o.value === (b.shape || 'rect'))
+  b.shape = SHAPE_OPTS[(i + 1) % SHAPE_OPTS.length].value
+  markDirty()
+}
+const animLabel = computed(() => (ANIM_OPTS.find(o => o.value === (block.value?.anim || '')) || ANIM_OPTS[0]).label)
+function cycleAnim() {
+  const b = block.value; if (!b) return
+  const i = ANIM_OPTS.findIndex(o => o.value === (b.anim || ''))
+  b.anim = ANIM_OPTS[(i + 1) % ANIM_OPTS.length].value
+  markDirty()
 }
 function openEdit() {
   const b = block.value
@@ -738,6 +822,8 @@ watch(() => route.params.id, () => { if (route.name === 'h5-editor') location.re
 .he-grp { flex: 0 0 auto; font-size: 10.5px; letter-spacing: .12em; color: #9ca3af; background: rgba(255,255,255,.06); padding: 4px 9px; border-radius: 7px; white-space: nowrap; }
 .he-dot { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .he-dot.on { box-shadow: 0 0 0 3px #fff; }
+/* dock 上下文调节行的小号色点（2026-11-27 选中元素即调） */
+.he-dot-sm { width: 28px; height: 28px; flex: 0 0 28px; }
 /* 属性面板（自由画布）：色板行 + 滑杆（覆盖 .he-form input 的输入框样式） */
 .he-colors { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
 .he-colors .he-dot { border-color: rgba(0,0,0,.15); }
