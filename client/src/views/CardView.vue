@@ -202,14 +202,12 @@
     <BottomSheet :show="qeOpen" @update:show="qeOpen = $event">
       <div class="qe-sheet" v-if="qeConf">
         <div class="qe-head"><b>修改{{ qeConf.label }}</b><button type="button" @click="qeOpen = false">×</button></div>
-        <p class="small muted">只改这一项 · 保存后名片立即生效，二维码和链接都不变。</p>
         <label v-for="f in qeConf.fields" :key="f.key" class="qe-field">
           <span>{{ f.label }}</span>
           <ImageField v-if="f.type === 'image'" v-model="qeForm[f.key]" />
           <textarea v-else-if="f.type === 'textarea'" v-model="qeForm[f.key]" rows="4" :maxlength="f.max || 1000" :placeholder="f.ph || ''"></textarea>
           <input v-else v-model="qeForm[f.key]" :maxlength="f.max || 100" :placeholder="f.ph || ''" :inputmode="f.inputmode || 'text'" />
         </label>
-        <p v-if="qeKey === 'address'" class="small muted">省市区与定位仍去「编辑资料 → 联系方式」维护。</p>
         <div class="qe-actions">
           <button class="btn btn-ghost" type="button" @click="qeOpen = false">取消</button>
           <button class="btn btn-primary" type="button" :disabled="qeSaving" @click="saveQuickEdit">{{ qeSaving ? '保存中…' : '保存' }}</button>
