@@ -122,6 +122,7 @@ const pageCount = s => Array.isArray(s?.pages) ? s.pages.length : 0
 
 const listView = r => ({
   id: r.id, title: r.title, slug: r.slug, status: r.status, view_count: r.view_count,
+  card_linked: !!r.card_linked,
   pages: pageCount(JSON.parse(r.schema || '{}')), updated_at: r.updated_at,
   leads: db.prepare('SELECT COUNT(*) n FROM h5_leads WHERE page_id = ?').get(r.id).n
 })
@@ -189,8 +190,20 @@ router.put('/:id', authRequired, (req, res) => {
 
 router.post('/:id/publish', authRequired, (req, res) => {
   const row = owned(req, res); if (!row) return
-  db.prepare("UPDATE h5_pages SET status = 'published', updated_at = datetime('now') WHERE id = ?").run(row.id)
-  ok(res, {})
+  // 首次发布（draft→published）自动关联名片（card_linked=1，延续「发布即挂入口」体验）；
+  // 再次「更新发布」不覆盖用户在宣传页侧做的取消关联。
+  db.prepare("UPDATE h5_pages SET status = 'published', card_linked = CASE WHEN status = 'draft' THEN 1 ELSE card_linked END, updated_at = datetime('now') WHERE id = ?").run(row.id)
+  const after = db.prepare('SELECT card_linked FROM h5_pages WHERE id = ?').get(row.id)
+  ok(res, { card_linked: !!after?.card_linked })
+})
+
+// 关联名片开关（2026-11-27 一对多定稿）：操作收在宣传页侧（不在名片侧指定，防乱），
+// 开=已发布时名片公开页出现本页入口；名片可同时挂多条（按更新时间排列，上限 6）。
+router.post('/:id/card-link', authRequired, (req, res) => {
+  const row = owned(req, res); if (!row) return
+  const linked = req.body?.linked === true || req.body?.linked === 1 || req.body?.linked === '1'
+  db.prepare('UPDATE h5_pages SET card_linked = ? WHERE id = ?').run(linked ? 1 : 0, row.id)
+  ok(res, { card_linked: linked })
 })
 
 router.post('/:id/unpublish', authRequired, (req, res) => {

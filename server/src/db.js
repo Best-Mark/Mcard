@@ -362,6 +362,8 @@ addColumnIfMissing('card_favorites', 'note', "TEXT NOT NULL DEFAULT ''")
 addColumnIfMissing('card_favorites', 'tags', "TEXT NOT NULL DEFAULT '[]'")
 // 草料式二维码美化样式（JSON：dot/eye/gradTo/logoShape/bgImage），空串=经典样式
 addColumnIfMissing('cards', 'qr_style', "TEXT NOT NULL DEFAULT ''")
+// 宣传页关联名片开关（2026-11-27 一对多定稿）：card_linked=1 且已发布的宣传页在名片公开页出入口
+addColumnIfMissing('h5_pages', 'card_linked', 'INTEGER NOT NULL DEFAULT 0')
 // 索引依赖补列后的字段，必须放在 addColumnIfMissing 之后（存量库 source 列此时才存在）
 db.exec('CREATE INDEX IF NOT EXISTS idx_views_source ON card_views(card_id, source);')
 
@@ -385,6 +387,15 @@ if (!seeded('qr_logo_default_off_v1')) {
   db.transaction(() => {
     db.prepare('UPDATE cards SET qr_logo = 0').run()
     insertSeedFlag.run('qr_logo_default_off_v1', '1')
+  })()
+}
+
+// 一次性迁移（2026-11-27）：宣传页↔名片关联从「自动挂最新一条已发布」改为显式开关 card_linked（一对多）。
+// 存量已发布的宣传页回填 card_linked=1，保持既有入口不消失；此后关联/取消都在宣传页侧操作，不再被重置。
+if (!seeded('h5_card_linked_backfill_v1')) {
+  db.transaction(() => {
+    db.prepare("UPDATE h5_pages SET card_linked = 1 WHERE status = 'published'").run()
+    insertSeedFlag.run('h5_card_linked_backfill_v1', '1')
   })()
 }
 

@@ -25,6 +25,7 @@
         <div v-for="p in list" :key="p.id" class="card card-pad h5l-item">
           <div class="h5l-head">
             <b class="h5l-name">{{ p.title }}</b>
+            <button type="button" class="badge small h5l-link" :class="{ on: p.card_linked }" :disabled="busy === p.id" @click="toggleLink(p)">{{ p.card_linked ? '✓ 已关联名片' : '＋ 关联名片' }}</button>
             <span class="badge small" :class="{ on: p.status === 'published' }">{{ p.status === 'published' ? '已发布' : '草稿' }}</span>
           </div>
           <div class="small muted h5l-meta">{{ p.pages }} 页 · {{ p.view_count }} 次浏览{{ p.leads ? ` · ${p.leads} 条线索` : '' }} · 更新于 {{ fmt(p.updated_at) }}</div>
@@ -133,6 +134,18 @@ async function toggle(p, action) {
   try { await api.post(`/api/h5/${p.id}/${action}`); await load(); showToast(action === 'publish' ? '已发布，链接已生效' : '已下架', 'success') }
   catch (e) { showToast(e.message, 'error') } finally { busy.value = 0 }
 }
+// 关联名片开关（2026-11-27 一对多定稿）：宣传页侧显式状态（不在名片侧指定，防乱）；
+// 开=已发布时名片公开页出现本页入口，多条可并存；草稿也可先关联，发布后生效。
+async function toggleLink(p) {
+  if (busy.value) return
+  busy.value = p.id
+  try {
+    await api.post(`/api/h5/${p.id}/card-link`, { linked: !p.card_linked })
+    p.card_linked = !p.card_linked
+    if (p.card_linked) showToast(p.status === 'published' ? '已关联：访客看你的名片可直达这个宣传页' : '已关联（发布后名片页显示入口）', 'success')
+    else showToast('已取消关联，名片页入口已移除', 'success')
+  } catch (e) { showToast(e.message || '操作失败', 'error') } finally { busy.value = 0 }
+}
 async function remove(p) {
   if (!confirm(`删除「${p.title}」？发布中的链接也会失效，不可恢复。`)) return
   busy.value = p.id
@@ -194,6 +207,10 @@ async function copyLeadPhone(l) {
 .h5l-name { font-size: 15px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .badge.on { color: #15803d; background: #dcfce7; }
 .badge { color: #92400e; background: #fef3c7; padding: 2px 8px; border-radius: 999px; font-weight: 700; }
+/* 关联名片开关（2026-11-27 一对多）：状态胶囊点按即切换（类似上架状态） */
+.h5l-link { border: 0; cursor: pointer; background: #eef2f7; color: #64748b; -webkit-tap-highlight-color: transparent; }
+.h5l-link.on { color: #fff; background: var(--primary, #a62b2b); }
+.h5l-link:disabled { opacity: .6; cursor: default; }
 .h5l-meta { margin-top: 4px; }
 .h5l-ops { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .h5l-del { color: #b91c1c !important; }

@@ -68,10 +68,11 @@
               <span class="he-grp">切换动效</span>
               <BottomSelect :model-value="schema.transition || 'scroll'" :options="TRANSITION_OPTS" title="页面切换动效" @update:modelValue="schema.transition = $event; markDirty()" />
             </template>
-            <!-- 发布行：状态 + 发布/更新 + 复制链接 + 下架 -->
+            <!-- 发布行：状态 + 发布/更新 + 关联名片开关（一对多，2026-11-27）+ 复制链接 + 下架 -->
             <template v-else>
               <span :class="['he-status', { on: page?.status === 'published' }]">{{ page?.status === 'published' ? '✓ 已发布·名片页可跳转' : '○ 未发布' }}</span>
               <button class="he-chip on" :disabled="publishing" @click="publish">{{ page?.status === 'published' ? '⇪ 更新发布' : '⇪ 发布' }}</button>
+              <button class="he-chip" :class="{ on: page?.card_linked }" :disabled="publishing" @click="toggleCardLink">{{ page?.card_linked ? '✓ 已关联名片' : '＋ 关联名片' }}</button>
               <button v-if="page?.status === 'published'" class="he-chip" @click="copyLink">⧉ 复制链接</button>
               <button v-if="page?.status === 'published'" class="he-chip warn" @click="unpublish">下架</button>
             </template>
@@ -428,11 +429,24 @@ async function publish() {
   clearTimeout(saveTimer); await save()
   publishing.value = true
   try {
-    await api.post(`/api/h5/${route.params.id}/publish`)
+    const { data } = await api.post(`/api/h5/${route.params.id}/publish`)
     page.value.status = 'published'
-    showToast('已发布！入口已自动挂到你的名片页', 'success')
+    if (data?.data) page.value.card_linked = !!data.data.card_linked
+    showToast(page.value.card_linked ? '已发布！入口已挂到你的名片页' : '已发布！点「关联名片」可挂到名片页', 'success')
     copyLink()
   } catch (e) { showToast(e?.message || '发布失败', 'error') } finally { publishing.value = false }
+}
+// 关联名片开关（2026-11-27 一对多定稿）：状态在宣传页侧维护（防名片侧指定变乱），
+// 已发布且已关联的宣传页在名片公开页列多条入口；首次发布自动关联，更新发布不覆盖取消。
+async function toggleCardLink() {
+  if (!page.value || publishing.value) return
+  const linked = !page.value.card_linked
+  publishing.value = true
+  try {
+    await api.post(`/api/h5/${route.params.id}/card-link`, { linked })
+    page.value.card_linked = linked
+    showToast(linked ? '已关联：访客看你的名片可直达这个宣传页' : '已取消关联，名片页入口已移除', 'success')
+  } catch (e) { showToast(e?.message || '操作失败', 'error') } finally { publishing.value = false }
 }
 async function unpublish() {
   try {
