@@ -10,7 +10,9 @@
          下方分组列表仍严格遵守用户端「卡片左右贴边、方角」约定）。套餐/日期用 MCard 自有数据。 -->
     <div class="pf-header">
       <span class="pf-sheen" aria-hidden="true"></span>
-      <button class="pf-gear" aria-label="设置" @click="toggleDrawer"><AppIcon name="settings" :size="18" /></button>
+      <!-- 齿轮不再开右侧抽屉（那个菜单归顶栏菜单图标）：单独从底部出「设置与更多」，
+           含账号资料、关于、个人中心常用功能（2026-11-27 用户定稿） -->
+      <button class="pf-gear" aria-label="设置与更多" @click="gearMenuOpen = true"><AppIcon name="settings" :size="18" /></button>
       <button v-if="card" class="pf-qr" aria-label="我的名片二维码" @click="goQr"><AppIcon name="qrcode" :size="19" /></button>
 
       <!-- 个人中心只显示账户层信息（users）：头像=账户头像、昵称=账户昵称。
@@ -45,6 +47,57 @@
         </div>
       </BottomSheet>
 
+      <!-- 齿轮底部菜单（2026-11-27 用户定稿）：不再复用右侧抽屉，单独从底部出。
+           有「资料」（账号资料）、「关于」（独立弹层），以及个人中心里的常用功能聚合。 -->
+      <BottomSheet :show="gearMenuOpen" @update:show="gearMenuOpen = $event">
+        <div class="gear-sheet">
+          <div class="avatar-sheet-head">
+            <b>设置与更多</b>
+            <button type="button" class="avatar-sheet-close" aria-label="关闭" @click="gearMenuOpen = false">✕</button>
+          </div>
+          <div class="gear-group-title">账户</div>
+          <button type="button" class="gear-item" @click="gearGo('/me/account')">
+            <i class="gear-ico">◉</i><span class="gear-t">账号资料<small>头像 · 昵称 · 登录信息</small></span><i class="gear-arrow">›</i>
+          </button>
+          <button type="button" class="gear-item" @click="openAbout">
+            <i class="gear-ico">ⓘ</i><span class="gear-t">关于 MCard<small>版本 · 产品介绍</small></span><i class="gear-arrow">›</i>
+          </button>
+          <div class="gear-group-title">个人中心功能</div>
+          <button type="button" class="gear-item" @click="gearGo('/me/h5')">
+            <i class="gear-ico">◈</i><span class="gear-t">宣传页制作<small>H5 模板 · 发布</small></span><i class="gear-arrow">›</i>
+          </button>
+          <button type="button" class="gear-item" @click="gearGo('/me/notifications')">
+            <i class="gear-ico">♢</i><span class="gear-t">消息通知<small v-if="unread > 0">{{ unread }} 条未读</small><small v-else>查看通知</small></span><i class="gear-arrow">›</i>
+          </button>
+          <button type="button" class="gear-item" @click="gearGo('/me/contacts')">
+            <i class="gear-ico">▦</i><span class="gear-t">名片夹<small>收藏 · 交换</small></span><i class="gear-arrow">›</i>
+          </button>
+          <button type="button" class="gear-item" @click="gearGo('/me/batch-scan')">
+            <i class="gear-ico">▣</i><span class="gear-t">展会连扫收名片<small>批量识别</small></span><i class="gear-arrow">›</i>
+          </button>
+          <button v-if="auth.isPromoter" type="button" class="gear-item" @click="gearGo('/me/promo')">
+            <i class="gear-ico">➤</i><span class="gear-t">推广中心<small>邀请 · 收益 · 提现</small></span><i class="gear-arrow">›</i>
+          </button>
+          <button type="button" class="gear-item" @click="gearQr">
+            <i class="gear-ico">◎</i><span class="gear-t">我的名片二维码<small>保存 · 复制链接</small></span><i class="gear-arrow">›</i>
+          </button>
+          <button type="button" class="gear-logout" @click="gearLogout">⏻ 退出登录</button>
+          <button type="button" class="avatar-sheet-cancel" @click="gearMenuOpen = false">取消</button>
+        </div>
+      </BottomSheet>
+
+      <!-- 关于：菜单点「关于 MCard」打开的独立底部弹层，不新建页面、不跳走 -->
+      <BottomSheet :show="aboutOpen" @update:show="aboutOpen = $event">
+        <div class="about-sheet">
+          <div class="about-logo">M<em>Card</em></div>
+          <b class="about-name">唐笺 电子名片</b>
+          <p class="about-desc">一张永不失效的数字名片：资料随时改、二维码终身不变。</p>
+          <div class="about-meta"><span>当前版本</span><b>v1.0 · Web</b></div>
+          <div class="about-meta"><span>包含服务</span><b>名片 · 集市 · 宣传页</b></div>
+          <button type="button" class="about-close" @click="aboutOpen = false">关闭</button>
+        </div>
+      </BottomSheet>
+
       <!-- 套餐有效期玻璃条：到期日期来自 card.expiresAt（兼容 expires_at） -->
       <div class="pf-plan">
         <div class="pf-plan-left">
@@ -63,11 +116,10 @@
     </div>
     <div v-else-if="loading" class="card card-pad center">加载中…</div>
 
-    <!-- 快捷入口：四张白卡紧凑并排（图标底块 + 文字），排列口径见截图定稿。
-         四项 = 名片夹 / 套餐续期 / 实体版式 / 扫一扫（展会连扫）；浏览统计仍留在抽屉，入口不丢。 -->
+    <!-- 快捷入口（2026-11-27 用户定稿）：四项白卡单向横排——一行等分、不换行不折行。
+         四项 = 名片夹 / 我的套餐 / 实体版式 / 扫一扫；宣传页制作等其余功能收进齿轮底部菜单，页面更简洁。 -->
     <div class="pf-quick">
       <router-link to="/me/contacts" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="grid" :size="22" /></i><span>名片夹</span></router-link>
-      <router-link to="/me/h5" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="file" :size="22" /></i><span>宣传页</span></router-link>
       <router-link to="/me/plans" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="yen" :size="22" /></i><span>我的套餐</span></router-link>
       <router-link to="/me/print" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="list" :size="22" /></i><span>实体版式</span></router-link>
       <router-link to="/me/batch-scan" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="scan" :size="22" /></i><span>扫一扫</span></router-link>
@@ -113,7 +165,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
-import { auth, toggleDrawer, showToast } from '../store'
+import { auth, toggleDrawer, showToast, logout } from '../store'
 import AppIcon from '../components/AppIcon.vue'
 import BottomSheet from '../components/BottomSheet.vue'
 
@@ -124,6 +176,13 @@ const wxAvatar = ref('')
 const avatarSaving = ref(false)
 const avatarMenuOpen = ref(false)
 function openAvatarPicker() { avatarMenuOpen.value = true }
+// 齿轮底部菜单（与右侧抽屉解耦）：资料 / 关于 / 个人中心功能聚合；顶栏菜单图标仍开抽屉
+const gearMenuOpen = ref(false)
+const aboutOpen = ref(false)
+function gearGo(path) { gearMenuOpen.value = false; router.push(path) }
+function openAbout() { gearMenuOpen.value = false; aboutOpen.value = true }
+function gearQr() { gearMenuOpen.value = false; goQr() }
+function gearLogout() { gearMenuOpen.value = false; logout(); router.push('/') }
 const loading = ref(true)
 const loadError = ref('')
 const unread = ref(0)
@@ -255,6 +314,26 @@ function goQr() {
 .avatar-sheet-item input { position: absolute; top: 0; left: 0; right: 0; bottom: 0; opacity: 0; cursor: pointer; }
 .avatar-sheet-sub { display: block; margin-top: 4px; color: var(--muted, #64748b); font-size: 11px; }
 .avatar-sheet-cancel { width: 100%; padding: 12px; border: 0; border-radius: 10px; background: #eef2f7; color: var(--text, #0f172a); font-size: 14px; cursor: pointer; }
+/* 齿轮底部菜单：分组标题 + 列表行（图标/标题/副标题/箭头），复用头像弹层的头部与取消按钮 */
+.gear-sheet { padding: 8px 18px 18px; max-height: 76vh; overflow-y: auto; overscroll-behavior: contain; }
+.gear-group-title { padding: 12px 2px 6px; font-size: 11px; letter-spacing: .14em; color: var(--muted, #64748b); font-weight: 700; }
+.gear-item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 12px; margin-bottom: 8px; border: 1px solid var(--line, #e8edf4); border-radius: 10px; background: var(--bg-page, #f8fafc); color: var(--text, #0f172a); text-align: left; cursor: pointer; }
+.gear-item:active { background: #eef2f7; }
+.gear-ico { width: 26px; height: 26px; flex: 0 0 26px; border-radius: 8px; display: grid; place-items: center; background: #fbeedc; color: #9a3412; font-style: normal; font-size: 14px; }
+.gear-t { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; }
+.gear-t small { display: block; margin-top: 2px; font-size: 11px; font-weight: 400; color: var(--muted, #64748b); }
+.gear-arrow { font-style: normal; color: var(--muted, #64748b); font-size: 17px; }
+.gear-logout { width: 100%; padding: 12px; margin-top: 6px; border: 1px solid #fecaca; border-radius: 10px; background: #fef2f2; color: #dc2626; font-size: 14px; cursor: pointer; }
+.gear-sheet .avatar-sheet-cancel { margin-top: 8px; }
+/* 关于弹层：品牌 + 简介 + 版本，不新建页面 */
+.about-sheet { padding: 22px 18px 20px; text-align: center; }
+.about-logo { width: 58px; height: 58px; margin: 0 auto 12px; border-radius: 16px; display: grid; place-items: center; background: linear-gradient(135deg, #17357c, #2563eb); color: #fff; font-size: 20px; font-weight: 800; letter-spacing: -.5px; }
+.about-logo em { font-style: normal; font-weight: 500; }
+.about-name { display: block; font-size: 17px; }
+.about-desc { margin: 8px auto 16px; max-width: 280px; font-size: 12px; line-height: 1.6; color: var(--muted, #64748b); }
+.about-meta { display: flex; justify-content: space-between; gap: 10px; padding: 10px 2px; border-top: 1px solid var(--line, #e8edf4); font-size: 12px; }
+.about-meta span { color: var(--muted, #64748b); }
+.about-close { width: 100%; margin-top: 16px; padding: 12px; border: 0; border-radius: 10px; background: #eef2f7; color: var(--text, #0f172a); font-size: 14px; cursor: pointer; }
 .pf-name { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pf-status { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; flex-shrink: 0; }
 .pf-status.ok { background: rgba(255,255,255,.2); color: #fff; }
@@ -269,14 +348,15 @@ function goQr() {
 .pf-plan-sub { font-size: 11px; color: rgba(255,255,255,.72); }
 .pf-plan-btn { font-size: 12px; font-weight: 700; color: #17357c; padding: 7px 14px; border-radius: 999px; background: linear-gradient(90deg, #f9edc0, #e7c877); white-space: nowrap; }
 
-/* ===== 快捷入口：四张白卡紧凑并排（2026-11-26 截图定稿） =====
-   排列口径：紧贴头卡下缘（负 margin 压在渐变头卡上，z-index 提到光效之上），
+/* ===== 快捷入口：四项单向横排（2026-11-27 用户定稿） =====
+   一行等分、不换行不折行；紧贴头卡下缘（负 margin 压在渐变头卡上，z-index 提到光效之上），
    卡片白底圆角 + 米黄圆角图标底 + 深红描边图标，一眼一块、左右留出安全边距。 */
-.pf-quick { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: -10px 12px 0; }
-.pf-quick-item { display: flex; flex-direction: column; align-items: center; gap: 9px; padding: 15px 4px 13px; border-radius: 15px; background: #fff; border: 1px solid rgba(15,23,42,.05); box-shadow: 0 6px 18px rgba(15,23,42,.10); font-size: 12px; font-weight: 600; color: #1f2937; text-decoration: none; }
+.pf-quick { position: relative; z-index: 2; display: flex; flex-wrap: nowrap; gap: 8px; margin: -10px 12px 0; }
+.pf-quick-item { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 9px; padding: 15px 4px 13px; border-radius: 15px; background: #fff; border: 1px solid rgba(15,23,42,.05); box-shadow: 0 6px 18px rgba(15,23,42,.10); font-size: 12px; font-weight: 600; color: #1f2937; text-decoration: none; }
 .pf-qi-ico { width: 46px; height: 46px; border-radius: 14px; background: #fbeedc; color: #9a3412; display: grid; place-items: center; font-style: normal; }
 .pf-quick-item:active { transform: scale(.96); }
-@media (max-width: 520px) { .pf-quick { grid-template-columns: repeat(3, 1fr); gap: 8px; } }
+/* 窄屏只缩图标与字号，四项仍保持同一行（单向横排不折行） */
+@media (max-width: 360px) { .pf-quick { gap: 6px; } .pf-qi-ico { width: 40px; height: 40px; } .pf-quick-item { font-size: 11px; } }
 
 /* ===== 下半部分：App 分组 cell（按用户端约定卡片左右贴边、方角） ===== */
 .pf-group { margin: 14px 0 0; background: var(--card, #fff); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
