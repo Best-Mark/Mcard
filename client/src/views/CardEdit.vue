@@ -1,34 +1,30 @@
 <template>
   <div class="page">
-    <header class="topbar">
+    <!-- 2026-11-27 用户定稿：分类切换这一行就是「编辑资料」行、放在页面最上面；
+         它上面的说明文案、蓝色「所见即所得」提示条都没有必要，全部去掉。
+         返回 / 菜单 / 预览压到同一行两端，功能一个不丢。 -->
+    <header class="topbar edit-topbar">
       <button class="back-btn" @click="finish" aria-label="返回并保存">‹</button>
-      <div class="spacer"></div>
+      <nav class="edit-nav edit-nav-top">
+        <button v-for="(s, i) in sections" :key="s.key" :class="{ on: active === s.key, dirty: dirtySections[s.key] }" @click="goSection(i)">
+          <span class="nav-ico">{{ s.icon }}</span>
+          <span class="nav-label">{{ s.label }}</span>
+          <span v-if="dirtySections[s.key]" class="nav-dirty" title="有未保存修改"></span>
+          <span v-else-if="s.done" class="nav-done">✓</span>
+        </button>
+      </nav>
       <button class="nav-menu-btn" aria-label="菜单" @click="toggleDrawer"><i class="menu-glyph"></i></button>
       <button class="btn btn-sm btn-ghost preview-toggle" @click="showPreview = true">预览</button>
-      <span class="small muted">编辑资料 · 可随时离开，下次继续</span>
     </header>
 
-    <div class="container wide" style="margin-top:18px">
+    <div class="container wide" style="margin-top:12px">
       <div v-if="loadError" class="card card-pad" style="margin-bottom:14px;border-color:#fecaca;background:#fef2f2">
         <b style="color:#b91c1c">名片资料加载失败</b>
         <p class="small muted" style="margin:6px 0 12px">{{ loadError }}。为避免覆盖已有资料，保存已临时禁用。</p>
         <button class="btn btn-sm btn-primary" :disabled="loading" @click="loadCard">重新加载</button>
       </div>
-      <div class="hint" style="margin-bottom:14px">
-        👀 <b>所见即所得</b>：每改一项，右侧预览立即更新，你当场就能看到名片变成什么样；保存只是把它持久化。链接 <span class="mono">/c/{{ form.slug }}</span> 与二维码图案始终不变，印好的实体名片无需重做。
-      </div>
 
       <div class="edit-layout">
-        <!-- 分类导航：一次只显示一类，避免长表单吓跑用户 -->
-        <nav class="edit-nav">
-          <button v-for="(s, i) in sections" :key="s.key" :class="{ on: active === s.key, dirty: dirtySections[s.key] }" @click="goSection(i)">
-            <span class="nav-ico">{{ s.icon }}</span>
-            <span class="nav-label">{{ s.label }}</span>
-            <span v-if="dirtySections[s.key]" class="nav-dirty" title="有未保存修改"></span>
-            <span v-else-if="s.done" class="nav-done">✓</span>
-          </button>
-        </nav>
-
         <div class="edit-content">
           <!-- 名片信息 -->
           <div v-show="active === 'identity'" class="card card-pad" id="focus-identity">
@@ -599,16 +595,22 @@ async function finish() {
 </script>
 
 <style scoped>
-.edit-layout { display: grid; grid-template-columns: 168px minmax(0, 1fr) 260px; gap: 16px; align-items: start; }
-.edit-nav { display: flex; flex-direction: column; gap: 4px; position: sticky; top: 72px; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 8px; }
-.edit-nav button { display: flex; align-items: center; gap: 9px; width: 100%; padding: 10px 11px; border-radius: 9px; font-size: 13px; color: var(--text); text-align: left; }
-.edit-nav button:hover { background: var(--bg-page); }
-.edit-nav button.on { background: #eff6ff; color: var(--primary); font-weight: 700; }
-.nav-ico { width: 20px; text-align: center; font-size: 14px; }
-.nav-label { flex: 1; }
+.edit-layout { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 16px; align-items: start; }
+/* 顶部 tab 行（2026-11-27 用户定稿）：分类切换就是「编辑资料」那行，单行横滑、胶囊式，
+   与返回/菜单/预览同一行；不再有左栏竖排导航，也不再有上方提示条 */
+.edit-topbar { gap: 6px; }
+.edit-nav-top { flex: 1; min-width: 0; display: flex; flex-direction: row; gap: 6px; position: static; overflow-x: auto; white-space: nowrap; background: transparent; border: 0; border-radius: 0; padding: 0; scrollbar-width: none; }
+.edit-nav-top::-webkit-scrollbar { display: none; }
+.edit-nav-top button { display: inline-flex; align-items: center; gap: 5px; width: auto; flex: 0 0 auto; padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--text); font-size: 12.5px; }
+.edit-nav-top button:hover { background: var(--bg-page); }
+.edit-nav-top button.on { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 700; }
+.edit-nav-top .nav-ico { display: none; }
+.edit-nav-top .nav-label { flex: 0 0 auto; }
 .nav-done { color: var(--ok); font-size: 11px; }
+.edit-nav-top button.on .nav-done { color: #fff; }
 .nav-dirty { width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; flex: 0 0 7px; }
-.edit-nav button.dirty .nav-label { color: #b45309; }
+.edit-nav-top button.dirty .nav-label { color: #b45309; }
+.edit-nav-top button.dirty.on .nav-label { color: #fff; }
 .edit-content { min-width: 0; }
 .section-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
 .save-state { font-size: 12px; color: var(--muted); }
@@ -620,13 +622,8 @@ async function finish() {
 .mobile-preview-mask { position: fixed; inset: 0; background: rgba(15,23,42,.55); z-index: 2100; display: flex; align-items: center; justify-content: center; padding: 16px; }
 .mobile-preview-panel { width: 100%; max-width: 380px; max-height: 94vh; overflow-y: auto; background: var(--bg-card, #fff); border-radius: 14px; padding: 14px; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
 .mobile-preview-panel :deep(.cp-screen) { height: 68vh; }
-@media (max-width: 1080px) { .edit-layout { grid-template-columns: 168px minmax(0, 1fr); } .preview-panel { display: none; } .preview-toggle { display: inline-flex; } }
-@media (max-width: 720px) {
-  .edit-layout { grid-template-columns: 1fr; }
-  .edit-nav { position: static; flex-direction: row; overflow-x: auto; white-space: nowrap; border-radius: 10px; padding: 6px; }
-  .edit-nav button { width: auto; flex: 0 0 auto; padding: 8px 12px; }
-  .nav-ico { display: none; }
-}
+@media (max-width: 1080px) { .edit-layout { grid-template-columns: 1fr; } .preview-panel { display: none; } .preview-toggle { display: inline-flex; } }
+@media (max-width: 720px) { .edit-layout { grid-template-columns: 1fr; } }
 .identity-block { margin-bottom: 4px; }
 .identity-block.divided { border-top: 1px solid var(--line, #e8edf4); margin-top: 16px; padding-top: 16px; }
 .block-title { font-size: 14px; font-weight: 700; color: var(--text, #0f172a); margin-bottom: 12px; }
