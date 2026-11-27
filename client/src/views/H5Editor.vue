@@ -17,7 +17,7 @@
       <div class="he-canvas-in">
         <H5Render :data="curPageData" editable :sel-key="selKey" @pick="onPick" />
       </div>
-      <div class="he-hint small muted">点页面里的任意模块即可选中编辑 · 第 {{ selPage + 1 }} 页{{ block ? ` · ${TYPE_LABEL[block.type]}` : '' }}</div>
+      <div class="he-hint small muted">点模块选中 · 再点一下直接改内容 · 第 {{ selPage + 1 }} 页{{ block ? ` · ${TYPE_LABEL[block.type]}` : '' }}</div>
     </div>
     <div v-else class="he-loading">加载中…</div>
 
@@ -190,8 +190,13 @@ const selKey = computed(() => `${selPage.value}-${selBlock.value}`)
 const block = computed(() => curPage.value.blocks[selBlock.value] || null)
 const pagesCount = computed(() => schema.value.pages.length)
 
+// 快捷编辑（2026-11-27 用户定稿「像名片那样」，对齐名片工作台两段式）：
+// 首点模块只选中（琥珀虚线描边，防误触——画布块很大，误点成本是弹层开关）；
+// 再点同一个已选中的块直接弹内容表单，省去「✎编辑块 → 编辑内容」两级 dock。
+// 弹层 v-model 直绑块字段、画布实时刷新，markDirty 自动保存——与 dock 路径完全同一套状态。
 function onPick(key) {
   const [pi, bi] = key.split('-').map(Number)
+  if (selPage.value === pi && selBlock.value === bi && block.value) { formOpen.value = true; return }
   selPage.value = pi
   selBlock.value = bi
 }
@@ -309,7 +314,10 @@ watch(() => route.params.id, () => { if (route.name === 'h5-editor') location.re
 </script>
 
 <style scoped>
-.he { min-height: 100vh; background: var(--bg-page, #f4f6fb); display: flex; flex-direction: column; }
+/* 底部操作条 fixed 贴底（与配色/资料编辑页同款，2026-11-27 实修）：
+   原 sticky bottom:0 在老微信 X5 WebView 上可能不贴视口底、且会被全局 tabbar 盖住；
+   页面留 76px 空位，画布与提示行不会被操作条遮住。 */
+.he { min-height: 100vh; padding-bottom: calc(76px + env(safe-area-inset-bottom)); background: var(--bg-page, #f4f6fb); display: flex; flex-direction: column; }
 .he-top { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 8px; padding: calc(10px + var(--safe-top, 0px)) 12px 10px; background: rgba(255,255,255,.95); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
 .he-back { width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 9px; background: #fff; font-size: 19px; color: #374151; cursor: pointer; flex: 0 0 34px; }
 .he-title { flex: 1; min-width: 0; padding: 9px 12px; border: 1px solid var(--line); border-radius: 9px; font-size: 15px; font-weight: 700; }
@@ -322,7 +330,8 @@ watch(() => route.params.id, () => { if (route.name === 'h5-editor') location.re
 .he-loading { flex: 1; display: grid; place-items: center; color: #6b7280; }
 
 /* dock：底部固定操作条，四态翻转（与名片工作台同款交互语言） */
-.he-dock { position: sticky; bottom: 0; z-index: 20; width: min(560px, 100%); margin: 0 auto; display: flex; align-items: center; gap: 8px; padding: 10px 12px calc(10px + var(--safe-bottom, 0px)); background: rgba(15,23,42,.92); backdrop-filter: blur(10px); border-radius: 16px 16px 0 0; }
+.he-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 105; width: min(560px, 100%); margin: 0 auto; display: flex; align-items: center; gap: 8px; padding: 10px 12px calc(10px + var(--safe-bottom, 0px)); background: rgba(15,23,42,.92); backdrop-filter: blur(10px); border-radius: 16px 16px 0 0; }
+@media (min-width: 900px) { .he-dock { left: 50%; right: auto; transform: translateX(-50%); border-radius: 14px 14px 0 0; } }
 .he-dock-flip { background: rgba(15,23,42,.96); }
 .he-dock-btn { flex: 1; padding: 12px 4px; border: 1px solid rgba(255,255,255,.22); border-radius: 11px; background: rgba(255,255,255,.08); color: #fff; font-size: 13.5px; font-weight: 700; cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
 .he-dock-btn.primary { background: var(--primary, #a62b2b); border-color: transparent; }

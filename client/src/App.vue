@@ -22,8 +22,12 @@ import { isPC } from './utils/device'
 
 const route = useRoute()
 // 独立设计/编辑页自带底部功能条与「完成」保存收敛，全局 tabbar 隐藏：
-// 配色风格 / 名片集市 / 资料编辑。其余 /me 子页靠底部 tab 导航，不显示返回。
-const hideMemberNav = computed(() => ['/me/card/style', '/me/card/market', '/me/card', '/me/withdraw-account', '/me/withdraw-account-edit'].includes(route.path))
+// 配色风格 / 名片集市 / 资料编辑 / 宣传页编辑器。其余 /me 子页靠底部 tab 导航，不显示返回。
+// ⚠️ 2026-11-27 实修：宣传页编辑器 /me/h5/:id 的 dock 是 sticky z-index:20，
+// 全局 tabbar 是 fixed z-index:110，不隐藏会把「编辑块/页面/配色/发布」四个按钮整个盖住、完全点不到。
+// 列表页 /me/h5 仍需 tabbar 导航，所以只精确匹配带 id 的编辑器路径。
+const HIDE_NAV_PAGES = ['/me/card/style', '/me/card/market', '/me/card', '/me/withdraw-account', '/me/withdraw-account-edit']
+const hideMemberNav = computed(() => HIDE_NAV_PAGES.includes(route.path) || /^\/me\/h5\/[^/]+\/?$/.test(route.path))
 // PC 首页用专属多栏概览（H5 的 /me 仍走原 Dashboard，路由表不变）
 const isDesktopHome = computed(() => route.path === '/me')
 // 桌面壳只套「工作台类」页面：/me 系列与 /market。
