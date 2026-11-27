@@ -6,7 +6,7 @@ const db = require('../db')
 const { ok, fail } = require('../utils/response')
 const { authRequired } = require('../utils/auth')
 const { makeSlug } = require('../utils/slug')
-const { TEMPLATES, getTemplate } = require('../data/h5Templates')
+const { TEMPLATES, getTemplate } = require('../utils/h5Templates')
 
 const router = express.Router()
 
