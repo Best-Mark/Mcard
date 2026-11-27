@@ -4,7 +4,12 @@
        琥珀虚线描边、块内动作短路），内容表单在底部弹层里改、画布实时刷新；
        底部操作条与名片工作台 dock 同款四态翻转：main=编辑块/页面/配色/发布，
        点任一键整行翻转出选项行（点中即改、面板不关可连试），↙ 收起回主行。
-       发布后自动挂到名片公开页（访客看名片可跳宣传页），宣传页尾页也带名片二维码——双向挂钩。 -->
+       发布后自动挂到名片公开页（访客看名片可跳宣传页），宣传页尾页也带名片二维码——双向挂钩。
+       2026-11-27 编辑体验一流化（用户反馈「要自由拖动、一些动作」）：
+       ① 画布长按块 350ms 拖动排序（跟手 + 命中即重排，H5Render emit reorder 落数组）；
+       ② 块入场动效可选（BottomSelect，公开页进入视口自动播放）；
+       ③ 加块插到选中块之后（不再固定尾部）、新增复制块；
+       ④ 按钮动作原 <select> 违规改 BottomSelect（H5 下拉必须 BottomSelect 约束），动作新增「复制文本」。 -->
   <div class="he">
     <header class="he-top">
       <button class="he-back" @click="router.push('/me/h5')">‹</button>
@@ -15,9 +20,10 @@
     <!-- 画布：只渲染当前编辑页，点块选中 -->
     <div class="he-canvas" v-if="loaded">
       <div class="he-canvas-in">
-        <H5Render :data="curPageData" editable :sel-key="selKey" @pick="onPick" />
+        <!-- page-offset：画布只渲染当前页，offset 让块的 key 与真实页号对齐（选中态/拖动不串页） -->
+        <H5Render :data="curPageData" editable :page-offset="selPage" :sel-key="selKey" @pick="onPick" @reorder="onReorder" />
       </div>
-      <div class="he-hint small muted">点模块选中 · 再点一下直接改内容 · 第 {{ selPage + 1 }} 页{{ block ? ` · ${TYPE_LABEL[block.type]}` : '' }}</div>
+      <div class="he-hint small muted">点模块选中 · 再点一下直接改内容 · 长按模块拖动排序{{ block ? ` · 当前：第 ${selPage + 1} 页 ${TYPE_LABEL[block.type]}` : '' }}</div>
     </div>
     <div v-else class="he-loading">加载中…</div>
 
@@ -40,6 +46,7 @@
               <template v-if="block">
                 <span class="he-grp">{{ TYPE_LABEL[block.type] }}</span>
                 <button class="he-chip on" @click="formOpen = true">编辑内容</button>
+                <button class="he-chip" @click="duplicateBlock" :disabled="curPage.blocks.length >= 8">⧉ 复制</button>
                 <button class="he-chip" @click="moveBlock(-1)" :disabled="selBlock === 0">↑</button>
                 <button class="he-chip" @click="moveBlock(1)" :disabled="selBlock === curPage.blocks.length - 1">↓</button>
                 <button class="he-chip warn" @click="removeBlock">✕ 删除</button>
@@ -73,7 +80,13 @@
     <!-- 选中块内容编辑弹层：v-model 直绑块字段，画布实时刷新（所见即所得） -->
     <BottomSheet :show="formOpen" @update:show="formOpen = $event">
       <div class="he-form" v-if="block">
-        <div class="he-f-head"><b>{{ TYPE_LABEL[block.type] }}</b><button class="he-mini" @click="formOpen = false">完成</button></div>
+        <div class="he-f-head">
+          <b>{{ TYPE_LABEL[block.type] }}</b>
+          <span class="he-f-actions">
+            <button class="he-mini" @click="duplicateBlock(); formOpen = false" :disabled="curPage.blocks.length >= 8">⧉ 复制</button>
+            <button class="he-mini" @click="formOpen = false">完成</button>
+          </span>
+        </div>
         <template v-if="block.type === 'cover'">
           <label>主标题<input v-model="block.title" maxlength="40" @input="markDirty" placeholder="一句话吸引点进来" /></label>
           <label>副标题<input v-model="block.subtitle" maxlength="60" @input="markDirty" placeholder="公司名 / 一句补充" /></label>
@@ -112,9 +125,10 @@
           <div v-for="(it, ii) in block.items" :key="ii" class="he-btn-edit">
             <label>按钮文字<input v-model="it.label" maxlength="12" @input="markDirty" /></label>
             <label>动作
-              <select v-model="it.action" @change="markDirty"><option value="tel">拨打电话</option><option value="wechat">复制微信号</option><option value="link">打开链接</option></select>
+              <!-- 原生 select 违反「H5 下拉必须 BottomSelect」约束，已换统一底部弹窗选择器 -->
+              <BottomSelect v-model="it.action" :options="ACTION_OPTS" title="按钮动作" @update:modelValue="markDirty" />
             </label>
-            <label>{{ it.action === 'link' ? '链接地址' : '号码 / 微信号' }}<input v-model="it.value" @input="markDirty" /></label>
+            <label>{{ ACTION_VALUE_LABEL[it.action] || '内容' }}<input v-model="it.value" @input="markDirty" /></label>
             <button class="he-mini danger" @click="block.items.splice(ii, 1); markDirty()">删除此按钮</button>
           </div>
           <button v-if="block.items.length < 3" class="he-btn ghost block" @click="block.items.push({ label: '', action: 'tel', value: '' }); markDirty()">＋ 添加按钮</button>
@@ -125,6 +139,13 @@
         <template v-else-if="block.type === 'endcard'">
           <p class="small muted" style="margin:0">尾页自动展示你的名片卡与二维码，访客看完直接跳名片。{{ watermark ? '免费版尾页带品牌水印，开通套餐后自动去除。' : '当前套餐：无水印。' }}</p>
         </template>
+        <!-- 通用：入场动效（所有块）。未设置=按块类型智能默认；公开页滚动到该块时自动播放 -->
+        <div class="he-anim-row">
+          <label>入场动效
+            <BottomSelect v-model="block.anim" :options="ANIM_OPTS" title="入场动效" @update:modelValue="markDirty" />
+          </label>
+          <p class="small muted" style="margin:4px 0 0">访客浏览到这个模块时自动播放的小动画，让页面更生动。</p>
+        </div>
       </div>
     </BottomSheet>
 
@@ -153,12 +174,21 @@ import { showToast } from '../store'
 import H5Render from '../components/H5Render.vue'
 import ImageField from '../components/ImageField.vue'
 import BottomSheet from '../components/BottomSheet.vue'
+import BottomSelect from '../components/BottomSelect.vue'
 
 const route = useRoute()
 const router = useRouter()
 
 const TYPE_LABEL = { cover: '封面', text: '文本', hero: '图文', gallery: '图集', contact: '联系方式', map: '位置', buttons: '按钮组', video: '视频', endcard: '名片尾页' }
 const ADDABLE = ['cover', 'text', 'hero', 'gallery', 'contact', 'map', 'buttons', 'video', 'endcard']
+// 入场动效选项（'' = 智能默认，与渲染层 animOf 的类型默认一致；none = 关闭）
+const ANIM_OPTS = [
+  { value: '', label: '默认（智能）' }, { value: 'none', label: '无动效' }, { value: 'up', label: '向上浮入' },
+  { value: 'fade', label: '淡入' }, { value: 'zoom', label: '缩放入场' }, { value: 'left', label: '左侧滑入' }, { value: 'right', label: '右侧滑入' }
+]
+// 按钮动作（2026-11-27 新增 copy）：value 的语义随动作变化，输入框标签跟着换
+const ACTION_OPTS = [{ value: 'tel', label: '拨打电话' }, { value: 'wechat', label: '复制微信号' }, { value: 'link', label: '打开链接' }, { value: 'copy', label: '复制文本' }]
+const ACTION_VALUE_LABEL = { tel: '电话号码', wechat: '微信号（留空用名片微信号）', link: '链接地址', copy: '要复制的文本' }
 // 主题色板：与名片模板色系呼应，点中即改全页 accent
 const COLORS = ['#a62b2b', '#c2410c', '#b45309', '#0f766e', '#4338ca', '#17357c', '#7c2d92', '#be185d']
 const FREE_MAX_PAGES = 3, PAID_MAX_PAGES = 12
@@ -251,12 +281,37 @@ function blank(type) {
   if (type === 'video') return { type, url: '', poster: '' }
   return { type: 'endcard' }
 }
-function addBlock(type) {
-  // 尾页名片卡保持永远在最后：非 endcard 插到尾页卡之前
+// 插入位置：有选中块（非尾页卡）→ 插到其后，跟着当前编辑焦点走；否则插到尾页卡之前
+function insertAt() {
   const arr = curPage.value.blocks
-  const at = arr.length && arr[arr.length - 1].type === 'endcard' ? arr.length - 1 : arr.length
+  const cap = arr.length && arr[arr.length - 1].type === 'endcard' ? arr.length - 1 : arr.length
+  if (block.value && block.value.type !== 'endcard') return Math.min(selBlock.value + 1, cap)
+  return cap
+}
+function addBlock(type) {
+  const arr = curPage.value.blocks
+  const at = insertAt()
   arr.splice(at, 0, blank(type))
   selBlock.value = at
+  markDirty()
+}
+function duplicateBlock() {
+  const src = block.value
+  if (!src) return
+  const arr = curPage.value.blocks
+  const at = insertAt()
+  arr.splice(at, 0, JSON.parse(JSON.stringify(src)))
+  selBlock.value = at
+  markDirty()
+  showToast('已复制一个相同模块，可拖动到任意位置', 'success')
+}
+// 画布长按拖动重排（H5Render emit）：from/to 都是本页块索引；尾页卡一样可以被拖（用户自由优先）
+function onReorder({ from, to }) {
+  const arr = curPage.value.blocks
+  if (from === to || from < 0 || to < 0 || from >= arr.length || to >= arr.length) return
+  const [m] = arr.splice(from, 1)
+  arr.splice(to, 0, m)
+  selBlock.value = to
   markDirty()
 }
 function removeBlock() { curPage.value.blocks.splice(selBlock.value, 1); selBlock.value = Math.max(0, selBlock.value - 1); markDirty() }
@@ -353,6 +408,8 @@ watch(() => route.params.id, () => { if (route.name === 'h5-editor') location.re
 .he-form { padding: 4px 2px 8px; max-height: 72vh; overflow-y: auto; overscroll-behavior: contain; }
 .he-f-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid var(--line); margin-bottom: 10px; }
 .he-f-head b { font-size: 15px; }
+.he-f-actions { display: flex; gap: 8px; }
+.he-anim-row { margin-top: 4px; padding-top: 10px; border-top: 1px dashed var(--line); }
 .he-form label { display: block; margin-bottom: 10px; font-size: 12.5px; color: #6b7280; }
 .he-form input, .he-form textarea, .he-form select { display: block; width: 100%; box-sizing: border-box; margin-top: 5px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; font-size: 14px; background: #fff; }
 .he-form .he-switch { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #374151; }

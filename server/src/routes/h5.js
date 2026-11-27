@@ -14,6 +14,8 @@ const router = express.Router()
 const FREE_MAX_PAGES = 3, PAID_MAX_PAGES = 12
 const FREE_MAX_H5 = 1, PAID_MAX_H5 = 10
 const BLOCK_TYPES = ['cover', 'text', 'hero', 'gallery', 'contact', 'map', 'buttons', 'video', 'endcard']
+// 块入场动效白名单（2026-11-27 编辑体验一流化）：'' = 未设置（渲染层按块类型智能默认），'none' = 显式关闭
+const BLOCK_ANIMS = ['none', 'up', 'fade', 'zoom', 'left', 'right']
 const str = (v, max) => String(v ?? '').slice(0, max)
 
 function planActiveOf(userId) {
@@ -35,14 +37,15 @@ function sanitizeSchema(raw, maxPages) {
   const pages = pagesIn.map(p => {
     const blocks = (Array.isArray(p?.blocks) ? p.blocks : []).slice(0, 8).map(b => {
       const type = BLOCK_TYPES.includes(b?.type) ? b.type : 'text'
-      const out = { type }
+      const out = { type, anim: BLOCK_ANIMS.includes(b?.anim) ? b.anim : '' }
       if (type === 'cover') Object.assign(out, { title: str(b.title, 40), subtitle: str(b.subtitle, 60), cover: str(b.cover, 500) })
       if (type === 'text') Object.assign(out, { heading: str(b.heading, 40), body: str(b.body, 1200) })
       if (type === 'hero') Object.assign(out, { image: str(b.image, 500), title: str(b.title, 40), desc: str(b.desc, 300) })
       if (type === 'gallery') Object.assign(out, { images: (Array.isArray(b.images) ? b.images : []).slice(0, 9).map(u => str(u, 500)), layout: b.layout === 'swipe' ? 'swipe' : 'grid' })
       if (type === 'contact') Object.assign(out, { showMobile: b.showMobile !== false, showWechat: b.showWechat !== false, showAddress: b.showAddress !== false })
       if (type === 'map') Object.assign(out, { lat: Number.isFinite(+b.lat) ? +b.lat : null, lng: Number.isFinite(+b.lng) ? +b.lng : null, label: str(b.label, 80) })
-      if (type === 'buttons') Object.assign(out, { items: (Array.isArray(b.items) ? b.items : []).slice(0, 3).map(i => ({ label: str(i?.label, 12), action: ['tel', 'wechat', 'link'].includes(i?.action) ? i.action : 'tel', value: str(i?.value, 200) })) })
+      // 按钮 action 白名单 2026-11-27 加 copy（复制任意文本）
+      if (type === 'buttons') Object.assign(out, { items: (Array.isArray(b.items) ? b.items : []).slice(0, 3).map(i => ({ label: str(i?.label, 12), action: ['tel', 'wechat', 'link', 'copy'].includes(i?.action) ? i.action : 'tel', value: str(i?.value, 200) })) })
       if (type === 'video') Object.assign(out, { url: str(b.url, 500), poster: str(b.poster, 500) })
       if (type === 'endcard') Object.assign(out, {})
       return out
