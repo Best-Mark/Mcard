@@ -142,7 +142,7 @@
         <view class="field"><text class="label">强调色</text><input v-model="form.accent" class="input" placeholder="#a62b2b" /></view>
         <view class="field"><text class="label">二维码前景色</text><input v-model="form.qr_fg" class="input" placeholder="#2b2118" /></view>
         <view class="field"><text class="label">二维码背景色</text><input v-model="form.qr_bg" class="input" placeholder="#ffffff" /></view>
-        <view class="muted small" style="margin:8rpx 0 16rpx">码点/码眼已固定为标准方点、中心 Logo 已移除（识别率优先），保证微信扫一扫与长按识别；可自定义的只剩码色（请保持深码浅底）。</view>
+        <view class="muted small" style="margin:8rpx 0 16rpx">码色可自定义（请保持深码浅底，保证可扫），微信扫一扫与长按识别均不受影响。</view>
         </view>
       </view>
 

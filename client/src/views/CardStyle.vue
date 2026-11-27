@@ -64,7 +64,7 @@
             </template>
             <template v-else>
               <div class="section-title" style="margin-top:0">二维码</div>
-              <p class="small muted">码点/码眼已固定为标准方点、中心 LOGO 已移除（2026-11-27 识别率优先定稿），保证微信扫一扫与长按识别；可自定义的只剩配色，不影响识别。</p>
+              <p class="small muted">码色可自定义（请保持深码浅底，保证可扫）；微信扫一扫、长按识别均不受影响。</p>
               <div class="field"><label>码色（深码浅底成对，保证可扫）</label>
                 <BottomSelect v-model="colorKey" :options="colorKeyOptions" title="码色" />
               </div>

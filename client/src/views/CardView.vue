@@ -247,7 +247,7 @@
           <button :class="['qr-mode-tab', { on: qrMode === 'vcard' }]" @click="qrMode = 'vcard'">联系人码</button>
           <button :class="['qr-mode-tab', { on: qrMode === 'link' }]" @click="qrMode = 'link'">名片链接码</button>
         </div>
-        <img :src="qrModalSrc" style="width:264px;height:264px;margin:4px auto 10px;display:block" :alt="qrMode === 'vcard' ? '名片联系人二维码' : '名片地址二维码'" />
+        <img :src="qrModalSrc" style="width:264px;height:264px;margin:4px auto 10px;display:block" :alt="qrMode === 'vcard' ? '联系人码' : '名片链接码'" />
         <!-- 2026-11-27 识别率定稿：弹层大码/保存一律用纯黑白标准识别码（plain=1），微信长按 100% 出
              「识别图中二维码」；名片本体码为标准方点 + 用户自选配色，不受影响 -->
         <p class="small muted center">扫一扫</p>
@@ -333,12 +333,12 @@
           </div>
         </template>
         <template v-else-if="inWeChat">
-          <p>微信内置浏览器限制下载。请点右上角「···」→ <b>在浏览器中打开</b>{{ guideWithLogin ? '（已自动带上登录状态）' : '（无需登录）' }}，再点保存。</p>
+          <p>微信内置浏览器限制下载。请点右上角「···」→ <b>在浏览器中打开</b>，再点保存。</p>
         </template>
         <template v-else>
           <p v-html="saveTip"></p>
         </template>
-        <img v-if="guide !== 'contact'" :src="guideImage || scanQrUrl(slug, 'vcard.png', 520)" style="width:200px;height:200px;margin:10px auto;object-fit:contain" alt="二维码" />
+        <img v-if="guide !== 'contact'" :src="guideImage || (scanQrUrl(slug, qrMode === 'vcard' ? 'vcard.png' : 'qr.png', 520) + '&plain=1')" style="width:200px;height:200px;margin:10px auto;object-fit:contain" alt="二维码" />
         <div class="btn-row" style="justify-content:flex-end">
           <button class="btn btn-ghost" @click="closeGuide">知道了</button>
         </div>
@@ -907,8 +907,6 @@ const windowRef = window
 // 微信「···」原生转发用的是 JS-SDK 配置的 link，不是地址栏 URL——owner 页也必须配成这个地址，
 // 否则别人打开的是 /me（被守卫踢去登录，登录后看到「我的名片页」），而不是被分享的那张名片。
 const publicLink = computed(() => card.value?.url || `${windowRef.location.origin}/c/${slug.value}`)
-// 微信内引导「在浏览器中打开」是否真的带上了登录凭证：未登录访客拿不到 ticket，文案不能谎称已带登录态
-const guideWithLogin = ref(false)
 // 模板里区分微信/Safari 的保存引导（微信→去浏览器，iOS→长按图片）
 const inWeChat = isWeChat()
 const deviceEnvKey = deviceEnv()
@@ -964,10 +962,10 @@ const CONTACT_STEPS = {
 // 保存名片到通讯录本就不需要登录（登录用户/访客一样能存），步骤文案不提登录状态（2026-11-27 用户定稿）
 const contactSteps = computed(() => CONTACT_STEPS[deviceEnvKey] || CONTACT_STEPS.other)
 
-// 微信内显示「去浏览器打开」引导前，尝试把登录凭证写进当前 URL，外部浏览器打开即免二次登录。
-// 未登录访客（含非注册用户）拿不到 ticket——记录结果，文案据实说明，不能谎称已带登录态。
+// 微信内显示「去浏览器打开」引导前，尽力把一次性登录凭证写进当前 URL（外部浏览器打开即免二次登录）。
+// 凭证只是尽力而为，提示不提登录状态（2026-11-27 用户定稿：一律按当前功能口径出提示）。
 async function showGuide(kind) {
-  guideWithLogin.value = isWeChat() ? !!(await prepareExternalOpen(api)) : false
+  if (isWeChat()) await prepareExternalOpen(api)
   guide.value = kind
 }
 // 引导看完即抹掉地址栏上的一次性登录凭证：避免用户紧接着用微信「···」转发时把 ticket 带出去
@@ -1090,12 +1088,13 @@ async function copy(v, label) {
   } catch { showToast(`复制失败，${label}：${v}`) }
 }
 async function saveQr() {
-  guideImage.value = ''
   // 保存当前 tab 的码：联系人码（名片页 URL + contact=1，扫=打开页面弹存通讯录入口）或链接码；一律纯黑白标准码
   const isVcard = qrMode.value === 'vcard'
+  const url = scanQrUrl(slug.value, isVcard ? 'vcard.png' : 'qr.png', 900) + '&plain=1'
+  guideImage.value = url // 长按引导里展示的就是这张码
   const r = await saveImageUrl(
-    scanQrUrl(slug.value, isVcard ? 'vcard.png' : 'qr.png', 900) + '&plain=1',
-    `${slug.value}-${isVcard ? '名片码' : '二维码'}.png`
+    url,
+    `${slug.value}-${isVcard ? '联系人码' : '名片链接码'}.png`
   )
   if (r.kind === 'longpress') { await showGuide('qr'); return }
   showToast(r.kind === 'downloaded' ? '二维码已开始下载' : '已打开二维码，请长按保存', 'success')
