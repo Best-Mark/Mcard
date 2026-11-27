@@ -225,8 +225,11 @@
           <button :class="['qr-mode-tab', { on: qrMode === 'vcard' }]" @click="qrMode = 'vcard'">联系人码</button>
           <button :class="['qr-mode-tab', { on: qrMode === 'link' }]" @click="qrMode = 'link'">名片链接码</button>
         </div>
-        <img :src="scanQrUrl(slug, qrMode === 'vcard' ? 'vcard.png' : 'qr.png', 640) + '&v=' + qrStamp" style="width:264px;height:264px;margin:4px auto 10px;display:block" :alt="qrMode === 'vcard' ? '名片联系人二维码' : '名片地址二维码'" />
-        <p class="small muted center">{{ qrMode === 'vcard' ? '手机相机/微信扫一扫，直接把名片存入通讯录（已瘦身只含主流字段，保证可扫）' : '扫一扫打开名片页，名片里的资料随时更新、链接永久不变' }}</p>
+        <img :src="qrModalSrc" style="width:264px;height:264px;margin:4px auto 10px;display:block" :alt="qrMode === 'vcard' ? '名片联系人二维码' : '名片地址二维码'" />
+        <!-- 微信长按识别兜底：美化码（圆角点/浅底）本地 QR 检测常失败，用户可一键切标准黑白方点码；
+             默认仍是用户设置的美化码，名片本体不受影响 -->
+        <button class="qr-plain-toggle" type="button" @click="qrPlain = !qrPlain">{{ qrPlain ? '← 返回美化码' : '长按没出现「识别图中二维码」？切换标准识别码' }}</button>
+        <p class="small muted center">{{ qrPlain ? '标准黑白码 · 长按图片即可识别；名片上的美化码不受影响' : (qrMode === 'vcard' ? '手机相机/微信扫一扫，直接把名片存入通讯录（已瘦身只含主流字段，保证可扫）' : '扫一扫打开名片页，名片里的资料随时更新、链接永久不变') }}</p>
         <!-- 一个入口承载三件事：存联系人的码/打开名片的码、复制链接、公开页（关闭弹层即当前公开页） -->
         <div class="btn-row" style="justify-content:center;margin-top:14px;flex-wrap:wrap">
           <button class="btn btn-primary" @click="copy(publicLink, '名片链接')">复制名片链接</button>
@@ -430,6 +433,12 @@ const qrBusy = ref(false)
 // 二维码图 URL 缓存击穿：qr_style 等由服务端渲染，固定 URL 会被 CDN/浏览器缓存 60s，
 // 预设点中后必须换 query 才能立刻看到新码（2026-11-26）
 const qrStamp = ref(0)
+// 弹层码显示 264px：按屏幕 DPR 请求原图尺寸（528/792），避免 640→264 浏览器降采样
+// 把码点间细缝糊掉——微信长按识别用的是屏幕截图做本地 QR 检测，糊掉的码点会检测失败。
+const qrImgSize = Math.round(264 * Math.min(3, Math.max(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 2)))
+const qrPlain = ref(false) // 用户主动切换的「标准识别码」（纯黑白方点，100% 可长按识别）
+const qrModalSrc = computed(() => scanQrUrl(slug.value, qrMode.value === 'vcard' ? 'vcard.png' : 'qr.png', qrImgSize)
+  + (qrPlain.value ? '&plain=1' : '') + '&v=' + qrStamp.value)
 function qrPresetActive(p) {
   const s = card.value?.qr_style || {}
   return s.dot === p.dot && s.eye === p.eye && (s.gradTo || '') === p.gradTo
@@ -926,7 +935,7 @@ async function saveQr() {
   // 保存当前切换到的码：联系人码（vCard 瘦身版，扫=直接存通讯录）或名片链接码
   const isVcard = qrMode.value === 'vcard'
   const r = await saveImageUrl(
-    scanQrUrl(slug.value, isVcard ? 'vcard.png' : 'qr.png', 900),
+    scanQrUrl(slug.value, isVcard ? 'vcard.png' : 'qr.png', 900) + (qrPlain.value ? '&plain=1' : ''),
     `${slug.value}-${isVcard ? '名片码' : '二维码'}.png`
   )
   if (r.kind === 'longpress') { await showGuide('qr'); return }

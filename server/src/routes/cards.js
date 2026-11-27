@@ -312,6 +312,11 @@ router.get('/public/:slug/qr.png', wrap(async (req, res) => {
   const row = db.prepare('SELECT slug, qr_fg, qr_bg, qr_logo, qr_style, logo, avatar FROM cards WHERE slug = ?').get(req.params.slug)
   if (!row) return fail(res, 404, '名片不存在')
   const size = Math.min(2000, Math.max(128, Number(req.query.size) || 720))
+  // plain=1：标准黑白方点识别码（用户主动切换，仅用于长按识别兜底；默认美化码不变）
+  if (String(req.query.plain || '') === '1') {
+    const buf = await qr.plainPng(requestUrl(req, `/c/${row.slug}`), { size })
+    return res.type('png').set('Cache-Control', 'public, max-age=60').send(buf)
+  }
   const logoImage = row.qr_logo ? await qrCenterImage(row) : ''
   const style = normalizeStyle(parseJson(row.qr_style, {}))
   let opts = { size, fg: row.qr_fg, bg: row.qr_bg, logoImage, logo: !!row.qr_logo, brand: qrBrandText(), style }
@@ -369,6 +374,11 @@ router.get('/public/:slug/vcard.png', wrap(async (req, res) => {
   // 二维码用瘦身版 vCard（只放主流联系人字段，2026-11-26 用户定稿：保证可扫性）
   const text = vcard.build(publicView(row, origin), origin, { slim: true })
   const size = Math.min(1600, Math.max(256, Number(req.query.size) || 720))
+  // plain=1：vCard 也走标准黑白方点识别码（切换后两个 tab 都能长按识别）
+  if (String(req.query.plain || '') === '1') {
+    const buf = await qr.plainPng(text, { size })
+    return res.type('png').set('Cache-Control', 'public, max-age=60').send(buf)
+  }
   const style = normalizeStyle(parseJson(row.qr_style, {}))
   const logoImage = row.qr_logo ? await qrCenterImage(row) : ''
   const buf = await qr.png(text, { size, brand: qrBrandText(), ...scanOptions({ fg: row.qr_fg, bg: row.qr_bg, style, logo: !!row.qr_logo, logoImage }) })

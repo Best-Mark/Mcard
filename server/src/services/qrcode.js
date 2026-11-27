@@ -220,6 +220,25 @@ async function png(text, opts = {}) {
   return buf
 }
 
+// 标准识别码（2026-11-27）：纯黑白方点、静音区 4、纠错 M、无任何美化。
+// 微信「长按识别图中二维码」靠本地 QR 检测，圆角/圆点/渐变/中心 LOGO/浅色底等美化码
+// 常检测失败（菜单只有转发/收藏/保存图片/搜一搜）。用户主动切换时下发这张，保证 100% 可识别；
+// 名片上的美化码与此前完全一致，不受影响。qrcode 库原生 PNG 再 flatten 一遍，确保无 alpha 通道。
+async function plainPng(text, opts = {}) {
+  const size = opts.size || 640
+  const key = `plain|${text}|${size}`
+  const hit = cache.get(key)
+  if (hit && Date.now() - hit.t < TTL_MS && hit.png) return hit.png
+  const raw = await QRCode.toBuffer(text, {
+    type: 'png', errorCorrectionLevel: 'M', margin: 4, width: size,
+    color: { dark: '#000000ff', light: '#ffffffff' }
+  })
+  const buf = await sharp(raw).flatten({ background: '#ffffff' }).png().toBuffer()
+  cache.set(key, { t: Date.now(), png: buf })
+  if (cache.size > MAX_CACHE) cache.delete(cache.keys().next().value)
+  return buf
+}
+
 function hashCode(s) {
   let h = 0
   for (let i = 0; i < s.length; i++) { h = (h << 5) - h + s.charCodeAt(i); h |= 0 }
@@ -234,4 +253,4 @@ function modules(text) {
   return { d, n }
 }
 
-module.exports = { svg, png, modules, escapeXml, clearCache, normalizeStyle, DEFAULT_STYLE, SCAN_STYLE }
+module.exports = { svg, png, plainPng, modules, escapeXml, clearCache, normalizeStyle, DEFAULT_STYLE, SCAN_STYLE }

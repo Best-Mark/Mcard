@@ -83,6 +83,8 @@
 .cv-pe-t b { font-size: 14px; }
 .cv-pe-t small { color: #6b7280; font-size: 11.5px; }
 .cv-promo-entry i { font-style: normal; color: #9ca3af; }
+/* 二维码弹层「标准识别码」切换入口：轻量文字链，不抢弹层主操作 */
+.qr-plain-toggle { display: block; margin: 0 auto 10px; padding: 4px 8px; border: 0; background: transparent; color: var(--primary, #2563eb); font-size: 12px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 /* 快捷编辑（2026-11-27 用户定稿）：owner 工作台点字段 → 虚线选中 + 字段后浮出「✎ 改这项」标。
    描边与胶囊都用模板主题色 --t-accent，深浅 18 套模板通用；quickEdit=false 时这些类不出现。 */
 .cv-qe-on { outline: 2px dashed var(--t-accent, #a62b2b); outline-offset: 3px; border-radius: 6px; box-shadow: 0 0 0 4px color-mix(in srgb, var(--t-accent, #a62b2b) 20%, transparent); cursor: pointer; }
