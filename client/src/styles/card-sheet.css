@@ -83,6 +83,23 @@
 .cv-pe-t b { font-size: 14px; }
 .cv-pe-t small { color: #6b7280; font-size: 11.5px; }
 .cv-promo-entry i { font-style: normal; color: #9ca3af; }
+/* 快捷编辑（2026-11-27 用户定稿）：owner 工作台点字段 → 虚线选中 + 字段后浮出「✎ 改这项」标。
+   描边与胶囊都用模板主题色 --t-accent，深浅 18 套模板通用；quickEdit=false 时这些类不出现。 */
+.cv-qe-on { outline: 2px dashed var(--t-accent, #a62b2b); outline-offset: 3px; border-radius: 6px; box-shadow: 0 0 0 4px color-mix(in srgb, var(--t-accent, #a62b2b) 20%, transparent); cursor: pointer; }
+.cv-qe-tag { display: inline-flex; align-items: center; gap: 4px; margin: 6px 0 2px; padding: 5px 11px; border: 1px solid rgba(255,255,255,.55); border-radius: 999px; background: var(--t-accent, #a62b2b); color: #fff; font-size: 11.5px; font-weight: 700; white-space: nowrap; cursor: pointer; box-shadow: 0 4px 12px rgba(15,23,42,.22); -webkit-tap-highlight-color: transparent; }
+.cv-qe-tag:active { transform: scale(.95); }
+.cv-contact-row .cv-qe-tag { margin: 0 0 0 auto; flex: 0 0 auto; }
+/* 单字段底部弹层表单（只改这一项） */
+.qe-sheet { padding: 6px 2px 12px; }
+.qe-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 10px; border-bottom: 1px solid var(--line, #e8edf4); }
+.qe-head b { font-size: 15px; }
+.qe-head button { border: 0; background: transparent; font-size: 20px; color: var(--muted, #64748b); cursor: pointer; }
+.qe-sheet > p.small { margin: 10px 0 14px; }
+.qe-field { display: block; margin-bottom: 12px; font-size: 12.5px; color: var(--muted, #64748b); }
+.qe-field > span { display: block; margin-bottom: 5px; }
+.qe-field input, .qe-field textarea { display: block; width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--line, #e8edf4); border-radius: 9px; background: #fff; color: var(--text, #0f172a); font-size: 14px; }
+.qe-actions { display: flex; gap: 10px; margin-top: 6px; }
+.qe-actions .btn { flex: 1; }
 .cv-owner .cv-fab { bottom: calc(128px + env(safe-area-inset-bottom)); }
 .cv-owner .cv-fab-menu { bottom: calc(180px + env(safe-area-inset-bottom)); }
 /* 高档商务名片：卡片大圆角 + 轻阴影，浅灰蓝底衬托层次 */

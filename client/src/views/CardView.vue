@@ -36,8 +36,8 @@
         v-else
         :card="card" :tags="card.tags || []" :materials="materialsList" :site-name="siteConfig.site_name"
         :qr-url="full ? (qrApi + '/qr.png?size=200&v=' + qrStamp) : ''"
-        :full="full" :interactive="full && !embed" :show-edit="!!owner"
-        @edit="router.push('/me/card')" @qr="qrModal = true"
+        :full="full" :interactive="full && !embed" :show-edit="!!owner" :quick-edit="!!owner && !embed"
+        @edit="router.push('/me/card')" @qr="qrModal = true" @edit-field="openQuickEdit"
         @copy="copy" @tel="tel" @sms="sms" @mailto="mailto"
         @open-gallery="openGallery" @open-material="openMaterial" @map="openMapSheet"
       >
@@ -197,6 +197,26 @@
       </BottomSheet>
     </template>
 
+    <!-- 快捷编辑弹层（2026-11-27 用户定稿）：点名片里的字段 → 字段后面浮出「✎ 改这项」标 → 点标只弹这一项；
+         保存即 PUT /api/cards/mine 并就地合并 card，名片本体立即刷新、二维码与链接都不变。 -->
+    <BottomSheet :show="qeOpen" @update:show="qeOpen = $event">
+      <div class="qe-sheet" v-if="qeConf">
+        <div class="qe-head"><b>修改{{ qeConf.label }}</b><button type="button" @click="qeOpen = false">×</button></div>
+        <p class="small muted">只改这一项 · 保存后名片立即生效，二维码和链接都不变。</p>
+        <label v-for="f in qeConf.fields" :key="f.key" class="qe-field">
+          <span>{{ f.label }}</span>
+          <ImageField v-if="f.type === 'image'" v-model="qeForm[f.key]" />
+          <textarea v-else-if="f.type === 'textarea'" v-model="qeForm[f.key]" rows="4" :maxlength="f.max || 1000" :placeholder="f.ph || ''"></textarea>
+          <input v-else v-model="qeForm[f.key]" :maxlength="f.max || 100" :placeholder="f.ph || ''" :inputmode="f.inputmode || 'text'" />
+        </label>
+        <p v-if="qeKey === 'address'" class="small muted">省市区与定位仍去「编辑资料 → 联系方式」维护。</p>
+        <div class="qe-actions">
+          <button class="btn btn-ghost" type="button" @click="qeOpen = false">取消</button>
+          <button class="btn btn-primary" type="button" :disabled="qeSaving" @click="saveQuickEdit">{{ qeSaving ? '保存中…' : '保存' }}</button>
+        </div>
+      </div>
+    </BottomSheet>
+
     <!-- 名片二维码双码弹层（2026-11-26 用户定稿：两个都要）：联系人码=vCard 瘦身版（只放主流字段，
          扫一扫直接弹「添加到通讯录」）；名片链接码=地址短链（扫了打开名片页）。默认联系人码。
          一律 PNG（微信「识别图中二维码」不认 SVG），链接仅作文案可复制 -->
@@ -323,6 +343,7 @@ import '../styles/template-thumbs.css'
 import { getCachedPosition } from '../utils/geo'
 import BottomSheet from '../components/BottomSheet.vue'
 import CardSheet from '../components/CardSheet.vue'
+import ImageField from '../components/ImageField.vue'
 
 const route = useRoute(); const router = useRouter()
 // 返回要「回到来源」而不是盲调 history.back：从集市点进来的名片必须回集市；
@@ -490,6 +511,69 @@ function toggleMarket() {
 function chooseIndustry(key) {
   if (card.value?.industry === key) return
   saveMarket({ industry: key })
+}
+
+// 快捷编辑（2026-11-27 用户定稿「点字段出标、点标改此项」）：
+// key 与 CardSheet emit 的字段名一一对应；fields 是该弹层要改的服务端列（地址/职位是两列一组），
+// 全部落在 PUT /api/cards/mine 的 EDITABLE 白名单内，不涉及 slug/expires_at（二维码终身不变）。
+// 只提交这一项的 patch —— 不像整份表单那样全量提交，避免覆盖其它分类里未加载的字段。
+const QE_CONF = {
+  logo: { label: '头像 / LOGO', fields: [{ key: 'logo', label: '图片（公司 LOGO 优先展示）', type: 'image' }] },
+  name: { label: '姓名', fields: [{ key: 'name', label: '姓名', max: 30 }] },
+  name_en: { label: '英文名', fields: [{ key: 'name_en', label: '英文名', max: 40 }] },
+  title: { label: '职位 / 部门', fields: [{ key: 'title', label: '职位', max: 40 }, { key: 'department', label: '部门（选填）', max: 40 }] },
+  company: { label: '公司 / 品牌', fields: [{ key: 'company', label: '公司 / 品牌', max: 60 }] },
+  tags: { label: '标签', fields: [{ key: 'tags', label: '标签（逗号分隔，最多 8 个）', type: 'tags', max: 200 }] },
+  bio: { label: '简介', fields: [{ key: 'bio', label: '简介', type: 'textarea', max: 1000 }] },
+  mobile: { label: '手机号', fields: [{ key: 'mobile', label: '手机号', max: 30, inputmode: 'tel' }] },
+  phone: { label: '座机', fields: [{ key: 'phone', label: '座机', max: 30, inputmode: 'tel' }] },
+  email: { label: '邮箱', fields: [{ key: 'email', label: '邮箱', max: 80, inputmode: 'email' }] },
+  wechat: { label: '微信号', fields: [{ key: 'wechat', label: '微信号', max: 60 }] },
+  alipay: { label: '支付宝', fields: [{ key: 'alipay', label: '支付宝', max: 60 }] },
+  whatsapp: { label: 'WhatsApp', fields: [{ key: 'whatsapp', label: 'WhatsApp', max: 60 }] },
+  address: { label: '地址', fields: [{ key: 'address', label: '详细地址', max: 120 }, { key: 'address_detail', label: '门牌 / 楼层（选填）', max: 80 }] },
+  website: { label: '公司主页', fields: [{ key: 'website', label: '网址', max: 200, ph: 'https://…' }] },
+  shop_url: { label: '店铺主页', fields: [{ key: 'shop_url', label: '网址', max: 200, ph: 'https://…' }] }
+}
+const qeOpen = ref(false)
+const qeKey = ref('')
+const qeForm = ref({})
+const qeSaving = ref(false)
+const qeConf = computed(() => QE_CONF[qeKey.value] || null)
+function openQuickEdit(key) {
+  const k = key === 'shop' ? 'shop_url' : key // CardSheet 的 siteLinks 用 'shop' 短名
+  const conf = QE_CONF[k]
+  if (!conf) return
+  qeKey.value = k
+  const c = card.value || {}
+  const form = {}
+  for (const f of conf.fields) {
+    const raw = c[f.key] ?? ''
+    if (f.type === 'tags') {
+      let arr = raw
+      if (typeof arr === 'string' && arr.trim().startsWith('[')) { try { arr = JSON.parse(arr) } catch {} }
+      form[f.key] = Array.isArray(arr) ? arr.join('，') : arr
+    } else form[f.key] = raw
+  }
+  qeForm.value = form
+  qeOpen.value = true
+}
+async function saveQuickEdit() {
+  const conf = qeConf.value
+  if (qeSaving.value || !conf) return
+  const patch = {}
+  for (const f of conf.fields) {
+    let v = qeForm.value[f.key] ?? ''
+    if (f.type === 'tags') v = String(v).split(/[,，]/).map(s => s.trim()).filter(Boolean).slice(0, 8)
+    patch[f.key] = v
+  }
+  qeSaving.value = true
+  try {
+    await api.put('/api/cards/mine', patch)
+    card.value = { ...card.value, ...patch } // 就地合并 → 名片本体即时刷新；二维码 slug 不变
+    qeOpen.value = false
+    showToast(`已保存${conf.label}`, 'success')
+  } catch (e) { showToast(e.message, 'error') } finally { qeSaving.value = false }
 }
 const currentTheme = ref('ocean'); const isOwner = ref(false)
 // 当前登录用户是否已建自己的名片（看别人的名片时用来决定是否显示「免费创建我的名片」）

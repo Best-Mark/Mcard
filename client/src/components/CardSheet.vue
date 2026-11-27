@@ -10,20 +10,28 @@
   <div class="container cv-main">
     <div class="cv-profile card" data-sec="identity" :data-wm="wmText">
       <span class="cv-sheen" aria-hidden="true"></span>
-      <div class="cv-avatar" :class="{ 'is-logo': !!card.logo }">
+      <div :class="['cv-avatar', { 'is-logo': !!card.logo, 'cv-qe-on': qeOn('logo') }]" @click="qeTap($event,'logo')">
         <img v-if="card.logo || card.avatar" :src="card.logo || card.avatar" :alt="card.logo ? ((card.company || '公司') + ' LOGO') : card.name" />
         <span v-else>{{ (card.name || '名').slice(0, 1) }}</span>
       </div>
       <div class="cv-ident">
+        <!-- 快捷编辑（owner 工作台）：点字段 → 后面浮出「✎ 改这项」标 → 点标弹层只改这一项。
+             quickEdit=false（公开页/编辑预览/配色预览）时所有点击行为保持原样。 -->
+        <button v-if="qeOn('logo')" class="cv-qe-tag" type="button" @click.stop="editField('logo')">✎ 改头像 / LOGO</button>
         <div class="cv-name-row">
-          <div class="cv-name">{{ card.name || card.name_en || '未填写姓名' }}
-            <span v-if="card.name_en" class="cv-en">{{ card.name_en }}</span>
+          <div :class="['cv-name', { 'cv-qe-on': qeOn('name') }]" @click="qeTap($event,'name')">{{ card.name || card.name_en || '未填写姓名' }}
+            <span v-if="card.name_en" :class="['cv-en', { 'cv-qe-on': qeOn('name_en') }]" @click="qeTap($event,'name_en')">{{ card.name_en }}</span>
           </div>
+          <button v-if="qeOn('name')" class="cv-qe-tag" type="button" @click.stop="editField('name')">✎ 改姓名</button>
+          <button v-if="qeOn('name_en')" class="cv-qe-tag" type="button" @click.stop="editField('name_en')">✎ 改英文名</button>
           <button v-if="showEdit" class="cv-inline-edit" type="button" @click="$emit('edit')" title="编辑名片资料" aria-label="编辑名片资料">✎</button>
         </div>
-        <div class="cv-title">{{ displayTitle || '点击进入编辑，完善你的职业信息' }}</div>
-        <div v-if="displayOrg" class="cv-org">{{ displayOrg }}</div>
-        <div v-if="tagList.length" class="cv-tags"><span v-for="tag in tagList" :key="tag">{{ tag }}</span></div>
+        <div :class="['cv-title', { 'cv-qe-on': qeOn('title') }]" @click="qeTap($event,'title')">{{ displayTitle || '点击进入编辑，完善你的职业信息' }}</div>
+        <button v-if="qeOn('title')" class="cv-qe-tag" type="button" @click.stop="editField('title')">✎ 改职位 / 部门</button>
+        <div v-if="displayOrg" :class="['cv-org', { 'cv-qe-on': qeOn('company') }]" @click="qeTap($event,'company')">{{ displayOrg }}</div>
+        <button v-if="qeOn('company')" class="cv-qe-tag" type="button" @click.stop="editField('company')">✎ 改公司</button>
+        <div v-if="tagList.length" :class="['cv-tags', { 'cv-qe-on': qeOn('tags') }]" @click="qeTap($event,'tags')"><span v-for="tag in tagList" :key="tag">{{ tag }}</span></div>
+        <button v-if="qeOn('tags')" class="cv-qe-tag" type="button" @click.stop="editField('tags')">✎ 改标签</button>
       </div>
       <!-- 二维码是信息入口：小图常驻姓名区右上角，点击弹层放大；正文不摆大块二维码卡 -->
       <button v-if="qrUrl" class="cv-qr-entry" type="button" @click="$emit('qr')" title="扫码打开名片 · 点击放大" aria-label="查看名片二维码">
@@ -37,8 +45,8 @@
 
     <!-- 地址本身属于联系信息，作为本卡最后一行（2026-11-26 用户定），不再单独成块 -->
     <div v-if="full && (contactFields.length || fullAddress)" class="card card-pad cv-block" data-sec="contact">
-      <h3>联系方式 <span class="small muted">· 点一行即复制该字段</span></h3>
-      <div v-for="f in contactFields" :key="f.key" class="cv-contact-row" @click="onCopy(f.value, f.label)">
+      <h3>联系方式 <span class="small muted">· {{ quickEdit ? '点字段出「✎ 改这项」' : '点一行即复制该字段' }}</span></h3>
+      <div v-for="f in contactFields" :key="f.key" :class="['cv-contact-row', { 'cv-qe-on': qeOn(f.key) }]" @click="onRowTap(f)">
         <div class="cv-contact-label">{{ f.label }}：</div>
         <div class="cv-contact-value">{{ f.value }}</div>
         <div v-if="interactive" class="cv-contact-acts" @click.stop>
@@ -46,8 +54,9 @@
           <button v-if="f.key === 'mobile'" class="cv-row-act" type="button" :title="'发短信给 ' + f.value" :aria-label="'发短信给 ' + f.value" @click="$emit('sms', f.value)"><AppIcon name="sms" :size="14" /></button>
           <button v-if="f.key === 'email'" class="cv-row-act" type="button" :title="'发邮件到 ' + f.value" :aria-label="'发邮件到 ' + f.value" @click="$emit('mailto', f.value)"><AppIcon name="mail" :size="14" /></button>
         </div>
+        <button v-if="qeOn(f.key)" class="cv-qe-tag" type="button" @click.stop="editField(f.key)">✎ 改这项</button>
       </div>
-      <div v-if="fullAddress" class="cv-contact-row" @click="onCopy(fullAddress, '地址')">
+      <div v-if="fullAddress" :class="['cv-contact-row', { 'cv-qe-on': qeOn('address') }]" @click="onAddressTap">
         <div class="cv-contact-label">地址：</div>
         <div class="cv-contact-value">
           <span v-if="regionLine">{{ regionLine }}</span>
@@ -56,12 +65,15 @@
         <div v-if="interactive && maps.length" class="cv-contact-acts" @click.stop>
           <button class="cv-row-act" type="button" title="地图导航" aria-label="地图导航" @click="$emit('map')"><AppIcon name="nav" :size="14" /></button>
         </div>
+        <button v-if="qeOn('address')" class="cv-qe-tag" type="button" @click.stop="editField('address')">✎ 改地址</button>
       </div>
     </div>
 
     <template v-if="full">
       <div v-if="introText" class="card card-pad cv-block" data-sec="bio">
-        <h3>简介</h3><p class="cv-bio">{{ introText }}</p>
+        <h3>简介</h3>
+        <p :class="['cv-bio', { 'cv-qe-on': qeOn('bio') }]" @click="qeTap($event,'bio')">{{ introText }}</p>
+        <button v-if="qeOn('bio')" class="cv-qe-tag" type="button" @click.stop="editField('bio')">✎ 改简介</button>
       </div>
 
       <div v-if="card.links?.length" class="card card-pad cv-block" data-sec="links">
@@ -76,7 +88,8 @@
       <div v-if="siteLinks.length" class="card card-pad cv-block" data-sec="links">
         <h3>主页与店铺</h3>
         <div v-for="l in siteLinks" :key="l.key" class="cv-site">
-          <div><b>{{ l.label }}</b><span class="small muted">{{ shortUrl(l.url) }}</span></div>
+          <div :class="{ 'cv-qe-on': qeOn(l.key) }" @click="qeTap($event,l.key)"><b>{{ l.label }}</b><span class="small muted">{{ shortUrl(l.url) }}</span></div>
+          <button v-if="qeOn(l.key)" class="cv-qe-tag" type="button" @click.stop="editField(l.key)">✎ 改网址</button>
           <div class="btn-row">
             <a :href="safeUrl(l.url)" target="_blank" rel="noopener" class="btn btn-sm btn-primary btn-icon" :title="'打开' + l.label" :aria-label="'打开' + l.label"><AppIcon name="link" :size="15" /></a>
             <button class="btn btn-sm btn-ghost btn-icon" type="button" :title="'复制' + l.label" :aria-label="'复制' + l.label" @click="onCopy(l.url, l.label)"><AppIcon name="copy" :size="15" /></button>
@@ -110,7 +123,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import AppIcon from './AppIcon.vue'
 import { mapLinks } from '../utils/share'
 import { siteConfig } from '../store'
@@ -124,9 +137,35 @@ const props = defineProps({
   qrUrl: { type: String, default: '' },
   full: { type: Boolean, default: true },
   interactive: { type: Boolean, default: false },
-  showEdit: { type: Boolean, default: false }
+  showEdit: { type: Boolean, default: false },
+  // 快捷编辑（2026-11-27 用户定稿）：仅 owner 工作台开启。两段式——点字段只选中并浮出编辑标，
+  // 点标才 emit('edit-field') 弹层改这一项；公开页/编辑预览/配色预览默认 false，行为零变化。
+  quickEdit: { type: Boolean, default: false }
 })
-const emit = defineEmits(['copy', 'tel', 'sms', 'mailto', 'edit', 'qr', 'open-gallery', 'open-material', 'map'])
+const emit = defineEmits(['copy', 'tel', 'sms', 'mailto', 'edit', 'qr', 'open-gallery', 'open-material', 'map', 'edit-field'])
+
+const quickField = ref('')
+const qeOn = key => props.quickEdit && quickField.value === key
+// quickEdit=false 时连冒泡都不拦（公开页/预览页零影响）；开启时才 stop + 选中
+function qeTap(e, key) {
+  if (!props.quickEdit) return
+  e.stopPropagation()
+  tapField(key)
+}
+function tapField(key) {
+  if (!props.quickEdit) return
+  quickField.value = quickField.value === key ? '' : key // 再点同一字段取消选中
+}
+function editField(key) { quickField.value = ''; emit('edit-field', key) } // 点标即收起标记、交弹层
+// owner 工作台：点联系方式/地址行不再复制，改为选中字段；右侧拨号/导航按钮仍 @click.stop 照常可用
+function onRowTap(f) {
+  if (!props.quickEdit) return onCopy(f.value, f.label)
+  tapField(f.key)
+}
+function onAddressTap() {
+  if (!props.quickEdit) return onCopy(fullAddress.value, '地址')
+  tapField('address')
+}
 
 const siteName = computed(() => props.siteName || siteConfig?.site_name || '')
 const tagList = computed(() => props.tags?.length ? props.tags : (props.card?.tags || []))
