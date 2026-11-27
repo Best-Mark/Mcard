@@ -63,8 +63,8 @@
             <i class="gear-ico">ⓘ</i><span class="gear-t">关于 MCard<small>版本 · 产品介绍</small></span><i class="gear-arrow">›</i>
           </button>
           <div class="gear-group-title">个人中心功能</div>
-          <button type="button" class="gear-item" @click="gearGo('/me/h5')">
-            <i class="gear-ico">◈</i><span class="gear-t">宣传页制作<small>H5 模板 · 发布</small></span><i class="gear-arrow">›</i>
+          <button type="button" class="gear-item" @click="gearGo('/me/print')">
+            <i class="gear-ico">▤</i><span class="gear-t">实体版式<small>印刷级名片版式下载</small></span><i class="gear-arrow">›</i>
           </button>
           <button type="button" class="gear-item" @click="gearGo('/me/notifications')">
             <i class="gear-ico">♢</i><span class="gear-t">消息通知<small v-if="unread > 0">{{ unread }} 条未读</small><small v-else>查看通知</small></span><i class="gear-arrow">›</i>
@@ -117,11 +117,12 @@
     <div v-else-if="loading" class="card card-pad center">加载中…</div>
 
     <!-- 快捷入口（2026-11-27 用户定稿）：四项白卡单向横排——一行等分、不换行不折行。
-         四项 = 名片夹 / 我的套餐 / 实体版式 / 扫一扫；宣传页制作等其余功能收进齿轮底部菜单，页面更简洁。 -->
+         四项 = 名片夹 / 我的套餐 / 宣传页 / 扫一扫（2026-11-27 宣传页取代实体版式进快捷位）；
+         实体版式等其余功能收进齿轮底部菜单，页面更简洁。 -->
     <div class="pf-quick">
       <router-link to="/me/contacts" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="grid" :size="22" /></i><span>名片夹</span></router-link>
       <router-link to="/me/plans" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="yen" :size="22" /></i><span>我的套餐</span></router-link>
-      <router-link to="/me/print" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="list" :size="22" /></i><span>实体版式</span></router-link>
+      <router-link to="/me/h5" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="file" :size="22" /></i><span>宣传页</span></router-link>
       <router-link to="/me/batch-scan" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="scan" :size="22" /></i><span>扫一扫</span></router-link>
     </div>
 
