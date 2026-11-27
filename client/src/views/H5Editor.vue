@@ -19,13 +19,13 @@
       <span class="he-save small muted">{{ saveState }}</span>
     </header>
 
-    <!-- 画布：只渲染当前编辑页，点块选中 -->
+    <!-- 画布：只渲染当前编辑页（自由画布，点选/拖动/四角缩放/旋转） -->
     <div class="he-canvas" v-if="loaded">
       <div class="he-canvas-in">
         <!-- page-offset：画布只渲染当前页，offset 让块的 key 与真实页号对齐（选中态/拖动不串页） -->
-        <H5Render :data="curPageData" editable :page-offset="selPage" :sel-key="selKey" @pick="onPick" @reorder="onReorder" @quick="onQuick" @inplace="markDirty" />
+        <H5Render :data="curPageData" editable :page-offset="selPage" :sel-key="selKey" @pick="onPick" @reorder="onReorder" @quick="onQuick" @inplace="markDirty" @geom="markDirty" />
       </div>
-      <div class="he-hint small muted">点模块选中 · 再点一下直接改内容 · 长按模块拖动排序{{ block ? ` · 当前：第 ${selPage + 1} 页 ${TYPE_LABEL[block.type]}` : '' }}</div>
+      <div class="he-hint small muted">点选元素 · 拖动移动 · 四角缩放 · 顶部 ⟳ 旋转 · 再点改内容{{ block ? ` · 当前：第 ${selPage + 1} 页 ${TYPE_LABEL[block.type]}` : '' }}</div>
     </div>
     <div v-else class="he-loading">加载中…</div>
 
@@ -41,22 +41,20 @@
         <button class="he-dock-back" @click="dockMode = 'main'" aria-label="收起，返回主操作条">↙</button>
         <div class="he-dock-scroll">
           <div class="he-dock-flow">
-            <!-- 编辑块行：加块 chips + 选中块操作 -->
+            <!-- 编辑行（自由画布）：加元素 chips + 选中元素操作（层级在属性面板里调） -->
             <template v-if="dockMode === 'edit'">
-              <span class="he-grp">加模块</span>
+              <span class="he-grp">加元素</span>
               <button v-for="t in ADDABLE" :key="t" class="he-chip" @click="addBlock(t)">＋{{ TYPE_LABEL[t] }}</button>
               <template v-if="block">
                 <span class="he-grp">{{ TYPE_LABEL[block.type] }}</span>
-                <button class="he-chip on" @click="formOpen = true">编辑内容</button>
-                <button class="he-chip" @click="duplicateBlock" :disabled="curPage.blocks.length >= 8">⧉ 复制</button>
-                <button class="he-chip" @click="moveBlock(-1)" :disabled="selBlock === 0">↑</button>
-                <button class="he-chip" @click="moveBlock(1)" :disabled="selBlock === curPage.blocks.length - 1">↓</button>
+                <button class="he-chip on" @click="openEdit">{{ FREE_TYPES.includes(block.type) ? '✎ 属性' : '编辑内容' }}</button>
+                <button class="he-chip" @click="duplicateBlock" :disabled="curEls.length >= 40">⧉ 复制</button>
                 <button class="he-chip warn" @click="removeBlock">✕ 删除</button>
               </template>
             </template>
             <!-- 页面行：切页 / 加页 / 删本页（单页单页做） -->
             <template v-else-if="dockMode === 'pages'">
-              <button v-for="(p, i) in schema.pages" :key="i" :class="['he-chip', { on: i === selPage }]" @click="selPage = i; selBlock = 0">第{{ i + 1 }}页·{{ p.blocks.length }}块</button>
+              <button v-for="(p, i) in schema.pages" :key="i" :class="['he-chip', { on: i === selPage }]" @click="selPage = i; selBlock = 0">第{{ i + 1 }}页·{{ elsCount(p) }}元素</button>
               <button v-if="pagesCount < maxPages" class="he-chip on" @click="addPage">＋ 加一页</button>
               <button v-else class="he-chip" @click="showToast(paid ? `最多 ${maxPages} 页` : `免费版最多 ${maxPages} 页，开通套餐解锁`, 'error')">已达上限</button>
               <button v-if="pagesCount > 1" class="he-chip warn" @click="removePage">✕ 删本页</button>
@@ -64,7 +62,8 @@
             <!-- 配色行：主题色点中即改 + 套用官方模板 + 页面切换过渡动效 -->
             <template v-else-if="dockMode === 'theme'">
               <button v-for="c in COLORS" :key="c" :class="['he-dot', { on: (schema.accent || '') === c }]" :style="{ background: c }" @click="setAccent(c)"></button>
-              <span class="he-grp">模板</span>
+              <span class="he-grp">页面</span>
+              <button class="he-chip" @click="openBg">◧ 页面背景</button>
               <button class="he-chip" @click="openTpls">套用官方模板…</button>
               <span class="he-grp">切换动效</span>
               <BottomSelect :model-value="schema.transition || 'scroll'" :options="TRANSITION_OPTS" title="页面切换动效" @update:modelValue="schema.transition = $event; markDirty()" />
@@ -87,7 +86,7 @@
         <div class="he-f-head">
           <b>{{ TYPE_LABEL[block.type] }}</b>
           <span class="he-f-actions">
-            <button class="he-mini" @click="duplicateBlock(); formOpen = false" :disabled="curPage.blocks.length >= 8">⧉ 复制</button>
+            <button class="he-mini" @click="duplicateBlock(); formOpen = false" :disabled="curEls.length >= 40">⧉ 复制</button>
             <button class="he-mini" @click="formOpen = false">完成</button>
           </span>
         </div>
@@ -203,6 +202,115 @@
         <ImageField :model-value="block[imgField]" label="图片（不传用主题色渐变）" @update:modelValue="block[imgField] = $event; markDirty()" />
       </div>
     </BottomSheet>
+
+    <!-- 属性面板（2026-11-27 自由画布）：自由元素（文本/图片/形状/按钮）的样式与几何都在这调；
+         通用区（动效/透明度/层级）所有元素都有，组件元素另有「编辑内容」表单 -->
+    <BottomSheet :show="styleOpen" @update:show="styleOpen = $event">
+      <div class="he-form" v-if="block && block.g">
+        <div class="he-f-head">
+          <b>{{ TYPE_LABEL[block.type] }} 属性</b>
+          <span class="he-f-actions">
+            <button class="he-mini" @click="duplicateBlock(); styleOpen = false" :disabled="curEls.length >= 40">⧉ 复制</button>
+            <button class="he-mini" @click="styleOpen = false">完成</button>
+          </span>
+        </div>
+        <!-- 文本 -->
+        <template v-if="block.type === 'text'">
+          <label>文字内容<textarea v-model="block.text" rows="4" maxlength="300" @input="markDirty" placeholder="支持换行"></textarea></label>
+          <div class="he-row"><span class="small muted">字体</span>
+            <BottomSelect :model-value="block.font || ''" :options="FONT_OPTS" title="字体" @update:modelValue="block.font = $event; markDirty()" />
+          </div>
+          <div class="he-row"><span class="small muted">字号 {{ block.size }}px</span>
+            <input class="he-range" type="range" min="12" max="160" step="1" :value="block.size" @input="block.size = Number($event.target.value); markDirty()" />
+          </div>
+          <div class="he-row"><span class="small muted">颜色</span></div>
+          <div class="he-colors">
+            <button v-for="c in EL_COLORS" :key="c" :class="['he-dot', { on: block.color === c }]" :style="{ background: c }" @click="block.color = c; markDirty()"></button>
+          </div>
+          <div class="he-row"><span class="small muted">对齐</span>
+            <BottomSelect :model-value="block.align || 'left'" :options="TEXT_ALIGN_OPTS" title="文字对齐" @update:modelValue="block.align = $event; markDirty()" />
+          </div>
+          <div class="he-row"><span class="small muted">行高 {{ block.lh }}</span>
+            <input class="he-range" type="range" min="1" max="3" step="0.1" :value="block.lh" @input="block.lh = Number($event.target.value); markDirty()" />
+          </div>
+          <label class="he-switch"><input type="checkbox" v-model="block.bold" @change="markDirty" />加粗</label>
+        </template>
+        <!-- 图片 -->
+        <template v-else-if="block.type === 'image'">
+          <ImageField v-model="block.url" label="图片" @update:modelValue="markDirty" />
+          <div class="he-row"><span class="small muted">适配方式</span>
+            <BottomSelect :model-value="block.fit || 'cover'" :options="FIT_OPTS" title="图片适配" @update:modelValue="block.fit = $event; markDirty()" />
+          </div>
+          <div class="he-row"><span class="small muted">圆角 {{ block.radius }}px</span>
+            <input class="he-range" type="range" min="0" max="200" step="1" :value="block.radius" @input="block.radius = Number($event.target.value); markDirty()" />
+          </div>
+        </template>
+        <!-- 形状 -->
+        <template v-else-if="block.type === 'shape'">
+          <div class="he-row"><span class="small muted">形状</span>
+            <BottomSelect :model-value="block.shape || 'rect'" :options="SHAPE_OPTS" title="形状" @update:modelValue="block.shape = $event; markDirty()" />
+          </div>
+          <div class="he-row"><span class="small muted">填充色</span></div>
+          <div class="he-colors">
+            <button v-for="c in EL_COLORS" :key="c" :class="['he-dot', { on: block.color === c }]" :style="{ background: c }" @click="block.color = c; markDirty()"></button>
+          </div>
+          <div class="he-row" v-if="block.shape !== 'circle'"><span class="small muted">圆角 {{ block.radius }}px</span>
+            <input class="he-range" type="range" min="0" max="400" step="1" :value="block.radius" @input="block.radius = Number($event.target.value); markDirty()" />
+          </div>
+        </template>
+        <!-- 按钮 -->
+        <template v-else-if="block.type === 'button'">
+          <label>按钮文字<input v-model="block.label" maxlength="12" @input="markDirty" /></label>
+          <label>动作
+            <BottomSelect v-model="block.action" :options="ACTION_OPTS" title="按钮动作" @update:modelValue="markDirty" />
+          </label>
+          <label>{{ ACTION_VALUE_LABEL[block.action] || '内容' }}<input v-model="block.value" @input="markDirty" /></label>
+          <div class="he-row"><span class="small muted">填充色</span></div>
+          <div class="he-colors">
+            <button v-for="c in EL_COLORS" :key="c" :class="['he-dot', { on: block.bg === c }]" :style="{ background: c }" @click="block.bg = c; markDirty()"></button>
+          </div>
+          <div class="he-row"><span class="small muted">文字色</span></div>
+          <div class="he-colors">
+            <button v-for="c in EL_COLORS" :key="c" :class="['he-dot', { on: block.color === c }]" :style="{ background: c }" @click="block.color = c; markDirty()"></button>
+          </div>
+          <div class="he-row"><span class="small muted">圆角 {{ block.radius }}px</span>
+            <input class="he-range" type="range" min="0" max="400" step="1" :value="block.radius" @input="block.radius = Number($event.target.value); markDirty()" />
+          </div>
+        </template>
+        <!-- 通用：入场动效 / 透明度 / 层级 -->
+        <div class="he-anim-row">
+          <label>入场动效
+            <BottomSelect :model-value="block.anim || ''" :options="ANIM_OPTS" title="入场动效" @update:modelValue="block.anim = $event; markDirty()" />
+          </label>
+          <div class="he-row"><span class="small muted">透明度 {{ Math.round((block.g.opacity != null ? block.g.opacity : 1) * 100) }}%</span>
+            <input class="he-range" type="range" min="0.1" max="1" step="0.05" :value="block.g.opacity != null ? block.g.opacity : 1" @input="block.g.opacity = Number($event.target.value); markDirty()" />
+          </div>
+          <div class="he-row"><span class="small muted">层级</span>
+            <span class="he-f-actions">
+              <button class="he-mini" @click="layerOp('top')">置顶</button>
+              <button class="he-mini" @click="layerOp('up')">上移</button>
+              <button class="he-mini" @click="layerOp('down')">下移</button>
+              <button class="he-mini" @click="layerOp('bottom')">置底</button>
+            </span>
+          </div>
+          <p class="small muted" style="margin:4px 0 0">访客浏览到这个元素时自动播放的小动画，让页面更生动。</p>
+        </div>
+      </div>
+    </BottomSheet>
+
+    <!-- 页面背景弹层（2026-11-27 自由画布）：本页背景图/背景色，背景图优先 -->
+    <BottomSheet :show="bgOpen" @update:show="bgOpen = $event">
+      <div class="he-form">
+        <div class="he-f-head"><b>页面背景</b><button class="he-mini" @click="bgOpen = false">完成</button></div>
+        <ImageField :model-value="curPage.bg && curPage.bg.image" label="背景图（优先于背景色）" @update:modelValue="setBg('image', $event)" />
+        <div class="he-row"><span class="small muted">背景色（无背景图时生效）</span></div>
+        <div class="he-colors">
+          <button :class="['he-dot', 'he-dot-none', { on: !(curPage.bg && curPage.bg.color) }]" @click="setBg('color', '')">无</button>
+          <button v-for="c in BG_COLORS" :key="c" :class="['he-dot', { on: (curPage.bg && curPage.bg.color) === c }]" :style="{ background: c }" @click="setBg('color', c)"></button>
+        </div>
+        <p class="small muted" style="margin:10px 0 0">不设置时使用默认深色背景。背景图建议 750×1334 以上竖图。</p>
+      </div>
+    </BottomSheet>
   </div>
 </template>
 
@@ -219,8 +327,10 @@ import BottomSelect from '../components/BottomSelect.vue'
 const route = useRoute()
 const router = useRouter()
 
-const TYPE_LABEL = { cover: '封面', text: '文本', hero: '图文', gallery: '图集', contact: '联系方式', map: '位置', buttons: '按钮组', video: '视频', form: '表单留资', music: '背景音乐', endcard: '名片尾页' }
-const ADDABLE = ['cover', 'text', 'hero', 'gallery', 'contact', 'map', 'buttons', 'video', 'form', 'music', 'endcard']
+const TYPE_LABEL = { cover: '封面', text: '文本', hero: '图文', image: '图片', shape: '形状', button: '按钮', gallery: '图集', contact: '联系方式', map: '位置', buttons: '按钮组', video: '视频', form: '表单留资', music: '背景音乐', endcard: '名片尾页' }
+// 自由画布（2026-11-27 用户定稿上 MAKA 同款）：文本/图片/形状/按钮为自由元素，其余为组件元素（绝对定位复用原表单）
+const FREE_TYPES = ['text', 'image', 'shape', 'button']
+const ADDABLE = ['text', 'image', 'shape', 'button', 'gallery', 'contact', 'map', 'buttons', 'video', 'form', 'music', 'endcard']
 // 页面切换过渡动效（2026-11-27 路线③）：scroll=原生滚动（默认兼容存量页）/ slide / fade / flip
 const TRANSITION_OPTS = [
   { value: 'scroll', label: '上下滚动（默认）' }, { value: 'slide', label: '滑动翻页' }, { value: 'fade', label: '淡入淡出' }, { value: 'flip', label: '翻页动效' }
@@ -238,6 +348,12 @@ const GAL_LAYOUT_OPTS = [{ value: 'showcase', label: '动效展播（自动轮�
 // 文字基础样式（2026-11-27 路线④）：对齐 + 字号三档
 const TEXT_ALIGN_OPTS = [{ value: 'left', label: '左对齐' }, { value: 'center', label: '居中' }, { value: 'right', label: '右对齐' }]
 const TEXT_SIZE_OPTS = [{ value: 'sm', label: '小字' }, { value: 'md', label: '正常' }, { value: 'lg', label: '大字' }]
+// 自由元素属性面板（2026-11-27 自由画布）：字体三档 / 形状 / 图片适配 / 元素色板 / 页面背景色板
+const FONT_OPTS = [{ value: '', label: '黑体（默认）' }, { value: 'serif', label: '衬线宋' }, { value: 'kaiti', label: '楷体' }]
+const SHAPE_OPTS = [{ value: 'rect', label: '直角矩形' }, { value: 'round', label: '圆角矩形' }, { value: 'circle', label: '圆形' }, { value: 'line', label: '线条' }]
+const FIT_OPTS = [{ value: 'cover', label: '裁切填满' }, { value: 'contain', label: '完整显示' }]
+const EL_COLORS = ['#ffffff', '#000000', '#d1d5db', '#fbbf24', '#f87171', '#60a5fa', '#34d399', '#a78bfa']
+const BG_COLORS = ['#101319', '#1c2029', '#0f172a', '#1e1b4b', '#3b0764', '#f4f6fb', '#ffffff']
 // 主题色板：与名片模板色系呼应，点中即改全页 accent
 const COLORS = ['#a62b2b', '#c2410c', '#b45309', '#0f766e', '#4338ca', '#17357c', '#7c2d92', '#be185d']
 const FREE_MAX_PAGES = 3, PAID_MAX_PAGES = 12
@@ -253,6 +369,8 @@ const publishing = ref(false)
 // dock 四态翻转 + 弹层
 const dockMode = ref('main')
 const formOpen = ref(false)
+const styleOpen = ref(false) // 自由元素属性面板（2026-11-27 自由画布）
+const bgOpen = ref(false) // 页面背景弹层
 const tplOpen = ref(false)
 const templates = ref([])
 const applying = ref(false)
@@ -262,22 +380,31 @@ const maxPages = ref(PAID_MAX_PAGES) // 前端只做引导，服务端强制
 const watermark = ref(true)
 
 const cardData = ref(null)
-// 画布只渲染当前页（单页单页做），其余页在「页面」行切换
-const curPage = computed(() => schema.value.pages[selPage.value] || { blocks: [] })
-const curPageData = computed(() => ({ schema: { accent: schema.value.accent || '', pages: [curPage.value] }, card: cardData.value, watermark: watermark.value }))
-const selKey = computed(() => `${selPage.value}-${selBlock.value}`)
-const block = computed(() => curPage.value.blocks[selBlock.value] || null)
+// 画布只渲染当前页（单页单页做），其余页在「页面」行切换。
+// 自由画布：页内元素一律 els（打开旧 blocks 页时已自动转换），curEls 是当前页元素数组
+const curPage = computed(() => schema.value.pages[selPage.value] || { els: [] })
+const curEls = computed(() => curPage.value.els || [])
+const curPageData = computed(() => ({ schema: { accent: schema.value.accent || '', transition: schema.value.transition || 'scroll', pages: [curPage.value] }, card: cardData.value, watermark: watermark.value }))
+const selKey = computed(() => (selBlock.value >= 0 ? `${selPage.value}-${selBlock.value}` : ''))
+const block = computed(() => curEls.value[selBlock.value] || null)
 const pagesCount = computed(() => schema.value.pages.length)
+const elsCount = p => (p && p.els ? p.els.length : 0)
 
 // 快捷编辑（2026-11-27 用户定稿「像名片那样」，对齐名片工作台两段式）：
-// 首点模块只选中（琥珀虚线描边，防误触——画布块很大，误点成本是弹层开关）；
-// 再点同一个已选中的块直接弹内容表单，省去「✎编辑块 → 编辑内容」两级 dock。
-// 弹层 v-model 直绑块字段、画布实时刷新，markDirty 自动保存——与 dock 路径完全同一套状态。
+// 首点元素只选中（琥珀虚线描边，防误触）；再点同一个已选中元素直接开编辑（自由元素=属性面板、
+// 组件元素=内容表单；文字类就地编辑在画布上双击完成）。点空白画布 = 取消选中。
 function onPick(key) {
+  if (!key) { selBlock.value = -1; return }
   const [pi, bi] = key.split('-').map(Number)
-  if (selPage.value === pi && selBlock.value === bi && block.value) { formOpen.value = true; return }
+  if (selPage.value === pi && selBlock.value === bi && block.value) { openEdit(); return }
   selPage.value = pi
   selBlock.value = bi
+}
+function openEdit() {
+  const b = block.value
+  if (!b) return
+  if (FREE_TYPES.includes(b.type)) styleOpen.value = true
+  else formOpen.value = true
 }
 
 let saveTimer = 0
@@ -319,11 +446,9 @@ async function copyLink() {
   try { await navigator.clipboard.writeText(link); showToast('链接已复制，可直接发给客户', 'success') } catch { showToast(link) }
 }
 
-// ---- 结构编辑 ----
+// ---- 结构编辑（自由画布） ----
+// 组件元素初始字段（gallery/contact/… 复用原内容表单）
 function blank(type) {
-  if (type === 'cover') return { type, title: '', subtitle: '', cover: '' }
-  if (type === 'text') return { type, heading: '', body: '', align: 'left', size: 'md' }
-  if (type === 'hero') return { type, image: '', title: '', desc: '' }
   if (type === 'gallery') return { type, images: [''], layout: 'grid', source: 'upload' }
   if (type === 'contact') return { type, showMobile: true, showWechat: true, showAddress: true }
   if (type === 'map') return { type, lat: null, lng: null, label: '' }
@@ -333,33 +458,90 @@ function blank(type) {
   if (type === 'music') return { type, url: '', autoplay: true }
   return { type: 'endcard' }
 }
-// 插入位置：有选中块（非尾页卡）→ 插到其后，跟着当前编辑焦点走；否则插到尾页卡之前
+// 组件元素估高（转换/新增时的初始几何；渲染时组件高度自适应）
+const EST_H = { gallery: 520, contact: 260, map: 220, buttons: 200, video: 280, form: 620, music: 160, endcard: 340 }
+// 新元素落点：已有元素排完的下方；z 取当前最大 + 1
+function nextG(h) {
+  const els = curEls.value
+  let maxY = 60, maxZ = 0
+  for (const e of els) {
+    const g = e.g || {}
+    maxY = Math.max(maxY, (Number(g.y) || 0) + (Number(g.h) || 0))
+    maxZ = Math.max(maxZ, Number(g.z) || 0)
+  }
+  return { x: 22, y: Math.min(29000, maxY + 30), w: 706, h, rot: 0, opacity: 1, z: maxZ + 1 }
+}
+function blankEl(type) {
+  const anim = ''
+  if (type === 'text') return { type, text: '点我编辑文字', size: 32, color: '#ffffff', align: 'left', bold: false, font: '', lh: 1.5, anim, g: nextG(60) }
+  if (type === 'image') return { type, url: '', radius: 12, fit: 'cover', anim, g: nextG(260) }
+  if (type === 'shape') return { type, shape: 'round', color: '#ffffff', radius: 16, anim, g: nextG(120) }
+  if (type === 'button') return { type, label: '按钮', action: 'tel', value: '', color: '#ffffff', bg: '#a62b2b', radius: 22, anim, g: nextG(56) }
+  return { ...blank(type), anim, g: nextG(EST_H[type] || 240) }
+}
+// 老 blocks 页 → els 转换（打开旧页/套模板自动执行）：估高堆叠成自由画布初稿，用户再自由调整
+function pageToEls(p) {
+  if (p && Array.isArray(p.els) && p.els.length) return p.els
+  const els = []
+  let y = 60, z = 0
+  const G = (x, yy, w, h) => ({ x, y: yy, w, h, rot: 0, opacity: 1, z: z++ })
+  for (const b of ((p && p.blocks) || [])) {
+    const anim = b.anim || ''
+    if (b.type === 'cover') {
+      els.push({ type: 'image', url: b.cover || '', radius: 0, fit: 'cover', anim: anim || 'zoom', g: G(0, 0, 750, 820) })
+      if (b.title) els.push({ type: 'text', text: b.title, size: 60, color: '#ffffff', align: 'left', bold: true, font: '', lh: 1.25, anim: 'up', g: G(48, 560, 654, 90) })
+      if (b.subtitle) els.push({ type: 'text', text: b.subtitle, size: 26, color: '#ffffff', align: 'left', bold: false, font: '', lh: 1.5, anim: 'up', g: G(48, 668, 654, 50) })
+      y = 900
+    } else if (b.type === 'hero') {
+      els.push({ type: 'image', url: b.image || '', radius: 18, fit: 'cover', anim: anim || 'up', g: G(22, y, 706, 440) })
+      y += 470
+      if (b.title) { els.push({ type: 'text', text: b.title, size: 38, color: '#ffffff', align: 'left', bold: true, font: '', lh: 1.3, anim: '', g: G(22, y, 706, 56) }); y += 76 }
+      if (b.desc) { els.push({ type: 'text', text: b.desc, size: 26, color: '#d1d5db', align: 'left', bold: false, font: '', lh: 1.7, anim: '', g: G(22, y, 706, 96) }); y += 120 }
+    } else if (b.type === 'text') {
+      const align = ['left', 'center', 'right'].includes(b.align) ? b.align : 'left'
+      if (b.heading) { els.push({ type: 'text', text: b.heading, size: 40, color: '#ffffff', align, bold: true, font: '', lh: 1.3, anim: anim || 'up', g: G(22, y, 706, 58) }); y += 80 }
+      if (b.body) {
+        const s = String(b.body || '')
+        const h = Math.round(Math.max(s.split('\n').length, Math.ceil(s.length / 22)) * 26 * 1.8)
+        els.push({ type: 'text', text: s, size: 26, color: '#d1d5db', align, bold: false, font: '', lh: 1.8, anim: anim || 'up', g: G(22, y, 706, h) })
+        y += h + 26
+      }
+    } else {
+      const h = EST_H[b.type] || 240
+      els.push({ ...JSON.parse(JSON.stringify(b)), anim: anim || '', g: G(22, y, 706, h) })
+      y += h + 26
+    }
+  }
+  if (!els.length) els.push({ type: 'text', text: '点我编辑文字', size: 32, color: '#ffffff', align: 'left', bold: false, font: '', lh: 1.5, anim: '', g: G(22, 60, 706, 60) })
+  return els
+}
+// 插入位置：选中元素之后（跟编辑焦点走），否则排末尾
 function insertAt() {
-  const arr = curPage.value.blocks
-  const cap = arr.length && arr[arr.length - 1].type === 'endcard' ? arr.length - 1 : arr.length
-  if (block.value && block.value.type !== 'endcard') return Math.min(selBlock.value + 1, cap)
-  return cap
+  const arr = curEls.value
+  return (selBlock.value >= 0 && selBlock.value < arr.length) ? selBlock.value + 1 : arr.length
 }
 function addBlock(type) {
-  const arr = curPage.value.blocks
+  const arr = curEls.value
   const at = insertAt()
-  arr.splice(at, 0, blank(type))
+  arr.splice(at, 0, blankEl(type))
   selBlock.value = at
   markDirty()
 }
 function duplicateBlock() {
   const src = block.value
   if (!src) return
-  const arr = curPage.value.blocks
+  const copy = JSON.parse(JSON.stringify(src))
+  if (copy.g) { copy.g.y = (Number(copy.g.y) || 0) + 40; copy.g.z = (Number(copy.g.z) || 0) + 1 }
+  const arr = curEls.value
   const at = insertAt()
-  arr.splice(at, 0, JSON.parse(JSON.stringify(src)))
+  arr.splice(at, 0, copy)
   selBlock.value = at
   markDirty()
-  showToast('已复制一个相同模块，可拖动到任意位置', 'success')
+  showToast('已复制，可拖动到任意位置', 'success')
 }
-// 画布长按拖动重排（H5Render emit）：from/to 都是本页块索引；尾页卡一样可以被拖（用户自由优先）
+// 画布长按拖动重排（仅老流式页 emit；自由画布页走元素自由拖移，不重排数组）
 function onReorder({ from, to }) {
-  const arr = curPage.value.blocks
+  const arr = curEls.value
   if (from === to || from < 0 || to < 0 || from >= arr.length || to >= arr.length) return
   const [m] = arr.splice(from, 1)
   arr.splice(to, 0, m)
@@ -369,18 +551,28 @@ function onReorder({ from, to }) {
 
 // ---- 画布直操化（2026-11-27 MAKA 对标）：浮动快捷条动作 + 换图直达弹层 ----
 const imgOpen = ref(false)
-const imgField = ref('') // 'cover' | 'image'：当前换图目标字段
+const imgField = ref('') // 'cover' | 'image' | 'url'：当前换图目标字段
 function openImageSheet() {
   const b = block.value
   if (!b) return
-  imgField.value = b.type === 'cover' ? 'cover' : 'image'
+  imgField.value = b.type === 'cover' ? 'cover' : b.type === 'image' ? 'url' : 'image'
   imgOpen.value = true
 }
 function onQuick({ action }) {
   if (action === 'dup') duplicateBlock()
   else if (action === 'del') removeBlock()
-  else if (action === 'edit') formOpen.value = true
+  else if (action === 'edit' || action === 'style') openEdit()
   else if (action === 'image') openImageSheet()
+}
+// 页面背景（自由画布）：bg = { color, image }，背景图优先于背景色
+function openBg() {
+  if (!curPage.value.bg) curPage.value.bg = { color: '', image: '' }
+  bgOpen.value = true
+}
+function setBg(field, v) {
+  if (!curPage.value.bg) curPage.value.bg = { color: '', image: '' }
+  curPage.value.bg[field] = v
+  markDirty()
 }
 
 // ---- 撤销/重做（时间线快照，MAKA 同款顶栏 ↶↷）：变更停 600ms 落一档，undo 前先冲掉未落档的改动 ----
@@ -411,14 +603,27 @@ function applyHist(i) {
 }
 function undo() { snapNow(); if (canUndo.value) applyHist(histIdx.value - 1) }
 function redo() { snapNow(); if (canRedo.value) applyHist(histIdx.value + 1) }
-function removeBlock() { curPage.value.blocks.splice(selBlock.value, 1); selBlock.value = Math.max(0, selBlock.value - 1); markDirty() }
-function moveBlock(d) {
-  const arr = curPage.value.blocks
-  const t = arr[selBlock.value]; arr[selBlock.value] = arr[selBlock.value + d]; arr[selBlock.value + d] = t
-  selBlock.value += d; markDirty()
+function removeBlock() {
+  if (selBlock.value < 0) return
+  curEls.value.splice(selBlock.value, 1)
+  selBlock.value = Math.max(0, selBlock.value - 1)
+  markDirty()
+}
+// 层级（自由画布）：↑↓ 数组排序不再适用，改为 z 序调整（属性面板「层级」）
+function layerOp(op) {
+  const b = block.value
+  if (!b || !b.g) return
+  const zs = curEls.value.map(e => (e.g ? Number(e.g.z) || 0 : 0))
+  const maxZ = zs.length ? Math.max.apply(null, zs) : 0
+  const minZ = zs.length ? Math.min.apply(null, zs) : 0
+  if (op === 'top') b.g.z = maxZ + 1
+  else if (op === 'bottom') b.g.z = Math.max(0, minZ - 1)
+  else if (op === 'up') b.g.z = (Number(b.g.z) || 0) + 1
+  else b.g.z = Math.max(0, (Number(b.g.z) || 0) - 1)
+  markDirty()
 }
 function addPage() {
-  schema.value.pages.push({ blocks: [blank('cover')] })
+  schema.value.pages.push({ bg: { color: '', image: '' }, els: [{ type: 'text', text: '输入标题', size: 40, color: '#ffffff', align: 'left', bold: true, font: '', lh: 1.3, anim: '', g: { x: 48, y: 80, w: 654, h: 64, rot: 0, opacity: 1, z: 1 } }] })
   selPage.value = schema.value.pages.length - 1; selBlock.value = 0
   markDirty()
 }
@@ -438,11 +643,13 @@ async function openTpls() {
 function applyTpl(t) {
   if (applying.value) return
   if (!confirm(`套用「${t.name}」会覆盖当前全部页面内容，确定？`)) return
-  schema.value = { accent: t.accent, transition: t.transition || 'scroll', pages: JSON.parse(JSON.stringify(t.pages)) }
+  // 模板是 blocks 格式：套用即转自由画布 els（估高堆叠初稿），保持同一编辑形态
+  const pages = JSON.parse(JSON.stringify(t.pages || [])).map(p => ({ bg: p.bg || { color: '', image: '' }, els: pageToEls(p) }))
+  schema.value = { accent: t.accent, transition: t.transition || 'scroll', pages }
   selPage.value = 0; selBlock.value = 0
   tplOpen.value = false; dockMode.value = 'main'
   markDirty()
-  showToast(`已套用「${t.name}」，继续单页修改即可`, 'success')
+  showToast(`已套用「${t.name}」，继续编辑即可`, 'success')
 }
 
 onMounted(async () => {
@@ -450,8 +657,17 @@ onMounted(async () => {
     const { data } = await api.get(`/api/h5/${route.params.id}`)
     page.value = data.data.page
     title.value = page.value.title
-    schema.value = page.value.schema || { pages: [{ blocks: [blank('cover')] }] }
+    // 自由画布唯一编辑形态：旧 blocks 页打开即自动转 els（估高堆叠初稿），已是 els 的页原样
+    const raw = page.value.schema || {}
+    const hadBlocks = (raw.pages || []).some(p => p && p.blocks && p.blocks.length && !(p.els && p.els.length))
+    const rawPages = (raw.pages && raw.pages.length) ? raw.pages : [{ blocks: [{ type: 'cover', title: '', subtitle: '', cover: '' }] }]
+    schema.value = {
+      accent: raw.accent || '',
+      transition: raw.transition || 'scroll',
+      pages: rawPages.map(p => ({ bg: p.bg || { color: '', image: '' }, els: pageToEls(p) }))
+    }
     loaded.value = true
+    if (hadBlocks) showToast('旧版内容已自动转为自由画布，可自由拖动、缩放、旋转', 'success')
     snapNow() // 撤销栈初始档：此后每次改动停顿落一档
     // 预览数据：名片公开资料 + 套餐闸门口径（服务端实测，含水印开关）
     try {
@@ -508,6 +724,13 @@ watch(() => route.params.id, () => { if (route.name === 'h5-editor') location.re
 .he-grp { flex: 0 0 auto; font-size: 10.5px; letter-spacing: .12em; color: #9ca3af; background: rgba(255,255,255,.06); padding: 4px 9px; border-radius: 7px; white-space: nowrap; }
 .he-dot { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .he-dot.on { box-shadow: 0 0 0 3px #fff; }
+/* 属性面板（自由画布）：色板行 + 滑杆（覆盖 .he-form input 的输入框样式） */
+.he-colors { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+.he-colors .he-dot { border-color: rgba(0,0,0,.15); }
+.he-colors .he-dot.on { box-shadow: 0 0 0 3px var(--primary, #a62b2b); }
+.he-dot-none { background: #fff; position: relative; overflow: hidden; }
+.he-dot-none:after { content: ''; position: absolute; top: 50%; left: 6px; right: 6px; height: 2px; background: #dc2626; transform: rotate(-45deg); }
+.he-form input.he-range { display: inline-block; width: auto; flex: 1; min-width: 130px; margin: 0 0 0 12px; padding: 0; border: 0; background: transparent; accent-color: var(--primary, #a62b2b); }
 .he-status { flex: 0 0 auto; font-size: 11.5px; color: #9ca3af; white-space: nowrap; padding: 0 2px; }
 .he-status.on { color: #4ade80; font-weight: 700; }
 /* dock 行里的 BottomSelect（切换动效）：触发项压成深色胶囊，与 chips 同语言（浅字浅描边，深底自带对比） */

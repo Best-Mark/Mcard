@@ -19,32 +19,46 @@
   <div class="hp" :class="{ 'hp-editable': editable }" :style="{ '--hp-accent': accent }">
     <div class="hp-pages" ref="pagesEl" :class="pagesCls" @scroll.passive="onScroll"
       @touchstart="onPgTouchStart" @touchmove="onPgTouchMove" @touchend="onPgTouchEnd" @touchcancel="onPgTouchEnd" @wheel="onWheel">
-      <section v-for="(p, pi) in pages" :key="pi" class="hp-page" :class="{ on: pi === cur }" :style="pageStyle(pi)"
-        @touchstart="onDragStart" @touchmove="onDragMove" @touchend="onDragEnd" @touchcancel="onDragEnd">
-        <template v-for="(b, bi) in p.blocks" :key="bi">
+      <section v-for="(p, pi) in pages" :key="pi" class="hp-page" :class="{ on: pi === cur, 'hp-page-free': isFree(p) }" :style="pageStyle(pi)"
+        @touchstart="onDragStart(pi, $event)" @touchmove="onDragMove" @touchend="onDragEnd" @touchcancel="onDragEnd">
+        <!-- 自由画布（2026-11-27）：els 绝对定位（设计宽 750 等比缩放）；旧 blocks 收进 .hp-flow 流式布局 -->
+        <div :class="isFree(p) ? 'hp-canvas' : 'hp-flow'" :style="isFree(p) ? canvasStyle(p, pi) : null"
+          @touchstart="onFdStart(pi, $event)" @touchmove="onFdMove" @touchend="onFdEnd" @touchcancel="onFdEnd"
+          @mousedown="onMouseDown(pi, $event)">
+        <template v-for="(b, bi) in renderList(p)" :key="bi">
           <!-- editable（编辑器画布）模式：点任意块选中（emit pick），长按拖动重排（emit reorder），块内动作全部短路；
                公开页不传 editable，行为与此前完全一致 -->
           <!-- 封面 -->
-          <div v-if="b.type === 'cover'" :class="blkCls(pi, bi, b)" :style="[bgStyle(b.cover), dragStyle(bi)]" @click="pick(pi, bi)">
+          <div v-if="b.type === 'cover'" :class="blkCls(pi, bi, b)" :style="[bgStyle(b.cover), geoStyle(pi, bi, b), dragStyle(bi)]" @click="pick(pi, bi)">
             <div class="hp-cover-in">
               <h1 :contenteditable="inEd(pi, bi) ? 'true' : null" :class="{ 'hp-inplace': inEd(pi, bi) }" @input="onIn(pi, bi, b, 'title', $event)" @blur="onInBlur(pi, bi, b, 'title')">{{ inEd(pi, bi) ? b.title : (b.title || '点击编辑标题') }}</h1>
               <p v-if="b.subtitle || inEd(pi, bi)" :contenteditable="inEd(pi, bi) ? 'true' : null" :class="{ 'hp-inplace': inEd(pi, bi) }" @input="onIn(pi, bi, b, 'subtitle', $event)" @blur="onInBlur(pi, bi, b, 'subtitle')">{{ b.subtitle }}</p>
             </div>
           </div>
-          <!-- 文本（2026-11-27 路线④ 文字基础样式：align 左/中/右 + size 小/正常/大） -->
-          <div v-else-if="b.type === 'text'" :class="[blkCls(pi, bi, b), 'hp-align-' + (b.align || 'left'), 'hp-size-' + (b.size || 'md')]" :style="dragStyle(bi)" @click="pick(pi, bi)">
-            <h2 v-if="b.heading || inEd(pi, bi)" :contenteditable="inEd(pi, bi) ? 'true' : null" :class="{ 'hp-inplace': inEd(pi, bi) }" @input="onIn(pi, bi, b, 'heading', $event)" @blur="onInBlur(pi, bi, b, 'heading')">{{ b.heading }}</h2>
-            <p v-if="b.body || inEd(pi, bi)" :contenteditable="inEd(pi, bi) ? 'true' : null" :class="{ 'hp-inplace': inEd(pi, bi) }" @input="onIn(pi, bi, b, 'body', $event)" @blur="onInBlur(pi, bi, b, 'body')">{{ b.body }}</p>
+          <!-- 文本双形态（2026-11-27 自由画布）：els 自由文本（b.g，单文本+字体/字号/颜色/对齐/粗细/行高）；
+               老 blocks 文本（heading/body + 对齐/字号三档）走流式原样式 -->
+          <div v-else-if="b.type === 'text'" :class="[blkCls(pi, bi, b), b.g ? 'hp-txt-el' : ('hp-align-' + (b.align || 'left')), b.g ? '' : ('hp-size-' + (b.size || 'md'))]" :style="[geoStyle(pi, bi, b), dragStyle(bi)]" @click="pick(pi, bi)">
+            <div v-if="b.g" class="hp-txt" :class="{ 'hp-inplace': inEd(pi, bi) }" :style="txtStyle(b)" :contenteditable="inEd(pi, bi) ? 'true' : null" @input="onIn(pi, bi, b, 'text', $event)" @blur="onInBlur(pi, bi, b, 'text')">{{ b.text }}</div>
+            <template v-else>
+              <h2 v-if="b.heading || inEd(pi, bi)" :contenteditable="inEd(pi, bi) ? 'true' : null" :class="{ 'hp-inplace': inEd(pi, bi) }" @input="onIn(pi, bi, b, 'heading', $event)" @blur="onInBlur(pi, bi, b, 'heading')">{{ b.heading }}</h2>
+              <p v-if="b.body || inEd(pi, bi)" :contenteditable="inEd(pi, bi) ? 'true' : null" :class="{ 'hp-inplace': inEd(pi, bi) }" @input="onIn(pi, bi, b, 'body', $event)" @blur="onInBlur(pi, bi, b, 'body')">{{ b.body }}</p>
+            </template>
+          </div>
+          <!-- 自由元素（2026-11-27 自由画布）：图片 / 形状 / 按钮，绝对定位 + 可缩放旋转 -->
+          <div v-else-if="b.type === 'image'" :class="blkCls(pi, bi, b)" :style="[geoStyle(pi, bi, b), imgStyle(b), dragStyle(bi)]" @click="pick(pi, bi)"></div>
+          <div v-else-if="b.type === 'shape'" :class="blkCls(pi, bi, b)" :style="[geoStyle(pi, bi, b), shapeStyle(b), dragStyle(bi)]" @click="pick(pi, bi)"></div>
+          <div v-else-if="b.type === 'button'" :class="blkCls(pi, bi, b)" :style="[geoStyle(pi, bi, b), dragStyle(bi)]" @click="pick(pi, bi)">
+            <button class="hp-el-btn" :style="btnStyle(b)" @click="runAction(b)">{{ b.label || '按钮' }}</button>
           </div>
           <!-- 图文 -->
-          <div v-else-if="b.type === 'hero'" :class="blkCls(pi, bi, b)" :style="dragStyle(bi)" @click="pick(pi, bi)">
+          <div v-else-if="b.type === 'hero'" :class="blkCls(pi, bi, b)" :style="[geoStyle(pi, bi, b), dragStyle(bi)]" @click="pick(pi, bi)">
             <div class="hp-img" :style="bgStyle(b.image)"></div>
             <h2 v-if="b.title || inEd(pi, bi)" :contenteditable="inEd(pi, bi) ? 'true' : null" :class="{ 'hp-inplace': inEd(pi, bi) }" @input="onIn(pi, bi, b, 'title', $event)" @blur="onInBlur(pi, bi, b, 'title')">{{ b.title }}</h2>
             <p v-if="b.desc || inEd(pi, bi)" :contenteditable="inEd(pi, bi) ? 'true' : null" :class="{ 'hp-inplace': inEd(pi, bi) }" @input="onIn(pi, bi, b, 'desc', $event)" @blur="onInBlur(pi, bi, b, 'desc')">{{ b.desc }}</p>
           </div>
           <!-- 图集：showcase=动效展播（自动轮播+Ken Burns）/ swipe=横滑条 / grid=两列；
                source='card' 时图片自动取自公司相册（data.card.gallery），与名片页同一份数据 -->
-          <div v-else-if="b.type === 'gallery'" :class="blkCls(pi, bi, b)" :style="dragStyle(bi)" @click="pick(pi, bi)">
+          <div v-else-if="b.type === 'gallery'" :class="blkCls(pi, bi, b)" :style="[geoStyle(pi, bi, b), dragStyle(bi)]" @click="pick(pi, bi)">
             <div v-if="b.layout === 'showcase'" class="hp-show">
               <div v-for="(img, gi) in galImgs(b)" :key="gi" class="hp-show-img" :class="{ on: scOf(pi, bi) === gi }" :style="bgStyle(img)"></div>
               <div v-if="!galImgs(b).length" class="hp-img" :style="bgStyle('')"></div>
@@ -72,26 +86,26 @@
             </div>
           </div>
           <!-- 联系方式：拨号 / 复制微信 / 地址 -->
-          <div v-else-if="b.type === 'contact'" :class="blkCls(pi, bi, b)" :style="dragStyle(bi)" @click="pick(pi, bi)">
+          <div v-else-if="b.type === 'contact'" :class="blkCls(pi, bi, b)" :style="[geoStyle(pi, bi, b), dragStyle(bi)]" @click="pick(pi, bi)">
             <button v-if="b.showMobile && tel" class="hp-act" @click="call(tel)"><span class="hp-act-ico">☎</span>{{ tel }}<small>拨打电话</small></button>
             <button v-if="b.showWechat && wechat" class="hp-act" @click="copyWechat"><span class="hp-act-ico">◌</span>微信号：{{ wechat }}<small>{{ copied ? '已复制' : '点击复制' }}</small></button>
             <p v-if="b.showAddress && (card?.address || card?.company)" class="hp-addr">◉ {{ card?.address || card?.company }}</p>
           </div>
           <!-- 地图：有坐标跳高德坐标点，无坐标按关键字搜索 -->
-          <div v-else-if="b.type === 'map'" :class="blkCls(pi, bi, b)" :style="dragStyle(bi)" @click="pick(pi, bi)">
+          <div v-else-if="b.type === 'map'" :class="blkCls(pi, bi, b)" :style="[geoStyle(pi, bi, b), dragStyle(bi)]" @click="pick(pi, bi)">
             <p class="hp-map-label">◉ {{ b.label || '位置待完善' }}</p>
             <a v-if="b.label || (b.lat && b.lng)" class="hp-act" :href="editable ? 'javascript:;' : mapHref(b)" target="_blank" rel="noopener">导航到这里</a>
           </div>
           <!-- 按钮组 -->
-          <div v-else-if="b.type === 'buttons'" :class="blkCls(pi, bi, b)" :style="dragStyle(bi)" @click="pick(pi, bi)">
+          <div v-else-if="b.type === 'buttons'" :class="blkCls(pi, bi, b)" :style="[geoStyle(pi, bi, b), dragStyle(bi)]" @click="pick(pi, bi)">
             <button v-for="(it, ii) in (b.items || [])" :key="ii" class="hp-btn" @click="runAction(it)">{{ it.label || '按钮' }}</button>
           </div>
           <!-- 视频 -->
-          <div v-else-if="b.type === 'video'" :class="blkCls(pi, bi, b)" :style="dragStyle(bi)" @click="pick(pi, bi)">
+          <div v-else-if="b.type === 'video'" :class="blkCls(pi, bi, b)" :style="[geoStyle(pi, bi, b), dragStyle(bi)]" @click="pick(pi, bi)">
             <video v-if="b.url" :src="b.url" :poster="b.poster" controls playsinline preload="metadata"></video>
           </div>
           <!-- 表单留资（2026-11-27）：姓名/电话/留言收集线索；提交成功换成功态，操作全在块内表单层 -->
-          <div v-else-if="b.type === 'form'" :class="blkCls(pi, bi, b)" :style="dragStyle(bi)" @click="pick(pi, bi)">
+          <div v-else-if="b.type === 'form'" :class="blkCls(pi, bi, b)" :style="[geoStyle(pi, bi, b), dragStyle(bi)]" @click="pick(pi, bi)">
             <template v-if="formDone(kOf(pi, bi))">
               <div class="hp-form-done">
                 <span class="hp-form-done-ico">✓</span>
@@ -109,7 +123,7 @@
           </div>
           <!-- 背景音乐（2026-11-27 路线③）：配置载体块。编辑画布显示静态卡；公开页块本身不占内容位
                （display:none，DOM 保留保证块索引一致），播放控制统一在右下浮动 ♪（操作层） -->
-          <div v-else-if="b.type === 'music'" :class="blkCls(pi, bi, b)" :style="dragStyle(bi)" @click="pick(pi, bi)">
+          <div v-else-if="b.type === 'music'" :class="blkCls(pi, bi, b)" :style="[geoStyle(pi, bi, b), dragStyle(bi)]" @click="pick(pi, bi)">
             <div class="hp-music-card">
               <span class="hp-music-ico">♪</span>
               <div class="hp-music-info">
@@ -119,7 +133,7 @@
             </div>
           </div>
           <!-- 尾页名片卡：转化关键——访客看完直接进名片/拨号；watermark 为免费版品牌尾注 -->
-          <div v-else-if="b.type === 'endcard'" :class="blkCls(pi, bi, b)" :style="dragStyle(bi)" @click="pick(pi, bi)">
+          <div v-else-if="b.type === 'endcard'" :class="blkCls(pi, bi, b)" :style="[geoStyle(pi, bi, b), dragStyle(bi)]" @click="pick(pi, bi)">
             <div class="hp-end-card">
               <img v-if="card?.avatar" :src="card.avatar" alt="头像" />
               <div v-else class="hp-end-ava">{{ (card?.name || '名')[0] }}</div>
@@ -133,6 +147,17 @@
             <p v-if="watermark" class="hp-watermark">免费版由 MCard 制作 · 开通会员可去水印</p>
           </div>
         </template>
+        </div>
+        <!-- 自由画布选中手柄（2026-11-27，仅编辑画布 free 页）：四角缩放 + 顶部旋转，
+             位置由选中元素布局矩形（measureSel）换算、rotate 跟随元素角度；手柄自身收触摸手势 -->
+        <div v-if="editable && isFreePage(pi) && selRect" class="hp-handles" :style="hdStyle" @click.stop
+          @touchmove="onFdMove" @touchend="onFdEnd" @touchcancel="onFdEnd">
+          <span class="hp-hd hp-hd-tl" @touchstart.stop.prevent="onFdHandle('tl', $event)" @mousedown.stop.prevent="onHandleDown('tl', $event)"></span>
+          <span class="hp-hd hp-hd-tr" @touchstart.stop.prevent="onFdHandle('tr', $event)" @mousedown.stop.prevent="onHandleDown('tr', $event)"></span>
+          <span class="hp-hd hp-hd-bl" @touchstart.stop.prevent="onFdHandle('bl', $event)" @mousedown.stop.prevent="onHandleDown('bl', $event)"></span>
+          <span class="hp-hd hp-hd-br" @touchstart.stop.prevent="onFdHandle('br', $event)" @mousedown.stop.prevent="onHandleDown('br', $event)"></span>
+          <span class="hp-hd hp-hd-rot" @touchstart.stop.prevent="onFdHandle('rot', $event)" @mousedown.stop.prevent="onHandleDown('rot', $event)">⟳</span>
+        </div>
         <!-- 选中元素浮动快捷条（2026-11-27 画布直操化，仅编辑画布）：MAKA 同款贴选中块上方，
              编辑/换图/复制/删除就近操作；就地编辑时换「✓ 完成 / Aa 样式」。JS 量位置，随内容滚动 -->
         <div v-if="editable && selOn(pi)" class="hp-quickbar" :style="{ top: qbTop + 'px' }" @click.stop>
@@ -176,7 +201,7 @@ const props = defineProps({
   pageOffset: { type: Number, default: 0 },
   selKey: { type: String, default: '' }
 })
-const emit = defineEmits(['pick', 'reorder', 'quick', 'inplace'])
+const emit = defineEmits(['pick', 'reorder', 'quick', 'inplace', 'geom'])
 const router = useRouter()
 
 const kOf = (pi, bi) => (pi + props.pageOffset) + '-' + bi
@@ -186,7 +211,7 @@ function pick(pi, bi) {
   const k = kOf(pi, bi)
   if (inplaceKey.value && inplaceKey.value !== k) finishInplace()
   if (props.selKey === k) {
-    const b = pages.value[pi] && pages.value[pi].blocks ? pages.value[pi].blocks[bi] : null
+    const b = pages.value[pi] ? renderList(pages.value[pi])[bi] : null
     if (b && INPLACE_TYPES.includes(b.type)) { startInplace(); return } // 二次点文字类块 = 就地编辑
   }
   emit('pick', k)
@@ -203,11 +228,11 @@ const selBlockObj = computed(() => {
   const pi = Number(parts[0]) - props.pageOffset, bi = Number(parts[1])
   if (isNaN(pi) || isNaN(bi)) return null
   const pg = pages.value[pi]
-  return (pg && pg.blocks) ? (pg.blocks[bi] || null) : null
+  return pg ? (renderList(pg)[bi] || null) : null
 })
 const selHasImg = computed(() => {
   const t = selBlockObj.value?.type
-  return t === 'cover' || t === 'hero'
+  return t === 'cover' || t === 'hero' || t === 'image'
 })
 function selOn(pi) {
   return !!(props.editable && props.selKey && Number(String(props.selKey).split('-')[0]) === pi + props.pageOffset)
@@ -251,7 +276,7 @@ function quickEdit() {
 }
 function quickStyleOpen() {
   finishInplace()
-  emit('quick', { action: 'edit' })
+  emit('quick', { action: 'style' }) // 编辑器开样式面板（自由元素开属性面板，块开原表单）
 }
 // 快捷条位置：量选中块相对所在页的偏移，贴块上方 54px（页有 64px 顶部内边距，不会顶出界）
 const qbTop = ref(-100)
@@ -314,23 +339,32 @@ function mountIo() {
     if (Object.keys(patch).length) shown.value = { ...shown.value, ...patch }
   }, { root: pagesEl.value, threshold: 0.12 }) } catch { io = null }
 }
-watch(() => props.data, () => { nextTick(scanAnims); positionQuick() }, { deep: true })
+watch(() => props.data, () => {
+  nextTick(() => { measureU(); scanAnims(); measureSel() })
+  positionQuick()
+}, { deep: true })
 watch(() => props.selKey, k => {
   if (inplaceKey.value && inplaceKey.value !== k) finishInplace()
   positionQuick()
+  nextTick(measureSel)
 })
 onMounted(() => {
   if (!isPaged.value) mountIo()
-  nextTick(scanAnims)
+  measureU()
+  nextTick(() => { scanAnims(); measureU(); measureSel() })
   if (!props.editable) scTimer = setInterval(scAdvance, 3800) // 展播自动轮播（编辑画布不播）
   armMusic()
   positionQuick()
+  onResize = () => { measureU(); measureSel(); positionQuick() }
+  window.addEventListener('resize', onResize)
 })
 onBeforeUnmount(() => {
   if (io) io.disconnect()
   clearInterval(scTimer)
   clearTimeout(pgReplayTimer)
   disarmUnlock()
+  detachMouse()
+  if (onResize) window.removeEventListener('resize', onResize)
   if (audioEl.value) { try { audioEl.value.pause() } catch {} }
 })
 
@@ -338,8 +372,9 @@ onBeforeUnmount(() => {
 const drag = reactive({ on: false, cur: -1, dy: 0, startY: 0 })
 let dragTimer = 0, coolUntil = 0
 const biOf = el => (el && el.parentElement) ? Array.prototype.indexOf.call(el.parentElement.children, el) : -1
-function onDragStart(e) {
+function onDragStart(pi, e) {
   if (!props.editable) return
+  if (isFreePage(pi)) return // 自由画布页：元素自由拖移（onFd*），不做块重排
   if (inplaceKey.value && e.target && e.target.closest && e.target.closest('.hp-inplace')) return // 就地编辑中，长按是选字不是拖块
   const blk = e.target && e.target.closest ? e.target.closest('.hp-block') : null
   drag.cur = biOf(blk)
@@ -384,6 +419,222 @@ function onDragEnd() {
 function dragStyle(bi) {
   if (!drag.on || drag.cur !== bi) return null
   return { transform: `translateY(${drag.dy}px) scale(1.02)`, zIndex: 30, boxShadow: '0 18px 44px rgba(0,0,0,.5)' }
+}
+
+// ---- 自由画布（2026-11-27 用户定稿上 MAKA 同款）：els 绝对定位，设计宽 750 等比缩放 ----
+// 页内元素 els = 类型字段 + 几何 g{x,y,w,h,rot,opacity,z}；老 blocks 页原样流式（.hp-flow）。
+const isFree = p => !!(p && Array.isArray(p.els) && p.els.length)
+const isFreePage = pi => isFree(pages.value[pi])
+const renderList = p => (isFree(p) ? p.els : ((p && p.blocks) || []))
+// 页面设计高：基准 1334（750 海报 9:16），元素超出则加高（长页）
+const phOf = p => {
+  let h = 1334
+  for (const e of ((p && p.els) || [])) {
+    const g = e.g || {}
+    h = Math.max(h, (Number(g.y) || 0) + (Number(g.h) || 0) + 60)
+  }
+  return h
+}
+const u = ref(1) // 设计单位 750 → 画布实际像素的比例
+let onResize = null
+function measureU() {
+  const c = pagesEl.value ? pagesEl.value.querySelector('.hp-canvas') : null
+  const w = c ? c.clientWidth : (pagesEl.value ? pagesEl.value.clientWidth : 0)
+  if (w > 0) u.value = w / 750
+}
+const canvasStyle = (p) => {
+  const bg = (p && p.bg) || {}
+  const st = { paddingTop: (phOf(p) / 750 * 100) + '%' }
+  if (bg.image) {
+    st.backgroundImage = `url(${bg.image})`
+    st.backgroundSize = 'cover'
+    st.backgroundPosition = 'center'
+    st.backgroundRepeat = 'no-repeat'
+  } else {
+    st.backgroundColor = bg.color || '#101319'
+  }
+  return st
+}
+// 组件类元素（内部 markup 自带布局）高度自适应；image/shape/button 定高可缩放；text 高度自适应不裁切
+const FIXED_H_TYPES = ['image', 'shape', 'button']
+const geoStyle = (pi, bi, b) => {
+  if (!b || !b.g) return null
+  const g = b.g
+  const st = {
+    position: 'absolute',
+    left: (g.x * u.value) + 'px',
+    top: (g.y * u.value) + 'px',
+    width: (g.w * u.value) + 'px',
+    zIndex: g.z,
+    opacity: g.opacity
+  }
+  if (g.rot) st.transform = `rotate(${g.rot}deg)`
+  if (FIXED_H_TYPES.includes(b.type)) st.height = (g.h * u.value) + 'px'
+  return st
+}
+// 自由文本样式：字体三档（黑体默认/宋/楷）+ 字号（设计 px）+ 色/对齐/粗细/行高
+const FONT_MAP = { '': '', serif: '"Songti SC","SimSun",Georgia,serif', kaiti: '"Kaiti SC","KaiTi",STKaiti,serif' }
+const txtStyle = b => ({
+  fontFamily: FONT_MAP[b.font] || FONT_MAP[''],
+  fontSize: ((Number(b.size) || 32) * u.value) + 'px',
+  color: b.color || '#ffffff',
+  textAlign: b.align || 'left',
+  fontWeight: b.bold ? 700 : 400,
+  lineHeight: Number(b.lh) || 1.5,
+  whiteSpace: 'pre-wrap',
+  wordBreak: 'break-word'
+})
+const imgStyle = b => ({
+  ...bgStyle(b.url),
+  backgroundSize: b.fit === 'contain' ? 'contain' : 'cover',
+  backgroundPosition: 'center',
+  backgroundRepeat: 'no-repeat',
+  borderRadius: ((Number(b.radius) || 0) * u.value) + 'px'
+})
+const shapeStyle = b => ({
+  background: b.color || '#ffffff',
+  width: '100%',
+  height: '100%',
+  borderRadius: b.shape === 'circle' ? '50%' : (((Number(b.radius) || 0) * u.value) + 'px')
+})
+const btnStyle = b => ({
+  background: b.bg || '#a62b2b',
+  color: b.color || '#ffffff',
+  width: '100%',
+  height: '100%',
+  borderRadius: ((Number(b.radius) != null ? Number(b.radius) : 22) * u.value) + 'px'
+})
+
+// ---- 选中手柄层：布局矩形（offsetLeft/Top，未旋转）+ 元素同角旋转，四角缩放/顶部旋转 ----
+const selRect = ref(null)
+function measureSel() {
+  const el = pagesEl.value && props.selKey ? pagesEl.value.querySelector('.hp-sel') : null
+  if (!el || !el.offsetParent) { selRect.value = null; return }
+  selRect.value = { left: el.offsetLeft, top: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight }
+}
+const hdStyle = computed(() => {
+  const r = selRect.value
+  if (!r) return null
+  const g = selBlockObj.value && selBlockObj.value.g
+  const st = { left: r.left + 'px', top: r.top + 'px', width: r.w + 'px', height: r.h + 'px' }
+  if (g && g.rot) st.transform = `rotate(${g.rot}deg)`
+  return st
+})
+
+// ---- 自由画布手势（editable + free）：4px 阈值区分点选与拖移；手柄做缩放/旋转；触摸+鼠标双支持 ----
+const fd = { on: false, mode: '', pi: -1, bi: -1, startX: 0, startY: 0, g0: null }
+const evtPoint = e => (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || (typeof e.clientX === 'number' ? e : null)
+function onFdStart(pi, e) {
+  if (!props.editable || !isFreePage(pi)) return
+  if (inplaceKey.value && e.target && e.target.closest && e.target.closest('.hp-inplace')) return
+  const t = evtPoint(e)
+  if (!t) return
+  const el = e.target && e.target.closest ? e.target.closest('.hp-block') : null
+  const bi = biOf(el)
+  const b = bi >= 0 ? renderList(pages.value[pi] || {})[bi] : null
+  if (!b || !b.g) { // 点空白画布 = 取消选中
+    if (Date.now() >= coolUntil && props.selKey) emit('pick', '')
+    return
+  }
+  fd.on = true; fd.mode = ''; fd.pi = pi; fd.bi = bi
+  fd.startX = t.clientX; fd.startY = t.clientY
+  fd.g0 = { ...b.g }
+}
+function onFdHandle(mode, e) {
+  if (!props.editable) return
+  const t = evtPoint(e)
+  const b = selBlockObj.value
+  if (!t || !b || !b.g) return
+  const parts = String(props.selKey || '').split('-')
+  fd.on = true; fd.mode = mode
+  fd.pi = Number(parts[0]) - props.pageOffset; fd.bi = Number(parts[1])
+  fd.startX = t.clientX; fd.startY = t.clientY
+  fd.g0 = { ...b.g }
+  try { navigator.vibrate && navigator.vibrate(8) } catch {}
+}
+function onFdMove(e) {
+  if (!fd.on || !props.editable) return
+  const t = evtPoint(e)
+  if (!t) return
+  const dx = t.clientX - fd.startX, dy = t.clientY - fd.startY
+  if (!fd.mode) { // 元素本体：4px 内不动（点选），超过进入拖移
+    if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return
+    fd.mode = 'move'
+  }
+  const b = renderList(pages.value[fd.pi] || {})[fd.bi]
+  if (!b || !b.g) return
+  if (e.cancelable) e.preventDefault()
+  const g = b.g, g0 = fd.g0
+  const DX = dx / (u.value || 1), DY = dy / (u.value || 1)
+  if (fd.mode === 'move') {
+    g.x = Math.round(Math.max(-750, Math.min(2250, g0.x + DX)))
+    g.y = Math.round(Math.max(-2000, Math.min(30000, g0.y + DY)))
+  } else if (fd.mode === 'rot') {
+    const el = pagesEl.value ? pagesEl.value.querySelector('.hp-sel') : null
+    if (el) {
+      const r = el.getBoundingClientRect()
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2
+      let ang = Math.atan2(t.clientY - cy, t.clientX - cx) * 180 / Math.PI + 90
+      ang = ((ang + 180) % 360 + 360) % 360 - 180
+      const snap = Math.round(ang / 15) * 15 // 15° 档吸附（±4° 内贴合，0/90/180 含在内）
+      g.rot = Math.abs(ang - snap) <= 4 ? snap : Math.round(ang)
+      if (g.rot < -180) g.rot = -180
+      if (g.rot > 180) g.rot = 180
+    }
+  } else {
+    // 四角缩放：定高类同步 w/h；text/组件只改 w（高度自适应不裁切）
+    const fixed = FIXED_H_TYPES.includes(b.type)
+    const L = fd.mode === 'tl' || fd.mode === 'bl'
+    const T = fd.mode === 'tl' || fd.mode === 'tr'
+    if (L) { g.w = Math.round(Math.max(16, Math.min(750, g0.w - DX))); g.x = Math.round(g0.x + (g0.w - g.w)) }
+    else g.w = Math.round(Math.max(16, Math.min(750, g0.w + DX)))
+    if (fixed) {
+      if (T) { g.h = Math.round(Math.max(16, Math.min(4000, g0.h - DY))); g.y = Math.round(g0.y + (g0.h - g.h)) }
+      else g.h = Math.round(Math.max(16, Math.min(4000, g0.h + DY)))
+    }
+  }
+  measureSel() // 手柄层跟手
+}
+function onFdEnd() {
+  if (!fd.on) return
+  const mode = fd.mode
+  fd.on = false; fd.mode = ''; fd.g0 = null
+  detachMouse()
+  if (!mode) { // 点选（先选中再压冷却，抑制合成 click 二次触发就地编辑）
+    pick(fd.pi, fd.bi)
+    coolUntil = Date.now() + 400
+  } else {
+    coolUntil = Date.now() + 350
+    emit('geom') // 编辑器 markDirty + 进撤销时间线
+    measureSel()
+  }
+  fd.pi = -1; fd.bi = -1
+}
+// 鼠标（PC 桌面编辑）：按下挂 document 拖拽监听（拖出元素也不断），松手拆除
+let mouseDocOn = false
+function docMv(e) { onFdMove(e) }
+function docUp() { onFdEnd() }
+function attachMouse() {
+  if (mouseDocOn) return
+  mouseDocOn = true
+  document.addEventListener('mousemove', docMv)
+  document.addEventListener('mouseup', docUp)
+}
+function detachMouse() {
+  if (!mouseDocOn) return
+  mouseDocOn = false
+  document.removeEventListener('mousemove', docMv)
+  document.removeEventListener('mouseup', docUp)
+}
+function onMouseDown(pi, e) {
+  if (e && e.button !== 0) return
+  onFdStart(pi, e)
+  if (fd.on) attachMouse()
+}
+function onHandleDown(mode, e) {
+  if (e && e.button !== 0) return
+  onFdHandle(mode, e)
+  if (fd.on) attachMouse()
 }
 
 const schema = computed(() => props.data?.page?.schema || props.data?.schema || {})
@@ -442,14 +693,14 @@ function markPageShown(pi) {
   const p = pages.value[pi]
   if (!p) return
   const patch = {}
-  ;(p.blocks || []).forEach((b, bi) => { patch[kOf(pi, bi)] = true })
+  renderList(p).forEach((b, bi) => { patch[kOf(pi, bi)] = true })
   if (Object.keys(patch).length) shown.value = { ...shown.value, ...patch }
 }
 function resetOtherPages(pi) {
   const patch = {}
   pages.value.forEach((p, idx) => {
     if (idx === pi) return
-    ;(p.blocks || []).forEach((b, bi) => { patch[kOf(idx, bi)] = false })
+    renderList(p).forEach((b, bi) => { patch[kOf(idx, bi)] = false })
   })
   if (Object.keys(patch).length) shown.value = { ...shown.value, ...patch }
 }
@@ -536,7 +787,7 @@ function scAdvance() {
   if (props.editable) return
   const patch = {}
   const ps = pages.value || []
-  ps.forEach((p, pi) => (p.blocks || []).forEach((b, bi) => {
+  ps.forEach((p, pi) => renderList(p).forEach((b, bi) => {
     if (b.type === 'gallery' && b.layout === 'showcase') {
       const n = galImgs(b).length
       if (n > 1) patch[kOf(pi, bi)] = (scOf(pi, bi) + 1) % n
@@ -601,7 +852,7 @@ async function submitForm(pi, bi, b) {
 
 // ---- 背景音乐（2026-11-27 路线③）：music 块存 url+autoplay，公开页右下浮动 ♪ 承载播放控制 ----
 const musicBlock = computed(() => {
-  for (const p of pages.value) for (const b of (p.blocks || [])) if (b.type === 'music' && b.url) return b
+  for (const p of pages.value) for (const b of renderList(p)) if (b.type === 'music' && b.url) return b
   return null
 })
 const musicUrl = computed(() => musicBlock.value?.url || '')
@@ -658,6 +909,24 @@ function armMusic() {
 .hp-inplace { -webkit-user-select: text; user-select: text; cursor: text; }
 .hp-inplace:focus { outline: 2px solid #fbbf24; outline-offset: 3px; border-radius: 4px; }
 .hp-img { width: 100%; aspect-ratio: 4 / 3; border-radius: 14px; background-size: cover; background-position: center; background-color: #1c2029; }
+
+/* ---- 自由画布（2026-11-27 MAKA 同款）：els 绝对定位（设计宽 750 等比缩放），页面满幅零内边距 ---- */
+.hp-flow { display: flex; flex-direction: column; gap: 22px; width: 100%; }
+.hp-page-free { padding: 0; justify-content: flex-start; gap: 0; }
+.hp-canvas { position: relative; width: 100%; background-color: #101319; }
+.hp-canvas .hp-block { max-width: none; margin: 0; }
+.hp-txt { width: 100%; }
+.hp-el-btn { display: block; width: 100%; height: 100%; border: 0; padding: 0 8px; font-weight: 700; font-size: 15px; cursor: pointer; -webkit-tap-highlight-color: transparent; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.hp-el-btn:active { filter: brightness(.92); }
+/* 选中手柄层：框住选中元素（布局矩形+同角旋转），四角缩放 + 顶部旋转钮；
+   容器 pointer-events:none，仅手柄收手势；老 WebView 无 inset 简写，四边声明 */
+.hp-handles { position: absolute; z-index: 26; pointer-events: none; }
+.hp-hd { position: absolute; width: 12px; height: 12px; border-radius: 3px; background: #fff; border: 2px solid var(--hp-accent, #a62b2b); box-shadow: 0 2px 8px rgba(0,0,0,.4); pointer-events: auto; }
+.hp-hd-tl { top: -7px; left: -7px; }
+.hp-hd-tr { top: -7px; right: -7px; }
+.hp-hd-bl { bottom: -7px; left: -7px; }
+.hp-hd-br { bottom: -7px; right: -7px; }
+.hp-hd-rot { top: -36px; left: 50%; margin-left: -13px; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; line-height: 1; color: var(--hp-accent, #a62b2b); }
 
 /* 控制式翻页（transition=slide/fade/flip，2026-11-27 路线③）：
    页绝对定位满屏叠放；slide 按页内联 transform 位移（方向天然感知），fade/flip 按 .on 显隐/翻转过渡；

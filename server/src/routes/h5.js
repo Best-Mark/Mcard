@@ -1,6 +1,7 @@
 // H5 宣传页（2026-11-27 新模块）：名片附属营销页，JSON schema 驱动，公开访问 /h5/:slug。
 // 商业口径（用户定稿）：套餐权益分层——免费 1 个/≤3 页/尾页水印；付费 10 个/≤12 页/可去水印。
-// 块编辑而非自由画布：小白 5 分钟出片；渲染器唯一真相源在前端 H5Render.vue（H5 公开页/编辑预览共用）。
+// 自由画布（2026-11-27 用户定稿上 MAKA 同款）：页内元素 els 绝对定位自由拖动/缩放/旋转，
+// 老 blocks 流式路径原样兼容（存量页公开渲染零破坏）；渲染器唯一真相源在前端 H5Render.vue。
 const express = require('express')
 const db = require('../db')
 const { ok, fail } = require('../utils/response')
@@ -31,52 +32,89 @@ function limitsOf(userId) {
   return { paid, maxH5: paid ? PAID_MAX_H5 : FREE_MAX_H5, maxPages: paid ? PAID_MAX_PAGES : FREE_MAX_PAGES }
 }
 
-// schema 校验与瘦身：块类型白名单、字符串截断、数量上限——脏数据在门口拦住，渲染层永远拿到干净结构
+// schema 校验与瘦身：类型白名单、字符串截断、数量上限——脏数据在门口拦住，渲染层永远拿到干净结构。
+// 2026-11-27 自由画布（用户定稿推翻「不做自由画布」）：页内元素 els = 类型字段 + 几何 g{x,y,w,h,rot,opacity,z}，
+// 画布设计宽 750（渲染等比缩放）；text/image/shape/button 为自由元素，gallery/form/… 为组件元素（字段同块）。
+// 老 blocks 路径原样保留（存量页公开渲染零破坏），同页 els 优先。
+const EL_TYPES = ['text', 'image', 'shape', 'button', 'gallery', 'contact', 'map', 'buttons', 'video', 'form', 'music', 'endcard']
+const EL_FONTS = ['', 'serif', 'kaiti'] // 黑体默认 / 衬线宋 / 楷体（全平台安全字体族）
+const EL_SHAPES = ['rect', 'round', 'circle', 'line']
+const hex = v => (/^#[0-9a-fA-F]{6}$/.test(String(v || '')) ? String(v) : '')
+const num = (v, min, max, dft) => { const n = Number(v); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : dft }
+
+// 各类型字段清洗（blocks 与 els 共用）：free=true 走自由元素字段，false 走老块字段
+function sanitizeFields(type, b, free) {
+  const out = { type, anim: BLOCK_ANIMS.includes(b?.anim) ? b.anim : '' }
+  if (type === 'text' && free) Object.assign(out, {
+    text: str(b.text, 300), size: Math.round(num(b.size, 12, 200, 32)),
+    color: hex(b.color) || '#ffffff', align: ['left', 'center', 'right'].includes(b.align) ? b.align : 'left',
+    bold: !!b.bold, font: EL_FONTS.includes(b.font) ? b.font : '', lh: num(b.lh, 1, 3, 1.5)
+  })
+  if (type === 'text' && !free) Object.assign(out, {
+    heading: str(b.heading, 40), body: str(b.body, 1200),
+    // 文字基础样式（2026-11-27 路线④）：对齐 + 字号，脏值收敛默认
+    align: ['left', 'center', 'right'].includes(b.align) ? b.align : 'left',
+    size: ['sm', 'md', 'lg'].includes(b.size) ? b.size : 'md'
+  })
+  if (type === 'cover') Object.assign(out, { title: str(b.title, 40), subtitle: str(b.subtitle, 60), cover: str(b.cover, 500) })
+  if (type === 'hero') Object.assign(out, { image: str(b.image, 500), title: str(b.title, 40), desc: str(b.desc, 300) })
+  if (type === 'image' && free) Object.assign(out, { url: str(b.url, 500), radius: Math.round(num(b.radius, 0, 200, 0)), fit: ['cover', 'contain'].includes(b.fit) ? b.fit : 'cover' })
+  if (type === 'shape' && free) Object.assign(out, { shape: EL_SHAPES.includes(b.shape) ? b.shape : 'rect', color: hex(b.color) || '#ffffff', radius: Math.round(num(b.radius, 0, 400, 0)) })
+  if (type === 'button' && free) Object.assign(out, {
+    label: str(b.label, 12), action: ['tel', 'wechat', 'link', 'copy'].includes(b.action) ? b.action : 'tel', value: str(b.value, 200),
+    color: hex(b.color) || '#ffffff', bg: hex(b.bg) || '#a62b2b', radius: Math.round(num(b.radius, 0, 400, 22))
+  })
+  if (type === 'gallery') Object.assign(out, {
+    images: (Array.isArray(b.images) ? b.images : []).slice(0, 9).map(u => str(u, 500)),
+    // layout: showcase=动效展播（自动轮播，2026-11-27）/ swipe / grid / stagger=错落双列（2026-11-27 路线④）；source: 'card'=图片自动取自公司相册
+    layout: ['showcase', 'swipe', 'grid', 'stagger'].includes(b.layout) ? b.layout : 'grid',
+    source: b.source === 'card' ? 'card' : 'upload'
+  })
+  if (type === 'contact') Object.assign(out, { showMobile: b.showMobile !== false, showWechat: b.showWechat !== false, showAddress: b.showAddress !== false })
+  if (type === 'map') Object.assign(out, { lat: Number.isFinite(+b.lat) ? +b.lat : null, lng: Number.isFinite(+b.lng) ? +b.lng : null, label: str(b.label, 80) })
+  // 按钮 action 白名单 2026-11-27 加 copy（复制任意文本）
+  if (type === 'buttons') Object.assign(out, { items: (Array.isArray(b.items) ? b.items : []).slice(0, 3).map(i => ({ label: str(i?.label, 12), action: ['tel', 'wechat', 'link', 'copy'].includes(i?.action) ? i.action : 'tel', value: str(i?.value, 200) })) })
+  if (type === 'video') Object.assign(out, { url: str(b.url, 500), poster: str(b.poster, 500) })
+  // 表单留资块（2026-11-27）：字段开关+按钮/成功文案；提交内容落 h5_leads，schema 只存展示配置
+  if (type === 'form') Object.assign(out, {
+    heading: str(b.heading, 40),
+    desc: str(b.desc, 120),
+    showName: b.showName !== false,
+    showPhone: b.showPhone !== false,
+    showMessage: b.showMessage !== false,
+    buttonText: str(b.buttonText, 12) || '提交',
+    successText: str(b.successText, 60) || '已收到，我们会尽快联系你'
+  })
+  // 背景音乐块（2026-11-27 路线③）：仅存音频地址与自动播放意愿，公开页浮动 ♪ 开关承载播放控制
+  if (type === 'music') Object.assign(out, { url: str(b.url, 500), autoplay: b.autoplay !== false })
+  return out
+}
+
+// 几何清洗（自由画布）：设计单位（画布宽 750），数值限幅防脏数据撑爆布局
+function sanitizeG(g) {
+  return {
+    x: num(g?.x, -750, 2250, 0), y: num(g?.y, -2000, 30000, 0),
+    w: num(g?.w, 16, 750, 320), h: num(g?.h, 16, 4000, 120),
+    rot: num(g?.rot, -180, 180, 0), opacity: num(g?.opacity, 0, 1, 1),
+    z: Math.round(num(g?.z, 0, 999, 0))
+  }
+}
+
 function sanitizeSchema(raw, maxPages) {
-  const accent = /^#[0-9a-fA-F]{6}$/.test(String(raw?.accent || '')) ? String(raw.accent) : ''
+  const accent = hex(raw?.accent)
   // 页面切换过渡动效（2026-11-27 路线③）：scroll=原生滚动（默认兼容）/ slide / fade / flip
   const transition = TRANSITIONS.includes(raw?.transition) ? raw.transition : 'scroll'
   const pagesIn = Array.isArray(raw?.pages) ? raw.pages.slice(0, maxPages) : []
   if (!pagesIn.length) return { transition: 'scroll', pages: [{ blocks: [{ type: 'cover', title: '', subtitle: '', cover: '' }] }] }
   const pages = pagesIn.map(p => {
-    const blocks = (Array.isArray(p?.blocks) ? p.blocks : []).slice(0, 8).map(b => {
-      const type = BLOCK_TYPES.includes(b?.type) ? b.type : 'text'
-      const out = { type, anim: BLOCK_ANIMS.includes(b?.anim) ? b.anim : '' }
-      if (type === 'cover') Object.assign(out, { title: str(b.title, 40), subtitle: str(b.subtitle, 60), cover: str(b.cover, 500) })
-      if (type === 'text') Object.assign(out, {
-        heading: str(b.heading, 40), body: str(b.body, 1200),
-        // 文字基础样式（2026-11-27 路线④）：对齐 + 字号，脏值收敛默认
-        align: ['left', 'center', 'right'].includes(b.align) ? b.align : 'left',
-        size: ['sm', 'md', 'lg'].includes(b.size) ? b.size : 'md'
-      })
-      if (type === 'hero') Object.assign(out, { image: str(b.image, 500), title: str(b.title, 40), desc: str(b.desc, 300) })
-      if (type === 'gallery') Object.assign(out, {
-        images: (Array.isArray(b.images) ? b.images : []).slice(0, 9).map(u => str(u, 500)),
-        // layout: showcase=动效展播（自动轮播，2026-11-27）/ swipe / grid / stagger=错落双列（2026-11-27 路线④）；source: 'card'=图片自动取自公司相册
-        layout: ['showcase', 'swipe', 'grid', 'stagger'].includes(b.layout) ? b.layout : 'grid',
-        source: b.source === 'card' ? 'card' : 'upload'
-      })
-      if (type === 'contact') Object.assign(out, { showMobile: b.showMobile !== false, showWechat: b.showWechat !== false, showAddress: b.showAddress !== false })
-      if (type === 'map') Object.assign(out, { lat: Number.isFinite(+b.lat) ? +b.lat : null, lng: Number.isFinite(+b.lng) ? +b.lng : null, label: str(b.label, 80) })
-      // 按钮 action 白名单 2026-11-27 加 copy（复制任意文本）
-      if (type === 'buttons') Object.assign(out, { items: (Array.isArray(b.items) ? b.items : []).slice(0, 3).map(i => ({ label: str(i?.label, 12), action: ['tel', 'wechat', 'link', 'copy'].includes(i?.action) ? i.action : 'tel', value: str(i?.value, 200) })) })
-      if (type === 'video') Object.assign(out, { url: str(b.url, 500), poster: str(b.poster, 500) })
-      // 表单留资块（2026-11-27）：字段开关+按钮/成功文案；提交内容落 h5_leads，schema 只存展示配置
-      if (type === 'form') Object.assign(out, {
-        heading: str(b.heading, 40),
-        desc: str(b.desc, 120),
-        showName: b.showName !== false,
-        showPhone: b.showPhone !== false,
-        showMessage: b.showMessage !== false,
-        buttonText: str(b.buttonText, 12) || '提交',
-        successText: str(b.successText, 60) || '已收到，我们会尽快联系你'
-      })
-      // 背景音乐块（2026-11-27 路线③）：仅存音频地址与自动播放意愿，公开页浮动 ♪ 开关承载播放控制
-      if (type === 'music') Object.assign(out, { url: str(b.url, 500), autoplay: b.autoplay !== false })
-      if (type === 'endcard') Object.assign(out, {})
-      return out
+    const bg = { color: hex(p?.bg?.color), image: str(p?.bg?.image, 500) } // 页面背景（自由画布）
+    const els = (Array.isArray(p?.els) ? p.els : []).slice(0, 40).map(e => {
+      const type = EL_TYPES.includes(e?.type) ? e.type : 'text'
+      return { ...sanitizeFields(type, e, true), g: sanitizeG(e?.g) }
     })
-    return { blocks: blocks.length ? blocks : [{ type: 'text', heading: '', body: '' }] }
+    if (els.length) return { bg, els }
+    const blocks = (Array.isArray(p?.blocks) ? p.blocks : []).slice(0, 8).map(b => sanitizeFields(BLOCK_TYPES.includes(b?.type) ? b.type : 'text', b, false))
+    return { bg, blocks: blocks.length ? blocks : [{ type: 'text', heading: '', body: '' }] }
   })
   return { accent, transition, pages }
 }

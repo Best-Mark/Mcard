@@ -723,7 +723,8 @@
   box-shadow: 0 26px 60px -22px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.06);
 }
 .cv-tpl-navygold .cv-profile::before {
-  content: ''; position: absolute; inset: 0 0 auto 0; height: 6px;
+  /* 四边定位（ui-conventions：老 X5/iOS WebView 不认 inset 简写；四值写法 esbuild 也不会降级） */
+  content: ''; position: absolute; top: 0; right: 0; bottom: auto; left: 0; height: 6px;
   background: linear-gradient(90deg, var(--ng-navy), var(--ng-navy-2) 40%, var(--ng-gold-2) 78%, var(--ng-gold));
 }
 .cv-tpl-navygold .cv-main { max-width: 430px; }
