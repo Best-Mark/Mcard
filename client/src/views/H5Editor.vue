@@ -24,8 +24,9 @@
          「预览不改」）渲染全部页面、可滑动翻页、无编辑手势与 dock -->
     <div class="he-canvas" v-if="loaded">
       <div class="he-canvas-in">
-        <!-- page-offset：画布只渲染当前页，offset 让块的 key 与真实页号对齐（选中态/拖动不串页） -->
-        <H5Render :data="previewMode ? previewData : curPageData" :editable="!previewMode" :page-offset="selPage" :sel-key="selKey" @pick="onPick" @reorder="onReorder" @quick="onQuick" @inplace="markDirty" @geom="markDirty" />
+        <!-- page-offset：画布只渲染当前页，offset 让块的 key 与真实页号对齐（选中态/拖动不串页）；
+             编辑态 key=selPage：切页重挂载播放入场动画（预览/公开页走翻页动效，编辑画布单页靠这个有翻页感） -->
+        <H5Render :key="previewMode ? 'preview' : selPage" class="he-page-anim" :data="previewMode ? previewData : curPageData" :editable="!previewMode" :page-offset="selPage" :sel-key="selKey" @pick="onPick" @reorder="onReorder" @quick="onQuick" @inplace="markDirty" @geom="markDirty" />
       </div>
       <div v-if="!previewMode" class="he-hint small muted">每页一屏 · 内容多了点「页面 → 加一页」 · 点选元素 · 拖动移动 · 四角缩放 · 再点改内容{{ block ? ` · 当前：第 ${selPage + 1} 页 ${TYPE_LABEL[block.type]}` : '' }}</div>
     </div>
@@ -816,6 +817,10 @@ watch(() => route.params.id, () => { if (route.name === 'h5-editor') location.re
    翻页模式下页面是绝对定位叠放，渲染树逐级 height:100%，根容器高度随内容时整个画布塌成 0 = 黑屏（实锤） */
 .he.he-preview { height: 100svh; padding-bottom: 16px; }
 .he-title-plain { border-color: transparent; background: transparent; }
+/* 编辑画布切页入场动画：预览/公开页走翻页动效，编辑态单页重挂载用这个补翻页感 */
+.he-page-anim { animation: he-page-in .42s cubic-bezier(.22, .8, .3, 1) both; }
+@keyframes he-page-in { from { opacity: 0; transform: translateY(26px); } }
+@media (prefers-reduced-motion: reduce) { .he-page-anim { animation: none !important; } }
 .he-top { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 8px; padding: calc(10px + var(--safe-top, 0px)) 12px 10px; background: rgba(255,255,255,.95); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
 .he-back { width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 9px; background: #fff; font-size: 19px; color: #374151; cursor: pointer; flex: 0 0 34px; }
 .he-back:disabled { opacity: .35; cursor: default; }

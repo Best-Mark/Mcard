@@ -225,4 +225,21 @@ const TEMPLATES = [
 
 function getTemplate(key) { return TEMPLATES.find(t => t.key === key) || null }
 
+// 模板入场动效注入（2026-11-28 用户定稿「模板要带动效参数，不然没灵气」）：按块类型给基准动效，
+// 同页相邻块方向/类型错开（up/left/right/zoom 交替），避免整页齐刷刷一个方向；用户在编辑器里仍可逐块改。
+;(() => {
+  const byType = { cover: 'zoom', endcard: 'fade', music: 'fade', video: 'zoom', gallery: 'right', hero: 'left', map: 'left', buttons: 'right', contact: 'up', form: 'up' }
+  const variety = ['up', 'left', 'right', 'zoom']
+  for (const t of TEMPLATES) for (const p of t.pages || []) {
+    let i = 0
+    for (const b of (p.blocks || [])) {
+      if (b.anim) { i++; continue }
+      let a = byType[b.type]
+      if (!a) { a = variety[i % variety.length]; if (i > 0 && a === p.blocks[i - 1].anim) a = variety[(i + 2) % variety.length] }
+      b.anim = a
+      i++
+    }
+  }
+})()
+
 module.exports = { TEMPLATES, getTemplate }
