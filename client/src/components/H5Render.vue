@@ -8,8 +8,9 @@
           anim 字段白名单 none/up/fade/zoom/left/right，未设置按块类型智能默认（cover=zoom、endcard=fade、
           其余 up），显式 none 才关闭；③ 按钮组新增 copy 动作。公开页不传 editable/pageOffset，行为同前。
        2026-11-27 路线③（页面切换过渡动效 + 背景音乐）：
-       ④ schema.transition：scroll=原生滚动（默认，存量页零变化）/ slide / fade / flip 控制式翻页
-          （触摸/滚轮/圆点驱动 + CSS 过渡，页内超高先内滚、到边才翻；入场动效改按页显隐，回翻重播）；
+       ④ schema.transition：auto=智能（默认，按落点页内容挑过渡：操作型/尾页 fade、重图页 flip、其余 slide）/
+          slide=滑动推入 / fade=淡入淡出 / flip=3D 翻页，控制式翻页（触摸/滚轮/圆点驱动 + CSS 过渡，
+          页内超高先内滚、到边才翻；入场动效改按页显隐，落页后再播、回翻重播）；
        ⑤ music 块（url+autoplay）：编辑画布静态卡，公开页块本身不占位、控制统一在右下浮动 ♪
           （操作层），浏览器禁带声自动播 → 首触解锁起播，循环播放。
        2026-11-27 画布直操化（用户对比 MAKA「体验差太多」）：
@@ -362,6 +363,7 @@ onBeforeUnmount(() => {
   if (io) io.disconnect()
   clearInterval(scTimer)
   clearTimeout(pgReplayTimer)
+  clearTimeout(pgAnimTimer)
   disarmUnlock()
   detachMouse()
   if (onResize) window.removeEventListener('resize', onResize)
@@ -662,16 +664,36 @@ function bgStyle(u) {
 const pagesEl = ref(null)
 const cur = ref(0)
 function onScroll(e) {
+  if (isPaged.value) return // 控制式翻页：cur 只由翻页手势/圆点/滚轮驱动，忽略杂散 scroll 事件（防止被拉回首页）
   const el = e.target
   cur.value = Math.round(el.scrollTop / Math.max(1, el.clientHeight))
 }
 
-// ---- 页面切换过渡动效（2026-11-27 路线③；2026-11-28 用户定稿「每页全屏 + 翻页动效」）：
-//      slide=滑动推入（默认）/ fade / flip = 控制式翻页（触摸/滚轮/圆点驱动 + CSS 过渡）；
-//      旧 scroll（原生滚动）统一按 slide 处理——页高已锁死一屏，不再有页内长滚 ----
-const TRANSITIONS = ['slide', 'fade', 'flip']
-const transition = computed(() => TRANSITIONS.includes(schema.value.transition) ? schema.value.transition : 'slide')
+// ---- 页面切换过渡动效（2026-11-28 用户定稿「动效可设置 + 智能选型」）：
+//      auto=智能（默认，按落点页内容挑最合适的过渡）/ slide=滑动推入 / fade=淡入淡出 / flip=3D 翻页；
+//      旧 scroll（原生滚动）统一按 auto 处理——页高已锁死一屏，不再有页内长滚 ----
+const TRANSITIONS = ['auto', 'slide', 'fade', 'flip']
+const schemaTransition = computed(() => TRANSITIONS.includes(schema.value.transition) ? schema.value.transition : 'auto')
 const isPaged = computed(() => !props.editable)
+// 智能选型（渲染层唯一真相源，编辑器实时预览同套）：尾页 / 含表单·联系·地图等操作型组件 → fade（落页稳，
+// 操作不被翻页晃眼）；重图页（图集/自由大图/带图图文）→ flip（3D 翻页有仪式感）；其余常规内容页 → slide（方向感干脆）
+function pageKindOf(pi) {
+  const list = renderList(pages.value[pi] || {})
+  return {
+    last: pi >= (pages.value.length || 1) - 1,
+    action: list.some(b => b.type === 'form' || b.type === 'contact' || b.type === 'map'),
+    media: list.some(b => b.type === 'gallery' || b.type === 'image' || (b.type === 'hero' && b.image))
+  }
+}
+function resolveTransition(t) {
+  if (schemaTransition.value !== 'auto') return schemaTransition.value
+  const k = pageKindOf(t)
+  if (k.action || k.last) return 'fade'
+  if (k.media) return 'flip'
+  return 'slide'
+}
+const curTransition = ref(resolveTransition(0))
+const transition = computed(() => curTransition.value)
 const pagesCls = computed(() => (isPaged.value ? 'hp-paged hp-' + transition.value : ''))
 // slide：每页按 (页号-当前) 百分比位移，方向天然感知（上一页向上让位、下一页从下补位）；
 // 拖动跟手时叠加 dragDy 且停过渡，松手过阈值才真正翻页
@@ -683,7 +705,7 @@ const pageStyle = pi => {
 const dragging = ref(false)
 const dragDy = ref(0)
 const pg = { active: false, axis: '', startY: 0, startX: 0, dy: 0, hold: false }
-let pgReplayTimer = 0, wheelLock = 0
+let pgReplayTimer = 0, pgAnimTimer = 0, wheelLock = 0
 function pageEl(pi) { return pagesEl.value ? pagesEl.value.querySelectorAll('.hp-page')[pi] : null }
 function pageScrollable(pi) { const el = pageEl(pi); return !!(el && el.scrollHeight > el.clientHeight + 2) }
 function pageAtEdge(pi, dir) {
@@ -707,14 +729,24 @@ function resetOtherPages(pi) {
   })
   if (Object.keys(patch).length) shown.value = { ...shown.value, ...patch }
 }
-function goPage(i) {
+async function goPage(i) {
   const t = Math.max(0, Math.min(pages.value.length - 1, i))
   if (isPaged.value) {
     if (t === cur.value) return
+    const mode = resolveTransition(t)
+    const modeChanged = mode !== curTransition.value
+    curTransition.value = mode
+    if (mode === 'slide' && modeChanged) {
+      // 从 fade/flip 切到 slide：落点页此前没有 transform 起始态，先摆到屏外起点、下一帧再改 cur，滑动才有起始状态
+      await nextTick()
+      await new Promise(r => requestAnimationFrame(r))
+    }
     cur.value = t
-    markPageShown(t)
-    clearTimeout(pgReplayTimer)
-    pgReplayTimer = setTimeout(() => resetOtherPages(t), 700)
+    // 元素入场动效等页面落位后再播（260ms ≈ 过渡前半程）：fade/flip 下页面还在透明期时元素先播完
+    // 等于没播（用户实测「翻页后看不到元素动态」的根因），MAKA 同款「先落页、后出元素」
+    clearTimeout(pgAnimTimer); clearTimeout(pgReplayTimer)
+    pgAnimTimer = setTimeout(() => markPageShown(t), 260)
+    pgReplayTimer = setTimeout(() => resetOtherPages(t), 1400)
     return
   }
   if (!pagesEl.value) return
@@ -943,7 +975,8 @@ function armMusic() {
 .hp-flip { perspective: 1100px; -webkit-perspective: 1100px; }
 .hp-flip .hp-page { transform: rotateX(72deg); transition: opacity .45s ease, transform .55s ease; }
 .hp-flip .hp-page.on { transform: rotateX(0deg); }
-@media (prefers-reduced-motion: reduce) { .hp-paged .hp-page { transition: none !important; } }
+/* 宣传页动效是产品功能本身（翻页过渡 + 元素入场），不跟随系统「减少动态效果」设置——
+   手机开了动画减速/关闭的用户此前全程无动效（实测实锤），与 MAKA 等平台口径一致 */
 
 /* 入场动效：进入视口加 .in 播放一次；prefers-reduced-motion 用户直接显示 */
 .hp-anim { opacity: 0; }
@@ -957,7 +990,7 @@ function armMusic() {
 @keyframes hp-anim-left { from { opacity: 0; transform: translateX(-32px); } }
 .hp-anim-right.in { animation-name: hp-anim-right; }
 @keyframes hp-anim-right { from { opacity: 0; transform: translateX(32px); } }
-@media (prefers-reduced-motion: reduce) { .hp-anim, .hp-anim.in { opacity: 1 !important; animation: none !important; } }
+/* 元素入场动效同上：不跟随系统「减少动态效果」（动效即产品功能） */
 
 .hp-cover { min-height: 78svh; display: flex; align-items: flex-end; border-radius: 16px; background-size: cover; background-position: center; padding: 30px 24px; box-sizing: border-box; }
 .hp-cover-in h1 { margin: 0; font-size: clamp(26px, 7vw, 40px); line-height: 1.25; text-shadow: 0 2px 18px rgba(0,0,0,.4); }

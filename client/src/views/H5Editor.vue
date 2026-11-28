@@ -110,7 +110,7 @@
               <button class="he-chip" @click="openBg">◧ 页面背景</button>
               <button class="he-chip" @click="openTpls">套用官方模板…</button>
               <span class="he-grp">切换动效</span>
-              <BottomSelect :model-value="schema.transition || 'slide'" :options="TRANSITION_OPTS" title="页面切换动效" @update:modelValue="schema.transition = $event; markDirty()" />
+              <BottomSelect :model-value="schema.transition || 'auto'" :options="TRANSITION_OPTS" title="页面切换动效" @update:modelValue="schema.transition = $event; markDirty()" />
             </template>
             <!-- 发布行：上架状态（草稿/线上双版本，编辑只存草稿、点上架才同步到线上）+ 关联名片开关 + 复制链接 + 下架 -->
             <template v-else>
@@ -383,9 +383,10 @@ const TYPE_LABEL = { cover: '封面', text: '文本', hero: '图文', image: '�
 // 自由画布（2026-11-27 用户定稿上 MAKA 同款）：文本/图片/形状/按钮为自由元素，其余为组件元素（绝对定位复用原表单）
 const FREE_TYPES = ['text', 'image', 'shape', 'button']
 const ADDABLE = ['text', 'image', 'shape', 'button', 'gallery', 'contact', 'map', 'buttons', 'video', 'form', 'music', 'endcard']
-// 页面切换过渡动效（2026-11-28 用户定稿「每页全屏 + 翻页动效」）：滑动翻页为默认，旧「上下滚动」已并入默认不再单列
+// 页面切换过渡动效（2026-11-28 用户定稿「动效可设置 + 智能选型」）：智能为默认（渲染层按落点页内容挑最合适的过渡），旧「上下滚动」已并入智能不再单列
 const TRANSITION_OPTS = [
-  { value: 'slide', label: '滑动翻页（默认）' }, { value: 'fade', label: '淡入淡出' }, { value: 'flip', label: '翻页动效' }
+  { value: 'auto', label: '智能（推荐）' },
+  { value: 'slide', label: '滑动翻页' }, { value: 'fade', label: '淡入淡出' }, { value: 'flip', label: '翻页动效' }
 ]
 // 常用背景音乐（2026-11-28 用户要求）：站内自产免版权合成曲，循环无缝；选中的直接当 block.url
 const MUSIC_PRESETS = [

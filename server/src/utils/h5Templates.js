@@ -125,7 +125,7 @@ const TEMPLATES = [
   {
     key: 'course', name: '教育培训', industry: '教育', accent: '#17357c', theme: 'classic',
     desc: '课程亮点 + 预约试听留资，招生素材',
-    transition: 'fade',
+    transition: 'auto',
     pages: [
       P(
         B('cover', { title: '把钱花在学习上，永远不亏', subtitle: 'XX教育 · 用心教好每个孩子', cover: '' }),
@@ -163,7 +163,7 @@ const TEMPLATES = [
   {
     key: 'team', name: '招聘招募', industry: '企业', accent: '#7c2d92', theme: 'classic',
     desc: '团队文化 + 岗位招募，简历留资',
-    transition: 'fade',
+    transition: 'auto',
     pages: [
       P(
         B('cover', { title: '找一群靠谱的人，做一件长期的事', subtitle: 'XX公司 · 招聘', cover: '' }),
@@ -182,7 +182,7 @@ const TEMPLATES = [
   {
     key: 'wedding', name: '婚礼摄影', industry: '婚庆', accent: '#be185d', theme: 'vanna',
     desc: '浪漫大图自动展播 + 背景音乐，仪式感拉满',
-    transition: 'slide',
+    transition: 'auto',
     pages: [
       P(
         B('cover', { title: '这一天，值得被好好记录', subtitle: 'XX婚礼摄影 · 记录有温度的瞬间', cover: '' }),
@@ -204,7 +204,7 @@ const TEMPLATES = [
   {
     key: 'advisor', name: '个人顾问', industry: '通用', accent: '#a62b2b', theme: 'tang',
     desc: '个人专业形象 + 一对一咨询，信任感强',
-    transition: 'flip',
+    transition: 'auto',
     pages: [
       P(
         B('cover', { title: '让专业的人，帮你做对决定', subtitle: 'XX · 资深顾问', cover: '' }),

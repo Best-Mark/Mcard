@@ -17,9 +17,9 @@ const FREE_MAX_H5 = 1, PAID_MAX_H5 = 10
 const BLOCK_TYPES = ['cover', 'text', 'hero', 'gallery', 'contact', 'map', 'buttons', 'video', 'music', 'form', 'endcard']
 // 块入场动效白名单（2026-11-27 编辑体验一流化）：'' = 未设置（渲染层按块类型智能默认），'none' = 显式关闭
 const BLOCK_ANIMS = ['none', 'up', 'fade', 'zoom', 'left', 'right']
-// 页面切换过渡（2026-11-28 用户定稿「每页全屏 + 翻页动效」）：slide=滑动推入（默认）/ fade=淡入淡出 / flip=3D 翻页；
-// 旧 scroll（原生滚动）不再单独支持，清洗时并入默认 slide（渲染层对 scroll 值也按 slide 兜底）
-const TRANSITIONS = ['slide', 'fade', 'flip']
+// 页面切换过渡（2026-11-28 用户定稿「动效可设置 + 智能选型」）：auto=智能（默认，渲染层按落点页内容挑最合适的过渡）/
+// slide=滑动推入 / fade=淡入淡出 / flip=3D 翻页；旧 scroll（原生滚动）不再单独支持，清洗时并入 auto。
+const TRANSITIONS = ['auto', 'slide', 'fade', 'flip']
 const str = (v, max) => String(v ?? '').slice(0, max)
 
 function planActiveOf(userId) {
@@ -103,10 +103,10 @@ function sanitizeG(g) {
 
 function sanitizeSchema(raw, maxPages) {
   const accent = hex(raw?.accent)
-  // 页面切换过渡动效（2026-11-28 用户定稿）：slide（默认）/ fade / flip
-  const transition = TRANSITIONS.includes(raw?.transition) ? raw.transition : 'slide'
+  // 页面切换过渡动效（2026-11-28 用户定稿）：auto 智能（默认）/ slide / fade / flip
+  const transition = TRANSITIONS.includes(raw?.transition) ? raw.transition : 'auto'
   const pagesIn = Array.isArray(raw?.pages) ? raw.pages.slice(0, maxPages) : []
-  if (!pagesIn.length) return { transition: 'slide', pages: [{ blocks: [{ type: 'cover', title: '', subtitle: '', cover: '' }] }] }
+  if (!pagesIn.length) return { transition: 'auto', pages: [{ blocks: [{ type: 'cover', title: '', subtitle: '', cover: '' }] }] }
   const pages = pagesIn.map(p => {
     const bg = { color: hex(p?.bg?.color), image: str(p?.bg?.image, 500) } // 页面背景（自由画布）
     const els = (Array.isArray(p?.els) ? p.els : []).slice(0, 40).map(e => {
