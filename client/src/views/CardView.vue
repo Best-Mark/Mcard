@@ -13,7 +13,10 @@
   -->
   <div class="cv-page" :class="['cv-tpl-' + template, { 'cv-clean': isCleanTpl, 'cv-embed': embed, 'cv-owner': owner }]" :style="vars">
     <div class="cv-cover">
-      <button v-if="!owner && full" class="cv-back" @click="goBack" aria-label="返回">‹</button>
+      <button v-if="!owner && full" class="cv-back" @click="goBack" aria-label="返回">
+        <!-- SVG 细箭头：裸 ‹ 字形各系统渲染粗细不一，统一细线条观感（2026-11-28 美化） -->
+        <svg class="cv-back-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
       <!-- 硬编码 MCard 品牌角标已移除（2026-11-26）：封面高度收窄后与右上角二维码重叠，
            只露出「rd」半截字（用户实际把它误认为二维码水印）。中心品牌字统一走后台「二维码水印」设置 -->
     </div>

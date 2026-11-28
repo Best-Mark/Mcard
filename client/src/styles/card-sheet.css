@@ -155,8 +155,22 @@
 }
 .cv-cover > * { position: relative; z-index: 1; }
 @media (prefers-reduced-motion: reduce) { .cv-cover::before { animation: none; opacity: .7; } }
-/* 返回键：主题毛玻璃圆钮（不是裸字符），任何模板都清晰可见、与名片同色系 */
-.cv-back { position: absolute; left: 14px; top: calc(12px + var(--safe-top)); width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; font-size: 26px; line-height: 1; color: #fff; background: rgba(var(--glow-rgb, 37,99,235), .30); border: 1px solid rgba(255,255,255,.30); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); box-shadow: inset 0 1px 0 rgba(255,255,255,.18); }
+/* 返回键：轻奢浮钮（2026-11-28 美化）——毛玻璃圆钮 + 柔和悬浮投影定形（去描边线条，
+   边缘只留一道发丝高光），SVG 细箭头见模板，按压微缩反馈；颜色跟模板变量，任何模板都清晰可见 */
+.cv-back {
+  position: absolute; left: 14px; top: calc(12px + var(--safe-top));
+  width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%;
+  color: #fff; background: rgba(var(--glow-rgb, 37,99,235), .30); border: 0;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  box-shadow: 0 6px 18px rgba(15,23,42,.18), 0 0 0 1px rgba(255,255,255,.12), inset 0 1px 0 rgba(255,255,255,.22);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.cv-back:active {
+  transform: scale(.92);
+  box-shadow: 0 3px 10px rgba(15,23,42,.14), 0 0 0 1px rgba(255,255,255,.10), inset 0 1px 0 rgba(255,255,255,.16);
+}
+.cv-back .cv-back-i { width: 19px; height: 19px; display: block; }
 /* 快捷编辑·更多链接管理行（2026-11-28）：标题 + 网址两行输入 + 行尾移除，表单区 16px 边距与 qe-field 同口径 */
 .qe-link-row { display: grid; grid-template-columns: 1fr 28px; grid-template-rows: auto auto; gap: 8px; margin-bottom: 10px; }
 .qe-link-row input { grid-column: 1; width: 100%; box-sizing: border-box; min-height: 44px; padding: 11px 12px; border: 1px solid var(--line, #e8edf4); border-radius: 10px; background: #f8fafc; color: var(--text, #0f172a); font-size: 15px; }
@@ -627,7 +641,7 @@
 .cv-tpl-sidebar .cv-contact-value, .cv-tpl-sidebar .cv-block { text-align: right; }
 /* 无封面模板：封面高度为 0，必须放开 overflow，否则 absolute 的返回键/品牌字被裁掉（截图实锤「没有返回的地方」） */
 .cv-clean .cv-cover { height: 0; border-radius: 0; background: transparent; overflow: visible; }
-.cv-clean .cv-back { top: calc(10px + var(--safe-top)); left: 14px; color: var(--cv-back-color); background: var(--cv-back-bg); border-color: rgba(var(--glow-rgb, 255,255,255), .34); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.cv-clean .cv-back { top: calc(10px + var(--safe-top)); left: 14px; color: var(--cv-back-color); background: var(--cv-back-bg); }
 .cv-clean .cv-brand { top: calc(18px + var(--safe-top)); color: var(--cv-brand-color); }
 .cv-clean .cv-main { max-width: 430px; margin: 30px auto 0; }
 .cv-clean .cv-main > .card, .cv-clean .cv-main > .cv-profile { border-radius: 0; border: 0; box-shadow: none; background: transparent; margin-top: 0; }
