@@ -733,7 +733,7 @@
 .cv-clean .cv-site .btn-ghost { background: var(--cv-btn-ghost-bg, transparent); color: var(--cv-btn-ghost-color, var(--cv-ink)); box-shadow: var(--cv-btn-ghost-shadow, inset 0 0 0 1px var(--cv-line)); border-color: transparent; }
 .cv-clean .cv-row-act { background: var(--cv-mini-bg); color: var(--cv-mini-color); box-shadow: var(--cv-mini-shadow); border-radius: 50%; }
 /* 简洁模板底部 dock（/me 与公开页共用同一套）：跟模板配色，拉开主/次层次，不再通用深灰+主题绿 */
-.cv-clean .cv-dock { gap: 7px; padding: 10px 10px calc(10px + env(safe-area-inset-bottom)); background: var(--cv-panel-bg); border-top: 1px solid var(--cv-line); color: var(--cv-ink); }
+.cv-clean .cv-dock { gap: 7px; padding: 10px 10px; color: var(--cv-ink); }
 .cv-clean .cv-dock .btn { border-radius: var(--cv-btn-radius, 8px); font-weight: 700; }
 .cv-clean .cv-dock .btn-primary { background: var(--cv-btn-main-solid, var(--t-accent, #2563eb)); background: var(--cv-btn-main-bg, var(--t-accent)); color: var(--cv-btn-main-color, #fff); box-shadow: var(--cv-btn-main-shadow, none); border-color: transparent; }
 /* ghost 用模板主色的极淡底 + 描边，比纯透明底有层次；color-mix 前先给纯透明兜底，避免老 WebView 解析失败露白底 */
@@ -946,7 +946,10 @@
 /* ④ 页脚与 dock 统一：抹掉各模板 dock 底色/描边差异，全部跟模板配色 */
 .cv-page.cv-clean .cv-footer { border: 0; border-radius: 0 0 22px 22px; background: var(--cv-panel-bg); padding: 16px var(--cv-card-x) 20px; color: var(--cv-foot-color); }
 .cv-page.cv-clean .cv-footer b { display: inline; color: var(--cv-foot-b); }
-.cv-page.cv-clean .cv-dock { gap: 7px; padding: 10px 10px calc(10px + env(safe-area-inset-bottom)); background: var(--cv-panel-bg); border-top: 1px solid var(--cv-line); color: var(--cv-ink); }
+/* 底栏材质唯一真相源 = .cv-page .cv-dock.cv-dock-glass（悬浮玻璃板）；
+   ⚠️ 此规则此前带 background: var(--cv-panel-bg)，与玻璃规则特异性同为 (0,3,0) 且靠后 →
+   把 clean 模板底栏盖成面板白（用户实锤「怎么改都是白平板」），材质接管已删，勿加回 */
+.cv-page.cv-clean .cv-dock { gap: 7px; padding: 10px 10px; color: var(--cv-ink); }
 .cv-page.cv-clean .cv-dock .btn { border-radius: var(--cv-btn-radius); font-weight: 700; border-color: transparent; }
 .cv-page.cv-clean .cv-dock .btn-primary { background: var(--cv-btn-main-solid, var(--cv-btn-main-bg)); color: var(--cv-btn-main-color); box-shadow: var(--cv-btn-main-shadow, none); }
 .cv-page.cv-clean .cv-dock .btn-ghost { background: var(--cv-btn-ghost-bg); color: var(--cv-btn-ghost-color, var(--cv-ink)); box-shadow: var(--cv-btn-ghost-shadow); }
