@@ -311,10 +311,10 @@
 .map-arrow { margin-left: auto; color: #94a3b8; font-size: 16px; }
 .cv-footer { text-align: center; color: var(--t-muted); font-size: 11px; padding: 26px 0 10px; }
 /* 底部 dock（2026-11-28 用户定稿：背景与左上角返回签同质感——高档磨砂玻璃）：
-   ⚠️ 磨砂质感绝不能依赖 backdrop-filter——X5/老内核 blur 静默失效（用户真机实锤：
-   彩色内容拖到栏下直接透出）。质感 = 高浓度暖烟色(.88，透出仅一丝) + 内高光 + 上抛投影，
-   blur 只给支持的设备当加成；四个主操作单排铺满，按钮文字走深墨色（勿写回白字） */
-.cv-dock { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 5px; padding: 10px 10px calc(10px + env(safe-area-inset-bottom)); background: rgba(243,239,232,.88); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-top: 1px solid rgba(255,255,255,.45); z-index: 60; color: #26221c; }
+   ⚠️ 两条真机实锤，勿回退：① X5/老内核 backdrop-filter blur 静默失效，质感绝不能依赖 blur；
+   ② 烟色必须离白足够远——#f3efe8@88% 垫白底仍被看成纯白平板（用户实锤），现用 #eae4d8@92%，
+   垫白底 ≈ #ece6db，与白色卡片明确分层。质感 = 暖灰米色 + 内高光 + 上抛投影，blur 仅作加成 */
+.cv-dock { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 5px; padding: 10px 10px calc(10px + env(safe-area-inset-bottom)); background: rgba(234,228,216,.92); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-top: 1px solid rgba(255,255,255,.45); z-index: 60; color: #26221c; }
 .cv-dock .btn { flex: 1; min-width: 0; padding: 0 2px; font-size: 12.5px; white-space: nowrap; }
 .cv-dock .btn-primary { background: var(--t-accent, #2563eb); color: #fff; border-color: transparent; }
 .cv-dock .btn-ghost { background: rgba(255,255,255,.18); color: #26221c; border-color: rgba(38,34,28,.10); }
@@ -328,7 +328,7 @@
   /* ⚠️ 必须保持 fixed 贴底：这里若写 position:relative 会让 dock 掉进内容流悬在半空（2026-11-25 实锤）。 */
   overflow: hidden;
   gap: 8px; padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
-  background: rgba(243,239,232,.88);
+  background: rgba(234,228,216,.92);
   border-top: 1px solid rgba(255,255,255,.45);
   box-shadow: 0 -10px 34px -16px rgba(31,27,22,.22), inset -1px 1px 0 rgba(255,255,255,.50);
   -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
@@ -371,7 +371,7 @@
 /* 极简白 / 纸白模板：底栏与全站统一暖调磨砂玻璃，描边/阴影仍带主题色微染 */
 .cv-page.cv-tpl-minimal .cv-dock.cv-dock-glass,
 .cv-page.cv-clean.cv-tpl-paper .cv-dock.cv-dock-glass {
-  background: rgba(243,239,232,.88);
+  background: rgba(234,228,216,.92);
   border-top-color: rgba(var(--glow-rgb, 37,99,235), .30);
   box-shadow: 0 -6px 22px -14px rgba(var(--glow-rgb, 37,99,235), .35);
 }

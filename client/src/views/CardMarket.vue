@@ -175,7 +175,7 @@ async function done() {
 .control-panel { margin: 0; border-radius: 0; border: 0; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 /* tabbar 在本页已隐藏，功能条贴底：现在只有一个「上架设置」入口。
    背景与名片页返回签同质感：暖调磨砂玻璃（2026-11-28 全站底栏统一） */
-.bottom-launcher { position: fixed; left: 0; right: 0; bottom: 0; z-index: 105; display: flex; padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); background: rgba(243,239,232,.88); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-top: 1px solid rgba(255,255,255,.45); box-shadow: 0 -10px 34px -16px rgba(31,27,22,.22), inset -1px 1px 0 rgba(255,255,255,.50); }
+.bottom-launcher { position: fixed; left: 0; right: 0; bottom: 0; z-index: 105; display: flex; padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); background: rgba(234,228,216,.92); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-top: 1px solid rgba(255,255,255,.45); box-shadow: 0 -10px 34px -16px rgba(31,27,22,.22), inset -1px 1px 0 rgba(255,255,255,.50); }
 .bottom-launcher button { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 8px 0; border-radius: 8px; color: var(--muted); font-size: 13px; }
 .bottom-launcher button.on { color: var(--primary); background: #eef4ff; background: color-mix(in srgb, var(--primary) 10%, transparent); }
 @media (min-width: 900px) { .bottom-launcher { max-width: 560px; left: 50%; right: auto; transform: translateX(-50%); border-radius: 14px 14px 0 0; } }
