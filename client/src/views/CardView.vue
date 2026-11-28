@@ -274,7 +274,8 @@
         <template v-if="qrMode === 'pay' && !hasPayQr">
           <div class="qr-pay-empty">
             <p class="small muted center">上传微信 / 支付宝收款码后，这里会生成一张「合一收款码」：付款方扫一扫自动打开对应收款码，长按识别即付款。</p>
-            <router-link class="btn btn-primary" to="/me/card?focus=contact" @click="qrModal = false">去上传收款码</router-link>
+            <!-- 上传走快捷编辑弹层（与「＋ 收款码」同一入口），不跳旧的完整编辑表单 -->
+            <button class="btn btn-primary" @click="qrModal = false; openQuickEdit('pay_qr')">去上传收款码</button>
           </div>
         </template>
         <template v-else>
