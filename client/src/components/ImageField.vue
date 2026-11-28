@@ -45,11 +45,11 @@ async function onFile(e) {
 
 <style scoped>
 .if { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151; font-weight: 600; }
-.if-label { font-size: 12px; color: var(--muted, #64748b); }
-.if-box { position: relative; width: 88px; height: 88px; border-radius: 12px; overflow: hidden; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.if-box:active { transform: scale(.96); }
-.if-thumb { width: 100%; height: 100%; object-fit: cover; display: block; border: 1px solid var(--line, #e8edf4); border-radius: 12px; }
-.if-empty { width: 100%; height: 100%; border: 2px dashed var(--line, #d9dde6); border-radius: 12px; display: grid; place-items: center; font-size: 26px; color: #9ca3af; background: #f8fafc; }
-.if-busy { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: grid; place-items: center; background: rgba(15,23,42,.55); color: #fff; font-size: 11px; font-weight: 600; border-radius: 12px; }
-.if-del { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border: 0; border-radius: 50%; background: rgba(15,23,42,.72); color: #fff; font-size: 13px; line-height: 1; cursor: pointer; display: grid; place-items: center; padding: 0; }
+.if-label { font-size: 12px; color: #a9afb9; }
+.if-box { position: relative; width: 88px; height: 88px; border-radius: 14px; overflow: hidden; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.if-box:active { transform: scale(.97); }
+.if-thumb { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 14px; box-shadow: 0 6px 18px rgba(38,42,51,.10); }
+.if-empty { width: 100%; height: 100%; border: 0; border-radius: 14px; display: grid; place-items: center; font-size: 26px; color: #c6cbd3; background: #f5f3f0; }
+.if-busy { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: grid; place-items: center; background: rgba(38,42,51,.5); color: #fff; font-size: 11px; font-weight: 600; border-radius: 14px; }
+.if-del { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border: 0; border-radius: 50%; background: rgba(38,42,51,.55); color: #fff; font-size: 13px; line-height: 1; cursor: pointer; display: grid; place-items: center; padding: 0; }
 </style>
