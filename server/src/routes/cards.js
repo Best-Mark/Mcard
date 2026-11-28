@@ -5,6 +5,7 @@ const { ok, fail, wrap } = require('../utils/response')
 const { authRequired, parseToken } = require('../utils/auth')
 const { makeSlug, normalizeSlug } = require('../utils/slug')
 const qr = require('../services/qrcode')
+const { verifyPayQr } = require('../services/payQr')
 const { normalizeStyle } = qr
 const vcard = require('../services/vcard')
 const { CARD_TEMPLATES, isTemplate, DEFAULT_TEMPLATE } = require('../utils/cardTemplates')
@@ -537,13 +538,17 @@ router.post('/mine', authRequired, wrap((req, res) => {
 
 const FIELD_LABELS = {
   name: '姓名', name_en: '英文名', title: '职位', company: '公司', company_intro: '公司简介', department: '部门', avatar: '名片头像',
-  mobile: '手机', phone: '座机', email: '邮箱', wechat: '微信', whatsapp: 'WhatsApp',
+  mobile: '手机', phone: '座机', email: '邮箱', wechat: '微信', alipay: '支付宝', whatsapp: 'WhatsApp',
+  wechat_qr: '微信二维码', alipay_qr: '支付宝二维码', wechat_pay_qr: '微信收款码', alipay_pay_qr: '支付宝收款码',
+  cover: '封面图', logo: '公司 LOGO', tags: '标签', links: '更多链接',
   address: '地址', address_detail: '门牌', province: '省', city: '城市', district: '区', street: '街道',
   website: '主页', shop_url: '店铺', bio: '简介', industry: '行业'
 }
 
 // 保存前的格式校验（唯一真相源在服务端，三端共用）：空值放过，只允许合法格式落库。
 // 手机号兼容国际区号 + 分隔符；座机兼容区号/分机；邮箱常规校验；网址必须 http(s)。
+// 网址统一规则：协议 + 主机名带点 + 可选路径（「https://notaurl」这类补协议的残缺网址不放行）
+const URL_RE = /^https?:\/\/[^/\s]+(\.[^/\s]+)+(\/[^\s]*)?$/i
 const FORMAT_RULES = {
   mobile: {
     re: /^\+?[\d][\d\s-]{5,19}$/,
@@ -562,13 +567,34 @@ const FORMAT_RULES = {
     hint: '邮箱格式不正确'
   },
   website: {
-    re: /^https?:\/\/[^\s]+$/i,
+    re: URL_RE,
     hint: '公司主页需填完整的 http(s) 网址'
   },
   shop_url: {
-    re: /^https?:\/\/[^\s]+$/i,
+    re: URL_RE,
     hint: '店铺网址需填完整的 http(s) 网址'
+  },
+  wechat: {
+    re: /^[a-zA-Z0-9][a-zA-Z0-9._-]{3,37}$/,
+    hint: '微信号格式不正确（可含字母、数字、下划线、减号，不含空格）'
+  },
+  alipay: {
+    re: /^(1\d{10}|[^\s@]+@[^\s@]+\.[^\s@]+)$/,
+    hint: '支付宝账号请填手机号或邮箱'
   }
+}
+// 图片类字段（头像/封面/LOGO/收款码图）：空值合法；非空必须是上传后得到的图片地址
+// （/uploads/、/media/ 本地路径或 http(s) 外链），与 normalizeCardAvatar 同口径，javascript:/data: 一律拒。
+const IMAGE_URL_RE = /^(\/(uploads|media)\/[^\s]+|https?:\/\/[^\s]+)$/
+for (const k of ['avatar', 'cover', 'logo', 'wechat_qr', 'alipay_qr', 'wechat_pay_qr', 'alipay_pay_qr']) {
+  FORMAT_RULES[k] = { re: IMAGE_URL_RE, hint: '图片地址不合法，请重新上传图片' }
+}
+// 文本长度上限（与前端表单 maxlength 同口径）；未列出的字段仍按通用 2000 截断
+const TEXT_CAPS = {
+  name: 30, name_en: 40, title: 60, company: 60, department: 40,
+  bio: 1000, company_intro: 1000, address: 200, address_detail: 100,
+  province: 40, city: 40, district: 40, street: 80, wechat: 40, alipay: 64,
+  avatar: 500, cover: 500, logo: 500, wechat_qr: 500, alipay_qr: 500, wechat_pay_qr: 500, alipay_pay_qr: 500
 }
 // 网址归一化：用户习惯填「Card.microdot.net」这类无协议网址，与展示层 CardView.safeUrl 同口径
 // 自动补 https:// 再校验。唯一真相源放在服务端，H5/小程序/后台提交都能受益；
@@ -588,7 +614,7 @@ function validateFieldFormat(key, value) {
   return rule.re.test(s) ? '' : rule.hint
 }
 
-router.put('/mine', authRequired, wrap((req, res) => {
+router.put('/mine', authRequired, wrap(async (req, res) => {
   const row = db.prepare('SELECT * FROM cards WHERE user_id = ?').get(req.user.id)
   if (!row) return fail(res, 404, '请先创建名片')
   const sets = []
@@ -597,10 +623,25 @@ router.put('/mine', authRequired, wrap((req, res) => {
   for (const key of EDITABLE) {
     if (!(key in (req.body || {}))) continue
     let v = req.body[key]
-    if (['tags', 'links'].includes(key)) {
+    if (key === 'tags') {
       const arr = typeof v === 'string' ? parseJson(v, []) : v
-      if (!Array.isArray(arr)) return fail(res, 400, `${key} 格式不正确`)
-      v = JSON.stringify(arr.slice(0, 20).map(x => typeof x === 'string' ? x.slice(0, 30) : x))
+      if (!Array.isArray(arr)) return fail(res, 400, '标签格式不正确')
+      // 标签：去空、单个 ≤30 字、最多 8 个（与前端「最多 8 个」同口径）
+      v = JSON.stringify(arr.map(x => String(x ?? '').trim().slice(0, 30)).filter(Boolean).slice(0, 8))
+    } else if (key === 'links') {
+      const arr = typeof v === 'string' ? parseJson(v, []) : v
+      if (!Array.isArray(arr)) return fail(res, 400, '更多链接格式不正确')
+      const links = []
+      for (const x of arr.slice(0, 20)) {
+        if (typeof x === 'string') { const s = x.slice(0, 30); if (s) links.push(s); continue }
+        const label = String(x?.label ?? '').trim().slice(0, 40)
+        let url = String(x?.url ?? '').trim()
+        if (!label && !url) continue // 空行不落库（与前端过滤同口径）
+        if (url && !/^https?:\/\//i.test(url)) url = `https://${url}` // 与 website 同口径自动补协议
+        if (url && !URL_RE.test(url)) return fail(res, 400, '更多链接的网址需填完整的 http(s) 网址')
+        links.push({ label, url })
+      }
+      v = JSON.stringify(links)
     } else if (['accent', 'qr_fg', 'qr_bg'].includes(key)) {
       if (!isColor(v)) return fail(res, 400, `${key} 必须是 #RRGGBB 颜色`)
     } else if (key === 'template') {
@@ -625,13 +666,20 @@ router.put('/mine', authRequired, wrap((req, res) => {
       const obj = typeof v === 'string' ? parseJson(v, {}) : v
       v = JSON.stringify(normalizeStyle(obj))
     } else {
-      v = String(v ?? '').slice(0, 2000)
+      v = String(v ?? '').slice(0, TEXT_CAPS[key] || 2000)
     }
     // 网址补协议在格式校验之前（否则无协议 URL 直接 400）
     if (key === 'website' || key === 'shop_url') v = normalizeFieldValue(key, v)
+    // 格式提示都是自带字段名的完整句子，直接作为错误文案（此前再拼 FIELD_LABELS 会出现「邮箱邮箱格式不正确」）
     const formatError = validateFieldFormat(key, v)
-    if (formatError) return fail(res, 400, `${FIELD_LABELS[key] || key}${formatError}`)
+    if (formatError) return fail(res, 400, formatError)
     const valueChanged = String(row[key] ?? '') !== String(v ?? '')
+    // 收款码图内容核验：解码有成本，只在值真正变化时做（旧值不重复解码、不拖累常规保存）。
+    // 判断「图里有没有二维码、是不是收款码、放没放对平台」，理由见 services/payQr.js。
+    if (valueChanged && v && (key === 'wechat_pay_qr' || key === 'alipay_pay_qr')) {
+      const qrErr = await verifyPayQr(key === 'wechat_pay_qr' ? 'wechat' : 'alipay', v)
+      if (qrErr) return fail(res, 400, qrErr)
+    }
     // 套餐闸门：配色方案 + 上架集市需要套餐有效。传同值（编辑页保存全表单带原值）不拦。
     // 上架 market_opt_in 只在「开启」时拦，关闭（下架）永远放行——过期用户应能主动下架。
     // 配色字段在值真正变化时拦，避免未开通用户正常改资料被误伤。
