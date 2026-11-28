@@ -430,19 +430,22 @@ function getTemplate(key) { return TEMPLATES.find(t => t.key === key) || null }
 // 用户点图即换、音乐块可在编辑器里换链接/删除。图用相对路径——随当前部署域名走，绝不写死域名。
 ;(() => {
   const demo = (t, kind) => `/h5demo/${t.key}-${kind}.svg`
-  const MUSICS = ['/music/bgm-light.wav', '/music/bgm-warm.wav', '/music/bgm-business.wav', '/music/bgm-fresh.wav']
-  // 曲子按模板气质配（2026-11-28 用户反馈「音乐有些奇怪」：轮流乱配听着突兀）——
-  // light 清亮 / warm 温暖 / business 沉稳 / fresh 轻快；未列入的模板不挂音乐（宁缺毋滥）
+  const MUSICS = {
+    calm: '/music/bgm-calm.wav', soothe: '/music/bgm-soothe.wav', zen: '/music/bgm-zen.wav',
+    romantic: '/music/bgm-romantic.wav', light: '/music/bgm-light.wav', warm: '/music/bgm-warm.wav',
+    business: '/music/bgm-business.wav', fresh: '/music/bgm-fresh.wav'
+  }
+  // 曲子按模板气质配（2026-11-28 用户反馈「音乐有些奇怪/太LOW/缺悠扬舒缓」）：8 首各有气质——
+  // calm 悠扬 / soothe 空灵 / zen 禅意 / romantic 浪漫 / light 清亮 / warm 温暖 / business 沉稳 / fresh 轻快
   const MUSIC_BY_KEY = {
-    company: MUSICS[2], building: MUSICS[2], event: MUSICS[2], advisor: MUSICS[2],
-    restaurant: MUSICS[1], beauty: MUSICS[1], wedding: MUSICS[1],
-    retail: MUSICS[3], team: MUSICS[3],
-    course: MUSICS[0], home: MUSICS[0],
-    // 场景扩充 9 套：开业/特惠热闹 → fresh；团购/体验课清新 → light；请柬/民宿度假 → warm；
-    // 周年庆/加盟/新品商务感 → business
-    opening: MUSICS[3], flash: MUSICS[3], groupbuy: MUSICS[0], trial: MUSICS[0],
-    banquet: MUSICS[1], homestay: MUSICS[1],
-    anniversary: MUSICS[2], franchise: MUSICS[2], launch: MUSICS[2]
+    company: MUSICS.business, building: MUSICS.business, event: MUSICS.business,
+    franchise: MUSICS.business, launch: MUSICS.business, anniversary: MUSICS.business,
+    beauty: MUSICS.romantic, wedding: MUSICS.romantic,
+    advisor: MUSICS.calm, homestay: MUSICS.calm,
+    home: MUSICS.zen,
+    restaurant: MUSICS.warm, banquet: MUSICS.warm,
+    course: MUSICS.light, groupbuy: MUSICS.light, trial: MUSICS.light,
+    retail: MUSICS.fresh, team: MUSICS.fresh, opening: MUSICS.fresh, flash: MUSICS.fresh
   }
   TEMPLATES.forEach((t) => {
     for (const p of t.pages || []) for (const b of (p.blocks || [])) {

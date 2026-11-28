@@ -478,11 +478,16 @@ const TRANSITION_OPTS = [
   { value: 'auto', label: '智能（推荐）' },
   { value: 'slide', label: '滑动翻页' }, { value: 'fade', label: '淡入淡出' }, { value: 'flip', label: '翻页动效' }
 ]
-// 常用背景音乐（2026-11-28 用户要求）：站内自产免版权合成曲，循环无缝；选中的直接当 block.url
-const MUSIC_PRESETS = [  { value: '/music/bgm-light.wav', label: '轻快明亮' },
-  { value: '/music/bgm-warm.wav', label: '舒缓温暖' },
-  { value: '/music/bgm-business.wav', label: '商务大气' },
-  { value: '/music/bgm-fresh.wav', label: '清新灵动' },
+// 常用背景音乐（2026-11-28 用户要求扩充并重制）：站内自产免版权合成曲，循环无缝；选中的直接当 block.url
+const MUSIC_PRESETS = [
+  { value: '/music/bgm-calm.wav', label: '悠扬舒缓' },
+  { value: '/music/bgm-soothe.wav', label: '空灵舒缓' },
+  { value: '/music/bgm-zen.wav', label: '禅意古风' },
+  { value: '/music/bgm-romantic.wav', label: '浪漫柔美' },
+  { value: '/music/bgm-light.wav', label: '清亮明快' },
+  { value: '/music/bgm-warm.wav', label: '温暖治愈' },
+  { value: '/music/bgm-business.wav', label: '沉稳大气' },
+  { value: '/music/bgm-fresh.wav', label: '轻快活力' },
   { value: '', label: '不用预设' }
 ]
 // 入场动效选项（'' = 智能默认，与渲染层 animOf 的类型默认一致；none = 关闭）
