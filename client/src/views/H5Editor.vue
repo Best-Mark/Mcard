@@ -806,8 +806,8 @@ watch(() => route.params.id, () => { if (route.name === 'h5-editor') location.re
 .he-loading { flex: 1; display: grid; place-items: center; color: #6b7280; }
 
 /* dock：底部固定操作条，四态翻转（与名片工作台同款交互语言）。
-   背景与名片页返回签同质感：毛玻璃白（2026-11-28 全站底栏统一），按钮白瓷片深墨字 */
-.he-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 105; width: min(560px, 100%); margin: 0 auto; display: flex; align-items: center; gap: 8px; padding: 10px 12px calc(10px + var(--safe-bottom, 0px)); background: rgba(255,255,255,.50); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-top: 1px solid rgba(255,255,255,.45); border-radius: 16px 16px 0 0; }
+   背景与名片页返回签同质感：暖调磨砂玻璃（2026-11-28 全站底栏统一），按钮淡透片深墨字 */
+.he-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 105; width: min(560px, 100%); margin: 0 auto; display: flex; align-items: center; gap: 8px; padding: 10px 12px calc(10px + var(--safe-bottom, 0px)); background: rgba(243,239,232,.65); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-top: 1px solid rgba(255,255,255,.45); border-radius: 16px 16px 0 0; }
 @media (min-width: 900px) { .he-dock { left: 50%; right: auto; transform: translateX(-50%); border-radius: 14px 14px 0 0; } }
 .he-dock-flip { background: rgba(255,255,255,.58); }
 .he-dock-btn { flex: 1; padding: 12px 4px; border: 1px solid rgba(38,34,28,.12); border-radius: 11px; background: rgba(255,255,255,.55); color: #26221c; font-size: 13.5px; font-weight: 700; cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
