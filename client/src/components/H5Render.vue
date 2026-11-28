@@ -207,7 +207,7 @@ const props = defineProps({
   pageOffset: { type: Number, default: 0 },
   selKey: { type: String, default: '' }
 })
-const emit = defineEmits(['pick', 'reorder', 'quick', 'inplace', 'geom'])
+const emit = defineEmits(['pick', 'reorder', 'quick', 'inplace', 'geom', 'addtext'])
 const router = useRouter()
 
 const kOf = (pi, bi) => (pi + props.pageOffset) + '-' + bi
@@ -493,7 +493,8 @@ const txtStyle = b => ({
   whiteSpace: 'pre-wrap',
   wordBreak: 'break-word',
   // 竖排（中文海报）：行进方向右→左，块宽即列宽，高度随字数自适应
-  writingMode: b.vertical ? 'vertical-rl' : 'horizontal-tb'
+  writingMode: b.vertical ? 'vertical-rl' : 'horizontal-tb',
+  textShadow: b.shadow ? '0 2px 10px rgba(0,0,0,.45)' : ''
 })
 const imgStyle = b => ({
   ...bgStyle(b.url),
@@ -536,6 +537,7 @@ const hdStyle = computed(() => {
 //      抬起＝点选，激活时震动反馈并自动选中）；鼠标拖拽即时（指针精准无滚动冲突）；
 //      缩放/旋转手柄专用无歧义，保持即时 ----
 const fd = { on: false, mode: '', pi: -1, bi: -1, startX: 0, startY: 0, g0: null, moved: false, dragged: false, timer: 0, mouse: false }
+let lastBlankTap = 0 // 双击空白秒加文字
 // 拖移对齐参考线：v=竖线画布x / h=横线画布y，-1 不显示（仅编辑拖移时短暂出现）
 const guides = ref({ v: -1, h: -1 })
 function snapAxis(raw, size, targets, canvasPts) {
@@ -557,8 +559,11 @@ function onFdStart(pi, e) {
   const el = e.target && e.target.closest ? e.target.closest('.hp-block') : null
   const bi = biOf(el)
   const b = bi >= 0 ? renderList(pages.value[pi] || {})[bi] : null
-  if (!b || !b.g) { // 点空白画布 = 取消选中
+  if (!b || !b.g) { // 点空白画布 = 取消选中；双击空白 = 秒加文字（竞品要进菜单找）
     if (Date.now() >= coolUntil && props.selKey) emit('pick', '')
+    const now = Date.now()
+    if (now >= coolUntil && now - lastBlankTap < 350) { lastBlankTap = 0; emit('addtext') }
+    else lastBlankTap = now
     return
   }
   clearTimeout(fd.timer)

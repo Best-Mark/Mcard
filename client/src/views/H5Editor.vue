@@ -26,7 +26,7 @@
       <div class="he-canvas-in">
         <!-- page-offset：画布只渲染当前页，offset 让块的 key 与真实页号对齐（选中态/拖动不串页）；
              编辑态 key=selPage：切页重挂载播放入场动画（预览/公开页走翻页动效，编辑画布单页靠这个有翻页感） -->
-        <H5Render :key="previewMode ? 'preview' : selPage" class="he-page-anim" :data="previewMode ? previewData : curPageData" :editable="!previewMode" :page-offset="selPage" :sel-key="selKey" @pick="onPick" @reorder="onReorder" @quick="onQuick" @inplace="markDirty" @geom="markDirty" />
+        <H5Render :key="previewMode ? 'preview' : selPage" class="he-page-anim" :data="previewMode ? previewData : curPageData" :editable="!previewMode" :page-offset="selPage" :sel-key="selKey" @pick="onPick" @reorder="onReorder" @quick="onQuick" @inplace="markDirty" @geom="markDirty" @addtext="addBlock('text')" />
       </div>
       <div v-if="!previewMode" class="he-hint small muted">每页一屏 · 内容多了点「页面 → 加一页」 · 点选元素 · 拖动移动 · 四角缩放 · 再点改内容{{ block ? ` · 当前：第 ${selPage + 1} 页 ${TYPE_LABEL[block.type]}` : '' }}</div>
     </div>
@@ -331,6 +331,7 @@
             <input class="he-range" type="range" min="1" max="3" step="0.1" :value="block.lh" @input="block.lh = Number($event.target.value); markDirty()" />
           </div>
           <label class="he-switch"><input type="checkbox" v-model="block.vertical" @change="markDirty" />竖排文字（中文海报风）</label>
+          <label class="he-switch"><input type="checkbox" v-model="block.shadow" @change="markDirty" />文字阴影（图片上更清晰）</label>
           <label class="he-switch"><input type="checkbox" v-model="block.bold" @change="markDirty" />加粗</label>
         </template>
         <!-- 图片 -->
@@ -457,6 +458,7 @@ const PAGE_LAYOUTS = [
   { key: 'pic', name: '图文页', desc: '标题 + 图片 + 正文说明' },
   { key: 'gallery', name: '图集页', desc: '两列图集，适合案例 / 环境展示' },
   { key: 'form', name: '留资页', desc: '表单收集姓名电话，适合预约报名' },
+  { key: 'vcard', name: '名片页', desc: '自动带入名片头像 / 姓名 / 电话 / 微信（竞品做不到的业务联动）' },
   { key: 'blank', name: '空白页', desc: '什么都不放，自由发挥' }
 ]
 // 整套配色（2026-11-28 取百家之长：一键换全页文字/形状/按钮色，PPT 主题色同思路）。
@@ -868,6 +870,19 @@ function addPage(kind) {
     ] },
     gallery: { els: [{ type: 'gallery', images: ['', '', ''], layout: 'grid', source: 'upload', anim: '', g: G(22, 80, 706, 520, 1) }] },
     form: { els: [{ type: 'form', heading: '预约报名', desc: '留下电话，我们尽快联系你', showName: true, showPhone: true, showMessage: false, buttonText: '提交', successText: '', anim: '', g: G(22, 80, 706, 620, 1) }] },
+    // 名片页（业务联动，竞品没有）：头像/姓名/职位公司/电话微信按钮直接取名片资料，换名片资料后此处仍需手动同步
+    vcard: (() => {
+      const c = cardData.value || {}
+      return { els: [
+        ...(c.avatar ? [{ type: 'image', url: c.avatar, radius: 100, fit: 'cover', anim: 'zoom', g: G(275, 130, 200, 200, 1) }] : []),
+        T({ text: c.name || '输入姓名', size: 48, g: G(48, 380, 654, 100, 2) }),
+        T({ text: [c.title, c.company].filter(Boolean).join(' · ') || '职位 · 公司', size: 26, bold: false, g: G(48, 500, 654, 60, 3) }),
+        { type: 'buttons', items: [
+          { label: '打电话', action: 'tel', value: c.mobile || c.phone || '' },
+          { label: '加微信', action: 'wechat', value: c.wechat || '' }
+        ], anim: 'up', g: G(22, 620, 706, 200, 4) }
+      ] }
+    })(),
     blank: { els: [] }
   }
   const l = layouts[kind] || layouts.title
