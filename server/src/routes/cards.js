@@ -5,7 +5,7 @@ const { ok, fail, wrap } = require('../utils/response')
 const { authRequired, parseToken } = require('../utils/auth')
 const { makeSlug, normalizeSlug } = require('../utils/slug')
 const qr = require('../services/qrcode')
-const { readPayQr, safePayLink } = require('../services/payQr')
+const { inspectPayQr, readPayQr, safePayLink } = require('../services/payQr')
 const { normalizeStyle } = qr
 const vcard = require('../services/vcard')
 const { CARD_TEMPLATES, isTemplate, DEFAULT_TEMPLATE } = require('../utils/cardTemplates')
@@ -716,6 +716,18 @@ router.put('/mine', authRequired, wrap(async (req, res) => {
     try { notify.notifyCardUpdated(updated, changedLabels) } catch (e) { console.error('[Notify] 变更提醒失败', e.message) }
   }
   ok(res, ownerView(updated, originOf(req)))
+}))
+
+// 收款码识别归位（2026-11-28 用户定稿「上传不分先后」）：快捷编辑上传后前端只送图来问归属，
+// 这里只识别不落库——是微信/支付宝收款码回 platform 由前端自动归位到对应字段（跨格归位、同格即更换），
+// 识别不出/不是收款码给理由由前端拦截、让用户重新上传。完整编辑表单（CardEdit）仍走 PUT /mine 严格分格拦截，
+// 两处共用 services/payQr.js 唯一真相源，绝不各写一套识别。
+router.post('/mine/pay-qr/inspect', authRequired, wrap(async (req, res) => {
+  const url = String(req.body?.url || '').trim()
+  if (!IMAGE_URL_RE.test(url)) return fail(res, 400, '图片地址不合法，请重新上传图片')
+  const r = await inspectPayQr(url)
+  if (!r.platform) return fail(res, 400, r.msg)
+  ok(res, { platform: r.platform })
 }))
 
 router.get('/mine/stats', authRequired, wrap((req, res) => {

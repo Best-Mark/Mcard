@@ -189,13 +189,14 @@
         </label>
         <label v-for="f in qeConf.fields" :key="f.key" class="qe-field">
           <span>{{ f.label }}</span>
-          <ImageField v-if="f.type === 'image'" v-model="qeForm[f.key]" />
+          <ImageField v-if="f.type === 'image'" :model-value="qeForm[f.key]" @update:modelValue="onQeImageInput(f.key, $event)" />
           <textarea v-else-if="f.type === 'textarea'" v-model="qeForm[f.key]" rows="4" :maxlength="f.max || 1000" :placeholder="f.ph || ''"></textarea>
           <input v-else v-model="qeForm[f.key]" :maxlength="f.max || 100" :placeholder="f.ph || ''" :inputmode="f.inputmode || 'text'" />
         </label>
+        <p v-if="payInspecting" class="small muted" style="margin:6px 0 0">识别中…</p>
         <div class="qe-actions">
           <button class="btn btn-ghost" type="button" @click="qeOpen = false">取消</button>
-          <button class="btn btn-primary" type="button" :disabled="qeSaving" @click="saveQuickEdit">{{ qeSaving ? '保存中…' : '保存' }}</button>
+          <button class="btn btn-primary" type="button" :disabled="qeSaving || payInspecting" @click="saveQuickEdit">{{ qeSaving ? '保存中…' : '保存' }}</button>
         </div>
       </div>
     </BottomSheet>
@@ -288,6 +289,7 @@
         <div class="btn-row" style="justify-content:center;margin-top:14px;flex-wrap:wrap">
           <button class="btn btn-primary" @click="copy(qrMode === 'pay' ? publicLink + '?pay=1' : publicLink, qrMode === 'pay' ? '收款链接' : '名片链接')">{{ qrMode === 'pay' ? '复制收款链接' : '复制名片链接' }}</button>
           <button v-if="qrMode !== 'pay' || hasPayQr" class="btn btn-ghost" @click="saveQr">保存二维码</button>
+          <button v-if="owner && qrMode === 'pay' && hasPayQr" class="btn btn-ghost" @click="qrModal = false; openQuickEdit('pay_qr')">更换收款码</button>
           <button class="btn btn-ghost" @click="qrModal = false">关闭</button>
         </div>
       </div>
@@ -633,7 +635,7 @@ const QE_CONF = {
   whatsapp: { label: 'WhatsApp', fields: [{ key: 'whatsapp', label: 'WhatsApp', max: 60 }] },
   pay_qr: {
     label: '收款码',
-    hint: '上传微信 / 支付宝「收付款 → 收款」里的收款码截图，保存时自动核对是不是收款码、有没有放对位置。',
+    hint: '上传微信 / 支付宝「收付款 → 收款」里的收款码截图，自动识别是哪家的码并归位到对应位置，不用对号入座。识别不出会提示重新上传；已传的可直接更换或移除。',
     fields: [{ key: 'wechat_pay_qr', label: '微信收款码', type: 'image' }, { key: 'alipay_pay_qr', label: '支付宝收款码', type: 'image' }]
   },
   address: { label: '地址', fields: [{ key: 'address', label: '详细地址', max: 120 }, { key: 'address_detail', label: '门牌 / 楼层（选填）', max: 80 }] },
@@ -644,7 +646,29 @@ const qeOpen = ref(false)
 const qeKey = ref('')
 const qeForm = ref({})
 const qeSaving = ref(false)
+const payInspecting = ref(false)
 const qeConf = computed(() => QE_CONF[qeKey.value] || null)
+// 快捷编辑图片字段（2026-11-28 用户定稿「上传不分先后」）：收款码上传后先送服务端识别归属，
+// 自动归位到对应格（跨格归位、同格即更换），识别不出/不是收款码直接拦截不落值让用户重传；
+// logo 等其它图片字段不识别直接赋值。放错平台的严格分格拦截只保留在完整编辑表单（CardEdit）。
+async function onQeImageInput(key, url) {
+  const v = String(url || '')
+  if (key !== 'wechat_pay_qr' && key !== 'alipay_pay_qr') { qeForm.value[key] = v; return }
+  if (!v) { qeForm.value[key] = ''; return } // 移除照旧，不走识别
+  if (payInspecting.value) return // 防重入：识别中再传先忽略，busy 守卫 + 按钮 disabled 成对
+  payInspecting.value = true
+  try {
+    const { data } = await api.post('/api/cards/mine/pay-qr/inspect', { url: v })
+    const platform = data?.data?.platform
+    if (platform === 'wechat' || platform === 'alipay') {
+      qeForm.value[platform === 'wechat' ? 'wechat_pay_qr' : 'alipay_pay_qr'] = v
+      showToast(`已识别为${platform === 'wechat' ? '微信' : '支付宝'}收款码`, 'success')
+    }
+  } catch (e) {
+    // 识别不出 / 不是收款码 / 网络失败：不落值（= 拦截重传），理由直接透给用户
+    showToast(e.message || '识别失败，请重新上传', 'error')
+  } finally { payInspecting.value = false }
+}
 // 地址弹层的省市区三联（2026-11-27 用户追问）：复用编辑页同款 RegionPicker 三列滚轮，
 // 确定后按地址补坐标（与编辑页「选地区→自动定位」同一口径），保存随 patch 一起提交。
 // 服务端 EDITABLE 白名单本就含 province/city/district/street/latitude/longitude。

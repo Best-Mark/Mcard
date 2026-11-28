@@ -80,9 +80,9 @@ function classify(text) {
   return 'other'
 }
 
-// kind: 'wechat' | 'alipay'。返回 { ok, text, msg }：ok 时 text 为图内解码内容，msg 恒空；
-// 不通过时 msg 为给用户看的拒绝理由。
-async function readPayQr(kind, url) {
+// 识别一张图的收款码归属（不落库）：返回 { platform, text, msg }。
+// platform ∈ 'wechat' | 'alipay' | ''（空=不通过，msg 为理由）。保存/上传归位都走这里（唯一真相源）。
+async function inspectPayQr(url) {
   try {
     let text
     const local = localUploadPath(url)
@@ -90,20 +90,28 @@ async function readPayQr(kind, url) {
       text = await decodeQr(local)
     } else {
       const buf = await fetchImage(url)
-      if (!buf) return { ok: false, text: '', msg: MSG.unread }
+      if (!buf) return { platform: '', text: '', msg: MSG.unread }
       text = await decodeQr(buf)
     }
-    if (text === null) return { ok: false, text: '', msg: MSG.unread }
-    if (!text) return { ok: false, text: '', msg: MSG.noQr }
+    if (text === null) return { platform: '', text: '', msg: MSG.unread }
+    if (!text) return { platform: '', text: '', msg: MSG.noQr }
     const platform = classify(text)
-    if (platform === kind) return { ok: true, text, msg: '' }
-    if (platform === 'wechat') return { ok: false, text: '', msg: MSG.alipaySlot }
-    if (platform === 'alipay') return { ok: false, text: '', msg: MSG.wechatSlot }
-    return { ok: false, text: '', msg: MSG.notPay }
+    if (platform === 'wechat' || platform === 'alipay') return { platform, text, msg: '' }
+    return { platform: '', text: '', msg: MSG.notPay }
   } catch {
     // 图损坏/解码异常都按「读不了」处理，绝不静默放行
-    return { ok: false, text: '', msg: MSG.unread }
+    return { platform: '', text: '', msg: MSG.unread }
   }
+}
+
+// kind: 'wechat' | 'alipay'。返回 { ok, text, msg }：ok 时 text 为图内解码内容，msg 恒空；
+// 不通过时 msg 为给用户看的拒绝理由（放错平台给「这张是 xx 的码」指引）。
+async function readPayQr(kind, url) {
+  const r = await inspectPayQr(url)
+  if (r.platform === kind) return { ok: true, text: r.text, msg: '' }
+  if (r.platform === 'wechat') return { ok: false, text: '', msg: MSG.alipaySlot }
+  if (r.platform === 'alipay') return { ok: false, text: '', msg: MSG.wechatSlot }
+  return { ok: false, text: '', msg: r.msg }
 }
 
 // 可跳转的付款链接：协议白名单 + 平台归属一致才返回，否则 ''（只回落长按识别，绝不把可疑文本塞进 location）
@@ -113,4 +121,4 @@ function safePayLink(kind, text) {
   return classify(s) === kind ? s : ''
 }
 
-module.exports = { readPayQr, safePayLink }
+module.exports = { inspectPayQr, readPayQr, safePayLink }
