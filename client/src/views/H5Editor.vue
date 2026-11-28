@@ -109,10 +109,12 @@
               <span class="he-grp">整页模板</span>
               <button class="he-chip" @click="openTpls">套用官方模板…</button>
             </template>
-            <!-- 配色行（全局视觉层）：只放作用于全站的主题色与页面切换动效 -->
+            <!-- 配色行（全局视觉层）：主题色 + 整套配色 + 页面切换动效，均为全站生效 -->
             <template v-else-if="dockMode === 'theme'">
               <span class="he-grp">主题色</span>
               <button v-for="c in COLORS" :key="c" :class="['he-dot', { on: (schema.accent || '') === c }]" :style="{ background: c }" @click="setAccent(c)"></button>
+              <span class="he-grp">整套配色</span>
+              <button class="he-chip" @click="palOpen = true">一键换全套 ›</button>
               <span class="he-grp">切换动效</span>
               <BottomSelect :model-value="schema.transition || 'auto'" :options="TRANSITION_OPTS" title="页面切换动效" @update:modelValue="schema.transition = $event; markDirty()" />
             </template>
@@ -270,6 +272,23 @@
       </div>
     </BottomSheet>
 
+    <!-- 一键整套配色：色板行（左名称右色组预览），点中即应用 -->
+    <BottomSheet :show="palOpen" @update:show="palOpen = $event">
+      <div class="he-form">
+        <div class="he-f-head"><b>整套配色</b><button class="he-mini" @click="palOpen = false">关闭</button></div>
+        <p class="small muted" style="margin:0 0 10px">一键替换全页文字、形状与按钮的颜色，换错可用顶栏 ↶ 撤销。</p>
+        <div class="he-tpl-list">
+          <button v-for="p in PALETTES" :key="p.name" class="he-tpl" @click="applyPalette(p); palOpen = false">
+            <span class="he-tpl-t"><b>{{ p.name }}</b></span>
+            <span class="he-pal-dots">
+              <i v-for="c in p.colors" :key="c" :style="{ background: c }"></i>
+            </span>
+            <i>›</i>
+          </button>
+        </div>
+      </div>
+    </BottomSheet>
+
     <!-- 换图弹层（2026-11-27 画布直操化）：快捷条「▣ 换图」直达，不进通用表单 -->
     <BottomSheet :show="imgOpen" @update:show="imgOpen = $event">
       <div class="he-form" v-if="block && imgField">
@@ -311,6 +330,7 @@
           <div class="he-row"><span class="small muted">行高 {{ block.lh }}</span>
             <input class="he-range" type="range" min="1" max="3" step="0.1" :value="block.lh" @input="block.lh = Number($event.target.value); markDirty()" />
           </div>
+          <label class="he-switch"><input type="checkbox" v-model="block.vertical" @change="markDirty" />竖排文字（中文海报风）</label>
           <label class="he-switch"><input type="checkbox" v-model="block.bold" @change="markDirty" />加粗</label>
         </template>
         <!-- 图片 -->
@@ -439,14 +459,25 @@ const PAGE_LAYOUTS = [
   { key: 'form', name: '留资页', desc: '表单收集姓名电话，适合预约报名' },
   { key: 'blank', name: '空白页', desc: '什么都不放，自由发挥' }
 ]
+// 整套配色（2026-11-28 取百家之长：一键换全页文字/形状/按钮色，PPT 主题色同思路）。
+// 每套 = [亮色(正文/白字映射), 主色(主题色), 辅助色, 深色]；映射按现有颜色出现频次排序，白字最多→亮色，保深底可读。
+const PALETTES = [
+  { name: '米白 × 绛红', colors: ['#f7ede2', '#a62b2b', '#d4a373', '#5c1f19'] },
+  { name: '月白 × 黛蓝', colors: ['#eef3fa', '#2b5bb5', '#7fa8d9', '#122b57'] },
+  { name: '暖白 × 松绿', colors: ['#f0f5ef', '#12897f', '#6fbfb4', '#0a3d38'] },
+  { name: '杏白 × 橘棕', colors: ['#fdf3e7', '#c2410c', '#e8a26c', '#6b2a0a'] },
+  { name: '雪白 × 玫粉', colors: ['#fdeef4', '#be185d', '#e77fab', '#6b1040'] },
+  { name: '浅金 × 紫檀', colors: ['#f3eefa', '#7c2d92', '#b784c9', '#3b1560'] },
+  { name: '灰白 × 石墨', colors: ['#f4f5f7', '#334155', '#94a3b8', '#0f172a'] },
+  { name: '暖白 × 金棕', colors: ['#faf3e6', '#a16207', '#d4b16a', '#52360a'] }
+]
 // 页面切换过渡动效（2026-11-28 用户定稿「动效可设置 + 智能选型」）：智能为默认（渲染层按落点页内容挑最合适的过渡），旧「上下滚动」已并入智能不再单列
 const TRANSITION_OPTS = [
   { value: 'auto', label: '智能（推荐）' },
   { value: 'slide', label: '滑动翻页' }, { value: 'fade', label: '淡入淡出' }, { value: 'flip', label: '翻页动效' }
 ]
 // 常用背景音乐（2026-11-28 用户要求）：站内自产免版权合成曲，循环无缝；选中的直接当 block.url
-const MUSIC_PRESETS = [
-  { value: '/music/bgm-light.wav', label: '轻快明亮' },
+const MUSIC_PRESETS = [  { value: '/music/bgm-light.wav', label: '轻快明亮' },
   { value: '/music/bgm-warm.wav', label: '舒缓温暖' },
   { value: '/music/bgm-business.wav', label: '商务大气' },
   { value: '/music/bgm-fresh.wav', label: '清新灵动' },
@@ -820,6 +851,7 @@ function layerOp(op) {
 }
 // 按版式加页：预置成稿骨架（字段结构与 pageToEls 产物一致），用户在骨架上改内容
 const pageAddOpen = ref(false)
+const palOpen = ref(false)
 function addPage(kind) {
   const T = over => ({ type: 'text', color: '#ffffff', align: 'center', bold: true, font: '', lh: 1.3, anim: '', ...over })
   const G = (x, y, w, h, z) => ({ x, y, w, h, rot: 0, opacity: 1, z })
@@ -857,6 +889,27 @@ function confirmRemovePage() {
   showToast('已删除本页，顶栏 ↶ 可撤销', 'success')
 }
 function setAccent(c) { schema.value.accent = c; markDirty() }
+// 一键整套配色：收集全页自由元素用到的颜色（文字色/形状填充/按钮填充与文字色），按出现频次
+// 依次映射到新色板（白字最多→亮色位，保深底可读），主题色取色板主色；undo 可整体回退。
+function applyPalette(p) {
+  const freq = new Map()
+  for (const pg of schema.value.pages) for (const e of (pg.els || [])) {
+    const cs = e.type === 'text' || e.type === 'shape' ? [e.color] : e.type === 'button' ? [e.bg, e.color] : []
+    for (const c of cs) if (c) freq.set(c, (freq.get(c) || 0) + 1)
+  }
+  const sorted = [...freq.keys()]
+  const map = new Map(sorted.map((c, i) => [c, p.colors[i % p.colors.length]]))
+  for (const pg of schema.value.pages) for (const e of (pg.els || [])) {
+    if ((e.type === 'text' || e.type === 'shape') && map.has(e.color)) e.color = map.get(e.color)
+    if (e.type === 'button') {
+      if (map.has(e.bg)) e.bg = map.get(e.bg)
+      if (map.has(e.color)) e.color = map.get(e.color)
+    }
+  }
+  schema.value.accent = p.colors[1]
+  markDirty()
+  showToast(`已套用「${p.name}」，顶栏 ↶ 可撤销`, 'success')
+}
 async function openTpls() {
   if (!templates.value.length) {
     try { templates.value = (await api.get('/api/h5/templates')).data.data.list } catch {}
@@ -1015,6 +1068,9 @@ watch(() => route.params.id, () => { if (route.name === 'h5-editor') location.re
 .he-tpl-dot { width: 14px; height: 14px; flex: 0 0 14px; border-radius: 50%; }
 .he-tpl-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
 .he-tpl i { font-style: normal; color: #9ca3af; }
+/* 整套配色色板预览点 */
+.he-pal-dots { display: flex; gap: 4px; flex: 0 0 auto; }
+.he-pal-dots i { width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(38,34,28,.15); }
 /* 地图选点弹层（复用名片编辑形态；遮罩四边定位，老 WebView 不认 inset 简写） */
 .map-mask { position: fixed; top: 0; right: 0; bottom: 0; left: 0; background: rgba(15,23,42,.55); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 16px; }
 .map-modal { width: 100%; max-width: 680px; background: #fff; border-radius: 14px; padding: 14px; box-shadow: 0 20px 60px rgba(0,0,0,.25); }

@@ -491,7 +491,9 @@ const txtStyle = b => ({
   fontWeight: b.bold ? 700 : 400,
   lineHeight: Number(b.lh) || 1.5,
   whiteSpace: 'pre-wrap',
-  wordBreak: 'break-word'
+  wordBreak: 'break-word',
+  // 竖排（中文海报）：行进方向右→左，块宽即列宽，高度随字数自适应
+  writingMode: b.vertical ? 'vertical-rl' : 'horizontal-tb'
 })
 const imgStyle = b => ({
   ...bgStyle(b.url),

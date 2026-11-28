@@ -49,7 +49,8 @@ function sanitizeFields(type, b, free) {
   if (type === 'text' && free) Object.assign(out, {
     text: str(b.text, 300), size: Math.round(num(b.size, 12, 200, 32)),
     color: hex(b.color) || '#ffffff', align: ['left', 'center', 'right'].includes(b.align) ? b.align : 'left',
-    bold: !!b.bold, font: EL_FONTS.includes(b.font) ? b.font : '', lh: num(b.lh, 1, 3, 1.5)
+    bold: !!b.bold, font: EL_FONTS.includes(b.font) ? b.font : '', lh: num(b.lh, 1, 3, 1.5),
+    vertical: !!b.vertical // 竖排（2026-11-28 取百家之长：中文海报强需求）
   })
   if (type === 'text' && !free) Object.assign(out, {
     heading: str(b.heading, 40), body: str(b.body, 1200),
