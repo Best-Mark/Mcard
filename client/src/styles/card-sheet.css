@@ -363,7 +363,7 @@
   background: var(--t-accent, #2563eb);
   background: linear-gradient(135deg, rgba(var(--glow-rgb, 37,99,235), .68), rgba(var(--glow-rgb, 37,99,235), .94));
   color: #fff; border-color: rgba(255,255,255,.38);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 10px 24px -12px rgba(var(--glow-rgb, 37,99,235), .95);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.28);
 }
 .cv-page .cv-dock.cv-dock-glass .btn-ghost {
   background: rgba(255,255,255,.22); color: #26221c;
@@ -373,14 +373,14 @@
 .cv-page.cv-tpl-minimal .cv-dock.cv-dock-glass,
 .cv-page.cv-clean.cv-tpl-paper .cv-dock.cv-dock-glass {
   border-color: rgba(var(--glow-rgb, 37,99,235), .30);
-  box-shadow: 0 12px 32px -12px rgba(var(--glow-rgb, 37,99,235), .45), inset 0 1px 0 rgba(255,255,255,.65);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.65);
 }
 .cv-page.cv-tpl-minimal .cv-dock.cv-dock-glass .dock-btn,
 .cv-page.cv-clean.cv-tpl-paper .cv-dock.cv-dock-glass .dock-btn { color: var(--t-text, #374151); border-color: rgba(var(--glow-rgb, 37,99,235), .20); }
 .cv-page.cv-tpl-minimal .cv-dock.cv-dock-glass .btn-ghost,
 .cv-page.cv-clean.cv-tpl-paper .cv-dock.cv-dock-glass .btn-ghost { background: rgba(var(--glow-rgb, 37,99,235), .10); color: var(--t-text, #374151); box-shadow: inset 0 0 0 1px rgba(var(--glow-rgb, 37,99,235), .14); }
 .cv-page.cv-tpl-minimal .cv-dock.cv-dock-glass .btn-primary,
-.cv-page.cv-clean.cv-tpl-paper .cv-dock.cv-dock-glass .btn-primary { background: var(--t-accent, #2563eb); color: #fff; border-color: transparent; box-shadow: 0 8px 20px -12px rgba(var(--glow-rgb, 37,99,235), .9); }
+.cv-page.cv-clean.cv-tpl-paper .cv-dock.cv-dock-glass .btn-primary { background: var(--t-accent, #2563eb); color: #fff; border-color: transparent; box-shadow: none; }
 /* 悬浮次级入口：导航/收藏/交换名片收进这里；菜单用中性白底，任何主题都清晰 */
 .cv-fab { position: fixed; right: 14px; bottom: calc(72px + env(safe-area-inset-bottom)); z-index: 64; width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--t-accent, #2563eb); color: #fff; font-size: 24px; line-height: 1; box-shadow: 0 8px 24px rgba(15,23,42,.3); cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .cv-fab.on { transform: scale(.94); }
@@ -732,7 +732,7 @@
 /* 简洁模板底部 dock（/me 与公开页共用同一套）：跟模板配色，拉开主/次层次，不再通用深灰+主题绿 */
 .cv-clean .cv-dock { gap: 7px; padding: 10px 10px; color: var(--cv-ink); }
 .cv-clean .cv-dock .btn { border-radius: var(--cv-btn-radius, 8px); font-weight: 700; }
-.cv-clean .cv-dock .btn-primary { background: var(--cv-btn-main-solid, var(--t-accent, #2563eb)); background: var(--cv-btn-main-bg, var(--t-accent)); color: var(--cv-btn-main-color, #fff); box-shadow: var(--cv-btn-main-shadow, none); border-color: transparent; }
+.cv-clean .cv-dock .btn-primary { background: var(--cv-btn-main-solid, var(--t-accent, #2563eb)); background: var(--cv-btn-main-bg, var(--t-accent)); color: var(--cv-btn-main-color, #fff); box-shadow: none; border-color: transparent; }
 /* ghost 用模板主色的极淡底 + 描边，比纯透明底有层次；color-mix 前先给纯透明兜底，避免老 WebView 解析失败露白底 */
 .cv-clean .cv-dock .btn-ghost { background: transparent; background: color-mix(in srgb, var(--cv-btn-ghost-color, var(--cv-ink)) 10%, var(--cv-panel-bg)); color: var(--cv-btn-ghost-color, var(--cv-ink)); box-shadow: var(--cv-btn-ghost-shadow, inset 0 0 0 1px var(--cv-line)); border-color: transparent; }
 .cv-clean .cv-create-own { border-top: 1px solid var(--cv-line); }
@@ -808,7 +808,7 @@
 .cv-tpl-navygold .cv-footer { color: #a9b1ba; letter-spacing: .1em; }
 .cv-tpl-navygold .cv-footer b { color: var(--ng-gold); }
 .cv-tpl-navygold .cv-dock { background: rgba(18,32,46,.96); border-top: 2px solid var(--ng-gold); }
-.cv-tpl-navygold .cv-dock .btn-primary { background: #a8834a; background: linear-gradient(135deg, #c9a163, #a8834a); color: #fff; box-shadow: 0 12px 24px -14px rgba(169,131,74,.9); }
+.cv-tpl-navygold .cv-dock .btn-primary { background: #a8834a; background: linear-gradient(135deg, #c9a163, #a8834a); color: #fff; box-shadow: none; }
 .cv-tpl-navygold .cv-dock .btn-ghost { background: rgba(255,255,255,.12); color: #fff; border-color: rgba(216,187,133,.35); }
 /* 正文「主页与店铺」按钮同样走深蓝鎏金配色：纯色兜底 + 字面量渐变，不用全局蓝（深蓝页上刺眼且老 WebView 会解析失败露白底） */
 .cv-tpl-navygold .cv-site .btn-primary { background: #1d3a55; background: linear-gradient(135deg, #1d3a55, #0f2739); color: #fff; border-color: transparent; }
@@ -948,7 +948,7 @@
    把 clean 模板底栏盖成面板白（用户实锤「怎么改都是白平板」），材质接管已删，勿加回 */
 .cv-page.cv-clean .cv-dock { gap: 7px; padding: 10px 10px; color: var(--cv-ink); }
 .cv-page.cv-clean .cv-dock .btn { border-radius: var(--cv-btn-radius); font-weight: 700; border-color: transparent; }
-.cv-page.cv-clean .cv-dock .btn-primary { background: var(--cv-btn-main-solid, var(--cv-btn-main-bg)); color: var(--cv-btn-main-color); box-shadow: var(--cv-btn-main-shadow, none); }
+.cv-page.cv-clean .cv-dock .btn-primary { background: var(--cv-btn-main-solid, var(--cv-btn-main-bg)); color: var(--cv-btn-main-color); box-shadow: none; }
 .cv-page.cv-clean .cv-dock .btn-ghost { background: var(--cv-btn-ghost-bg); color: var(--cv-btn-ghost-color, var(--cv-ink)); box-shadow: var(--cv-btn-ghost-shadow); }
 .cv-page.cv-clean .cv-site .btn-primary { background: var(--cv-btn-main-solid, var(--cv-btn-main-bg)); color: var(--cv-btn-main-color); border-color: transparent; }
 .cv-page.cv-clean .cv-site .btn-ghost { background: var(--cv-btn-ghost-bg); color: var(--cv-btn-ghost-color, var(--cv-ink)); border-color: transparent; }
