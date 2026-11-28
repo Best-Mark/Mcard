@@ -421,6 +421,9 @@ const payGateShell = ({ title, body }) => `<!doctype html>
   .tip-sub { margin: 6px 0 0; color: #a09a90; font-size: 12px; letter-spacing: 1px; }
   .btn { display: inline-block; margin: 8px 0 4px; padding: 13px 44px; border-radius: 999px; background: #26221c; color: #ffffff; text-decoration: none; font-size: 15px; letter-spacing: 2px; }
   .back { display: inline-block; margin-top: 26px; color: #8a8378; font-size: 13px; letter-spacing: 1px; text-decoration: none; }
+  .topbar { text-align: left; margin: 0 0 18px; }
+  .back-top { display: inline-flex; align-items: center; gap: 5px; padding: 9px 16px 9px 12px; border-radius: 999px; background: #ffffff; box-shadow: 0 6px 18px rgba(31, 27, 22, .06); color: #6b6459; font-size: 13px; letter-spacing: 1px; text-decoration: none; }
+  .back-top svg { display: block; }
 </style></head><body><div class="wrap">${body}</div>${PAY_HIDPI}</body></html>`
 
 router.get('/public/:slug/pay', wrap((req, res) => {
@@ -428,7 +431,10 @@ router.get('/public/:slug/pay', wrap((req, res) => {
   res.set('Cache-Control', 'no-store')
   if (!row) return res.status(404).type('html').send(payGateShell({ title: '名片不存在', body: '<h1>名片不存在</h1><p class="sub">链接可能已失效</p>' }))
   const name = escHtml(row.name || '对方')
-  const back = `<a class="back" href="/c/${encodeURIComponent(row.slug)}">返回名片</a>`
+  const cardUrl = `/c/${encodeURIComponent(row.slug)}`
+  // 返回入口双层：顶部胶囊为首屏常驻入口（长按动作面板/首屏外的底部链接都遮不住它），底部链接接住滚动后返回
+  const backTop = `<div class="topbar"><a class="back-top" href="${cardUrl}"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" aria-hidden="true"><path d="M6 1 1 6l5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>返回名片</a></div>`
+  const back = `<a class="back" href="${cardUrl}">返回名片</a>`
   // 干净码（图内付款链接重渲染纯黑白）优先；无链接的存量异形码回落上传原图。
   // 长按识别的前提是 1:1 像素渲染（见 codeImg/PAY_HIDPI 注释），URL 带 size= 供按 DPR 改写、v= 换码击穿缓存
   const wxImg = row.wechat_pay_link ? `/api/cards/public/${row.slug}/pay-link.png?platform=wechat&size=720&v=${bust(row.wechat_pay_link)}` : (row.wechat_pay_qr || '')
@@ -444,23 +450,23 @@ router.get('/public/:slug/pay', wrap((req, res) => {
     if (aliLink) {
       return res.type('html').send(payGateShell({
         title: `向 ${name} 付款`,
-        body: `<h1>向 ${name} 付款</h1><p class="sub">正在打开支付宝…</p><a class="btn" href="${escHtml(aliLink)}">打开支付宝付款</a><script>location.replace(${jsStr(aliLink)})</script>`
+        body: `${backTop}<h1>向 ${name} 付款</h1><p class="sub">正在打开支付宝…</p><a class="btn" href="${escHtml(aliLink)}">打开支付宝付款</a><script>location.replace(${jsStr(aliLink)})</script>${back}`
       }))
     }
     if (aliImg) {
       return res.type('html').send(payGateShell({
         title: `向 ${name} 付款`,
-        body: `<h1>向 ${name} 付款</h1><p class="sub">支付宝</p>${codeImg(aliImg, '支付宝收款码', aliFallback)}<p class="tip">长按识别二维码，立即支付</p>${back}`
+        body: `${backTop}<h1>向 ${name} 付款</h1><p class="sub">支付宝</p>${codeImg(aliImg, '支付宝收款码', aliFallback)}<p class="tip">长按识别二维码，立即支付</p>${back}`
       }))
     }
     if (wxImg) {
       // 只有微信码的名片：支付宝内打不开微信码，给对称兜底（同微信分支「对方暂未开通微信收款」口径）
       return res.type('html').send(payGateShell({
         title: `向 ${name} 付款`,
-        body: `<h1>向 ${name} 付款</h1><p class="sub">对方暂未开通支付宝收款</p>${codeImg(wxImg, '微信收款码', wxFallback)}<p class="tip">保存图片后用微信扫一扫</p>${back}`
+        body: `${backTop}<h1>向 ${name} 付款</h1><p class="sub">对方暂未开通支付宝收款</p>${codeImg(wxImg, '微信收款码', wxFallback)}<p class="tip">保存图片后用微信扫一扫</p>${back}`
       }))
     }
-    return res.type('html').send(payGateShell({ title: `向 ${name} 付款`, body: `<h1>向 ${name} 付款</h1><p class="sub">对方还没上传收款码</p>${back}` }))
+    return res.type('html').send(payGateShell({ title: `向 ${name} 付款`, body: `${backTop}<h1>向 ${name} 付款</h1><p class="sub">对方还没上传收款码</p>${back}` }))
   }
 
   // 微信：scheme 跳转被微信内置浏览器拦截，落地即出干净微信收款码，长按直付
@@ -468,16 +474,16 @@ router.get('/public/:slug/pay', wrap((req, res) => {
     if (wxImg) {
       return res.type('html').send(payGateShell({
         title: `向 ${name} 付款`,
-        body: `<h1>向 ${name} 付款</h1><p class="sub">微信支付</p>${codeImg(wxImg, '微信收款码', wxFallback)}<p class="tip">长按识别二维码，立即支付</p><p class="tip-sub">长按不出识别菜单时，可保存图片后用微信扫一扫</p>${back}`
+        body: `${backTop}<h1>向 ${name} 付款</h1><p class="sub">微信支付</p>${codeImg(wxImg, '微信收款码', wxFallback)}<p class="tip">长按识别二维码，立即支付</p><p class="tip-sub">长按不出识别菜单时，可保存图片后用微信扫一扫</p>${back}`
       }))
     }
     if (aliImg) {
       return res.type('html').send(payGateShell({
         title: `向 ${name} 付款`,
-        body: `<h1>向 ${name} 付款</h1><p class="sub">对方暂未开通微信收款</p>${codeImg(aliImg, '支付宝收款码', aliFallback)}<p class="tip">保存图片后用支付宝扫一扫</p>${back}`
+        body: `${backTop}<h1>向 ${name} 付款</h1><p class="sub">对方暂未开通微信收款</p>${codeImg(aliImg, '支付宝收款码', aliFallback)}<p class="tip">保存图片后用支付宝扫一扫</p>${back}`
       }))
     }
-    return res.type('html').send(payGateShell({ title: `向 ${name} 付款`, body: `<h1>向 ${name} 付款</h1><p class="sub">对方还没上传收款码</p>${back}` }))
+    return res.type('html').send(payGateShell({ title: `向 ${name} 付款`, body: `${backTop}<h1>向 ${name} 付款</h1><p class="sub">对方还没上传收款码</p>${back}` }))
   }
 
   // 其他扫码器 / 浏览器：选择页——支付宝走链接直唤，微信给码长按
@@ -486,7 +492,7 @@ router.get('/public/:slug/pay', wrap((req, res) => {
   else if (aliImg) blocks.push(`<p class="sub">支付宝</p>${codeImg(aliImg, '支付宝收款码', aliFallback)}<p class="tip">支付宝 · 长按识别二维码付款</p>`)
   if (wxImg) blocks.push(`<p class="sub">微信</p>${codeImg(wxImg, '微信收款码', wxFallback)}<p class="tip">微信 · 长按识别二维码付款</p>`)
   if (!blocks.length) blocks.push('<p class="sub">对方还没上传收款码</p>')
-  res.type('html').send(payGateShell({ title: `向 ${name} 付款`, body: `<h1>向 ${name} 付款</h1>${blocks.join('')}${back}` }))
+  res.type('html').send(payGateShell({ title: `向 ${name} 付款`, body: `${backTop}<h1>向 ${name} 付款</h1>${blocks.join('')}${back}` }))
 }))
 
 router.get('/public/:slug/pay.png', wrap(async (req, res) => {
