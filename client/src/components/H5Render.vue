@@ -375,6 +375,22 @@ onBeforeUnmount(() => {
   if (audioEl.value) { try { audioEl.value.pause() } catch {} }
 })
 
+// ---- 转换页实测（2026-11-28 用户反馈「模板元素错位不像故意设计的」）----
+// 组件/文本渲染高度自适应（g.h 只是声明框），估高偏差会让后续元素叠压。这里量出每个 .hp-block
+// 的真实 offsetHeight 供编辑器回写 g.h 并自上而下重排——只对编辑器标记的「刚转换、未编辑」页生效。
+// DOM 顺序 = renderList 顺序 = els 顺序；公开态隐藏块（v-if 不渲染）会导致数量不符，编辑器自行放弃该页。
+// base = DOM 首页对应的 schema 页号（编辑画布只渲染当前页，page-offset 对齐；预览渲染全部页从 0 起）。
+function measurePages() {
+  if (!pagesEl.value) return []
+  const base = props.editable ? (Number(props.pageOffset) || 0) : 0
+  return Array.from(pagesEl.value.querySelectorAll('.hp-page')).map((sec, i) => ({
+    idx: base + i,
+    u: u.value,
+    heights: Array.from(sec.querySelectorAll('.hp-block')).map(el => el.offsetHeight)
+  }))
+}
+defineExpose({ measurePages })
+
 // ---- 编辑器长按拖动排序（editable only）：短手势不拦截滚动，长按 350ms 进入拖动态 ----
 const drag = reactive({ on: false, cur: -1, dy: 0, startY: 0 })
 let dragTimer = 0, coolUntil = 0

@@ -28,7 +28,7 @@
       <div class="he-canvas-in">
         <!-- page-offset：画布只渲染当前页，offset 让块的 key 与真实页号对齐（选中态/拖动不串页）；
              编辑态 key=selPage：切页重挂载播放入场动画（预览/公开页走翻页动效，编辑画布单页靠这个有翻页感） -->
-        <H5Render :key="previewMode ? 'preview' : selPage" class="he-page-anim" :data="previewMode ? previewData : curPageData" :editable="!previewMode" :page-offset="selPage" :sel-key="selKey" @pick="onPick" @reorder="onReorder" @quick="onQuick" @inplace="markDirty" @geom="markDirty" @addtext="addBlock('text')" />
+        <H5Render ref="renderEl" :key="previewMode ? 'preview' : selPage" class="he-page-anim" :data="previewMode ? previewData : curPageData" :editable="!previewMode" :page-offset="selPage" :sel-key="selKey" @pick="onPick" @reorder="onReorder" @quick="onQuick" @inplace="markDirty" @geom="markDirty" @addtext="addBlock('text')" />
       </div>
       <div v-if="!previewMode" class="he-hint small muted">每页一屏 · 内容多了点「页面 → 加一页」 · 点选元素 · 拖动移动 · 四角缩放 · 再点改内容{{ block ? ` · 当前：第 ${selPage + 1} 页 ${TYPE_LABEL[block.type]}` : '' }}</div>
     </div>
@@ -693,6 +693,40 @@ async function publish() {
   } finally { publishing.value = false }
 }
 
+// ---- 转换页实测自愈（2026-11-28 用户反馈「模板元素错位不像故意设计的」）----
+// blocks→els 转换按估高堆叠初稿，但组件/文本真实渲染高度自适应（g.h 只是声明框），估高偏差会让
+// 后面的元素叠压前面的文字。渲染层量出每个元素的真实高度后回写 g.h 并自上而下重排——
+// 只动「刚转换、用户还没编辑过」的页（relayoutPages 标记，排完即清），用户自己摆的布局绝不重排。
+const renderEl = ref(null)
+const relayoutPages = new Set()
+function restackEls(els) {
+  const order = els.map((e, i) => i).sort((a, b) => (Number(els[a].g?.y) || 0) - (Number(els[b].g?.y) || 0))
+  for (let k = 1; k < order.length; k++) {
+    const prev = els[order[k - 1]], cur = els[order[k]]
+    cur.g.y = Math.min(29000, (Number(prev.g?.y) || 0) + (Number(prev.g?.h) || 0) + 26)
+  }
+}
+function tryRelayout() {
+  const r = renderEl.value
+  if (!r || !r.measurePages || !relayoutPages.size) return
+  let changed = false
+  for (const pd of r.measurePages()) {
+    if (!relayoutPages.has(pd.idx) || !pd) continue
+    relayoutPages.delete(pd.idx)
+    const els = schema.value.pages[pd.idx]?.els || []
+    // 公开态隐藏块（没填联系方式的 contact 等 v-if 不渲染）数量对不上 → 放弃该页，绝不误排
+    if (pd.heights.length !== els.length) continue
+    els.forEach((e, i) => {
+      if (!e.g) return
+      const real = Math.round(pd.heights[i] / (pd.u || 1))
+      if (real > 0 && Math.abs((Number(e.g.h) || 0) - real) > 2) { e.g.h = real; changed = true }
+    })
+    restackEls(els)
+  }
+  if (changed) markDirty()
+}
+watch(selPage, () => nextTick(tryRelayout))
+
 // ---- 结构编辑（自由画布） ----
 // 组件元素初始字段（gallery/contact/… 复用原内容表单）
 function blank(type) {
@@ -753,7 +787,10 @@ function pageToEls(p) {
       if (b.heading) { els.push({ type: 'text', text: b.heading, size: 42, color: '#ffffff', align, bold: true, font: '', lh: 1.3, anim: anim || 'up', g: G(48, y, 654, 60) }); y += 84 }
       if (b.body) {
         const s = String(b.body || '')
-        const h = Math.round(Math.max(s.split('\n').length, Math.ceil(s.length / 20)) * 26 * 1.8)
+        // 估高按「逐段折行」算（26px 字 / 654px 宽 ≈ 每行 22 字留余量），多行段不再被行数取大稀释；
+        // 初稿估高只决定首帧，渲染后 tryRelayout 用实测高度回写（转换页实测自愈）
+        const lines = s.split('\n').reduce((n, seg) => n + Math.max(1, Math.ceil(seg.length / 22)), 0)
+        const h = Math.round(lines * 26 * 1.8)
         els.push({ type: 'text', text: s, size: 26, color: '#cbd5e1', align, bold: false, font: '', lh: 1.8, anim: anim || 'up', g: G(48, y, 654, h) })
         y += h + 30
       }
@@ -1008,6 +1045,9 @@ function confirmApplyTpl() {
   schema.value = { accent: t.accent, transition: t.transition || 'auto', pages }
   selPage.value = 0; selBlock.value = 0
   tplOpen.value = false; dockMode.value = 'main'
+  // 全部页都是刚转换的：标记待实测自愈（渲染后回写真实高度并重排，消除估高叠压）
+  for (let i = 0; i < pages.length; i++) relayoutPages.add(i)
+  nextTick(tryRelayout)
   markDirty()
   showToast(`已套用「${t.name}」，继续编辑即可`, 'success')
 }
@@ -1017,13 +1057,21 @@ onMounted(async () => {
     const { data } = await api.get(`/api/h5/${route.params.id}`)
     page.value = data.data.page
     title.value = page.value.title
-    // 自由画布唯一编辑形态：旧 blocks 页打开即自动转 els（估高堆叠初稿），已是 els 的页原样
+    // 自由画布唯一编辑形态：旧 blocks 页打开即自动转 els（估高堆叠初稿），已是 els 的页原样。
+    // 刚从 blocks 转出来的页标记待实测自愈（已是 els 的老页绝不重排——那是用户自己的布局）
     const raw = page.value.schema || {}
     const rawPages = (raw.pages && raw.pages.length) ? raw.pages : [{ blocks: [{ type: 'cover', title: '', subtitle: '', cover: '' }] }]
+    let pageIdx = 0
     schema.value = {
       accent: raw.accent || '',
       transition: raw.transition || 'auto',
-      pages: rawPages.flatMap(p => splitOverflowPages(pageToEls(p)).map(els => ({ bg: p.bg || { color: '', image: '' }, els })))
+      pages: rawPages.flatMap(p => {
+        const converted = !(p.els && p.els.length)
+        const parts = splitOverflowPages(pageToEls(p))
+        if (converted) for (let k = 0; k < parts.length; k++) relayoutPages.add(pageIdx + k)
+        pageIdx += parts.length
+        return parts.map(els => ({ bg: p.bg || { color: '', image: '' }, els }))
+      })
     }
     loaded.value = true
     // 旧 blocks 页已就地转 els（管线细节不提示，编辑体验口径由顶部 he-hint 承载）
@@ -1044,6 +1092,8 @@ onMounted(async () => {
         if (gallery.length) cardData.value = { ...cardData.value, gallery }
       } catch {}
     } catch {}
+    // 名片资料到位后再实测自愈——contact 等块的高度取决于电话/微信/地址是否有值，资料未到时量出来是空的
+    nextTick(tryRelayout)
   } catch (e) { showToast(e?.message || '加载失败', 'error'); router.push('/me/h5') }
 })
 watch(() => route.params.id, () => { if (route.name === 'h5-editor') location.reload() })
