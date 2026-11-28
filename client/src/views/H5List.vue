@@ -25,7 +25,8 @@
         <div v-for="p in list" :key="p.id" class="card card-pad h5l-item">
           <div class="h5l-head">
             <b class="h5l-name">{{ p.title }}</b>
-            <button type="button" class="badge small h5l-link" :class="{ on: p.card_linked }" :disabled="busy === p.id" @click="toggleLink(p)">{{ p.card_linked ? '✓ 已关联名片' : '＋ 关联名片' }}</button>
+            <!-- 关联状态只在已上架时显示：下架/草稿入口未挂到名片上，不摆关联徽标（2026-11-28 用户定稿） -->
+            <button v-if="p.status === 'published'" type="button" class="badge small h5l-link" :class="{ on: p.card_linked }" :disabled="busy === p.id" @click="toggleLink(p)">{{ p.card_linked ? '✓ 已关联名片' : '＋ 关联名片' }}</button>
             <span class="badge small" :class="{ on: p.status === 'published' }">{{ p.status === 'published' ? '已上架' : '草稿' }}</span>
           </div>
           <div class="small muted h5l-meta">{{ p.pages }} 页 · 更新于 {{ fmt(p.updated_at) }}</div>
@@ -35,7 +36,6 @@
             <button v-else class="btn btn-sm btn-ghost" @click="router.push(`/me/h5/${p.id}`)">预览</button>
             <button v-if="p.status === 'draft'" class="btn btn-sm btn-ghost" :disabled="busy === p.id" @click="toggle(p, 'publish')">{{ busy === p.id ? '…' : '上架' }}</button>
             <button v-else class="btn btn-sm btn-ghost" :disabled="busy === p.id" @click="toggle(p, 'unpublish')">下架</button>
-            <button v-if="p.status === 'published'" class="btn btn-sm btn-ghost" @click="copyLink(p)">复制链接</button>
             <button class="btn btn-sm btn-ghost h5l-del" @click="remove(p)">删除</button>
           </div>
         </div>
@@ -123,10 +123,6 @@ async function remove(p) {
   try { await api.delete(`/api/h5/${p.id}`); await load() } catch (e) { showToast(e.message, 'error') } finally { busy.value = 0 }
 }
 function preview(p) { window.open(`/h5/${p.slug}`, '_blank') }
-async function copyLink(p) {
-  const link = `${window.location.origin}/h5/${p.slug}`
-  try { await navigator.clipboard.writeText(link); showToast('链接已复制', 'success') } catch { showToast(link) }
-}
 function fmt(s) { return String(s || '').replace('T', ' ').slice(5, 16) }
 </script>
 
