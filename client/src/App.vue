@@ -32,8 +32,10 @@ const hideMemberNav = computed(() => HIDE_NAV_PAGES.includes(route.path) || /^\/
 const isDesktopHome = computed(() => route.path === '/me')
 // 桌面壳只套「工作台类」页面：/me 系列与 /market。
 // 公开名片页 /c/:slug、登录/微信回调、后台 /admin 保持原样（后台本身已是桌面布局）。
+// 宣传页预览（?preview=1）是访客视角全屏，也不套壳（2026-11-28 用户定稿）。
 const useShell = computed(() => {
   if (!isPC.value) return false
+  if (route.query.preview === '1') return false
   const p = route.path
   return p === '/market' || (p.startsWith('/me') && !p.startsWith('/me/pay'))
 })

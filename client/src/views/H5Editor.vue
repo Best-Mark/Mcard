@@ -11,14 +11,16 @@
        ③ 加块插到选中块之后（不再固定尾部）、新增复制块；
        ④ 按钮动作原 <select> 违规改 BottomSelect（H5 下拉必须 BottomSelect 约束），动作新增「复制文本」。 -->
   <div class="he" :class="{ 'he-preview': previewMode }">
-    <header class="he-top">
+    <!-- 预览（?preview=1）= 访客视角：编辑器顶栏/操作条/画布留白全部退出，内容四边贴满视口，
+         只留左上 ✕ 浮标退出回编辑器（2026-11-28 用户定稿「预览要像其它用户在看的那种体验」） -->
+    <header v-if="!previewMode" class="he-top">
       <button class="he-back" @click="router.push('/me/h5')">‹</button>
-      <input v-if="!previewMode" v-model="title" class="he-title" placeholder="宣传页标题" @input="markDirty" />
-      <b v-else class="he-title he-title-plain">{{ title || '宣传页预览' }}</b>
-      <button v-if="!previewMode" class="he-back" :disabled="!canUndo" @click="undo" aria-label="撤销">↶</button>
-      <button v-if="!previewMode" class="he-back" :disabled="!canRedo" @click="redo" aria-label="重做">↷</button>
-      <span v-if="!previewMode" class="he-save small muted">{{ saveState }}</span>
+      <input v-model="title" class="he-title" placeholder="宣传页标题" @input="markDirty" />
+      <button class="he-back" :disabled="!canUndo" @click="undo" aria-label="撤销">↶</button>
+      <button class="he-back" :disabled="!canRedo" @click="redo" aria-label="重做">↷</button>
+      <span class="he-save small muted">{{ saveState }}</span>
     </header>
+    <button v-else class="he-exit" @click="exitPreview" aria-label="退出预览">✕</button>
 
     <!-- 画布：编辑模式只渲染当前编辑页（点选/拖动/四角缩放/旋转）；预览模式（?preview=1，2026-11-28 用户定稿
          「预览不改」）渲染全部页面、可滑动翻页、无编辑手势与 dock -->
@@ -575,8 +577,10 @@ const cardData = ref(null)
 const curPage = computed(() => schema.value.pages[selPage.value] || { els: [] })
 const curEls = computed(() => curPage.value.els || [])
 const curPageData = computed(() => ({ schema: { accent: schema.value.accent || '', transition: schema.value.transition || 'auto', pages: [curPage.value] }, card: cardData.value, watermark: watermark.value }))
-// 只读预览（?preview=1）：全页可滑、无编辑手势与 dock，画布行为与公开页一致（2026-11-28 用户定稿「预览不改」）
+// 只读预览（?preview=1）：全屏访客视角——渲染数据与公开页同源，草稿实时看；✕ 退出回编辑器
+// （编辑器自动保存，退出重进即回到草稿。2026-11-28 用户定稿「预览要像其它用户在看的那种体验」）
 const previewMode = route.query.preview === '1'
+function exitPreview() { router.replace(`/me/h5/${route.params.id}`) }
 const previewData = computed(() => ({ schema: schema.value, card: cardData.value, watermark: watermark.value }))
 const selKey = computed(() => (selBlock.value >= 0 ? `${selPage.value}-${selBlock.value}` : ''))
 const block = computed(() => curEls.value[selBlock.value] || null)
@@ -1032,10 +1036,13 @@ watch(() => route.params.id, () => { if (route.name === 'h5-editor') location.re
    原 sticky bottom:0 在老微信 X5 WebView 上可能不贴视口底、且会被全局 tabbar 盖住；
    页面留 76px 空位，画布与提示行不会被操作条遮住。 */
 .he { min-height: 100vh; padding-bottom: 76px; padding-bottom: calc(76px + env(safe-area-inset-bottom)); background: var(--bg-page, #f4f6fb); display: flex; flex-direction: column; }
-/* 只读预览：无 dock，不预留底栏空位；⚠️ 必须锁一屏确定高度（height 而非 min-height）——
-   翻页模式下页面是绝对定位叠放，渲染树逐级 height:100%，根容器高度随内容时整个画布塌成 0 = 黑屏（实锤） */
-.he.he-preview { height: 100svh; padding-bottom: 16px; }
-.he-title-plain { border-color: transparent; background: transparent; }
+/* 只读预览：无 dock/顶栏，不预留任何空位；⚠️ 必须锁一屏确定高度（height 而非 min-height）——
+   翻页模式下页面是绝对定位叠放，渲染树逐级 height:100%，根容器高度随内容时整个画布塌成 0 = 黑屏（实锤）。
+   全屏口径（2026-11-28 用户定稿）：画布四边贴满视口、无圆角/描边/留白，与公开页访客所见一致 */
+.he.he-preview { height: 100svh; padding-bottom: 0; }
+.he-preview .he-canvas { padding: 0; }
+.he-preview .he-canvas-in { width: 100%; border-radius: 0; border: 0; box-shadow: none; }
+.he-exit { position: fixed; top: calc(10px + var(--safe-top, 0px)); left: 12px; z-index: 30; width: 34px; height: 34px; border: 0; border-radius: 50%; background: rgba(15,23,42,.5); color: #fff; font-size: 15px; line-height: 1; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 /* 编辑画布切页入场动画：预览/公开页走翻页动效，编辑态单页重挂载用这个补翻页感 */
 .he-page-anim { animation: he-page-in .42s cubic-bezier(.22, .8, .3, 1) both; }
 @keyframes he-page-in { from { opacity: 0; transform: translateY(26px); } }
