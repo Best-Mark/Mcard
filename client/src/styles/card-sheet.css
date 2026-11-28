@@ -13,7 +13,7 @@
 /* 持有者预览：整页与公开页同款，但 /me 是 tab 页、底部还有 MemberNav（z110），dock/fab 抬到它上方避免被盖 */
 /* padding-top 用页面背景色给出与顶栏的间距（不用 margin，避免透出 body 白色） */
 .cv-page.cv-owner { padding-top: 12px; padding-bottom: 148px; }
-.cv-owner .cv-dock { bottom: 56px; }
+.cv-owner .cv-dock { bottom: calc(64px + env(safe-area-inset-bottom)); }
 /* 二维码调节态（2026-11-26 定稿；2026-11-27 用户截图「二维码里没有功能了」修整）：
    名片本体让位，顶部只留当前二维码大图直视（调码色即时可见）；四角框是扫码框式外围装饰。
    大图与卡片右上角小码同源（qr.png 不带 scan=1，保留美化样式），v=qrStamp 击穿服务端缓存。
@@ -310,11 +310,12 @@
 .map-ico { flex: 0 0 34px; width: 34px; height: 34px; display: block; object-fit: contain; border-radius: 8px; }
 .map-arrow { margin-left: auto; color: #94a3b8; font-size: 16px; }
 .cv-footer { text-align: center; color: var(--t-muted); font-size: 11px; padding: 26px 0 10px; }
-/* 底部 dock（2026-11-28 用户定稿：背景与左上角返回签同质感——高档磨砂玻璃）：
-   ⚠️ 两条真机实锤，勿回退：① X5/老内核 backdrop-filter blur 静默失效，质感绝不能依赖 blur；
-   ② 烟色必须离白足够远——#f3efe8@88% 垫白底仍被看成纯白平板（用户实锤），现用 #eae4d8@92%，
-   垫白底 ≈ #ece6db，与白色卡片明确分层。质感 = 暖灰米色 + 内高光 + 上抛投影，blur 仅作加成 */
-.cv-dock { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 5px; padding: 10px 10px calc(10px + env(safe-area-inset-bottom)); background: rgba(234,228,216,.92); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-top: 1px solid rgba(255,255,255,.45); z-index: 60; color: #26221c; }
+/* 底部 dock（2026-11-28 用户定稿：与左上角返回签同款「悬浮玻璃片」形态）：
+   ⚠️ 三条真机/用户实锤，勿回退：① X5/老内核 backdrop-filter blur 静默失效，质感绝不能依赖 blur；
+   ② #f3efe8@88% 垫白底被看成纯白（色差太小）；③ 通栏贴底平板没有「玻璃片」形态感——
+   现改为悬浮圆角玻璃板：四周留 8px、圆角 18、上亮下暗渐变模拟玻璃曲面 + 三重投影 + 顶部内高光，
+   与返回签同一设计语言。blur 仅给支持的设备当加成；按钮文字深墨色（勿写回白字） */
+.cv-dock { position: fixed; left: 8px; right: 8px; bottom: 8px; bottom: calc(8px + env(safe-area-inset-bottom)); display: flex; gap: 5px; padding: 10px; background: rgba(234,228,216,.92); background: linear-gradient(180deg, rgba(241,236,227,.94), rgba(226,219,206,.88)); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,.55); border-radius: 18px; z-index: 60; color: #26221c; box-shadow: 0 12px 32px -12px rgba(31,27,22,.35), 0 2px 8px rgba(31,27,22,.10), inset 0 1px 0 rgba(255,255,255,.65); }
 .cv-dock .btn { flex: 1; min-width: 0; padding: 0 2px; font-size: 12.5px; white-space: nowrap; }
 .cv-dock .btn-primary { background: var(--t-accent, #2563eb); color: #fff; border-color: transparent; }
 .cv-dock .btn-ghost { background: rgba(255,255,255,.18); color: #26221c; border-color: rgba(38,34,28,.10); }
@@ -325,12 +326,13 @@
    （与 .cv-back 同族：白玻璃垫深底显灰、垫浅底显暖，这里固定暖调保证浅底上也有玻璃感）；
    不支持滤镜的老 WebView 由第一层暖烟色兜底。 */
 .cv-page .cv-dock.cv-dock-glass {
-  /* ⚠️ 必须保持 fixed 贴底：这里若写 position:relative 会让 dock 掉进内容流悬在半空（2026-11-25 实锤）。 */
+  /* ⚠️ 必须保持 fixed 贴底悬浮：这里若写 position:relative 会让 dock 掉进内容流悬在半空（2026-11-25 实锤）。 */
   overflow: hidden;
-  gap: 8px; padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+  gap: 8px; padding: 12px;
   background: rgba(234,228,216,.92);
-  border-top: 1px solid rgba(255,255,255,.45);
-  box-shadow: 0 -10px 34px -16px rgba(31,27,22,.22), inset -1px 1px 0 rgba(255,255,255,.50);
+  background: linear-gradient(180deg, rgba(241,236,227,.94), rgba(226,219,206,.88));
+  border: 1px solid rgba(255,255,255,.55);
+  box-shadow: 0 12px 32px -12px rgba(31,27,22,.35), 0 2px 8px rgba(31,27,22,.10), inset 0 1px 0 rgba(255,255,255,.65);
   -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
 }
 /* 微光粒子已移除（2026-11-26 用户实锤）：主题色亮点在 34% 处正好落在「编辑/配色」两按钮缝隙里，
@@ -368,12 +370,11 @@
   background: rgba(255,255,255,.18); color: #26221c;
   box-shadow: inset 0 0 0 1px rgba(38,34,28,.08);
 }
-/* 极简白 / 纸白模板：底栏与全站统一暖调磨砂玻璃，描边/阴影仍带主题色微染 */
+/* 极简白 / 纸白模板：底栏形态与全站统一（悬浮玻璃板），仅描边/阴影保留主题色微染 */
 .cv-page.cv-tpl-minimal .cv-dock.cv-dock-glass,
 .cv-page.cv-clean.cv-tpl-paper .cv-dock.cv-dock-glass {
-  background: rgba(234,228,216,.92);
-  border-top-color: rgba(var(--glow-rgb, 37,99,235), .30);
-  box-shadow: 0 -6px 22px -14px rgba(var(--glow-rgb, 37,99,235), .35);
+  border-color: rgba(var(--glow-rgb, 37,99,235), .30);
+  box-shadow: 0 12px 32px -12px rgba(var(--glow-rgb, 37,99,235), .45), inset 0 1px 0 rgba(255,255,255,.65);
 }
 .cv-page.cv-tpl-minimal .cv-dock.cv-dock-glass .dock-btn,
 .cv-page.cv-clean.cv-tpl-paper .cv-dock.cv-dock-glass .dock-btn { color: var(--t-text, #374151); border-color: rgba(var(--glow-rgb, 37,99,235), .20); }
