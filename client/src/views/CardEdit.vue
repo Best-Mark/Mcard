@@ -80,15 +80,15 @@
               <div class="field"><label>支付宝账号</label><input v-model="form.alipay" class="input" /></div>
               <div class="field"><label>WhatsApp</label><input v-model="form.whatsapp" class="input" /></div>
             </div>
-            <!-- 收款码（2026-11-28）：上传微信/支付宝收款码，项目自动合成一张「合一收款码」；
-                 付款方扫合一码打开名片页后按支付环境弹出对应收款码，长按识别即付款。 -->
+            <!-- 收款码：上传微信/支付宝收款码，自动生成一张聚合收款码（内容=支付网关 URL）；
+                 付款方扫一扫由服务端按扫码环境分流——支付宝直唤收银台、微信出干净码长按直付。 -->
             <div class="identity-block divided">
               <div class="block-title">💳 收款码（选填）</div>
               <div class="grid2">
                 <ImageField v-model="form.wechat_pay_qr" label="微信收款码" />
                 <ImageField v-model="form.alipay_pay_qr" label="支付宝收款码" />
               </div>
-              <p class="small muted" style="margin:8px 0 0">上传微信 / 支付宝「收付款 → 收款」里的收款码截图，保存时会自动核对是不是收款码、有没有放对位置。自动生成一张合一收款码：付款方扫一扫自动打开付款界面。点名片右上角二维码，「收款码」里可保存这张合一码。</p>
+              <p class="small muted" style="margin:8px 0 0">上传微信 / 支付宝「收付款 → 收款」里的收款码截图，保存时会自动核对是不是收款码、有没有放对位置。自动生成一张聚合收款码：微信 / 支付宝扫一扫，自动打开付款界面。点名片右上角二维码，「收款码」里可保存这张聚合码。</p>
             </div>
             <div class="field">
               <label>所在地区 <span class="muted small">（省 / 市 / 区 / 街道，可选到任意一级；定位用于导航与集市距离）</span></label>

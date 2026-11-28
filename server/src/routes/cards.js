@@ -5,7 +5,7 @@ const { ok, fail, wrap } = require('../utils/response')
 const { authRequired, parseToken } = require('../utils/auth')
 const { makeSlug, normalizeSlug } = require('../utils/slug')
 const qr = require('../services/qrcode')
-const { inspectPayQr, readPayQr, safePayLink, composePayPair } = require('../services/payQr')
+const { inspectPayQr, readPayQr, safePayLink } = require('../services/payQr')
 const { normalizeStyle } = qr
 const vcard = require('../services/vcard')
 const { CARD_TEMPLATES, isTemplate, DEFAULT_TEMPLATE } = require('../utils/cardTemplates')
@@ -371,11 +371,108 @@ router.get('/public/:slug/vcard.png', wrap(async (req, res) => {
   res.type('png').set('Cache-Control', 'public, max-age=60').send(buf)
 }))
 
-// 合一收款码（2026-11-28）：内容 = 名片页 URL + pay=1。付款方用微信/支付宝/相机扫这张码打开名片页，
-// 页面按支付环境自动弹出对应收款码（微信→cards.wechat_pay_qr，支付宝→cards.alipay_pay_qr），长按识别即付款。
-// 一张 QR 不可能同时编码两个支付协议（微信/支付宝各自封闭），聚合码的业界标准做法就是
-// 「一张 URL 码 + 落地页按 UA 分流」。识别率第一：恒 plain 纯黑白标准码，不做美化。
-const payQrText = req => requestUrl(req, `/c/${req.params.slug}?pay=1`)
+// 合一收款码（2026-11-28 聚合支付网关定稿「二码合一」）：一张码 = 本网关 URL。
+// 付款方用微信 / 支付宝 / 相机扫这张码都落到同一个地址，服务端按扫码 App 的 UA 分流
+// （业界合并收款码标准做法 = 一张 URL 码 + 落地分流，见 /public/:slug/pay 网关端点）。
+// 识别率第一：恒 plain 纯黑白标准码，不做美化。
+const payQrText = req => requestUrl(req, `/api/cards/public/${req.params.slug}/pay`)
+
+// —— 聚合支付网关（GET /public/:slug/pay，2026-11-28 二码合一）——
+// 一张收款码通吃微信 / 支付宝：付款方用什么 App 扫，服务端按 UA 分流到最短付款路径，复杂度全在服务端：
+//   支付宝(AlipayClient) → 302 直跳解码出的支付宝付款链接（qr.alipay.com / alipays://），直接唤起收银台，
+//     零中间页零感知（scheme 链接部分容器不认 302 Location 的非 http 跳转，改走极简跳转页 + 兜底按钮）；
+//   微信(MicroMessenger) → 微信内置浏览器拦 wxp:// 等 scheme 跳转（真机实锤「点了也没唤起」），
+//     落地即出干净微信收款码（pay-link.png 重渲染纯黑白码，长按必出「识别图中二维码」）长按直付——
+//     微信内个人收款最短路径；
+//   其他（相机 / QQ / 浏览器）→ 轻量选择页：打开支付宝按钮 + 微信码长按。
+// 付款链接来自上传收款码图内解码（safePayLink 白名单过滤），用户不填任何商户号。
+// ⚠️ 分流结果随 UA 变化，响应恒 Cache-Control: no-store——CDN / 浏览器绝不能按 URL 缓存本页，
+// 否则支付宝可能收到微信版页面（串页）。
+const escHtml = s => String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
+// 注入 <script> 的字符串：除 JSON 转义外必须再把 < 转 \u003c，防链接里藏 </script> 破壳
+const jsStr = s => JSON.stringify(String(s || '')).replace(/</g, '\\u003c')
+
+const payGateShell = ({ title, body }) => `<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>${title}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f5f3f0; color: #26221c; font: 15px/1.6 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
+  .wrap { max-width: 420px; margin: 0 auto; text-align: center; padding: 28px 20px 40px; padding: calc(28px + env(safe-area-inset-top)) 20px calc(40px + env(safe-area-inset-bottom)); }
+  h1 { font-size: 18px; font-weight: 600; letter-spacing: 2px; }
+  .sub { margin: 8px 0 20px; color: #8a8378; font-size: 13px; letter-spacing: 1px; }
+  .code { display: block; width: 72vw; max-width: 320px; margin: 0 auto; padding: 14px; background: #ffffff; border-radius: 16px; box-shadow: 0 10px 30px rgba(31, 27, 22, .08); }
+  .tip { margin: 16px 0 0; color: #6b6459; font-size: 14px; letter-spacing: 1px; }
+  .btn { display: inline-block; margin: 8px 0 4px; padding: 13px 44px; border-radius: 999px; background: #26221c; color: #ffffff; text-decoration: none; font-size: 15px; letter-spacing: 2px; }
+  .back { display: inline-block; margin-top: 26px; color: #8a8378; font-size: 13px; letter-spacing: 1px; text-decoration: none; }
+</style></head><body><div class="wrap">${body}</div></body></html>`
+
+router.get('/public/:slug/pay', wrap((req, res) => {
+  const row = db.prepare('SELECT slug, name, wechat_pay_qr, alipay_pay_qr, wechat_pay_link, alipay_pay_link FROM cards WHERE slug = ?').get(req.params.slug)
+  res.set('Cache-Control', 'no-store')
+  if (!row) return res.status(404).type('html').send(payGateShell({ title: '名片不存在', body: '<h1>名片不存在</h1><p class="sub">链接可能已失效</p>' }))
+  const name = escHtml(row.name || '对方')
+  const back = `<a class="back" href="/c/${encodeURIComponent(row.slug)}">返回名片</a>`
+  // 干净码（图内付款链接重渲染纯黑白，长按必出识别菜单）优先；无链接的存量异形码回落上传原图
+  const wxImg = row.wechat_pay_link ? `/api/cards/public/${row.slug}/pay-link.png?platform=wechat&size=720` : (row.wechat_pay_qr || '')
+  const aliImg = row.alipay_pay_link ? `/api/cards/public/${row.slug}/pay-link.png?platform=alipay&size=720` : (row.alipay_pay_qr || '')
+  const aliLink = safePayLink('alipay', row.alipay_pay_link)
+  const wxFallback = row.wechat_pay_qr && row.wechat_pay_link ? ` onerror="this.onerror=null;this.src=${jsStr(row.wechat_pay_qr)}"` : ''
+  const aliFallback = row.alipay_pay_qr && row.alipay_pay_link ? ` onerror="this.onerror=null;this.src=${jsStr(row.alipay_pay_qr)}"` : ''
+  const ua = String(req.headers['user-agent'] || '')
+
+  // 支付宝：直唤收银台。https 付款链接 302 零中间页；scheme 链接走极简跳转页（部分容器不认非 http 的 Location）
+  if (/AlipayClient/i.test(ua)) {
+    if (aliLink && /^https?:/i.test(aliLink)) return res.redirect(302, aliLink)
+    if (aliLink) {
+      return res.type('html').send(payGateShell({
+        title: `向 ${name} 付款`,
+        body: `<h1>向 ${name} 付款</h1><p class="sub">正在打开支付宝…</p><a class="btn" href="${escHtml(aliLink)}">打开支付宝付款</a><script>location.replace(${jsStr(aliLink)})</script>`
+      }))
+    }
+    if (aliImg) {
+      return res.type('html').send(payGateShell({
+        title: `向 ${name} 付款`,
+        body: `<h1>向 ${name} 付款</h1><p class="sub">支付宝</p><img class="code" src="${escHtml(aliImg)}" alt="支付宝收款码"${aliFallback}><p class="tip">长按识别二维码，立即支付</p>${back}`
+      }))
+    }
+    if (wxImg) {
+      // 只有微信码的名片：支付宝内打不开微信码，给对称兜底（同微信分支「对方暂未开通微信收款」口径）
+      return res.type('html').send(payGateShell({
+        title: `向 ${name} 付款`,
+        body: `<h1>向 ${name} 付款</h1><p class="sub">对方暂未开通支付宝收款</p><img class="code" src="${escHtml(wxImg)}" alt="微信收款码"${wxFallback}><p class="tip">保存图片后用微信扫一扫</p>${back}`
+      }))
+    }
+    return res.type('html').send(payGateShell({ title: `向 ${name} 付款`, body: `<h1>向 ${name} 付款</h1><p class="sub">对方还没上传收款码</p>${back}` }))
+  }
+
+  // 微信：scheme 跳转被微信内置浏览器拦截，落地即出干净微信收款码，长按直付
+  if (/MicroMessenger/i.test(ua)) {
+    if (wxImg) {
+      return res.type('html').send(payGateShell({
+        title: `向 ${name} 付款`,
+        body: `<h1>向 ${name} 付款</h1><p class="sub">微信支付</p><img class="code" src="${escHtml(wxImg)}" alt="微信收款码"${wxFallback}><p class="tip">长按识别二维码，立即支付</p>${back}`
+      }))
+    }
+    if (aliImg) {
+      return res.type('html').send(payGateShell({
+        title: `向 ${name} 付款`,
+        body: `<h1>向 ${name} 付款</h1><p class="sub">对方暂未开通微信收款</p><img class="code" src="${escHtml(aliImg)}" alt="支付宝收款码"${aliFallback}><p class="tip">保存图片后用支付宝扫一扫</p>${back}`
+      }))
+    }
+    return res.type('html').send(payGateShell({ title: `向 ${name} 付款`, body: `<h1>向 ${name} 付款</h1><p class="sub">对方还没上传收款码</p>${back}` }))
+  }
+
+  // 其他扫码器 / 浏览器：选择页——支付宝走链接直唤，微信给码长按
+  const blocks = []
+  if (aliLink) blocks.push(`<a class="btn" href="${escHtml(aliLink)}">打开支付宝付款</a>`)
+  else if (aliImg) blocks.push(`<p class="sub">支付宝</p><img class="code" src="${escHtml(aliImg)}" alt="支付宝收款码"${aliFallback}><p class="tip">支付宝 · 长按识别二维码付款</p>`)
+  if (wxImg) blocks.push(`<p class="sub">微信</p><img class="code" src="${escHtml(wxImg)}" alt="微信收款码"${wxFallback}><p class="tip">微信 · 长按识别二维码付款</p>`)
+  if (!blocks.length) blocks.push('<p class="sub">对方还没上传收款码</p>')
+  res.type('html').send(payGateShell({ title: `向 ${name} 付款`, body: `<h1>向 ${name} 付款</h1>${blocks.join('')}${back}` }))
+}))
 
 router.get('/public/:slug/pay.png', wrap(async (req, res) => {
   const row = db.prepare('SELECT slug FROM cards WHERE slug = ?').get(req.params.slug)
@@ -398,17 +495,6 @@ router.get('/public/:slug/pay-link.png', wrap(async (req, res) => {
   if (!text) return fail(res, 404, '暂无付款链接')
   const size = Math.min(1600, Math.max(256, Number(req.query.size) || 720))
   const buf = await qr.plainPng(text, { size })
-  res.type('png').set('Cache-Control', 'public, max-age=60').send(buf)
-}))
-
-// 双码合一图（2026-11-28 零中间过程定稿）：微信码（绿框）+ 支付宝码（蓝框）合成一张立牌，
-// 各扫各的直接原生付款。给「保存二维码」下载/分享用；弹层里两码分开显示（pay-link.png），
-// 长按识别才能各自命中——合成图长按只会随机认一张。
-router.get('/public/:slug/pay-pair.png', wrap(async (req, res) => {
-  const row = db.prepare('SELECT slug, wechat_pay_qr, alipay_pay_qr, wechat_pay_link, alipay_pay_link FROM cards WHERE slug = ?').get(req.params.slug)
-  if (!row) return fail(res, 404, '名片不存在')
-  const buf = await composePayPair({ wechatUrl: row.wechat_pay_qr, alipayUrl: row.alipay_pay_qr, wechatLink: row.wechat_pay_link, alipayLink: row.alipay_pay_link })
-  if (!buf) return fail(res, 404, '暂无收款码')
   res.type('png').set('Cache-Control', 'public, max-age=60').send(buf)
 }))
 
