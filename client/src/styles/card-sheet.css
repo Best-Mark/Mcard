@@ -315,7 +315,7 @@
    ⚠️ 两条实锤勿回退：① X5/老内核 backdrop-filter blur 静默失效（垫深底靠半透明白自然显灰、
    垫浅底会偏透，如嫌透可单点调本行透明度）；② clean 模板的 .cv-page.cv-clean .cv-dock 不得接管
    background（同特异性靠后会盖掉玻璃材质，实锤过）。按钮文字深墨色（勿写回白字） */
-.cv-dock { position: fixed; left: 8px; right: 8px; bottom: 8px; bottom: calc(8px + env(safe-area-inset-bottom)); display: flex; gap: 5px; padding: 10px; background: rgba(255,255,255,.50); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.55); border-radius: 18px; z-index: 60; color: #26221c; box-shadow: 0 12px 32px -12px rgba(31,27,22,.35), 0 2px 8px rgba(31,27,22,.10), inset 0 1px 0 rgba(255,255,255,.65); }
+.cv-dock { position: fixed; left: 8px; right: 8px; bottom: 8px; bottom: calc(8px + env(safe-area-inset-bottom)); display: flex; gap: 5px; padding: 10px; background: rgba(255,255,255,.50); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.55); border-radius: 18px; z-index: 60; color: #26221c; box-shadow: inset 0 1px 0 rgba(255,255,255,.65); }
 .cv-dock .btn { flex: 1; min-width: 0; padding: 0 2px; font-size: 12.5px; white-space: nowrap; }
 .cv-dock .btn-primary { background: var(--t-accent, #2563eb); color: #fff; border-color: transparent; }
 .cv-dock .btn-ghost { background: rgba(255,255,255,.22); color: #26221c; border-color: rgba(38,34,28,.10); }
@@ -331,7 +331,7 @@
   gap: 8px; padding: 12px;
   background: rgba(255,255,255,.50);
   border: 1px solid rgba(255,255,255,.55);
-  box-shadow: 0 12px 32px -12px rgba(31,27,22,.35), 0 2px 8px rgba(31,27,22,.10), inset 0 1px 0 rgba(255,255,255,.65);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.65);
   -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
 }
 /* 微光粒子已移除（2026-11-26 用户实锤）：主题色亮点在 34% 处正好落在「编辑/配色」两按钮缝隙里，

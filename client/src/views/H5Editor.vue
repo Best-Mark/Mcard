@@ -129,6 +129,7 @@
           <b>{{ TYPE_LABEL[block.type] }}</b>
           <span class="he-f-actions">
             <button class="he-mini" @click="duplicateBlock(); formOpen = false" :disabled="curEls.length >= 40">⧉ 复制</button>
+            <button class="he-mini danger" @click="removeBlock(); formOpen = false">✕ 删除</button>
             <button class="he-mini" @click="formOpen = false">完成</button>
           </span>
         </div>
@@ -253,6 +254,7 @@
           <b>{{ TYPE_LABEL[block.type] }} 属性</b>
           <span class="he-f-actions">
             <button class="he-mini" @click="duplicateBlock(); styleOpen = false" :disabled="curEls.length >= 40">⧉ 复制</button>
+            <button class="he-mini danger" @click="removeBlock(); styleOpen = false">✕ 删除</button>
             <button class="he-mini" @click="styleOpen = false">完成</button>
           </span>
         </div>
@@ -702,10 +704,11 @@ function applyHist(i) {
 function undo() { snapNow(); if (canUndo.value) applyHist(histIdx.value - 1) }
 function redo() { snapNow(); if (canRedo.value) applyHist(histIdx.value + 1) }
 function removeBlock() {
-  if (selBlock.value < 0) return
+  if (selBlock.value < 0 || !block.value) { showToast('先点选要删除的元素', 'error'); return }
   curEls.value.splice(selBlock.value, 1)
   selBlock.value = Math.max(0, selBlock.value - 1)
   markDirty()
+  showToast('已删除', 'success')
 }
 // 层级（自由画布）：↑↓ 数组排序不再适用，改为 z 序调整（属性面板「层级」）
 function layerOp(op) {
