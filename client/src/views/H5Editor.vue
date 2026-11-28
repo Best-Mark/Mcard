@@ -27,7 +27,7 @@
         <!-- page-offset：画布只渲染当前页，offset 让块的 key 与真实页号对齐（选中态/拖动不串页） -->
         <H5Render :data="previewMode ? previewData : curPageData" :editable="!previewMode" :page-offset="selPage" :sel-key="selKey" @pick="onPick" @reorder="onReorder" @quick="onQuick" @inplace="markDirty" @geom="markDirty" />
       </div>
-      <div v-if="!previewMode" class="he-hint small muted">点选元素 · 拖动移动 · 四角缩放 · 顶部 ⟳ 旋转 · 再点改内容{{ block ? ` · 当前：第 ${selPage + 1} 页 ${TYPE_LABEL[block.type]}` : '' }}</div>
+      <div v-if="!previewMode" class="he-hint small muted">每页一屏 · 内容多了点「页面 → 加一页」 · 点选元素 · 拖动移动 · 四角缩放 · 再点改内容{{ block ? ` · 当前：第 ${selPage + 1} 页 ${TYPE_LABEL[block.type]}` : '' }}</div>
     </div>
     <div v-else class="he-loading">加载中…</div>
 
@@ -109,7 +109,7 @@
               <button class="he-chip" @click="openBg">◧ 页面背景</button>
               <button class="he-chip" @click="openTpls">套用官方模板…</button>
               <span class="he-grp">切换动效</span>
-              <BottomSelect :model-value="schema.transition || 'scroll'" :options="TRANSITION_OPTS" title="页面切换动效" @update:modelValue="schema.transition = $event; markDirty()" />
+              <BottomSelect :model-value="schema.transition || 'slide'" :options="TRANSITION_OPTS" title="页面切换动效" @update:modelValue="schema.transition = $event; markDirty()" />
             </template>
             <!-- 发布行：状态 + 发布/更新 + 关联名片开关（一对多，2026-11-27）+ 复制链接 + 下架 -->
             <template v-else>
@@ -377,9 +377,9 @@ const TYPE_LABEL = { cover: '封面', text: '文本', hero: '图文', image: '�
 // 自由画布（2026-11-27 用户定稿上 MAKA 同款）：文本/图片/形状/按钮为自由元素，其余为组件元素（绝对定位复用原表单）
 const FREE_TYPES = ['text', 'image', 'shape', 'button']
 const ADDABLE = ['text', 'image', 'shape', 'button', 'gallery', 'contact', 'map', 'buttons', 'video', 'form', 'music', 'endcard']
-// 页面切换过渡动效（2026-11-27 路线③）：scroll=原生滚动（默认兼容存量页）/ slide / fade / flip
+// 页面切换过渡动效（2026-11-28 用户定稿「每页全屏 + 翻页动效」）：滑动翻页为默认，旧「上下滚动」已并入默认不再单列
 const TRANSITION_OPTS = [
-  { value: 'scroll', label: '上下滚动（默认）' }, { value: 'slide', label: '滑动翻页' }, { value: 'fade', label: '淡入淡出' }, { value: 'flip', label: '翻页动效' }
+  { value: 'slide', label: '滑动翻页（默认）' }, { value: 'fade', label: '淡入淡出' }, { value: 'flip', label: '翻页动效' }
 ]
 // 入场动效选项（'' = 智能默认，与渲染层 animOf 的类型默认一致；none = 关闭）
 const ANIM_OPTS = [
@@ -430,7 +430,7 @@ const cardData = ref(null)
 // 自由画布：页内元素一律 els（打开旧 blocks 页时已自动转换），curEls 是当前页元素数组
 const curPage = computed(() => schema.value.pages[selPage.value] || { els: [] })
 const curEls = computed(() => curPage.value.els || [])
-const curPageData = computed(() => ({ schema: { accent: schema.value.accent || '', transition: schema.value.transition || 'scroll', pages: [curPage.value] }, card: cardData.value, watermark: watermark.value }))
+const curPageData = computed(() => ({ schema: { accent: schema.value.accent || '', transition: schema.value.transition || 'slide', pages: [curPage.value] }, card: cardData.value, watermark: watermark.value }))
 // 只读预览（?preview=1）：全页可滑、无编辑手势与 dock，画布行为与公开页一致（2026-11-28 用户定稿「预览不改」）
 const previewMode = route.query.preview === '1'
 const previewData = computed(() => ({ schema: schema.value, card: cardData.value, watermark: watermark.value }))
@@ -751,7 +751,7 @@ function applyTpl(t) {
   if (!confirm(`套用「${t.name}」会覆盖当前全部页面内容，确定？`)) return
   // 模板是 blocks 格式：套用即转自由画布 els（估高堆叠初稿），保持同一编辑形态
   const pages = JSON.parse(JSON.stringify(t.pages || [])).map(p => ({ bg: p.bg || { color: '', image: '' }, els: pageToEls(p) }))
-  schema.value = { accent: t.accent, transition: t.transition || 'scroll', pages }
+  schema.value = { accent: t.accent, transition: t.transition || 'slide', pages }
   selPage.value = 0; selBlock.value = 0
   tplOpen.value = false; dockMode.value = 'main'
   markDirty()
@@ -769,7 +769,7 @@ onMounted(async () => {
     const rawPages = (raw.pages && raw.pages.length) ? raw.pages : [{ blocks: [{ type: 'cover', title: '', subtitle: '', cover: '' }] }]
     schema.value = {
       accent: raw.accent || '',
-      transition: raw.transition || 'scroll',
+      transition: raw.transition || 'slide',
       pages: rawPages.map(p => ({ bg: p.bg || { color: '', image: '' }, els: pageToEls(p) }))
     }
     loaded.value = true

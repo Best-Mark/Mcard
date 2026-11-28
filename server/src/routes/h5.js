@@ -17,8 +17,9 @@ const FREE_MAX_H5 = 1, PAID_MAX_H5 = 10
 const BLOCK_TYPES = ['cover', 'text', 'hero', 'gallery', 'contact', 'map', 'buttons', 'video', 'music', 'form', 'endcard']
 // 块入场动效白名单（2026-11-27 编辑体验一流化）：'' = 未设置（渲染层按块类型智能默认），'none' = 显式关闭
 const BLOCK_ANIMS = ['none', 'up', 'fade', 'zoom', 'left', 'right']
-// 页面切换过渡（2026-11-27 路线③）：scroll=跟随滚动（默认/兼容）/ slide=滑动推入 / fade=淡入淡出 / flip=3D 翻页
-const TRANSITIONS = ['scroll', 'slide', 'fade', 'flip']
+// 页面切换过渡（2026-11-28 用户定稿「每页全屏 + 翻页动效」）：slide=滑动推入（默认）/ fade=淡入淡出 / flip=3D 翻页；
+// 旧 scroll（原生滚动）不再单独支持，清洗时并入默认 slide（渲染层对 scroll 值也按 slide 兜底）
+const TRANSITIONS = ['slide', 'fade', 'flip']
 const str = (v, max) => String(v ?? '').slice(0, max)
 
 function planActiveOf(userId) {
@@ -90,11 +91,11 @@ function sanitizeFields(type, b, free) {
   return out
 }
 
-// 几何清洗（自由画布）：设计单位（画布宽 750），数值限幅防脏数据撑爆布局
+// 几何清洗（自由画布）：设计单位（画布宽 750、页高锁死 1334 = 9:16 一屏），数值限幅防脏数据撑爆布局
 function sanitizeG(g) {
   return {
-    x: num(g?.x, -750, 2250, 0), y: num(g?.y, -2000, 30000, 0),
-    w: num(g?.w, 16, 750, 320), h: num(g?.h, 16, 4000, 120),
+    x: num(g?.x, -750, 2250, 0), y: num(g?.y, -400, 1500, 0),
+    w: num(g?.w, 16, 750, 320), h: num(g?.h, 16, 1500, 120),
     rot: num(g?.rot, -180, 180, 0), opacity: num(g?.opacity, 0, 1, 1),
     z: Math.round(num(g?.z, 0, 999, 0))
   }
@@ -102,10 +103,10 @@ function sanitizeG(g) {
 
 function sanitizeSchema(raw, maxPages) {
   const accent = hex(raw?.accent)
-  // 页面切换过渡动效（2026-11-27 路线③）：scroll=原生滚动（默认兼容）/ slide / fade / flip
-  const transition = TRANSITIONS.includes(raw?.transition) ? raw.transition : 'scroll'
+  // 页面切换过渡动效（2026-11-28 用户定稿）：slide（默认）/ fade / flip
+  const transition = TRANSITIONS.includes(raw?.transition) ? raw.transition : 'slide'
   const pagesIn = Array.isArray(raw?.pages) ? raw.pages.slice(0, maxPages) : []
-  if (!pagesIn.length) return { transition: 'scroll', pages: [{ blocks: [{ type: 'cover', title: '', subtitle: '', cover: '' }] }] }
+  if (!pagesIn.length) return { transition: 'slide', pages: [{ blocks: [{ type: 'cover', title: '', subtitle: '', cover: '' }] }] }
   const pages = pagesIn.map(p => {
     const bg = { color: hex(p?.bg?.color), image: str(p?.bg?.image, 500) } // 页面背景（自由画布）
     const els = (Array.isArray(p?.els) ? p.els : []).slice(0, 40).map(e => {

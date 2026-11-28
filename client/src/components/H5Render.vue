@@ -19,7 +19,7 @@
   <div class="hp" :class="{ 'hp-editable': editable }" :style="{ '--hp-accent': accent }">
     <div class="hp-pages" ref="pagesEl" :class="pagesCls" @scroll.passive="onScroll"
       @touchstart="onPgTouchStart" @touchmove="onPgTouchMove" @touchend="onPgTouchEnd" @touchcancel="onPgTouchEnd" @wheel="onWheel">
-      <section v-for="(p, pi) in pages" :key="pi" class="hp-page" :class="{ on: pi === cur, 'hp-page-free': isFree(p) }" :style="pageStyle(pi)"
+      <section v-for="(p, pi) in pages" :key="pi" class="hp-page" :class="{ on: pi === cur, 'hp-page-free': isFree(p) }" :style="[pageStyle(pi), isFree(p) ? freeBgStyle(p) : null]"
         @touchstart="onDragStart(pi, $event)" @touchmove="onDragMove" @touchend="onDragEnd" @touchcancel="onDragEnd">
         <!-- 自由画布（2026-11-27）：els 绝对定位（设计宽 750 等比缩放）；旧 blocks 收进 .hp-flow 流式布局 -->
         <div :class="isFree(p) ? 'hp-canvas' : 'hp-flow'" :style="isFree(p) ? canvasStyle(p, pi) : null"
@@ -426,21 +426,23 @@ function dragStyle(bi) {
 const isFree = p => !!(p && Array.isArray(p.els) && p.els.length)
 const isFreePage = pi => isFree(pages.value[pi])
 const renderList = p => (isFree(p) ? p.els : ((p && p.blocks) || []))
-// 页面设计高：基准 1334（750 海报 9:16），元素超出则加高（长页）
-const phOf = p => {
-  let h = 1334
-  for (const e of ((p && p.els) || [])) {
-    const g = e.g || {}
-    h = Math.max(h, (Number(g.y) || 0) + (Number(g.h) || 0) + 60)
-  }
-  return h
-}
+// 页面设计高：锁死 1334（750×1334 = 9:16 一屏海报）。2026-11-28 用户定稿「每页一个全屏页、不允许长页、
+// 内容多了加页」：不再随元素加高，超出页底的元素由 .hp-canvas overflow:hidden 裁掉，编辑器拖动/缩放同步限幅
+const PAGE_H = 1334
+const phOf = () => PAGE_H
 const u = ref(1) // 设计单位 750 → 画布实际像素的比例
 let onResize = null
 function measureU() {
   const c = pagesEl.value ? pagesEl.value.querySelector('.hp-canvas') : null
   const w = c ? c.clientWidth : (pagesEl.value ? pagesEl.value.clientWidth : 0)
   if (w > 0) u.value = w / 750
+}
+// 自由画布页背景铺满整个 section（页高锁死一屏后，等比画布与屏幕比例不一致的机型上下不露黑边）
+const freeBgStyle = p => {
+  const bg = (p && p.bg) || {}
+  return bg.image
+    ? { backgroundImage: `url(${bg.image})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }
+    : { backgroundColor: bg.color || '#101319' }
 }
 const canvasStyle = (p) => {
   const bg = (p && p.bg) || {}
@@ -568,7 +570,7 @@ function onFdMove(e) {
   const DX = dx / (u.value || 1), DY = dy / (u.value || 1)
   if (fd.mode === 'move') {
     g.x = Math.round(Math.max(-750, Math.min(2250, g0.x + DX)))
-    g.y = Math.round(Math.max(-2000, Math.min(30000, g0.y + DY)))
+    g.y = Math.round(Math.max(-400, Math.min(PAGE_H - Math.min(PAGE_H, Number(g.h) || 120), g0.y + DY)))
   } else if (fd.mode === 'rot') {
     const el = pagesEl.value ? pagesEl.value.querySelector('.hp-sel') : null
     if (el) {
@@ -589,8 +591,8 @@ function onFdMove(e) {
     if (L) { g.w = Math.round(Math.max(16, Math.min(750, g0.w - DX))); g.x = Math.round(g0.x + (g0.w - g.w)) }
     else g.w = Math.round(Math.max(16, Math.min(750, g0.w + DX)))
     if (fixed) {
-      if (T) { g.h = Math.round(Math.max(16, Math.min(4000, g0.h - DY))); g.y = Math.round(g0.y + (g0.h - g.h)) }
-      else g.h = Math.round(Math.max(16, Math.min(4000, g0.h + DY)))
+      if (T) { g.h = Math.round(Math.max(16, Math.min(PAGE_H, g0.h - DY))); g.y = Math.round(Math.max(-400, g0.y + (g0.h - g.h))) }
+      else g.h = Math.round(Math.max(16, Math.min(PAGE_H - Math.max(0, Number(g.y) || 0), g0.h + DY)))
     }
   }
   measureSel() // 手柄层跟手
@@ -664,11 +666,12 @@ function onScroll(e) {
   cur.value = Math.round(el.scrollTop / Math.max(1, el.clientHeight))
 }
 
-// ---- 页面切换过渡动效（2026-11-27 路线③）：scroll=原生滚动（默认，存量页零变化），
-//      slide/fade/flip = 控制式翻页（触摸/滚轮/圆点驱动 + CSS 过渡；编辑画布单页渲染不参与） ----
-const TRANSITIONS = ['scroll', 'slide', 'fade', 'flip']
-const transition = computed(() => TRANSITIONS.includes(schema.value.transition) ? schema.value.transition : 'scroll')
-const isPaged = computed(() => !props.editable && transition.value !== 'scroll')
+// ---- 页面切换过渡动效（2026-11-27 路线③；2026-11-28 用户定稿「每页全屏 + 翻页动效」）：
+//      slide=滑动推入（默认）/ fade / flip = 控制式翻页（触摸/滚轮/圆点驱动 + CSS 过渡）；
+//      旧 scroll（原生滚动）统一按 slide 处理——页高已锁死一屏，不再有页内长滚 ----
+const TRANSITIONS = ['slide', 'fade', 'flip']
+const transition = computed(() => TRANSITIONS.includes(schema.value.transition) ? schema.value.transition : 'slide')
+const isPaged = computed(() => !props.editable)
 const pagesCls = computed(() => (isPaged.value ? 'hp-paged hp-' + transition.value : ''))
 // slide：每页按 (页号-当前) 百分比位移，方向天然感知（上一页向上让位、下一页从下补位）；
 // 拖动跟手时叠加 dragDy 且停过渡，松手过阈值才真正翻页
@@ -913,7 +916,7 @@ function armMusic() {
 /* ---- 自由画布（2026-11-27 MAKA 同款）：els 绝对定位（设计宽 750 等比缩放），页面满幅零内边距 ---- */
 .hp-flow { display: flex; flex-direction: column; gap: 22px; width: 100%; }
 .hp-page-free { padding: 0; justify-content: flex-start; gap: 0; }
-.hp-canvas { position: relative; width: 100%; background-color: #101319; }
+.hp-canvas { position: relative; width: 100%; background-color: #101319; overflow: hidden; }
 .hp-canvas .hp-block { max-width: none; margin: 0; }
 .hp-txt { width: 100%; }
 .hp-el-btn { display: block; width: 100%; height: 100%; border: 0; padding: 0 8px; font-weight: 700; font-size: 15px; cursor: pointer; -webkit-tap-highlight-color: transparent; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
