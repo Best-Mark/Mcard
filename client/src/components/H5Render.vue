@@ -527,8 +527,10 @@ const hdStyle = computed(() => {
   return st
 })
 
-// ---- 自由画布手势（editable + free）：4px 阈值区分点选与拖移；手柄做缩放/旋转；触摸+鼠标双支持 ----
-const fd = { on: false, mode: '', pi: -1, bi: -1, startX: 0, startY: 0, g0: null }
+// ---- 自由画布手势（editable + free）：触摸长按 350ms 进入拖移（防误触：计满前滑动＝滚画布、
+//      抬起＝点选，激活时震动反馈并自动选中）；鼠标拖拽即时（指针精准无滚动冲突）；
+//      缩放/旋转手柄专用无歧义，保持即时 ----
+const fd = { on: false, mode: '', pi: -1, bi: -1, startX: 0, startY: 0, g0: null, moved: false, dragged: false, timer: 0, mouse: false }
 const evtPoint = e => (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || (typeof e.clientX === 'number' ? e : null)
 function onFdStart(pi, e) {
   if (!props.editable || !isFreePage(pi)) return
@@ -542,9 +544,21 @@ function onFdStart(pi, e) {
     if (Date.now() >= coolUntil && props.selKey) emit('pick', '')
     return
   }
-  fd.on = true; fd.mode = ''; fd.pi = pi; fd.bi = bi
+  clearTimeout(fd.timer)
+  fd.on = true; fd.mode = ''; fd.pi = pi; fd.bi = bi; fd.moved = false; fd.dragged = false
+  fd.mouse = !e.touches
   fd.startX = t.clientX; fd.startY = t.clientY
   fd.g0 = { ...b.g }
+  if (!fd.mouse) {
+    // 触摸长按 350ms 才可拖移（与流式页长按排序同参数）；拖谁就选中谁，手柄随之出现
+    fd.timer = setTimeout(() => {
+      if (!fd.on || fd.mode) return
+      fd.mode = 'move'
+      try { navigator.vibrate && navigator.vibrate(15) } catch {}
+      if (props.selKey !== kOf(pi, bi)) emit('pick', kOf(pi, bi))
+      measureSel()
+    }, 350)
+  }
 }
 function onFdHandle(mode, e) {
   if (!props.editable) return
@@ -563,10 +577,17 @@ function onFdMove(e) {
   const t = evtPoint(e)
   if (!t) return
   const dx = t.clientX - fd.startX, dy = t.clientY - fd.startY
-  if (!fd.mode) { // 元素本体：4px 内不动（点选），超过进入拖移
+  if (!fd.mode) { // 元素本体（触摸未计满长按 / 鼠标未超阈值）
     if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return
-    fd.mode = 'move'
+    if (!fd.mouse) {
+      // 计满前滑出：这是滚画布手势——交还页面滚动（不抢 preventDefault），本抬手不触发点选
+      clearTimeout(fd.timer); fd.on = false; fd.moved = true
+      return
+    }
+    fd.mode = 'move' // 鼠标拖拽即时
+    if (props.selKey !== kOf(fd.pi, fd.bi)) emit('pick', kOf(fd.pi, fd.bi)) // 拖谁就选中谁
   }
+  fd.dragged = true
   const b = renderList(pages.value[fd.pi] || {})[fd.bi]
   if (!b || !b.g) return
   if (e.cancelable) e.preventDefault()
@@ -602,18 +623,20 @@ function onFdMove(e) {
   measureSel() // 手柄层跟手
 }
 function onFdEnd() {
-  if (!fd.on) return
+  clearTimeout(fd.timer)
+  if (!fd.on) { fd.moved = false; return } // 已被判为滚动画布的手势，抬手无事发生
   const mode = fd.mode
   fd.on = false; fd.mode = ''; fd.g0 = null
   detachMouse()
   if (!mode) { // 点选（先选中再压冷却，抑制合成 click 二次触发就地编辑）
     pick(fd.pi, fd.bi)
     coolUntil = Date.now() + 400
-  } else {
+  } else if (fd.dragged) { // 真实拖动才进撤销时间线（长按未动＝仅选中，不产生脏档）
     coolUntil = Date.now() + 350
     emit('geom') // 编辑器 markDirty + 进撤销时间线
     measureSel()
   }
+  fd.dragged = false
   fd.pi = -1; fd.bi = -1
 }
 // 鼠标（PC 桌面编辑）：按下挂 document 拖拽监听（拖出元素也不断），松手拆除
