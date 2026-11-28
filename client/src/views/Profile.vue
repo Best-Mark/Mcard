@@ -44,8 +44,8 @@
         </div>
       </BottomSheet>
 
-      <!-- 齿轮底部菜单（2026-11-27 用户定稿）：不再复用右侧抽屉，单独从底部出。
-           有「资料」（账号资料）、「关于」（独立弹层），以及个人中心里的常用功能聚合。 -->
+      <!-- 齿轮底部菜单：只放真正的设置（账号资料/关于/退出登录）。
+           个人中心功能全部直接铺在页面里，不进设置弹层（2026-11-28 用户定稿） -->
       <BottomSheet :show="gearMenuOpen" @update:show="gearMenuOpen = $event">
         <div class="gear-sheet">
           <div class="avatar-sheet-head">
@@ -58,28 +58,6 @@
           </button>
           <button type="button" class="gear-item" @click="openAbout">
             <i class="gear-ico">ⓘ</i><span class="gear-t">关于 MCard<small>版本 · 产品介绍</small></span><i class="gear-arrow">›</i>
-          </button>
-          <div class="gear-group-title">个人中心功能</div>
-          <button type="button" class="gear-item" @click="gearGo('/me/print')">
-            <i class="gear-ico">▤</i><span class="gear-t">实体版式<small>印刷级名片版式下载</small></span><i class="gear-arrow">›</i>
-          </button>
-          <button type="button" class="gear-item" @click="gearGo('/me/notifications')">
-            <i class="gear-ico">♢</i><span class="gear-t">消息通知<small v-if="unread > 0">{{ unread }} 条未读</small><small v-else>查看通知</small></span><i class="gear-arrow">›</i>
-          </button>
-          <button type="button" class="gear-item" @click="gearGo('/me/contacts')">
-            <i class="gear-ico">▦</i><span class="gear-t">名片夹<small>收藏 · 交换</small></span><i class="gear-arrow">›</i>
-          </button>
-          <button type="button" class="gear-item" @click="gearGo('/me/stats')">
-            <i class="gear-ico">▥</i><span class="gear-t">浏览统计<small>访问数据 · 访客画像</small></span><i class="gear-arrow">›</i>
-          </button>
-          <button type="button" class="gear-item" @click="gearGo('/me/batch-scan')">
-            <i class="gear-ico">▣</i><span class="gear-t">展会连扫收名片<small>批量识别</small></span><i class="gear-arrow">›</i>
-          </button>
-          <button v-if="auth.isPromoter" type="button" class="gear-item" @click="gearGo('/me/promo')">
-            <i class="gear-ico">➤</i><span class="gear-t">推广中心<small>邀请 · 收益 · 提现</small></span><i class="gear-arrow">›</i>
-          </button>
-          <button type="button" class="gear-item" @click="gearQr">
-            <i class="gear-ico">◎</i><span class="gear-t">我的名片二维码<small>保存 · 复制链接</small></span><i class="gear-arrow">›</i>
           </button>
           <button type="button" class="gear-logout" @click="gearLogout">⏻ 退出登录</button>
           <button type="button" class="avatar-sheet-cancel" @click="gearMenuOpen = false">取消</button>
@@ -136,6 +114,10 @@
         <span class="pf-cell-extra">二维码 · 链接</span><span class="pf-cell-arrow">›</span>
       </button>
       <div v-else class="pf-cell pf-cell-muted">还没有名片，可在「名片」栏创建</div>
+      <router-link to="/me/print" class="pf-cell">
+        <i class="pf-cell-ico"><AppIcon name="card" :size="20" /></i><span class="pf-cell-t">实体版式</span>
+        <span class="pf-cell-extra">印刷级版式下载</span><span class="pf-cell-arrow">›</span>
+      </router-link>
     </div>
 
     <!-- 推广中心：仅推广员可见（后台在用户管理开启），普通用户完全不渲染此分组 -->
@@ -176,12 +158,11 @@ const avatar = ref('')
 const avatarSaving = ref(false)
 const avatarMenuOpen = ref(false)
 function openAvatarPicker() { avatarMenuOpen.value = true }
-// 齿轮底部菜单（与右侧抽屉解耦）：资料 / 关于 / 个人中心功能聚合；顶栏菜单图标仍开抽屉
+// 齿轮底部菜单（与右侧抽屉解耦）：只放设置（账号资料/关于/退出登录）；顶栏菜单图标仍开抽屉
 const gearMenuOpen = ref(false)
 const aboutOpen = ref(false)
 function gearGo(path) { gearMenuOpen.value = false; router.push(path) }
 function openAbout() { gearMenuOpen.value = false; aboutOpen.value = true }
-function gearQr() { gearMenuOpen.value = false; goQr() }
 function gearLogout() { gearMenuOpen.value = false; logout(); router.push('/') }
 const loading = ref(true)
 const loadError = ref('')
