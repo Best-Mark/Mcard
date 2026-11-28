@@ -57,7 +57,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
 import { toggleDrawer, showToast } from '../store'
@@ -81,7 +81,27 @@ async function loadPlan() {
     needPlan.value = !data?.data?.active
   } catch { needPlan.value = true }
 }
-onMounted(loadPlan)
+
+// 回前台兜底复位：部分微信版本取消扫码不回调 success/fail，按钮会卡在「调起扫码中…」。
+// 页面可见后 1s 内没等到回调就按取消收口，按钮立即恢复可用。
+let settleScan = null
+function onVisible() {
+  if (document.visibilityState !== 'visible' || !settleScan) return
+  const settle = settleScan
+  setTimeout(() => { if (settleScan === settle) settle() }, 1000)
+}
+onMounted(() => {
+  loadPlan()
+  // 预热微信 config：进页面即完成签名与权限校验，避免首次点扫一扫正撞「offline verifying」窗口
+  if (isWx.value) configWx(api).catch(() => {})
+  document.addEventListener('visibilitychange', onVisible)
+  window.addEventListener('pageshow', onVisible)
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', onVisible)
+  window.removeEventListener('pageshow', onVisible)
+  if (settleScan) settleScan()
+})
 
 // 从任意文本里提取名片短码：支持 /c/xxx、完整 URL、纯短码
 function extractSlug(text) {
@@ -103,30 +123,56 @@ function addManual() {
   addSlug(extractSlug(manualInput.value))
   manualInput.value = ''
 }
+function scanErrText(e) {
+  const msg = String(e?.message || '')
+  if (/cancel/i.test(msg)) return ''
+  if (/timeout/i.test(msg)) return '扫码超时，请重试'
+  if (/offline\s*verifying/i.test(msg)) return '微信扫码权限校验未就绪，请稍后再试'
+  return '扫码失败，请重试'
+}
+// 单次调起扫码；cancel / 超时 / 回前台兜底统一从 settle 收口
+function scanOnce(wx) {
+  return new Promise((resolve, reject) => {
+    let settled = false
+    let timer = null
+    const finish = (fn, v) => { if (!settled) { settled = true; clearTimeout(timer); settleScan = null; fn(v) } }
+    // 180s 仅是「什么回调都没来」的最后兜底；正常收口走 success/fail/cancel/回前台
+    timer = setTimeout(() => finish(reject, new Error('scanQRCode:timeout')), 180000)
+    settleScan = () => finish(reject, new Error('scanQRCode:cancel'))
+    try {
+      wx.scanQRCode({
+        needResult: 1,
+        scanType: ['qrCode', 'barCode'],
+        success: res => finish(resolve, res?.resultStr || ''),
+        fail: err => finish(reject, new Error(err?.errMsg || 'scanQRCode:fail')),
+        cancel: () => finish(reject, new Error('scanQRCode:cancel'))
+      })
+    } catch (e) { finish(reject, e) }
+  })
+}
 async function wxScan() {
   if (scanning.value) return
   scanning.value = true
   try {
     const { wx, ok } = await configWx(api)
     if (!ok) { showToast('微信权限未就绪，请稍后重试', 'error'); return }
-    await new Promise((resolve, reject) => {
-      let settled = false
-      const finish = (fn, v) => { if (!settled) { settled = true; fn(v) } }
-      try {
-        wx.scanQRCode({
-          needResult: 1,
-          scanType: ['qrCode', 'barCode'],
-          success: res => finish(resolve, res?.resultStr || ''),
-          fail: err => finish(reject, new Error(err?.errMsg || '扫码失败'))
-        })
-      } catch (e) { finish(reject, e) }
-      setTimeout(() => finish(reject, new Error('扫码超时')), 30000)
-    }).then(result => {
-      const slug = extractSlug(result)
-      if (slug) { addSlug(slug); showToast('已收集，继续扫下一张', 'success') }
-      else showToast('二维码不是本系统的名片', 'error')
-    })
-  } catch (e) { showToast(e.message || '扫码失败', 'error') }
+    // offline verifying：config 后微信异步校验权限，首次拉起撞窗口就透明重拉（300/600/900ms 递增）
+    let result = ''
+    for (let attempt = 0; ; attempt++) {
+      try { result = await scanOnce(wx); break }
+      catch (e) {
+        const msg = String(e?.message || '')
+        if (!/offline\s*verifying/i.test(msg) || attempt >= 3) throw e
+        await new Promise(r => setTimeout(r, 300 * (attempt + 1)))
+      }
+    }
+    const slug = extractSlug(result)
+    if (slug) { addSlug(slug); showToast('已收集，继续扫下一张', 'success') }
+    else showToast('二维码不是本系统的名片', 'error')
+  } catch (e) {
+    const text = scanErrText(e)
+    if (text) showToast(text, 'error')
+  }
   finally { scanning.value = false }
 }
 async function submit() {
