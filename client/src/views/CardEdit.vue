@@ -80,6 +80,16 @@
               <div class="field"><label>支付宝账号</label><input v-model="form.alipay" class="input" /></div>
               <div class="field"><label>WhatsApp</label><input v-model="form.whatsapp" class="input" /></div>
             </div>
+            <!-- 收款码（2026-11-28）：上传微信/支付宝收款码，项目自动合成一张「合一收款码」；
+                 付款方扫合一码打开名片页后按支付环境弹出对应收款码，长按识别即付款。 -->
+            <div class="identity-block divided">
+              <div class="block-title">💳 收款码（选填）</div>
+              <div class="grid2">
+                <ImageField v-model="form.wechat_pay_qr" label="微信收款码" />
+                <ImageField v-model="form.alipay_pay_qr" label="支付宝收款码" />
+              </div>
+              <p class="small muted" style="margin:8px 0 0">自动生成一张合一收款码：付款方用微信 / 支付宝 / 相机扫一扫，自动打开对应收款码，长按识别即付款。点名片右上角二维码，「收款码」里可保存这张合一码。</p>
+            </div>
             <div class="field">
               <label>所在地区 <span class="muted small">（省 / 市 / 区 / 街道，可选到任意一级；定位用于导航与集市距离）</span></label>
               <div class="locate-row">
@@ -216,6 +226,7 @@ import { showToast, toggleDrawer } from '../store'
 import { THEMES, paletteOf } from '../utils/themes'
 import { refreshPosition, setManualPosition, reverseGeocode, geocode } from '../utils/geo'
 import LogoUploader from '../components/LogoUploader.vue'
+import ImageField from '../components/ImageField.vue'
 import BottomSheet from '../components/BottomSheet.vue'
 import BottomSelect from '../components/BottomSelect.vue'
 import CardPreview from '../components/CardPreview.vue'
@@ -237,6 +248,7 @@ const DEFAULT_PAL = paletteOf(DEFAULT_TPL)
 const blank = {
   slug: '', name: '', name_en: '', title: '', company: '', company_intro: '', department: '', website: '', shop_url: '',
   mobile: '', phone: '', email: '', wechat: '', alipay: '', whatsapp: '',
+  wechat_pay_qr: '', alipay_pay_qr: '',
   address: '', address_detail: '', province: '', city: '', district: '', street: '',
   avatar: '', logo: '', bio: '', tags: [], links: [], template: DEFAULT_TPL, theme: DEFAULT_PAL.theme, accent: THEMES[DEFAULT_PAL.theme].accent,
   industry: '', city: '', latitude: null, longitude: null, market_opt_in: false,
@@ -456,7 +468,7 @@ const SECTION_FIELDS = {
   // ⚠️ 坐标必须随联系方式一起保存：本页的「选地区/自动定位/地图选点」都会改 latitude/longitude，
   // 若只存省市文本不存坐标，就会出现「地址明明改了、集市距离却按旧坐标算」的错配。
   // 集市页（/me/card/market）保存的是 market_opt_in/industry，坐标不重复定义、只在本页持久化。
-  contact: ['mobile', 'phone', 'email', 'wechat', 'alipay', 'whatsapp', 'province', 'city', 'district', 'street', 'address', 'address_detail', 'latitude', 'longitude'],
+  contact: ['mobile', 'phone', 'email', 'wechat', 'alipay', 'whatsapp', 'wechat_pay_qr', 'alipay_pay_qr', 'province', 'city', 'district', 'street', 'address', 'address_detail', 'latitude', 'longitude'],
   links: ['website', 'shop_url', 'links']
   // ⚠️ 外观（template/theme/accent/qr_*）已独立到 /me/card/style 保存；本页不提交这些字段（参数唯一真相源）。
 }

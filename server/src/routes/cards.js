@@ -367,6 +367,20 @@ router.get('/public/:slug/vcard.png', wrap(async (req, res) => {
   res.type('png').set('Cache-Control', 'public, max-age=60').send(buf)
 }))
 
+// 合一收款码（2026-11-28）：内容 = 名片页 URL + pay=1。付款方用微信/支付宝/相机扫这张码打开名片页，
+// 页面按支付环境自动弹出对应收款码（微信→cards.wechat_pay_qr，支付宝→cards.alipay_pay_qr），长按识别即付款。
+// 一张 QR 不可能同时编码两个支付协议（微信/支付宝各自封闭），聚合码的业界标准做法就是
+// 「一张 URL 码 + 落地页按 UA 分流」。识别率第一：恒 plain 纯黑白标准码，不做美化。
+const payQrText = req => requestUrl(req, `/c/${req.params.slug}?pay=1`)
+
+router.get('/public/:slug/pay.png', wrap(async (req, res) => {
+  const row = db.prepare('SELECT slug FROM cards WHERE slug = ?').get(req.params.slug)
+  if (!row) return fail(res, 404, '名片不存在')
+  const size = Math.min(1600, Math.max(256, Number(req.query.size) || 720))
+  const buf = await qr.plainPng(payQrText(req), { size })
+  res.type('png').set('Cache-Control', 'public, max-age=60').send(buf)
+}))
+
 router.get('/public/:slug/card.vcf', wrap((req, res) => {
   const row = db.prepare('SELECT * FROM cards WHERE slug = ?').get(req.params.slug)
   if (!row) return fail(res, 404, '名片不存在')

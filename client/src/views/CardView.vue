@@ -72,6 +72,7 @@
       <button v-if="full && !owner" class="cv-fab" :class="{ on: moreOpen }" @click="moreOpen = !moreOpen" aria-label="更多操作">⋯</button>
       <div v-if="full && !owner && moreOpen" class="cv-fab-mask" @click="moreOpen = false">
         <div class="cv-fab-menu" @click.stop>
+          <button v-if="hasPayQr" @click="moreOpen = false; openPayModal()">向 TA 付款</button>
           <button v-if="fullAddress && maps.length" @click="moreOpen = false; openMapSheet()">导航到此处</button>
           <button @click="moreOpen = false; toggleFavorite()">{{ favorite ? '已收藏' : '收藏名片' }}</button>
           <button :disabled="exchanging" @click="moreOpen = false; openExchange()">{{ exchanging ? '交换中…' : '交换名片' }}</button>
@@ -256,10 +257,10 @@
       </div>
     </BottomSheet>
 
-    <!-- 名片二维码双码弹层（2026-11-26 定稿「两个都要」；2026-11-27 微信真机实测修正）：
-         联系人码 = 名片页 URL + contact=1（微信扫一扫打开页面后自动弹「存入通讯录」入口）；
-         名片链接码 = 名片页 URL（扫了看名片）。默认联系人码。
-         ⚠️ 不再是 vCard 文本码：微信不解析 BEGIN:VCARD，扫了只显示「暂不支持展示二维码中的文本内容」黑屏。
+    <!-- 名片二维码弹层：联系人码（名片页 URL + contact=1，扫了自动弹「存入通讯录」入口）、
+         名片链接码（名片页 URL，扫了看名片）、收款码（合一收款码 = 名片页 URL + pay=1，
+         扫码按支付环境自动弹对应收款码，长按识别即付款）。默认联系人码。
+         ⚠️ 不是 vCard 文本码：微信不解析 BEGIN:VCARD，扫了只显示「暂不支持展示二维码中的文本内容」黑屏。
          一律 PNG（微信「识别图中二维码」不认 SVG），链接仅作文案可复制 -->
     <div v-if="qrModal" class="modal-mask" @click.self="qrModal = false">
       <div class="modal center">
@@ -267,15 +268,24 @@
         <div class="qr-mode-tabs">
           <button :class="['qr-mode-tab', { on: qrMode === 'vcard' }]" @click="qrMode = 'vcard'">联系人码</button>
           <button :class="['qr-mode-tab', { on: qrMode === 'link' }]" @click="qrMode = 'link'">名片链接码</button>
+          <button v-if="hasPayQr || owner" :class="['qr-mode-tab', { on: qrMode === 'pay' }]" @click="qrMode = 'pay'">收款码</button>
         </div>
-        <img :src="qrModalSrc" style="width:264px;height:264px;margin:4px auto 10px;display:block" :alt="qrMode === 'vcard' ? '联系人码' : '名片链接码'" />
-        <!-- 2026-11-27 识别率定稿：弹层大码/保存一律用纯黑白标准识别码（plain=1），微信长按 100% 出
-             「识别图中二维码」；名片本体码为标准方点 + 用户自选配色，不受影响 -->
-        <p class="small muted center">扫一扫</p>
-        <!-- 一个入口承载三件事：存联系人的码/打开名片的码、复制链接、公开页（关闭弹层即当前公开页） -->
+        <template v-if="qrMode === 'pay' && !hasPayQr">
+          <div class="qr-pay-empty">
+            <p class="small muted center">上传微信 / 支付宝收款码后，这里会生成一张「合一收款码」：付款方扫一扫自动打开对应收款码，长按识别即付款。</p>
+            <router-link class="btn btn-primary" to="/me/card?focus=contact" @click="qrModal = false">去上传收款码</router-link>
+          </div>
+        </template>
+        <template v-else>
+          <img :src="qrModalSrc" style="width:264px;height:264px;margin:4px auto 10px;display:block" :alt="qrMode === 'vcard' ? '联系人码' : (qrMode === 'pay' ? '合一收款码' : '名片链接码')" />
+          <!-- 2026-11-27 识别率定稿：弹层大码/保存一律用纯黑白标准识别码（plain=1），微信长按 100% 出
+               「识别图中二维码」；名片本体码为标准方点 + 用户自选配色，不受影响 -->
+          <p class="small muted center">{{ qrMode === 'pay' ? '微信 / 支付宝 / 相机扫一扫 · 自动打开对应收款码' : '扫一扫' }}</p>
+        </template>
+        <!-- 一个入口承载多件事：存联系人的码/打开名片的码/收款码、复制链接、公开页（关闭弹层即当前公开页） -->
         <div class="btn-row" style="justify-content:center;margin-top:14px;flex-wrap:wrap">
-          <button class="btn btn-primary" @click="copy(publicLink, '名片链接')">复制名片链接</button>
-          <button class="btn btn-ghost" @click="saveQr">保存二维码</button>
+          <button class="btn btn-primary" @click="copy(qrMode === 'pay' ? publicLink + '?pay=1' : publicLink, qrMode === 'pay' ? '收款链接' : '名片链接')">{{ qrMode === 'pay' ? '复制收款链接' : '复制名片链接' }}</button>
+          <button v-if="qrMode !== 'pay' || hasPayQr" class="btn btn-ghost" @click="saveQr">保存二维码</button>
           <button class="btn btn-ghost" @click="qrModal = false">关闭</button>
         </div>
       </div>
@@ -292,6 +302,26 @@
           <a v-if="contactNative" class="btn btn-primary" :href="contactHref" @click="contactAutoOpen = false">存入通讯录</a>
           <button v-else class="btn btn-primary" :disabled="contactAutoBusy" @click="onContactAutoSave">存入通讯录</button>
           <button class="btn btn-ghost" @click="contactAutoOpen = false">稍后再说</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 合一收款码落地页（?pay=1，2026-11-28）：付款方扫「收款码」打开名片页后自动弹对应收款码，
+         长按识别即付款。微信环境默认微信收款码、支付宝环境默认支付宝收款码、其它环境可切换；
+         环境与码不匹配时提示截图后用对应 App 扫码。引导与操作只在弹层，不铺在名片内容区。 -->
+    <div v-if="payAutoOpen" class="modal-mask" @click.self="payAutoOpen = false">
+      <div class="modal center">
+        <h3>向 {{ card?.name || 'TA' }} 付款</h3>
+        <div v-if="payQrList.length > 1" class="qr-mode-tabs">
+          <button v-for="p in payQrList" :key="p.key" :class="['qr-mode-tab', { on: payMode === p.key }]" @click="payMode = p.key">{{ p.label }}</button>
+        </div>
+        <template v-if="payQrList.length">
+          <img :src="payQrUrl" style="width:264px;height:264px;margin:4px auto 10px;display:block;object-fit:contain" :alt="payMode === 'alipay' ? '支付宝收款码' : '微信收款码'" />
+          <p class="small muted center">{{ payHint }}</p>
+        </template>
+        <p v-else class="small muted center">对方还没上传收款码</p>
+        <div class="btn-row" style="justify-content:center;margin-top:14px;flex-wrap:wrap">
+          <button class="btn btn-ghost" @click="payAutoOpen = false">关闭</button>
         </div>
       </div>
     </div>
@@ -359,7 +389,7 @@
         <template v-else>
           <p v-html="saveTip"></p>
         </template>
-        <img v-if="guide !== 'contact'" :src="guideImage || (scanQrUrl(slug, qrMode === 'vcard' ? 'vcard.png' : 'qr.png', 520) + '&plain=1')" style="width:200px;height:200px;margin:10px auto;object-fit:contain" alt="二维码" />
+        <img v-if="guide !== 'contact'" :src="guideImage || qrUrlFor(qrMode, 520)" style="width:200px;height:200px;margin:10px auto;object-fit:contain" alt="二维码" />
         <div class="btn-row" style="justify-content:flex-end">
           <button class="btn btn-ghost" @click="closeGuide">知道了</button>
         </div>
@@ -399,6 +429,7 @@ import api from '../api'
 import { showToast, auth, siteConfig } from '../store'
 import { THEMES, TEMPLATE_PALETTES, themeOf, themeVars } from '../utils/themes'
 import { isWeChat, isIOS, saveImageUrl, prepareExternalOpen, openVcfInline, androidContactIntent, deviceEnv, SAVE_IMAGE_TIPS } from '../utils/save-image'
+import { isAlipay } from '../utils/pay-env'
 import { shareOrCopy, mapLinks } from '../utils/share'
 import { setCardShare } from '../utils/wx-share'
 import { scanQrUrl } from '../utils/qr'
@@ -495,8 +526,13 @@ const qrStamp = ref(0)
 // 把码点间细缝糊掉——微信长按识别用的是屏幕截图做本地 QR 检测，糊掉的码点会检测失败。
 // 弹层大码恒用 plain=1 纯黑白标准识别码（2026-11-27 定稿：长按识别 100% 可用）。
 const qrImgSize = Math.round(264 * Math.min(3, Math.max(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 2)))
-const qrModalSrc = computed(() => scanQrUrl(slug.value, qrMode.value === 'vcard' ? 'vcard.png' : 'qr.png', qrImgSize)
-  + '&plain=1&v=' + qrStamp.value)
+// 弹层三 tab 的码图 URL 唯一构建点：联系人码（vcard.png）/链接码（qr.png）走 plain=1 纯黑白；
+// 收款码（pay.png，合一码）服务端恒 plain 渲染，不带 plain 参数。
+function qrUrlFor(mode, size) {
+  if (mode === 'pay') return scanQrUrl(slug.value, 'pay.png', size)
+  return scanQrUrl(slug.value, mode === 'vcard' ? 'vcard.png' : 'qr.png', size) + '&plain=1'
+}
+const qrModalSrc = computed(() => qrUrlFor(qrMode.value, qrImgSize) + '&v=' + qrStamp.value)
 // 码色缩略直接用服务端真实渲染（?style= 覆盖），所见即所得；
 // 固定参数不跟着 qrStamp 变，浏览器/CDN 缓存即可。
 function qrStyleSwatch(patch, fg, bg) {
@@ -760,6 +796,30 @@ async function onContactAutoSave() {
   contactAutoBusy.value = true
   contactAutoOpen.value = false
   try { await saveContact() } finally { contactAutoBusy.value = false }
+}
+// 合一收款码落地弹层（?pay=1，2026-11-28）：付款方扫「收款码」打开名片页自动弹对应收款码，长按识别即付款。
+// 支付环境判定走 pay-env（支付场景唯一真相源）；微信判定复用 save-image 的 isWeChat（同 /MicroMessenger/ 口径）。
+const payAutoOpen = ref(false); const payMode = ref('wechat')
+const payQrList = computed(() => {
+  const c = card.value || {}
+  const list = []
+  if (c.wechat_pay_qr) list.push({ key: 'wechat', label: '微信收款', url: c.wechat_pay_qr })
+  if (c.alipay_pay_qr) list.push({ key: 'alipay', label: '支付宝收款', url: c.alipay_pay_qr })
+  return list
+})
+const hasPayQr = computed(() => payQrList.value.length > 0)
+const payQrUrl = computed(() => (payQrList.value.find(p => p.key === payMode.value) || payQrList.value[0] || {}).url || '')
+const payHint = computed(() => {
+  const k = payMode.value
+  if (isWeChat()) return k === 'wechat' ? '长按识别二维码，向 TA 付款' : '微信内无法支付支付宝收款码，可截图后用支付宝扫码付款'
+  if (isAlipay()) return k === 'alipay' ? '长按识别二维码，向 TA 付款' : '支付宝内无法支付微信收款码，可截图后用微信扫码付款'
+  return '可长按识别，或截图后用微信 / 支付宝扫码付款'
+})
+// 打开付款弹层：默认选中与当前支付环境匹配的那张收款码，环境码没传则回落已有的一张
+function openPayModal() {
+  const envKey = isAlipay() ? 'alipay' : (isWeChat() ? 'wechat' : '')
+  payMode.value = payQrList.value.some(p => p.key === envKey) ? envKey : (payQrList.value[0]?.key || 'wechat')
+  payAutoOpen.value = true
 }
 const contactFallbackOpen = ref(false) // 安卓 intent 拉不起通讯录时的兜底：复制基本信息卡片（全程不下载）
 const mapOpen = ref(false); const moreOpen = ref(false)
@@ -1072,6 +1132,16 @@ async function load() {
         windowRef.history.replaceState(null, '', u.toString())
       }
     }
+    // 合一收款码落地（2026-11-28）：扫码 URL 带 pay=1 → 名片页加载完自动弹付款弹层，
+    // 按支付环境默认选中对应收款码。同样读真实 URL、清一次性参数，口径与上面 contact=1 一致。
+    {
+      const u = new URL(windowRef.location.href)
+      if (u.searchParams.get('pay') === '1') {
+        openPayModal()
+        u.searchParams.delete('pay')
+        windowRef.history.replaceState(null, '', u.toString())
+      }
+    }
   } catch (e) { error.value = e.message } finally { loading.value = false }
   // 资料夹是名片正文的一部分：owner 预览也要拉，否则「公司相册」在 /me 永远空白。
   // 嵌入预览（只裁头部的旧用法）才整段跳过。失败静默不阻塞主流程。
@@ -1102,6 +1172,7 @@ watch(slug, () => {
   card.value = null
   materialsList.value = []
   qrModal.value = false; guide.value = ''; exchangeOpen.value = false
+  payAutoOpen.value = false; contactAutoOpen.value = false
   mapOpen.value = false; moreOpen.value = false; galleryIndex.value = -1
   dockMode.value = 'main'
   favorite.value = false; isOwner.value = false; hasOwnCard.value = false; exchangeGuide.value = ''
@@ -1138,13 +1209,14 @@ async function copy(v, label) {
   } catch { showToast(`复制失败，${label}：${v}`) }
 }
 async function saveQr() {
-  // 保存当前 tab 的码：联系人码（名片页 URL + contact=1，扫=打开页面弹存通讯录入口）或链接码；一律纯黑白标准码
-  const isVcard = qrMode.value === 'vcard'
-  const url = scanQrUrl(slug.value, isVcard ? 'vcard.png' : 'qr.png', 900) + '&plain=1'
+  // 保存当前 tab 的码：联系人码（名片页 URL + contact=1）/链接码/收款码（合一码，名片页 URL + pay=1）；
+  // 一律纯黑白标准码（pay.png 服务端恒 plain）
+  const mode = qrMode.value
+  const url = qrUrlFor(mode, 900)
   guideImage.value = url // 长按引导里展示的就是这张码
   const r = await saveImageUrl(
     url,
-    `${slug.value}-${isVcard ? '联系人码' : '名片链接码'}.png`
+    `${slug.value}-${mode === 'vcard' ? '联系人码' : (mode === 'pay' ? '收款码' : '名片链接码')}.png`
   )
   if (r.kind === 'longpress') { await showGuide('qr'); return }
   showToast(r.kind === 'downloaded' ? '二维码已开始下载' : '已打开二维码，请长按保存', 'success')

@@ -180,10 +180,12 @@
 /* .cv-clean .cv-profile > * 会把子元素强制 position:relative，这里用更高优先级锁回绝对定位 */
 .cv-clean .cv-main > .cv-profile > .cv-qr-entry { position: absolute; }
 .cv-qr-entry img { display: block; width: 100%; height: 100%; }
-/* 双码切换（联系人码/名片链接码）：胶囊分段控件 */
+/* 二维码弹层 tab（联系人码/名片链接码/收款码）：胶囊分段控件 */
 .qr-mode-tabs { display: flex; justify-content: center; gap: 6px; margin: 0 0 10px; }
 .qr-mode-tab { border: 1px solid var(--border, #e2e8f0); background: var(--bg-page, #f1f5f9); color: var(--t-muted, #64748b); font-size: 13px; font-weight: 600; padding: 7px 16px; border-radius: 999px; cursor: pointer; }
 .qr-mode-tab.on { background: var(--primary, #2563eb); border-color: var(--primary, #2563eb); color: #fff; }
+/* 收款码 tab 空态（还没上传微信/支付宝收款码）：说明 + 去上传入口 */
+.qr-pay-empty { padding: 12px 8px 4px; }
 .cv-name { font-size: 22px; font-weight: 800; letter-spacing: -.5px; }
 .cv-en { font-size: 12px; color: var(--t-muted); font-weight: 500; margin-left: 6px; }
 .cv-title { color: var(--t-muted); font-size: 12px; margin-top: 3px; }
