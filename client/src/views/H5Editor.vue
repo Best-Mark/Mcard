@@ -587,10 +587,11 @@ function pageToEls(p) {
   for (const b of ((p && p.blocks) || [])) {
     const anim = b.anim || ''
     if (b.type === 'cover') {
-      els.push({ type: 'image', url: b.cover || '', radius: 0, fit: 'cover', anim: anim || 'zoom', g: G(0, 0, 750, 1334) })
-      if (b.title) els.push({ type: 'text', text: b.title, size: 58, color: '#ffffff', align: 'left', bold: true, font: '', lh: 1.25, anim: 'up', g: G(48, 940, 654, 90) })
-      if (b.subtitle) els.push({ type: 'text', text: b.subtitle, size: 26, color: 'rgba(255,255,255,.85)', align: 'left', bold: false, font: '', lh: 1.5, anim: 'up', g: G(48, 1058, 654, 50) })
-      y = 1360
+      // 封面图 880 高 + 标题/副题压图底，正文块紧跟在 930 起——封面页内容饱满不空（2026-11-28 用户定稿「DEMO 页内容尽量丰富」）
+      els.push({ type: 'image', url: b.cover || '', radius: 0, fit: 'cover', anim: anim || 'zoom', g: G(0, 0, 750, 880) })
+      if (b.title) els.push({ type: 'text', text: b.title, size: 54, color: '#ffffff', align: 'left', bold: true, font: '', lh: 1.25, anim: 'up', g: G(48, 600, 654, 88) })
+      if (b.subtitle) els.push({ type: 'text', text: b.subtitle, size: 26, color: 'rgba(255,255,255,.85)', align: 'left', bold: false, font: '', lh: 1.5, anim: 'up', g: G(48, 712, 654, 50) })
+      y = 930
     } else if (b.type === 'hero') {
       els.push({ type: 'image', url: b.image || '', radius: 20, fit: 'cover', anim: anim || 'up', g: G(48, y, 654, 420) })
       y += 450

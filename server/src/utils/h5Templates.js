@@ -249,6 +249,14 @@ function getTemplate(key) { return TEMPLATES.find(t => t.key === key) || null }
 ;(() => {
   const DEMOS = ['/h5demo/demo-1.svg', '/h5demo/demo-2.svg', '/h5demo/demo-3.svg', '/h5demo/demo-4.svg']
   const MUSICS = ['/music/bgm-light.wav', '/music/bgm-warm.wav', '/music/bgm-business.wav', '/music/bgm-fresh.wav']
+  // 曲子按模板气质配（2026-11-28 用户反馈「音乐有些奇怪」：轮流乱配听着突兀）——
+  // light 清亮 / warm 温暖 / business 沉稳 / fresh 轻快；未列入的模板不挂音乐（宁缺毋滥）
+  const MUSIC_BY_KEY = {
+    company: MUSICS[2], building: MUSICS[2], event: MUSICS[2], advisor: MUSICS[2],
+    restaurant: MUSICS[1], beauty: MUSICS[1], wedding: MUSICS[1],
+    retail: MUSICS[3], team: MUSICS[3],
+    course: MUSICS[0], home: MUSICS[0]
+  }
   TEMPLATES.forEach((t, ti) => {
     let di = ti % DEMOS.length
     for (const p of t.pages || []) for (const b of (p.blocks || [])) {
@@ -259,12 +267,36 @@ function getTemplate(key) { return TEMPLATES.find(t => t.key === key) || null }
         b.images = b.images.map(im => im || DEMOS[di++ % DEMOS.length])
       }
     }
-    // 音乐：模板自带 music 块（如婚礼摄影）只补 url；其余套在倒数第二页末尾（不新增页，防免费 3 页被截断）
+    const music = MUSIC_BY_KEY[t.key]
+    if (!music) return
+    // 音乐：模板自带 music 块（如婚礼摄影）只补 url；否则挂到「装得下而不产生新画布页」的最后一页——
+    // 估高口径与编辑器 pageToEls/组件 EST_H 一致（画布 1334），固定挂倒数第二页会把已近满高的页
+    // 挤出一张只有 music 的稀疏页（company 等实测）；顺带把 form/endcard 等偏稀疏的尾页补满。
     if ((t.pages || []).some(p => (p.blocks || []).some(b => b.type === 'music'))) {
-      for (const p of t.pages || []) for (const b of (p.blocks || [])) if (b.type === 'music' && !b.url) b.url = MUSICS[ti % MUSICS.length]
+      for (const p of t.pages || []) for (const b of (p.blocks || [])) if (b.type === 'music' && !b.url) b.url = music
     } else {
-      const page = t.pages[Math.max(0, (t.pages || []).length - 2)]
-      if (page) page.blocks.push(B('music', { url: MUSICS[ti % MUSICS.length], autoplay: true }))
+      const EST_H = { gallery: 520, contact: 260, map: 220, buttons: 200, video: 280, form: 620, endcard: 340 }
+      const endY = (p) => {
+        let y = 60
+        for (const b of (p.blocks || [])) {
+          if (b.type === 'cover') { y = 930; continue }
+          let h
+          if (b.type === 'hero') h = 420 + (b.title ? 78 : 0) + (b.desc ? 122 : 0)
+          else if (b.type === 'text') {
+            const s = String(b.body || '')
+            h = (b.heading ? 84 : 0) + (b.body ? Math.round(Math.max(s.split('\n').length, Math.ceil(s.length / 20)) * 26 * 1.8) + 30 : 0)
+          } else h = EST_H[b.type] || 240
+          y += h + 26
+        }
+        return y
+      }
+      const MUSIC_H = 186 // 160 + 26 间距
+      let target = null
+      for (let i = (t.pages || []).length - 1; i >= 0; i--) {
+        if (endY(t.pages[i]) + MUSIC_H <= 1334) { target = t.pages[i]; break }
+      }
+      if (!target) target = t.pages.reduce((a, b) => (endY(b) < endY(a) ? b : a), t.pages[0]) // 全满时挂最空页
+      if (target) target.blocks.push(B('music', { url: music, autoplay: true }))
     }
   })
 })()
