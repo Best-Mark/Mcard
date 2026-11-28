@@ -228,7 +228,7 @@ async function done() {
 .control-panel { margin: 0; border-radius: 0; border: 0; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 /* tabbar 在本页已隐藏（App.vue hideMemberNav），功能条贴底；z105 仍低于弹层 120/121。
    背景与名片页返回签同质感：暖调磨砂玻璃（2026-11-28 全站底栏统一） */
-.bottom-launcher { position: fixed; left: 0; right: 0; bottom: 0; z-index: 105; display: flex; gap: 6px; padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); background: rgba(234,228,216,.92); background: linear-gradient(180deg, rgba(241,236,227,.94), rgba(226,219,206,.88)); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-top: 1px solid rgba(255,255,255,.55); box-shadow: 0 -8px 28px -14px rgba(31,27,22,.28), inset 0 1px 0 rgba(255,255,255,.65); }
+.bottom-launcher { position: fixed; left: 0; right: 0; bottom: 0; z-index: 105; display: flex; gap: 6px; padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); background: rgba(228,217,197,.94); background: linear-gradient(180deg, rgba(236,226,206,.95), rgba(219,206,183,.92)); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-top: 1px solid rgba(255,255,255,.55); box-shadow: 0 -8px 28px -14px rgba(31,27,22,.28), inset 0 1px 0 rgba(255,255,255,.65); }
 .bottom-launcher button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 0; border-radius: 8px; color: var(--muted); font-size: 12px; }
 .bottom-launcher button.on { color: var(--primary); background: #eef4ff; background: color-mix(in srgb, var(--primary) 10%, transparent); }
 /* 宽屏（PC 桌面壳）限宽居中，与 sheet 对齐，避免通栏横条 */
