@@ -285,11 +285,11 @@
                「识别图中二维码」；名片本体码为标准方点 + 用户自选配色，不受影响 -->
           <p class="small muted center">{{ qrMode === 'pay' ? '扫一扫 · 自动打开付款' : '扫一扫' }}</p>
         </template>
-        <!-- 一个入口承载多件事：存联系人的码/打开名片的码/收款码、复制链接、公开页（关闭弹层即当前公开页） -->
+        <!-- 一个入口承载多件事：存联系人的码/打开名片的码/收款码；收款码不提供复制链接（扫码即付），编辑走快捷编辑弹层 -->
         <div class="btn-row" style="justify-content:center;margin-top:14px;flex-wrap:wrap">
-          <button class="btn btn-primary" @click="copy(qrMode === 'pay' ? publicLink + '?pay=1' : publicLink, qrMode === 'pay' ? '收款链接' : '名片链接')">{{ qrMode === 'pay' ? '复制收款链接' : '复制名片链接' }}</button>
+          <button v-if="qrMode !== 'pay'" class="btn btn-primary" @click="copy(publicLink, '名片链接')">复制名片链接</button>
           <button v-if="qrMode !== 'pay' || hasPayQr" class="btn btn-ghost" @click="saveQr">保存二维码</button>
-          <button v-if="owner && qrMode === 'pay' && hasPayQr" class="btn btn-ghost" @click="qrModal = false; openQuickEdit('pay_qr')">更换收款码</button>
+          <button v-if="owner && qrMode === 'pay' && hasPayQr" class="btn btn-ghost" @click="qrModal = false; openQuickEdit('pay_qr')">编辑</button>
           <button class="btn btn-ghost" @click="qrModal = false">关闭</button>
         </div>
       </div>
