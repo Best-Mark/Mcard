@@ -69,6 +69,9 @@
           <button type="button" class="gear-item" @click="gearGo('/me/contacts')">
             <i class="gear-ico">▦</i><span class="gear-t">名片夹<small>收藏 · 交换</small></span><i class="gear-arrow">›</i>
           </button>
+          <button type="button" class="gear-item" @click="gearGo('/me/stats')">
+            <i class="gear-ico">▥</i><span class="gear-t">浏览统计<small>访问数据 · 访客画像</small></span><i class="gear-arrow">›</i>
+          </button>
           <button type="button" class="gear-item" @click="gearGo('/me/batch-scan')">
             <i class="gear-ico">▣</i><span class="gear-t">展会连扫收名片<small>批量识别</small></span><i class="gear-arrow">›</i>
           </button>

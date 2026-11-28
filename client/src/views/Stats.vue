@@ -25,12 +25,11 @@
           <span>近 14 天 <b>{{ recentTotal }}</b> 次</span>
           <span class="dot">·</span>
           <span>日均 <b>{{ dailyAvg }}</b> 次</span>
-          <span class="dot">·</span>
-          <span>{{ card?.active ? '● 已开通' : '○ 待开通' }}</span>
         </div>
       </div>
 
-      <!-- 紧凑指标：一行三个，无进度条（绝对值数据画进度条没有意义） -->
+      <!-- 紧凑指标：一行两个，无进度条（绝对值数据画进度条没有意义）；
+           套餐有效期/开通状态属套餐管理（Plans 页 + 个人中心头卡），不进统计页（2026-11-28 用户定稿） -->
       <div class="kpi-row">
         <div class="kpi">
           <div class="kpi-ico i-blue">⇄</div>
@@ -41,14 +40,6 @@
           <div class="kpi-ico i-teal">▥</div>
           <div class="kpi-num"><CountUp :value="recentTotal" :duration="1100" :delay="100" /></div>
           <div class="kpi-label">近 14 天</div>
-        </div>
-        <div class="kpi">
-          <div class="kpi-ico i-orange">◷</div>
-          <div class="kpi-num small-num">
-            <template v-if="card?.active && !card?.expires_at">永久</template>
-            <CountUp v-else :value="card?.active ? expireDays : 0" :duration="1100" :delay="200" suffix=" 天" />
-          </div>
-          <div class="kpi-label">剩余有效期</div>
         </div>
       </div>
 
@@ -112,7 +103,6 @@ import { toggleDrawer } from '../store'
 import CountUp from '../components/CountUp.vue'
 
 const router = useRouter()
-const card = ref(null)
 const stats = ref({ views: 0, exchanges: 0, daily: [], sources: [], cities: [], hourly: [] })
 const loading = ref(true)
 const error = ref('')
@@ -124,7 +114,6 @@ const dailyAvg = computed(() => {
   const days = (stats.value.daily || []).length || 14
   return Math.round(recentTotal.value / days)
 })
-const expireDays = computed(() => card.value?.expires_at ? Math.max(0, Math.ceil((new Date(String(card.value.expires_at).replace(' ', 'T') + 'Z') - Date.now()) / 86400000)) : 0)
 const SOURCE_LABELS = { qr: '扫码', market: '名片集市', share: '好友分享', search: '搜索引擎', direct: '直接访问' }
 function sourceLabel(k) { return SOURCE_LABELS[k] || k || '其他' }
 const sourceTotal = computed(() => (stats.value.sources || []).reduce((s, x) => s + Number(x.n || 0), 0))
@@ -143,10 +132,9 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const [s, c] = await Promise.all([api.get('/api/cards/mine/stats'), api.get('/api/cards/mine')])
-    // 兜底：接口异常/无名片时字段一律给默认值，绝不把 null 丢给模板的 .length / .map
+    const s = await api.get('/api/cards/mine/stats')
+    // 兜底：接口异常时字段一律给默认值，绝不把 null 丢给模板的 .length / .map
     stats.value = { views: 0, exchanges: 0, daily: [], sources: [], cities: [], hourly: [], ...(s.data?.data || {}) }
-    card.value = c.data?.data || null
   } catch (e) { error.value = e.message || '网络异常' } finally { loading.value = false }
 }
 onMounted(load)
@@ -171,14 +159,12 @@ onMounted(load)
 .summary-meta .dot { opacity: .5; }
 
 /* 紧凑指标 */
-.kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+.kpi-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 12px; }
 .kpi { padding: 14px 10px; text-align: center; background: var(--bg-card, #fff); border: 1px solid var(--line, #e8edf4); border-radius: 14px; }
 .kpi-ico { width: 32px; height: 32px; margin: 0 auto 8px; border-radius: 10px; display: grid; place-items: center; font-size: 16px; font-weight: 700; }
 .kpi-ico.i-blue { background: #eff6ff; color: #2563eb; }
 .kpi-ico.i-teal { background: #ecfeff; color: #0891b2; }
-.kpi-ico.i-orange { background: #fff7ed; color: #ea580c; }
 .kpi-num { font-size: 24px; font-weight: 800; color: var(--text, #0f172a); line-height: 1.1; }
-.kpi-num.small-num { font-size: 18px; }
 .kpi-label { margin-top: 5px; font-size: 11px; color: var(--muted, #6b7688); }
 
 .section-title { font-size: 14px; font-weight: 700; margin: 20px 0 10px; }

@@ -12,7 +12,7 @@ export const BOTTOM_TABS = [
   { path: '/me/notifications', label: '消息', icon: 'bell', exact: false },
   { path: '/me/profile', label: '我的', icon: 'user', exact: false }
 ]
-// 统计从底部移除，仍保留在抽屉「我的」组（入口不丢）；集市保持正中凸起位。
+// 统计入口在「我的」页（个人中心 → 设置与更多，2026-11-28 用户定稿），不再占抽屉；集市保持正中凸起位。
 
 // 抽屉只放「底部 tab / 当前页 / 我的页」都够不着、或需要跨页快速可达的入口。
 // 2026-11-25 用户定稿：原 17 项太长且大量重复（我的名片/集市/消息/名片夹/账户信息在底部 tab；
@@ -23,7 +23,6 @@ export const DRAWER_GROUPS = [
     title: '快捷',
     items: [
       { label: '分享名片', icon: 'share', kind: 'share' },
-      { label: '浏览统计 / 订单', icon: 'chart', kind: 'route', path: '/me/stats' },
       { label: '我的套餐', icon: 'gem', kind: 'route', path: '/me/plans' },
       { label: '收款账户', icon: 'wallet', kind: 'route', path: '/me/withdraw-account', promoter: true }
     ]
