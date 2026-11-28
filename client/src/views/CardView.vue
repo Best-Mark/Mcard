@@ -635,7 +635,7 @@ const QE_CONF = {
   tags: { label: '标签', fields: [{ key: 'tags', label: '标签（逗号分隔，最多 8 个）', type: 'tags', max: 200 }] },
   bio: { label: '简介', fields: [{ key: 'bio', label: '简介', type: 'textarea', max: 1000 }] },
   mobile: { label: '手机号', fields: [{ key: 'mobile', label: '手机号', max: 30, inputmode: 'tel' }] },
-  phone: { label: '座机', fields: [{ key: 'phone', label: '座机', max: 30, inputmode: 'tel' }] },
+  phone: { label: '座机', fields: [{ key: 'phone', label: '座机', max: 30, inputmode: 'tel', ph: '带区号，如 0755-88886666' }] },
   email: { label: '邮箱', fields: [{ key: 'email', label: '邮箱', max: 80, inputmode: 'email' }] },
   wechat: { label: '微信号', fields: [{ key: 'wechat', label: '微信号', max: 60 }] },
   alipay: { label: '支付宝', fields: [{ key: 'alipay', label: '支付宝', max: 60 }] },
@@ -1231,7 +1231,8 @@ watch(slug, () => {
   load()
 })
 
-function tel(v) { if (v) windowRef.location.href = `tel:${v}`; else showToast('尚未填写电话') }
+// tel: 链接只留数字与 +（座机带区号如 0755-88886666 时去掉连字符/空格，老机型拨号盘兼容）
+function tel(v) { if (v) windowRef.location.href = `tel:${String(v).replace(/[^\d+]/g, '')}`; else showToast('尚未填写电话') }
 function sms(v) { if (v) windowRef.location.href = `sms:${v}`; else showToast('尚未填写手机号') }
 function mailto(v) { if (v) windowRef.location.href = `mailto:${v}`; else showToast('尚未填写邮箱') }
 function openMapSheet() {

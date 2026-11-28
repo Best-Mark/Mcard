@@ -74,7 +74,7 @@
             <div class="section-title" style="margin-top:0">联系方式</div>
             <div class="grid2">
               <div class="field"><label>手机号</label><input v-model="form.mobile" class="input" inputmode="tel" /></div>
-              <div class="field"><label>座机</label><input v-model="form.phone" class="input" /></div>
+              <div class="field"><label>座机</label><input v-model="form.phone" class="input" inputmode="tel" placeholder="带区号，如 0755-88886666" /></div>
               <div class="field"><label>邮箱</label><input v-model="form.email" class="input" type="email" /></div>
               <div class="field"><label>微信号</label><input v-model="form.wechat" class="input" /></div>
               <div class="field"><label>支付宝账号</label><input v-model="form.alipay" class="input" /></div>
