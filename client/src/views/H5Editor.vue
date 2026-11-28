@@ -97,8 +97,9 @@
                 <button v-for="t in ADDABLE" :key="t" class="he-chip" @click="addBlock(t)">＋{{ TYPE_LABEL[t] }}</button>
               </template>
             </template>
-            <!-- 页面行（页面结构层）：切页 / 加删页 / 本页背景 / 整套模板——背景与模板都是页面级操作，
-                 不与全局配色混放（2026-11-28 用户定稿「层次一定要清楚，不要都扔一起」） -->
+            <!-- 页面行（页面结构层）：切页 / 加删页 / 本页背景 / 背景音乐 / 整套模板 / 翻页动效——
+                 整页级设置统一收在这行（2026-11-28 用户定稿「音乐和翻页这些应该放一起」），
+                 不与全局配色混放；背景音乐走本页 music 元素（选曲即建、「不用音乐」即移除） -->
             <template v-else-if="dockMode === 'pages'">
               <button v-for="(p, i) in schema.pages" :key="i" :class="['he-chip', { on: i === selPage }]" @click="selPage = i; selBlock = 0">第{{ i + 1 }}页·{{ elsCount(p) }}元素</button>
               <button v-if="pagesCount < maxPages" class="he-chip on" @click="pageAddOpen = true">＋ 加一页</button>
@@ -106,17 +107,19 @@
               <button v-if="pagesCount > 1" class="he-chip warn" @click="pageDelConfirm = true">✕ 删本页</button>
               <span class="he-grp">本页</span>
               <button class="he-chip" @click="openBg">◧ 页面背景</button>
+              <span class="he-grp">背景音乐</span>
+              <BottomSelect :model-value="musicModel" :options="MUSIC_PRESETS" title="背景音乐" @update:modelValue="onMusicPick" />
               <span class="he-grp">整页模板</span>
               <button class="he-chip" @click="openTpls">套用官方模板…</button>
+              <span class="he-grp">整页动效</span>
+              <BottomSelect :model-value="schema.transition || 'auto'" :options="TRANSITION_OPTS" title="页面切换动效" @update:modelValue="schema.transition = $event; markDirty()" />
             </template>
-            <!-- 配色行（全局视觉层）：主题色 + 整套配色 + 页面切换动效，均为全站生效 -->
+            <!-- 配色行（全局视觉层）：主题色 + 整套配色，纯视觉调节 -->
             <template v-else-if="dockMode === 'theme'">
               <span class="he-grp">主题色</span>
               <button v-for="c in COLORS" :key="c" :class="['he-dot', { on: (schema.accent || '') === c }]" :style="{ background: c }" @click="setAccent(c)"></button>
               <span class="he-grp">整套配色</span>
               <button class="he-chip" @click="palOpen = true">一键换全套 ›</button>
-              <span class="he-grp">切换动效</span>
-              <BottomSelect :model-value="schema.transition || 'auto'" :options="TRANSITION_OPTS" title="页面切换动效" @update:modelValue="schema.transition = $event; markDirty()" />
             </template>
             <!-- 发布行（2026-11-28 用户定稿）：编辑器只有「发布」=保存草稿，不承担上架；
                  上架/更新上架/下架/关联名片/复制链接都在宣传页列表页管理 -->
@@ -450,7 +453,7 @@ const router = useRouter()
 const TYPE_LABEL = { cover: '封面', text: '文本', hero: '图文', image: '图片', shape: '形状', button: '按钮', gallery: '图集', contact: '联系方式', map: '位置', buttons: '按钮组', video: '视频', form: '表单留资', music: '背景音乐', endcard: '名片尾页' }
 // 自由画布（2026-11-27 用户定稿上 MAKA 同款）：文本/图片/形状/按钮为自由元素，其余为组件元素（绝对定位复用原表单）
 const FREE_TYPES = ['text', 'image', 'shape', 'button']
-const ADDABLE = ['text', 'image', 'shape', 'button', 'gallery', 'contact', 'map', 'buttons', 'video', 'form', 'music', 'endcard']
+const ADDABLE = ['text', 'image', 'shape', 'button', 'gallery', 'contact', 'map', 'buttons', 'video', 'form', 'endcard']
 // 加页版式（2026-11-28 取百家之长：竞品加页都给版式选择，不再是光秃秃一行标题）
 const PAGE_LAYOUTS = [
   { key: 'title', name: '标题页', desc: '大字标题居中，适合开场 / 口号' },
@@ -488,7 +491,7 @@ const MUSIC_PRESETS = [
   { value: '/music/bgm-warm.wav', label: '温暖治愈' },
   { value: '/music/bgm-business.wav', label: '沉稳大气' },
   { value: '/music/bgm-fresh.wav', label: '轻快活力' },
-  { value: '', label: '不用预设' }
+  { value: '', label: '不用音乐' }
 ]
 // 入场动效选项（'' = 智能默认，与渲染层 animOf 的类型默认一致；none = 关闭）
 const ANIM_OPTS = [
@@ -526,6 +529,27 @@ const dockMode = ref('main')
 const formOpen = ref(false)
 const styleOpen = ref(false) // 自由元素属性面板（2026-11-27 自由画布）
 const bgOpen = ref(false) // 页面背景弹层
+// 背景音乐（整页级，2026-11-28 用户定稿「音乐和翻页这些整页设置放一起」）：由页面行统一管理，
+// 落在本页 music 元素上——选曲即建（右上角小卡，编辑画布的可视占位；公开页是右下浮动 ♪），
+// 「不用音乐」即移除本页音乐元素；音乐不再出现在「加元素」清单里（渲染层取全页首个带 url 的 music）。
+const pageMusic = computed(() => curEls.value.find(e => e.type === 'music') || null)
+const musicModel = computed(() => {
+  const u = pageMusic.value?.url || ''
+  return MUSIC_PRESETS.some(p => p.value === u) ? u : ''
+})
+function onMusicPick(v) {
+  const arr = curEls.value
+  const at = arr.findIndex(e => e.type === 'music')
+  if (v === '') {
+    if (at >= 0) { arr.splice(at, 1); markDirty() }
+    return
+  }
+  if (at >= 0) { arr[at].url = v; markDirty(); return }
+  let maxZ = 0
+  for (const e of arr) maxZ = Math.max(maxZ, Number(e.g?.z) || 0)
+  arr.push({ type: 'music', url: v, autoplay: true, anim: '', g: { x: 470, y: 30, w: 256, h: 74, rot: 0, opacity: 1, z: maxZ + 1 } })
+  markDirty()
+}
 const tplOpen = ref(false)
 const templates = ref([])
 const applying = ref(false)
