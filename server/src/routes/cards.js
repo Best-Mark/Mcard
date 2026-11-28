@@ -5,7 +5,7 @@ const { ok, fail, wrap } = require('../utils/response')
 const { authRequired, parseToken } = require('../utils/auth')
 const { makeSlug, normalizeSlug } = require('../utils/slug')
 const qr = require('../services/qrcode')
-const { inspectPayQr, readPayQr, safePayLink } = require('../services/payQr')
+const { inspectPayQr, readPayQr, safePayLink, composePayPair } = require('../services/payQr')
 const { normalizeStyle } = qr
 const vcard = require('../services/vcard')
 const { CARD_TEMPLATES, isTemplate, DEFAULT_TEMPLATE } = require('../utils/cardTemplates')
@@ -382,6 +382,33 @@ router.get('/public/:slug/pay.png', wrap(async (req, res) => {
   if (!row) return fail(res, 404, '名片不存在')
   const size = Math.min(1600, Math.max(256, Number(req.query.size) || 720))
   const buf = await qr.plainPng(payQrText(req), { size })
+  res.type('png').set('Cache-Control', 'public, max-age=60').send(buf)
+}))
+
+// 干净付款码（2026-11-28 真机修正）：把上传收款码图内解码出的原始付款链接（wxp://、qr.alipay.com 等）
+// 重新渲染成纯黑白标准码。用户上传的收款码截图常带装饰边框/文字，微信长按识别不出码（真机实锤：
+// 长按菜单里根本没有「识别图中二维码」）；重渲染的干净码长按必出识别菜单，识别 wxp:// 微信直达付款
+// 页——微信内置浏览器拦 wxp:// 跳转，长按识别是个人收款在微信内最顺的路径。无链接（存量未回填/
+// 异形码）回 404，前端回落用户上传的原图。
+router.get('/public/:slug/pay-link.png', wrap(async (req, res) => {
+  const row = db.prepare('SELECT slug, wechat_pay_link, alipay_pay_link FROM cards WHERE slug = ?').get(req.params.slug)
+  if (!row) return fail(res, 404, '名片不存在')
+  const platform = String(req.query.platform || '')
+  const text = platform === 'wechat' ? row.wechat_pay_link : platform === 'alipay' ? row.alipay_pay_link : ''
+  if (!text) return fail(res, 404, '暂无付款链接')
+  const size = Math.min(1600, Math.max(256, Number(req.query.size) || 720))
+  const buf = await qr.plainPng(text, { size })
+  res.type('png').set('Cache-Control', 'public, max-age=60').send(buf)
+}))
+
+// 双码合一图（2026-11-28 零中间过程定稿）：微信码（绿框）+ 支付宝码（蓝框）合成一张立牌，
+// 各扫各的直接原生付款。给「保存二维码」下载/分享用；弹层里两码分开显示（pay-link.png），
+// 长按识别才能各自命中——合成图长按只会随机认一张。
+router.get('/public/:slug/pay-pair.png', wrap(async (req, res) => {
+  const row = db.prepare('SELECT slug, wechat_pay_qr, alipay_pay_qr, wechat_pay_link, alipay_pay_link FROM cards WHERE slug = ?').get(req.params.slug)
+  if (!row) return fail(res, 404, '名片不存在')
+  const buf = await composePayPair({ wechatUrl: row.wechat_pay_qr, alipayUrl: row.alipay_pay_qr, wechatLink: row.wechat_pay_link, alipayLink: row.alipay_pay_link })
+  if (!buf) return fail(res, 404, '暂无收款码')
   res.type('png').set('Cache-Control', 'public, max-age=60').send(buf)
 }))
 

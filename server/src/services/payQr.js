@@ -121,4 +121,46 @@ function safePayLink(kind, text) {
   return classify(s) === kind ? s : ''
 }
 
-module.exports = { inspectPayQr, readPayQr, safePayLink }
+// —— 双码合一图（2026-11-28 用户定稿「零中间过程」）——
+// 一张 QR 只能编码一份内容，微信只对自家支付协议（wxp:// 等）原生唤起微信支付、支付宝只对自家链接
+// 原生唤起支付宝支付：一张码不可能两家通吃，任何「URL 码 + 落地页分流」都必然有中间过程。
+// 个人收款「微信扫=扫微信收款码、支付宝扫=扫支付宝收款码」的唯一实现 = 双码同图立牌：
+// 微信码绿框 + 支付宝码蓝框并排，各扫各的，扫码即原生付款，零中间过程。
+// 码图优先用图内付款链接重渲染的纯黑白标准码（干净码长按必出「识别图中二维码」），
+// 无链接（存量未回填/异形码）回落用户上传的原图。不加文字标签：部署机可能缺 CJK 字体，
+// 渲染成豆腐块比没字更糟；绿=微信、蓝=支付宝是通用认知，界面里另有文字标注。
+const PAIR_QR = 620
+const PAIR_PAD = 72
+const PAIR_GAP = 72
+
+async function composePayPair({ wechatUrl = '', alipayUrl = '', wechatLink = '', alipayLink = '' }) {
+  const qrSvc = require('./qrcode')
+  const slots = []
+  if (wechatLink || wechatUrl) slots.push({ link: wechatLink, url: wechatUrl, frame: '#07c160' })
+  if (alipayLink || alipayUrl) slots.push({ link: alipayLink, url: alipayUrl, frame: '#1677ff' })
+  if (!slots.length) return null
+  const W = PAIR_PAD * 2 + slots.length * PAIR_QR + (slots.length - 1) * PAIR_GAP
+  const H = PAIR_PAD * 2 + PAIR_QR
+  const frames = []
+  const imgs = []
+  for (let i = 0; i < slots.length; i++) {
+    const s = slots[i]
+    const x = PAIR_PAD + i * (PAIR_QR + PAIR_GAP)
+    frames.push({
+      input: Buffer.from(`<svg width="${W}" height="${H}"><rect x="${x - 14}" y="${PAIR_PAD - 14}" width="${PAIR_QR + 28}" height="${PAIR_QR + 28}" rx="28" fill="none" stroke="${s.frame}" stroke-width="18"/></svg>`)
+    })
+    let buf
+    if (s.link) {
+      buf = await qrSvc.plainPng(s.link, { size: PAIR_QR })
+    } else {
+      const raw = localUploadPath(s.url) || await fetchImage(s.url)
+      if (!raw) return null
+      buf = await sharp(raw, { failOn: 'none' }).resize(PAIR_QR, PAIR_QR, { fit: 'contain', background: '#ffffff' }).png().toBuffer()
+    }
+    imgs.push({ input: buf, left: x, top: PAIR_PAD })
+  }
+  return sharp({ create: { width: W, height: H, channels: 3, background: '#ffffff' } })
+    .composite([...frames, ...imgs]).png().toBuffer()
+}
+
+module.exports = { inspectPayQr, readPayQr, safePayLink, composePayPair }

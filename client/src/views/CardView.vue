@@ -260,8 +260,7 @@
     </BottomSheet>
 
     <!-- 名片二维码弹层：联系人码（名片页 URL + contact=1，扫了自动弹「存入通讯录」入口）、
-         名片链接码（名片页 URL，扫了看名片）、收款码（合一收款码 = 名片页 URL + pay=1，
-         扫码按支付环境自动弹对应收款码，长按识别即付款）。默认联系人码。
+         名片链接码（名片页 URL，扫了看名片）、收款码（微信码 + 支付宝码双码同图，各扫各的直接付款）。默认联系人码。
          ⚠️ 不是 vCard 文本码：微信不解析 BEGIN:VCARD，扫了只显示「暂不支持展示二维码中的文本内容」黑屏。
          一律 PNG（微信「识别图中二维码」不认 SVG），链接仅作文案可复制 -->
     <div v-if="qrModal" class="modal-mask" @click.self="qrModal = false">
@@ -274,16 +273,28 @@
         </div>
         <template v-if="qrMode === 'pay' && !hasPayQr">
           <div class="qr-pay-empty">
-            <p class="small muted center">上传微信 / 支付宝收款码后，这里会生成一张「合一收款码」：付款方扫一扫自动打开付款界面。</p>
+            <p class="small muted center">上传微信 / 支付宝收款码后，这里生成微信、支付宝两张收款码：对方用哪个 App 就扫哪张，直接打开付款。</p>
             <!-- 上传走快捷编辑弹层（与「＋ 收款码」同一入口），不跳旧的完整编辑表单 -->
             <button class="btn btn-primary" @click="qrModal = false; openQuickEdit('pay_qr')">去上传收款码</button>
           </div>
         </template>
+        <!-- 双码合一（2026-11-28 零中间过程定稿）：一张 QR 编不了微信/支付宝两家支付协议，
+             微信码+支付宝码同图并排（绿框微信、蓝框支付宝），各扫各的直接原生付款；
+             弹层里两码分开显示，长按识别才各自命中 -->
+        <template v-else-if="qrMode === 'pay'">
+          <div style="display:flex;justify-content:center;gap:18px;margin:10px 0 4px">
+            <div v-for="p in payQrList" :key="p.key" style="width:150px;text-align:center">
+              <img :src="payCleanUrl(p)" :alt="p.label" style="width:150px;height:150px;display:block;border-radius:10px" />
+              <p class="small" :style="{ margin: '6px 0 0', color: p.key === 'wechat' ? '#07c160' : '#1677ff' }">{{ p.label }}</p>
+            </div>
+          </div>
+          <p class="small muted center">分享或出示给对方：用微信 / 支付宝扫一扫对应收款码，直接打开付款</p>
+        </template>
         <template v-else>
-          <img :src="qrModalSrc" style="width:264px;height:264px;margin:4px auto 10px;display:block" :alt="qrMode === 'vcard' ? '联系人码' : (qrMode === 'pay' ? '合一收款码' : '名片链接码')" />
+          <img :src="qrModalSrc" style="width:264px;height:264px;margin:4px auto 10px;display:block" :alt="qrMode === 'vcard' ? '联系人码' : '名片链接码'" />
           <!-- 2026-11-27 识别率定稿：弹层大码/保存一律用纯黑白标准识别码（plain=1），微信长按 100% 出
                「识别图中二维码」；名片本体码为标准方点 + 用户自选配色，不受影响 -->
-          <p class="small muted center">{{ qrMode === 'pay' ? '扫一扫 · 自动打开付款' : '扫一扫' }}</p>
+          <p class="small muted center">扫一扫</p>
         </template>
         <!-- 一个入口承载多件事：存联系人的码/打开名片的码/收款码；收款码不提供复制链接（扫码即付），编辑走快捷编辑弹层 -->
         <div class="btn-row" style="justify-content:center;margin-top:14px;flex-wrap:wrap">
@@ -310,22 +321,23 @@
       </div>
     </div>
 
-    <!-- 合一收款码落地页（?pay=1，2026-11-28）：付款方扫「收款码」打开名片页后自动弹对应收款码，
-         长按识别即付款。微信环境默认微信收款码、支付宝环境默认支付宝收款码、其它环境可切换；
-         环境与码不匹配时提示截图后用对应 App 扫码。引导与操作只在弹层，不铺在名片内容区。 -->
+    <!-- 付款弹层（?pay=1 扫码落地 / 「向 TA 付款」同一链路，2026-11-28 零中间过程定稿）：
+         微信码 + 支付宝码双码并排，各扫各的直接原生付款，不再做 URL 跳转中转。
+         引导与操作只在弹层，不铺在名片内容区。 -->
     <div v-if="payAutoOpen" class="modal-mask" @click.self="payAutoOpen = false">
       <div class="modal center">
         <h3>向 {{ card?.name || 'TA' }} 付款</h3>
-        <div v-if="payQrList.length > 1" class="qr-mode-tabs">
-          <button v-for="p in payQrList" :key="p.key" :class="['qr-mode-tab', { on: payMode === p.key }]" @click="payMode = p.key">{{ p.label }}</button>
-        </div>
         <template v-if="payQrList.length">
-          <img :src="payQrUrl" style="width:264px;height:264px;margin:4px auto 10px;display:block;object-fit:contain" :alt="payMode === 'alipay' ? '支付宝收款码' : '微信收款码'" />
-          <p class="small muted center">{{ payHint }}</p>
+          <div style="display:flex;justify-content:center;gap:18px;margin:10px 0 4px">
+            <div v-for="p in payQrList" :key="p.key" style="width:150px;text-align:center">
+              <img :src="payCleanUrl(p)" :alt="p.label" style="width:150px;height:150px;display:block;border-radius:10px" />
+              <p class="small" :style="{ margin: '6px 0 0', color: p.key === 'wechat' ? '#07c160' : '#1677ff' }">{{ p.label }}</p>
+            </div>
+          </div>
+          <p class="small muted center">{{ payPairHint }}</p>
         </template>
         <p v-else class="small muted center">对方还没上传收款码</p>
         <div class="btn-row" style="justify-content:center;margin-top:14px;flex-wrap:wrap">
-          <button v-if="payJumpLink" class="btn btn-primary" @click="tryPayJump">打开付款</button>
           <button class="btn btn-ghost" @click="payAutoOpen = false">关闭</button>
         </div>
       </div>
@@ -532,9 +544,9 @@ const qrStamp = ref(0)
 // 弹层大码恒用 plain=1 纯黑白标准识别码（2026-11-27 定稿：长按识别 100% 可用）。
 const qrImgSize = Math.round(264 * Math.min(3, Math.max(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 2)))
 // 弹层三 tab 的码图 URL 唯一构建点：联系人码（vcard.png）/链接码（qr.png）走 plain=1 纯黑白；
-// 收款码（pay.png，合一码）服务端恒 plain 渲染，不带 plain 参数。
+// 收款码（pay-pair.png，双码合一图）服务端恒 plain 渲染，不带 plain 参数。
 function qrUrlFor(mode, size) {
-  if (mode === 'pay') return scanQrUrl(slug.value, 'pay.png', size)
+  if (mode === 'pay') return scanQrUrl(slug.value, 'pay-pair.png', size)
   return scanQrUrl(slug.value, mode === 'vcard' ? 'vcard.png' : 'qr.png', size) + '&plain=1'
 }
 const qrModalSrc = computed(() => qrUrlFor(qrMode.value, qrImgSize) + '&v=' + qrStamp.value)
@@ -829,10 +841,11 @@ async function onContactAutoSave() {
   contactAutoOpen.value = false
   try { await saveContact() } finally { contactAutoBusy.value = false }
 }
-// 合一收款码落地弹层（?pay=1，2026-11-28）：付款方扫「收款码」打开名片页自动弹对应收款码，并按环境
-// 直接调起支付（图内解码出的原始付款链接 wxp://、qr.alipay.com 等）；跳不起来回落长按识别收款码图。
-// 支付环境判定走 pay-env（支付场景唯一真相源）；微信判定复用 save-image 的 isWeChat（同 /MicroMessenger/ 口径）。
-const payAutoOpen = ref(false); const payMode = ref('wechat')
+// 付款弹层（?pay=1 扫码落地 / 「向 TA 付款」同一链路）：微信码 + 支付宝码双码并排（2026-11-28
+// 「零中间过程」定稿）——各扫各的直接原生付款。不再做任何 URL 跳转中转：一张 QR 编不了两家协议，
+// wxp:// 在微信内置浏览器被拦截、支付宝网页中转跳转感明显，旧自动跳转方案已废弃。
+// 微信判定复用 save-image 的 isWeChat（同 /MicroMessenger/ 口径）。
+const payAutoOpen = ref(false)
 const payQrList = computed(() => {
   const c = card.value || {}
   const list = []
@@ -841,34 +854,21 @@ const payQrList = computed(() => {
   return list
 })
 const hasPayQr = computed(() => payQrList.value.length > 0)
-const payQrUrl = computed(() => (payQrList.value.find(p => p.key === payMode.value) || payQrList.value[0] || {}).url || '')
-// 可自动调起支付的链接：仅「当前环境 == 选中的码」且链接过协议白名单才给（绝不把可疑文本塞进 location）；
-// wxp:// 等自定义协议跳不起来时浏览器静默失败，页面保持弹层可长按识别兜底。
-const PAY_LINK_RE = /^(wxp:|weixin:\/\/|alipays:|https?:)/i
-const payJumpLink = computed(() => {
-  const envKey = isAlipay() ? 'alipay' : (isWeChat() ? 'wechat' : '')
-  if (!envKey || payMode.value !== envKey) return ''
-  const link = (payQrList.value.find(p => p.key === payMode.value) || {}).link || ''
-  return PAY_LINK_RE.test(link) ? link : ''
+// 弹层里两码分开显示（长按识别才各自命中）：有付款链接用干净标准码（上传的截图码带装饰边框，
+// 微信长按识别不出码——真机实锤；图内付款链接重渲染的纯黑白码必出「识别图中二维码」），
+// 无链接回落用户上传的原图。v= 随链接内容击穿缓存（换码后不留旧码）。
+const linkBust = s => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36) }
+const payCleanUrl = p => (p.link
+  ? `${qrApi.value}/pay-link.png?platform=${p.key}&size=720&v=${linkBust(p.link)}`
+  : p.url)
+const payPairHint = computed(() => {
+  if (isWeChat()) return '长按识别「微信收款」码，打开付款界面；用支付宝付款可保存图片后用支付宝扫一扫'
+  if (isAlipay()) return '长按识别「支付宝收款」码，打开付款界面；用微信付款可保存图片后用微信扫一扫'
+  return '用微信 / 支付宝扫一扫对应收款码，直接打开付款'
 })
-function tryPayJump() {
-  const link = payJumpLink.value
-  if (!link) return
-  try { windowRef.location.href = link } catch { /* 跳转失败静默，回落弹层长按识别 */ }
-}
-const payHint = computed(() => {
-  const k = payMode.value
-  if (isWeChat()) return k === 'wechat' ? (payJumpLink.value ? '已自动打开付款界面；没弹出就点下方按钮或长按识别二维码' : '长按识别二维码，向 TA 付款') : '微信内无法支付支付宝收款码，可截图后用支付宝扫码付款'
-  if (isAlipay()) return k === 'alipay' ? (payJumpLink.value ? '已自动打开付款界面；没弹出就点下方按钮或长按识别二维码' : '长按识别二维码，向 TA 付款') : '支付宝内无法支付微信收款码，可截图后用微信扫码付款'
-  return '可长按识别，或截图后用微信 / 支付宝扫码付款'
-})
-// 打开付款弹层：默认选中与当前支付环境匹配的那张收款码，环境码没传则回落已有的一张；
-// 匹配环境且拿到付款链接时立刻调起支付（扫码落地 / 「向 TA 付款」同一链路）
+// 打开付款弹层：两张码都给出来，各扫各的（扫码落地 / 「向 TA 付款」同一链路）
 function openPayModal() {
-  const envKey = isAlipay() ? 'alipay' : (isWeChat() ? 'wechat' : '')
-  payMode.value = payQrList.value.some(p => p.key === envKey) ? envKey : (payQrList.value[0]?.key || 'wechat')
   payAutoOpen.value = true
-  tryPayJump()
 }
 const contactFallbackOpen = ref(false) // 安卓 intent 拉不起通讯录时的兜底：复制基本信息卡片（全程不下载）
 const mapOpen = ref(false); const moreOpen = ref(false)
@@ -1181,13 +1181,12 @@ async function load() {
         windowRef.history.replaceState(null, '', u.toString())
       }
     }
-    // 合一收款码落地（2026-11-28）：扫码 URL 带 pay=1 → 名片页加载完自动弹付款弹层，
-    // 按支付环境默认选中对应收款码。同样读真实 URL、清一次性参数，口径与上面 contact=1 一致。
+    // 收款码落地（2026-11-28）：扫码 URL 带 pay=1 → 名片页加载完自动弹付款弹层（微信/支付宝双码并排，
+    // 各扫各的直接付款）。同样读真实 URL、清一次性参数，口径与上面 contact=1 一致。
     {
       const u = new URL(windowRef.location.href)
       if (u.searchParams.get('pay') === '1') {
-        // 先清一次性参数再弹付款层：openPayModal 会立刻 location.href 调起支付，
-        // 清参数（历史 API）必须发生在任何导航尝试之前，顺序确定不竞态（微信时序铁律）
+        // 先清一次性参数再弹付款层，顺序确定不竞态（微信时序铁律）
         u.searchParams.delete('pay')
         windowRef.history.replaceState(null, '', u.toString())
         openPayModal()
@@ -1260,8 +1259,8 @@ async function copy(v, label) {
   } catch { showToast(`复制失败，${label}：${v}`) }
 }
 async function saveQr() {
-  // 保存当前 tab 的码：联系人码（名片页 URL + contact=1）/链接码/收款码（合一码，名片页 URL + pay=1）；
-  // 一律纯黑白标准码（pay.png 服务端恒 plain）
+  // 保存当前 tab 的码：联系人码（名片页 URL + contact=1）/链接码/收款码（双码合一图，微信码+支付宝码）；
+  // 一律纯黑白标准码（pay-pair.png 服务端恒 plain）
   const mode = qrMode.value
   const url = qrUrlFor(mode, 900)
   guideImage.value = url // 长按引导里展示的就是这张码
