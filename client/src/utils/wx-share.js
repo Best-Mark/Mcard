@@ -87,8 +87,8 @@ export function markShareSet() { customShareSet = true }
  */
 export async function setupWechatShare(api, opts = {}, { fromDefault = false } = {}) {
   if (!fromDefault) customShareSet = true
-  // 全面邀请：先拿当前用户邀请码（推广员才有），再算最终分享链接；首次调用也能带码。
-  // 失败/非推广员返回空码，分享照常进行。
+  // 全面邀请：先拿当前用户邀请码（全平台登录用户都有码），再算最终分享链接；首次调用也能带码。
+  // 失败/未登录返回空码，分享照常进行。
   let inviteCode = ''
   try { inviteCode = await loadMyInviteCode() } catch { inviteCode = '' }
   const pools = sharePools()

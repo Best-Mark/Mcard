@@ -47,8 +47,8 @@ router.get('/packages', adminRequired, wrap((_req, res) => {
 
 router.post('/packages', adminRequired, wrap((req, res) => {
   const { name, description = '', price_cents, duration_days, features = [], sort = 0, enabled = 1 } = req.body || {}
-  // duration_days = 0 表示终身套餐
-  if (!name || !(Number(price_cents) >= 0) || !(Number(duration_days) >= 0)) return fail(res, 400, '请填写套餐名称、价格与有效天数（0 表示终身）')
+  // 终身套餐已停售（2026-11-28）：duration_days 必须 ≥ 1，不再接受 0
+  if (!name || !(Number(price_cents) >= 0) || !(Number(duration_days) >= 1)) return fail(res, 400, '请填写套餐名称、价格与有效天数（至少 1 天）')
   const r = db.prepare('INSERT INTO packages (name, description, price_cents, duration_days, features, sort, enabled) VALUES (?,?,?,?,?,?,?)')
     .run(String(name).slice(0, 60), String(description).slice(0, 200), Math.round(Number(price_cents)), Math.round(Number(duration_days)),
       JSON.stringify(Array.isArray(features) ? features.slice(0, 12) : []), Number(sort) || 0, enabled ? 1 : 0)
@@ -68,7 +68,8 @@ router.put('/packages/:id', adminRequired, wrap((req, res) => {
     sort: b.sort !== undefined ? Number(b.sort) || 0 : row.sort,
     enabled: b.enabled !== undefined ? (b.enabled ? 1 : 0) : row.enabled
   }
-  if (!v.name || v.price_cents < 0 || v.duration_days < 0) return fail(res, 400, '套餐参数不合法（有效天数 0 表示终身）')
+  // 终身套餐已停售（2026-11-28）：保存后 duration_days 必须 ≥ 1；存量终身行想改任何字段都先改成有效天数
+  if (!v.name || v.price_cents < 0 || v.duration_days < 1) return fail(res, 400, '套餐参数不合法（有效天数至少 1 天）')
   db.prepare('UPDATE packages SET name=@name, description=@description, price_cents=@price_cents, duration_days=@duration_days, features=@features, sort=@sort, enabled=@enabled, updated_at=datetime(\'now\') WHERE id=@id')
     .run({ ...v, id: row.id })
   ok(res, { updated: true })

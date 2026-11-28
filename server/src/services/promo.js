@@ -6,6 +6,8 @@
 // ⑤ 佣金都是「订单金额 × 百分比」：首单奖（被邀请人首次开通套餐，一生一次，只给直接推广员）
 //    + 每单返佣（每笔都算，沿邀请链向上发 1~3 级，层级与各级比例后台可配，可叠加）。
 //    旧的固定金额注册奖励已废弃（register 类型仅作历史记录展示，不再新发）。
+// ⑥ 邀请返时长（2026-11-28）与现金佣金并行、口径不同：时长面向全平台用户（任意 active 用户的
+//    邀请码归因成功即给邀请人延长套餐，天数 promo_invite_days 后台可配）；现金仍只给推广员的付费订单。
 const db = require('../db')
 const settings = require('../utils/settings')
 const { slugId } = require('../utils/id')
@@ -48,17 +50,27 @@ function inviteUrl(inviteCode, req) {
 }
 
 // 把邀请码归因绑定到新用户（注册成功后调用一次）。幂等：已有上级则原样返回，绝不覆盖。
-// 返回 { promoterId, invited } —— invited=true 表示这次确实建立了归因（可据此发注册奖励）。
+// 归因资格（2026-11-28 起全平台）：邀请人是任意 active 用户即可（不再限推广员），因为邀请奖励
+// 对全平台用户都发「套餐时长」；现金佣金（首单奖/每单返佣）仍只认推广员，见 orderPromoterId/orderPromoterChain。
+// 返回 { promoterId, invited } —— invited=true 表示这次确实建立了归因（据此给邀请人返时长）。
 function bindInvite(userId, rawCode) {
   const code = String(rawCode || '').trim().toLowerCase()
   if (!code) return { promoterId: null, invited: false }
   const me = db.prepare('SELECT id, invited_by, is_promoter FROM users WHERE id = ?').get(userId)
   if (!me || me.invited_by || me.is_promoter) return { promoterId: null, invited: false }
-  const promoter = db.prepare("SELECT id FROM users WHERE invite_code = ? AND is_promoter = 1 AND status = 'active'").get(code)
-  if (!promoter || promoter.id === userId) return { promoterId: null, invited: false }
+  const inviter = db.prepare("SELECT id FROM users WHERE invite_code = ? AND status = 'active'").get(code)
+  if (!inviter || inviter.id === userId) return { promoterId: null, invited: false }
   try {
-    const r = db.prepare('UPDATE users SET invited_by = ? WHERE id = ? AND invited_by IS NULL').run(promoter.id, userId)
-    return { promoterId: r.changes ? promoter.id : null, invited: !!r.changes }
+    const r = db.prepare('UPDATE users SET invited_by = ? WHERE id = ? AND invited_by IS NULL').run(inviter.id, userId)
+    if (!r.changes) return { promoterId: null, invited: false }
+    // 邀请返时长（全平台）：归因成功给邀请人延长套餐（天数后台可配，0=不发）。
+    // 单发天然由 invited_by 一次性绑定保证（上面 UPDATE 只在未归因时生效），无需额外幂等键。
+    // 发放失败只记日志，绝不影响归因/注册主流程（时长是锦上添花，归因是零丢失铁律）。
+    try {
+      const days = settings.promoConfig().inviteDays
+      if (days > 0) require('./plan').grantDays(inviter.id, days)
+    } catch (e) { console.error('[Promo] 邀请返时长发放失败', e.message) }
+    return { promoterId: inviter.id, invited: true }
   } catch { return { promoterId: null, invited: false } }
 }
 

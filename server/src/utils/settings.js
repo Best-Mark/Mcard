@@ -234,6 +234,9 @@ const GROUPS = {
       { key: 'promo_rate_lv2', label: '二级返佣比例（%，给直接推广员的上级）', type: 'text', showIfLevel: 2 },
       { key: 'promo_rate_lv3', label: '三级返佣比例（%，给二级推广员的上级）', type: 'text', showIfLevel: 3 },
       { key: 'promo_withdraw_min_cents', label: '最低提现额（分）', type: 'text' },
+      // 邀请返时长（2026-11-28）：被邀请人注册归因成功后，给邀请人延长套餐天数（全平台用户都有，
+      // 不止推广员；现金返佣仍只给推广员）。0 = 不发。不受「启用推广分销」开关影响（那是现金佣金开关）。
+      { key: 'promo_invite_days', label: '邀请返时长（天，好友注册归因后给邀请人延长套餐，0 = 不发）', type: 'text' },
       { key: 'promo_invite_base_url', label: '邀请链接前缀（留空=自动用当前站点域名，如 https://card.example.com）', type: 'text' }
     ]
   },
@@ -423,6 +426,8 @@ function promoConfig() {
     rateLv2: rate('promo_rate_lv2', 0),
     rateLv3: rate('promo_rate_lv3', 0),
     withdrawMinCents: num('promo_withdraw_min_cents', 1000),
+    // 邀请返时长（天）：钳制 0~3650，脏值回落 7；0 = 不发（独立于现金佣金开关）
+    inviteDays: Math.min(3650, num('promo_invite_days', 7)),
     inviteBaseUrl: String(get('promo_invite_base_url', '') || '').trim()
   }
 }
@@ -588,6 +593,7 @@ function seedDefaults() {
     promo_rate_lv2: '0',
     promo_rate_lv3: '0',
     promo_withdraw_min_cents: '1000',
+    promo_invite_days: '7',
     promo_invite_base_url: '',
     ...NOTIFY_TEMPLATE_DEFAULTS
   }

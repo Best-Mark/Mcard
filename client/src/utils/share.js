@@ -1,7 +1,7 @@
 import { withInviteAsync } from './invite'
 
 export async function shareOrCopy({ title, text, url }) {
-  // 全面邀请：系统分享/复制链接同样自动带当前用户邀请码（仅推广员有码）
+  // 全面邀请：系统分享/复制链接同样自动带当前用户邀请码（全平台登录用户都有码）
   const shareUrl = await withInviteAsync(url)
   if (navigator.share) {
     try {

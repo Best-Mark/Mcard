@@ -8,6 +8,7 @@ const { requestUrl } = require('../utils/origin')
 const { ok, fail, wrap } = require('../utils/response')
 const { sign, signBind, verifyBind, signShareTicket, verifyShareTicket, cleanShareTickets, authRequired } = require('../utils/auth')
 const promo = require('../services/promo')
+const plan = require('../services/plan')
 
 const router = express.Router()
 cleanShareTickets() // 自愈：清理过期残留的一次性登录凭证
@@ -392,6 +393,8 @@ router.get('/wechat/callback', wrap(async (req, res) => {
     const r = db.prepare("INSERT INTO users (phone, password_hash, nickname, avatar, wx_avatar, wx_nickname, wx_openid, wx_unionid, auth_source) VALUES (?,?,?,?,?,?,?,?, 'wechat')")
       .run(null, bcrypt.hashSync(crypto.randomBytes(24).toString('hex'), 10), autoTarget ? '微信用户' : (nickname || '微信用户'), avatar, avatar, nickname || null, openid, unionid)
     user = db.prepare('SELECT id, phone, nickname, role, status, avatar, wx_avatar, is_promoter FROM users WHERE id = ?').get(r.lastInsertRowid)
+    // 注册即送 PRO 试用（失败不影响登录主流程；还没建卡会先记账，建卡时兑现）
+    try { plan.grantRegisterTrial(user.id) } catch (e) { console.error('[Plan] 注册赠送失败', e.message) }
     const jwt = sign(user)
     const pub = publicUser(user)
     if (qrSid) {
@@ -443,6 +446,8 @@ router.post('/wechat/bind', wrap((req, res) => {
     const r = db.prepare("INSERT INTO users (phone, password_hash, nickname, avatar, wx_avatar, wx_nickname, wx_openid, wx_unionid, auth_source) VALUES (?,?,?,?,?,?,?,?, 'wechat')")
       .run(phone, bcrypt.hashSync(String(password), 10), String(payload.nickname || '微信用户').slice(0, 30) || '微信用户', avatar, avatar, String(payload.nickname || '').slice(0, 30) || null, openid, unionid)
     user = db.prepare('SELECT * FROM users WHERE id = ?').get(r.lastInsertRowid)
+    // 注册即送 PRO 试用（失败不影响绑定主流程）
+    try { plan.grantRegisterTrial(user.id) } catch (e) { console.error('[Plan] 注册赠送失败', e.message) }
   }
   const jwt = sign(user)
   const pub = publicUser(user)
@@ -486,6 +491,8 @@ router.post('/miniapp-login', wrap(async (req, res) => {
       user = db.prepare('SELECT * FROM users WHERE id = ?').get(r.lastInsertRowid)
       created = true
       try { promo.bindInvite(user.id, invite) } catch (e) { console.error('[Promo] 小程序登录归因失败', e.message) }
+      // 注册即送 PRO 试用（失败不影响登录主流程）
+      try { plan.grantRegisterTrial(user.id) } catch (e) { console.error('[Plan] 注册赠送失败', e.message) }
     } catch (e) {
       // 并发兜底：两个请求同时以同一 openid 首次登录，唯一索引会让其中一个插入失败，回查已建账号即可
       user = db.prepare('SELECT * FROM users WHERE wx_openid = ?').get(openid)
@@ -503,8 +510,10 @@ router.post('/register', wrap((req, res) => {
   const result = db.prepare('INSERT INTO users (phone, password_hash, nickname) VALUES (?,?,?)')
     .run(phone, bcrypt.hashSync(String(password), 10), String(nickname || '').slice(0, 30))
   const userId = result.lastInsertRowid
+  // 注册即送 PRO 试用（失败不影响注册主流程；还没建卡会先记账，建卡时兑现）
+  try { plan.grantRegisterTrial(userId) } catch (e) { console.error('[Plan] 注册赠送失败', e.message) }
   // 邀请归因：注册成功后一次性绑定邀请人（失败不影响注册主流程）。
-  // 注册不再发固定奖励；推广佣金改为首次开通套餐时按订单金额百分比发首单奖（见 services/orders.js）。
+  // 归因成功会给邀请人返套餐时长（全平台）；推广佣金仍只在推广员的付费订单产生（见 services/orders.js）。
   try { promo.bindInvite(userId, invite) } catch (e) { console.error('[Promo] 注册归因失败', e.message) }
   const user = db.prepare('SELECT id, phone, nickname, role, status, is_promoter FROM users WHERE id = ?').get(userId)
   ok(res, { token: sign(user), user: publicUser(user) })

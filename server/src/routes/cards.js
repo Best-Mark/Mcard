@@ -535,6 +535,8 @@ router.post('/mine', authRequired, wrap((req, res) => {
   // 名片姓名留空由用户填；不再拿账户昵称当默认值（2026-11-25 强制约定：users 与 cards 字段互不混用）
   db.prepare('INSERT INTO cards (user_id, slug, name) VALUES (?,?,?)')
     .run(req.user.id, slug, '')
+  // 兑现攒下的赠送时长（注册试用/邀请返时长在没建卡时先记账，这里兑现成 PRO 到期时间）
+  try { require('../services/plan').consumeCredit(req.user.id) } catch (e) { console.error('[Plan] 赠送时长兑现失败', e.message) }
   const row = db.prepare('SELECT * FROM cards WHERE user_id = ?').get(req.user.id)
   ok(res, ownerView(row, originOf(req)))
 }))

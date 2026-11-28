@@ -86,7 +86,9 @@ for (const [col, def] of [
   ['is_promoter', 'INTEGER NOT NULL DEFAULT 0'],
   ['invited_by', 'INTEGER'],
   ['invite_code', "TEXT NOT NULL DEFAULT ''"],
-  ['balance_cents', 'INTEGER NOT NULL DEFAULT 0']
+  ['balance_cents', 'INTEGER NOT NULL DEFAULT 0'],
+  // 赠送套餐时长待兑现天数（注册即送 PRO / 邀请返时长，未建卡先记账，建卡时由 services/plan.js consumeCredit 兑现）
+  ['plan_credit_days', 'INTEGER NOT NULL DEFAULT 0']
 ]) addColumnIfMissing('users', col, def)
 db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_invite_code ON users(invite_code) WHERE invite_code <> '';`)
 db.exec(`CREATE INDEX IF NOT EXISTS idx_users_invited_by ON users(invited_by);`)
@@ -380,9 +382,9 @@ const seedPackages = [
   { name: '体验卡', description: '7 天试用，完整功能', price_cents: 100, duration_days: 7, features: JSON.stringify(['全部模板', '永久二维码', '一键存通讯录', '实体名片版式下载']), sort: 1 },
   { name: '月度会员', description: '30 天，持续展示', price_cents: 1900, duration_days: 30, features: JSON.stringify(['全部模板', '永久二维码', '一键存通讯录', '实体名片版式下载', '访问数据统计']), sort: 2 },
   { name: '季度会员', description: '90 天，推荐之选', price_cents: 4900, duration_days: 90, features: JSON.stringify(['全部模板', '永久二维码', '一键存通讯录', '实体名片版式下载', '访问数据统计', '交换名片']), sort: 3 },
-  { name: '年度会员', description: '365 天，长期商务首选', price_cents: 9900, duration_days: 365, features: JSON.stringify(['全部模板', '永久二维码', '一键存通讯录', '实体名片版式下载', '访问数据统计', '交换名片', '自定义主题']), sort: 4 },
-  // 终身套餐：duration_days = 0（唯一口径，勿用负数或魔法天数表示）
-  { name: '终身会员', description: '一次开通，永久有效', price_cents: 29900, duration_days: 0, features: JSON.stringify(['全部模板', '永久二维码', '一键存通讯录', '实体名片版式下载', '访问数据统计', '交换名片', '自定义主题', '终身有效']), sort: 5 }
+  { name: '年度会员', description: '365 天，长期商务首选', price_cents: 9900, duration_days: 365, features: JSON.stringify(['全部模板', '永久二维码', '一键存通讯录', '实体名片版式下载', '访问数据统计', '交换名片', '自定义主题']), sort: 4 }
+  // 终身套餐已下架（2026-11-28 用户定稿「终身不合现金流，砍掉不再使用」）：种子不再收录；
+  // 存量 duration_days=0 行由下方自愈置 enabled=0 停售，已购终身用户由 activateOrder 防降级分支护住不受影响。
 ]
 // 自愈但幂等：用标记键做种子，避免运营删光套餐/降级管理员后下次启动被「复活」
 const insertSeedFlag = db.prepare("INSERT OR IGNORE INTO site_config (key, value) VALUES (?, ?)")
@@ -466,11 +468,9 @@ if (!seeded('seed_packages_v1')) {
   db.transaction(rows => { rows.forEach(r => insert.run(r)); insertSeedFlag.run('seed_packages_v1', '1') })(seedPackages)
 }
 
-// 自愈补丁：存量库已有 seed_packages_v1 标记，新增终身套餐不会随原种子插入；按「有无终身套餐」幂等补齐
-if (!db.prepare('SELECT 1 FROM packages WHERE duration_days = 0 LIMIT 1').get()) {
-  const lifetime = seedPackages.find(p => p.duration_days === 0)
-  db.prepare('INSERT INTO packages (name, description, price_cents, duration_days, features, sort) VALUES (@name,@description,@price_cents,@duration_days,@features,@sort)').run(lifetime)
-}
+// 自愈补丁（2026-11-28 终身下架）：存量库里的终身套餐（duration_days=0）一律停售，每次启动幂等收敛。
+// 已购终身用户不受影响（orders 记录还在，activateOrder 防降级分支护住其 active 无到期状态）。
+db.prepare('UPDATE packages SET enabled = 0 WHERE duration_days = 0').run()
 // 自愈去重：历史遗留的种子重复（同名+同价+同时长的套餐出现多份），每次启动幂等收敛。
 // 保留每组 id 最小的一条；orders.package_id 指向被删 id 的先改指保留 id（无外键约束，安全），再删重复行。
 try {

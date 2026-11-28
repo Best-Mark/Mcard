@@ -45,7 +45,8 @@ function accountView(userId) {
   return { accounts, defaultType: obj.defaultType || '' }
 }
 
-// 当前登录用户的邀请码（全面邀请的唯一真相源）：只有推广员才有码，非推广员返回空。
+// 当前登录用户的邀请码（全面邀请的唯一真相源）：全平台登录用户都有码（2026-11-28 邀请返时长
+// 面向全平台，非推广员也能邀好友拿套餐时长；现金佣金仍只给推广员）。
 // 分享工具据此给每个分享出口自动拼 ?invite=；用独立轻量接口，避免 /auth/me 形状变动影响既有缓存。
 // ⚠️ 必须匿名放行（未登录回空码 200，绝不 401）：分享兜底链路（wx-share setupWechatShare）
 // 在每个页面都会调本接口，401 会被 axios 拦截器当成登录失效，把匿名访客整个踢去登录页——
@@ -53,13 +54,15 @@ function accountView(userId) {
 router.get('/my-code', wrap((req, res) => {
   const payload = parseToken(req)
   if (!payload?.id) return ok(res, { inviteCode: '' })
-  const u = db.prepare('SELECT is_promoter, invite_code FROM users WHERE id = ?').get(payload.id)
-  ok(res, { inviteCode: u?.is_promoter ? (u.invite_code || '') : '' })
+  const u = db.prepare('SELECT invite_code, status FROM users WHERE id = ?').get(payload.id)
+  if (!u || u.status !== 'active') return ok(res, { inviteCode: '' })
+  ok(res, { inviteCode: u.invite_code || promo.ensureInviteCode(payload.id) })
 }))
 
 // 登录后的邀请归因兜底绑定：前端所有登录方式统一在拿到 token 后调一次。
 // 只认「注册 24h 内 + 尚未有上级 + 新邀请码有效」的账号，防老用户挂靠。
-// 幂等：已有上级直接跳过。此处只绑定归因、不发钱；佣金在首次开通套餐时按订单金额百分比结算。
+// 幂等：已有上级直接跳过。归因成功会给邀请人返套餐时长（全平台，见 services/promo.js bindInvite）；
+// 现金佣金在首次开通套餐时按订单金额百分比结算（仍只给推广员）。
 router.post('/bind-invite', authRequired, wrap((req, res) => {
   const invite = String(req.body?.invite || '').trim()
   if (!invite) return ok(res, { bound: false })

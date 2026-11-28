@@ -529,7 +529,7 @@ async function toggleCardLink() {
   try {
     await api.post(`/api/h5/${route.params.id}/card-link`, { linked })
     page.value.card_linked = linked
-    showToast(linked ? '已关联：访客看你的名片可直达这个宣传页' : '已取消关联，名片页入口已移除', 'success')
+    showToast(linked ? '已关联：访客看你的名片可直达这个宣传页' : '已取消关联，名片页不再显示这个宣传页入口', 'success')
   } catch (e) { showToast(e?.message || '操作失败', 'error') } finally { publishing.value = false }
 }
 async function unpublish() {

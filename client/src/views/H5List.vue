@@ -143,7 +143,7 @@ async function toggleLink(p) {
     await api.post(`/api/h5/${p.id}/card-link`, { linked: !p.card_linked })
     p.card_linked = !p.card_linked
     if (p.card_linked) showToast(p.status === 'published' ? '已关联：访客看你的名片可直达这个宣传页' : '已关联（发布后名片页显示入口）', 'success')
-    else showToast('已取消关联，名片页入口已移除', 'success')
+    else showToast('已取消关联，名片页不再显示这个宣传页入口', 'success')
   } catch (e) { showToast(e.message || '操作失败', 'error') } finally { busy.value = 0 }
 }
 async function remove(p) {

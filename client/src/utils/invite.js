@@ -1,10 +1,11 @@
 // 全面邀请唯一真相源（H5）：任何分享出口都用 withInvite() 处理链接，自动带上当前用户的邀请码。
-// 后端只认推广员：/api/promo/my-code 对非推广员返回空码，所以「分享即邀请、仅推广员计入」天然成立。
+// 全平台登录用户都有邀请码（2026-11-28 邀请返时长面向全平台；/api/promo/my-code 登录即发码，
+// 未登录回空码），分享即邀请、归因后给邀请人返套餐时长（现金佣金仍只给推广员，口径在服务端）。
 // 铁律：① invite 参数名全端统一（后端 bindInvite 收 invite）；② 已带码的链接不覆盖（防转发时把上游码洗掉）；
 // ③ 取码失败静默降级为不带码，绝不阻塞分享主流程；④ 每次登录/码变化要刷新缓存（clearInviteCache）。
 import api from '../api'
 
-let inviteCode = null       // null=未取；''=确认无码（非推广员/未登录）
+let inviteCode = null       // null=未取；''=确认无码（未登录/网络异常）
 let fetching = null
 
 export function clearInviteCache() { inviteCode = null; fetching = null }
@@ -18,7 +19,7 @@ export async function loadMyInviteCode() {
       // 本接口在每页分享兜底链路都会被匿名调用，绝不能因为 401 把访客踢去登录（2026-11-26 实锤）。
       const { data } = await api.get('/api/promo/my-code', { headers: { 'X-Silent-Auth': '1' } })
       inviteCode = String(data?.data?.inviteCode || '')
-    } catch { inviteCode = '' } // 未登录/非推广员/网络异常一律空码，不打扰用户
+    } catch { inviteCode = '' } // 未登录/网络异常一律空码，不打扰用户
     finally { fetching = null }
     return inviteCode
   })()

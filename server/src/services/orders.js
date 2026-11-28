@@ -2,6 +2,7 @@ const db = require('../db')
 const { makeSlug } = require('../utils/slug')
 const promo = require('./promo')
 const payment = require('./payment')
+const plan = require('./plan')
 
 const toSqlTime = d => new Date(d).toISOString().slice(0, 19).replace('T', ' ')
 
@@ -50,6 +51,10 @@ function activateOrder(orderId, payNo = '') {
         .run(order.user_id, slug, '', 'draft')
       card = db.prepare('SELECT * FROM cards WHERE user_id = ?').get(order.user_id)
     }
+    // 兑现攒下的赠送时长（注册试用/邀请返时长在没建卡时先记账）：先兑现再叠加购买时长。
+    // 兑现后必须重读 card，否则下面拿旧 expires_at 计算会把赠送时长覆盖丢。
+    plan.consumeCredit(order.user_id)
+    card = db.prepare('SELECT * FROM cards WHERE user_id = ?').get(order.user_id)
     // 终身套餐：duration_days = 0 → expires_at = NULL（永不过期）
     // 关键防降级：已是终身（expires_at 为 NULL 且 active）的用户再买有限套餐，必须保持终身，不能把 NULL 覆盖成有限到期日
     const lifetime = Number(pkg.duration_days) === 0
