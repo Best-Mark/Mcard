@@ -28,17 +28,14 @@
           <div class="pf-slogan">账户中心 · 管理你的登录资料</div>
         </button>
       </div>
-      <!-- 账户头像：微信头像 / 自定义上传（2026-11-26 用户定，不走素材库） -->
+      <!-- 账户头像：自定义上传（2026-11-28 用户定稿：微信头像只在登录时取为默认，
+           自定义后永久生效，入口不再提供「使用微信头像」） -->
       <BottomSheet :show="avatarMenuOpen" @update:show="avatarMenuOpen = $event">
         <div class="avatar-sheet">
           <div class="avatar-sheet-head">
             <b>更换账户头像</b>
             <button type="button" class="avatar-sheet-close" aria-label="关闭" @click="avatarMenuOpen = false">✕</button>
           </div>
-          <button type="button" class="avatar-sheet-item" :disabled="avatarSaving || !wxAvatar" @click="useWxAvatar">
-            使用微信头像
-            <span v-if="!wxAvatar" class="avatar-sheet-sub">（未获取到微信头像，请重新微信登录）</span>
-          </button>
           <label class="avatar-sheet-item" :class="{ disabled: avatarSaving }">
             自定义上传图片
             <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" :disabled="avatarSaving" @change="onAvatarFile" />
@@ -173,7 +170,6 @@ import BottomSheet from '../components/BottomSheet.vue'
 const router = useRouter()
 const card = ref(null)
 const avatar = ref('')
-const wxAvatar = ref('')
 const avatarSaving = ref(false)
 const avatarMenuOpen = ref(false)
 function openAvatarPicker() { avatarMenuOpen.value = true }
@@ -224,26 +220,14 @@ async function load() {
     const [c, a] = await Promise.all([api.get('/api/cards/mine'), api.get('/api/auth/avatar')])
     card.value = c?.data?.data || null
     avatar.value = a?.data?.data?.avatar || ''
-    wxAvatar.value = a?.data?.data?.wxAvatar || ''
     loadUnread()
   } catch (e) { loadError.value = e.message || '网络异常' }
   finally { loading.value = false }
 }
 onMounted(load)
 
-// 账户头像两条独立通道（不走素材库）：切回微信头像 / 自定义上传。
-// 微信头像原值只存服务端 users.wx_avatar，前端只发起 useWxAvatar 指令，不信任传入 URL。
-async function useWxAvatar() {
-  if (avatarSaving.value || !wxAvatar.value) return
-  avatarMenuOpen.value = false
-  avatarSaving.value = true
-  try {
-    const { data } = await api.put('/api/auth/avatar', { useWxAvatar: true })
-    avatar.value = data?.data?.avatar || ''
-    showToast('已切换为微信头像', 'success')
-  } catch (e) { showToast(e.message || '切换失败', 'error') }
-  finally { avatarSaving.value = false }
-}
+// 账户头像：自定义上传（不走素材库）。微信头像只在登录时取来当默认值，
+// 自定义上传后永久取代默认（服务端保证后续登录不覆盖），入口不再提供「使用微信头像」。
 async function onAvatarFile(e) {
   if (avatarSaving.value) return
   const file = e.target.files?.[0]
@@ -306,14 +290,13 @@ function goQr() {
 /* 右侧给「二维码 + 设置」两个圆形按钮留位，避免姓名/副标题被压到按钮底下 */
 .pf-ident { flex: 1; min-width: 0; padding-right: 72px; background: transparent; border: 0; color: inherit; text-align: left; cursor: pointer; font: inherit; }
 .pf-ident:active { opacity: .75; }
-/* 账户头像弹层：微信头像 / 自定义上传 */
+/* 账户头像弹层：自定义上传 */
 .avatar-sheet { padding: 8px 18px 18px; }
 .avatar-sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 0 12px; font-size: 15px; }
 .avatar-sheet-close { border: 0; background: transparent; color: var(--muted, #64748b); font-size: 17px; cursor: pointer; }
 .avatar-sheet-item { position: relative; display: block; width: 100%; padding: 14px 12px; margin-bottom: 8px; border: 1px solid var(--line, #e8edf4); border-radius: 10px; background: var(--bg-page, #f8fafc); color: var(--text, #0f172a); font-size: 14px; text-align: left; cursor: pointer; }
 .avatar-sheet-item:disabled, .avatar-sheet-item.disabled { opacity: .55; cursor: not-allowed; }
 .avatar-sheet-item input { position: absolute; top: 0; left: 0; right: 0; bottom: 0; opacity: 0; cursor: pointer; }
-.avatar-sheet-sub { display: block; margin-top: 4px; color: var(--muted, #64748b); font-size: 11px; }
 .avatar-sheet-cancel { width: 100%; padding: 12px; border: 0; border-radius: 10px; background: #eef2f7; color: var(--text, #0f172a); font-size: 14px; cursor: pointer; }
 /* 齿轮底部菜单：分组标题 + 列表行（图标/标题/副标题/箭头），复用头像弹层的头部与取消按钮 */
 .gear-sheet { padding: 8px 18px 18px; max-height: 76vh; overflow-y: auto; overscroll-behavior: contain; }

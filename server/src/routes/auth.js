@@ -350,8 +350,10 @@ router.get('/wechat/callback', wrap(async (req, res) => {
       if (user.status !== 'active') return failBack('disabled')
       // 静默登录只补微信身份：snsapi_base 拿不到头像，绝不把空串写进 users.avatar（账户层唯一真相源）
       if (autoTarget) db.prepare("UPDATE users SET auth_source='wechat', wx_openid=COALESCE(wx_openid,?), updated_at=datetime('now') WHERE id=?").run(openid, user.id)
-      // 显式授权拿到头像：更新当前头像，同时把微信头像原值单独留存（自定义上传后可随时切回）
-      else db.prepare("UPDATE users SET avatar=?, wx_avatar=?, auth_source='wechat', wx_openid=COALESCE(wx_openid,?), updated_at=datetime('now') WHERE id=?").run(avatar, avatar, openid, user.id)
+      // 显式授权拿到头像（2026-11-28 定稿）：微信头像只作「默认头像」——users.avatar 为空或仍等于旧
+      // wx_avatar（还没自定义）时才写入；自定义头像永久生效，后续登录绝不覆盖。wx_avatar 始终留存微信原值。
+      else if (avatar) db.prepare("UPDATE users SET avatar=CASE WHEN avatar IS NULL OR avatar='' OR avatar=wx_avatar THEN ? ELSE avatar END, wx_avatar=?, auth_source='wechat', wx_openid=COALESCE(wx_openid,?), updated_at=datetime('now') WHERE id=?").run(avatar, avatar, openid, user.id)
+      else db.prepare("UPDATE users SET auth_source='wechat', wx_openid=COALESCE(wx_openid,?), updated_at=datetime('now') WHERE id=?").run(openid, user.id)
       user = db.prepare('SELECT id, phone, nickname, role, status, avatar, wx_avatar, is_promoter FROM users WHERE id = ?').get(user.id)
       const jwt = sign(user)
       const pub = publicUser(user)
@@ -423,8 +425,15 @@ router.post('/wechat/bind', wrap((req, res) => {
     // 老账号：密码校验通过则把微信身份绑上去（用密码证明是本人）
     if (!bcrypt.compareSync(String(password), user.password_hash)) return fail(res, 400, '手机号或密码不正确')
     if (user.status !== 'active') return fail(res, 403, '账号已被停用')
-    db.prepare("UPDATE users SET wx_openid=?, wx_unionid=?, avatar=?, wx_avatar=?, auth_source='wechat', updated_at=datetime('now') WHERE id=?")
-      .run(openid, unionid, avatar || user.avatar, avatar || user.wx_avatar || '', user.id)
+    // 微信头像只作默认头像（2026-11-28 定稿）：users.avatar 为空或仍等于旧 wx_avatar 时才写入，
+    // 自定义头像永久生效不被覆盖；wx_avatar 始终留存微信原值。
+    if (avatar) {
+      db.prepare("UPDATE users SET wx_openid=?, wx_unionid=?, avatar=CASE WHEN avatar IS NULL OR avatar='' OR avatar=wx_avatar THEN ? ELSE avatar END, wx_avatar=?, auth_source='wechat', updated_at=datetime('now') WHERE id=?")
+        .run(openid, unionid, avatar, avatar, user.id)
+    } else {
+      db.prepare("UPDATE users SET wx_openid=?, wx_unionid=?, auth_source='wechat', updated_at=datetime('now') WHERE id=?")
+        .run(openid, unionid, user.id)
+    }
   } else {
     const r = db.prepare("INSERT INTO users (phone, password_hash, nickname, avatar, wx_avatar, wx_openid, wx_unionid, auth_source) VALUES (?,?,?,?,?,?,?, 'wechat')")
       .run(phone, bcrypt.hashSync(String(password), 10), String(payload.nickname || '微信用户').slice(0, 30) || '微信用户', avatar, avatar, openid, unionid)
@@ -529,19 +538,12 @@ router.get('/avatar', authRequired, wrap((req, res) => {
   const u = db.prepare('SELECT avatar, wx_avatar FROM users WHERE id = ?').get(req.user.id)
   ok(res, { avatar: u?.avatar || '', wxAvatar: u?.wx_avatar || '' })
 }))
+// 自定义上传头像（2026-11-28 定稿）：自定义永久取代登录时的微信默认头像；
+// 「使用微信头像」入口已下线，本接口只接受上传图片地址。
 router.put('/avatar', authRequired, wrap((req, res) => {
-  const body = req.body || {}
-  let avatar
-  if (body.useWxAvatar === true) {
-    // 切回微信头像：取服务端留存的微信头像原值，绝不信任前端传来的 URL
-    const u = db.prepare('SELECT wx_avatar FROM users WHERE id = ?').get(req.user.id)
-    avatar = String(u?.wx_avatar || '')
-    if (!avatar) return fail(res, 400, '没有可用的微信头像，请重新微信登录或上传图片')
-  } else {
-    avatar = normalizeAvatar(body.avatar)
-    if (avatar === null) return fail(res, 400, '头像地址不合法')
-    if (!avatar) return fail(res, 400, '请选择头像')
-  }
+  const avatar = normalizeAvatar(req.body?.avatar)
+  if (avatar === null) return fail(res, 400, '头像地址不合法')
+  if (!avatar) return fail(res, 400, '请选择头像')
   db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(avatar, req.user.id)
   ok(res, { avatar })
 }))
