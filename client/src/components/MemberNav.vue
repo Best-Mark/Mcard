@@ -156,7 +156,8 @@ onBeforeUnmount(() => {
 .m-drawer-note { padding: 14px 18px 0; font-size: 11px; line-height: 1.6; color: var(--muted); }
 .m-tabs {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 110; display: grid; grid-template-columns: repeat(5, 1fr);
-  padding-bottom: env(safe-area-inset-bottom); background: #fff; border-top: 1px solid var(--line); box-shadow: 0 -4px 18px rgba(15,23,42,.06);
+  padding-bottom: env(safe-area-inset-bottom); background: rgba(255,255,255,.50); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border-top: 1px solid rgba(255,255,255,.55); box-shadow: 0 -4px 18px rgba(15,23,42,.06), inset 0 1px 0 rgba(255,255,255,.65);
 }
 .m-tabs button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0 7px; font-size: 11px; color: var(--muted); }
 .m-tabs button i { position: relative; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-style: normal; font-size: 18px; line-height: 1.2; }

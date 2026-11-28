@@ -235,7 +235,8 @@ async function download(kind) {
   position: fixed; left: 0; right: 0; z-index: 105;
   bottom: calc(60px + env(safe-area-inset-bottom));
   display: flex; gap: 2px; padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
-  background: var(--bg-card, #fff); border-top: 1px solid var(--line); box-shadow: 0 -4px 18px rgba(15,23,42,.06);
+  background: rgba(255,255,255,.50); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border-top: 1px solid rgba(255,255,255,.55); box-shadow: 0 -4px 18px rgba(15,23,42,.06), inset 0 1px 0 rgba(255,255,255,.65);
 }
 .bottom-launcher > button:not(.pd-back) { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px 0; border: 0; background: transparent; color: var(--muted, #6b7688); font-size: 11px; }
 /* 二级：↙ 收起 + 该类选项横滑行，替换一级 6 项，高度不遮挡预览 */
