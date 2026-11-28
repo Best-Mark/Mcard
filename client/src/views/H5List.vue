@@ -62,6 +62,8 @@
       </div>
     </div>
     <!-- 统计与线索已并入个人中心「浏览统计」页（/me/stats），列表行不再重复承载 -->
+    <!-- 删除确认（项目统一弹层，替代浏览器原生 confirm） -->
+    <ConfirmDialog :show="!!delTarget" title="删除宣传页" :text="`删除「${delTarget?.title}」？上架中的链接也会失效，不可恢复。`" confirm-text="删除" danger @confirm="confirmRemove" @cancel="delTarget = null" />
   </div>
 </template>
 
@@ -70,6 +72,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
 import { showToast } from '../store'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
 
 const router = useRouter()
 const list = ref([])
@@ -120,10 +123,15 @@ async function toggleLink(p) {
     else showToast('已取消关联，名片页不再显示这个宣传页入口', 'success')
   } catch (e) { showToast(e.message || '操作失败', 'error') } finally { busy.value = 0 }
 }
-async function remove(p) {
-  if (!confirm(`删除「${p.title}」？上架中的链接也会失效，不可恢复。`)) return
+// 删除确认：项目统一弹层（2026-11-28 用户定稿「所有提示样式一定要与项目搭配」，不用原生 confirm）
+const delTarget = ref(null)
+function remove(p) { delTarget.value = p }
+async function confirmRemove() {
+  const p = delTarget.value
+  if (!p) return
+  delTarget.value = null
   busy.value = p.id
-  try { await api.delete(`/api/h5/${p.id}`); await load() } catch (e) { showToast(e.message, 'error') } finally { busy.value = 0 }
+  try { await api.delete(`/api/h5/${p.id}`); await load(); showToast('已删除', 'success') } catch (e) { showToast(e.message, 'error') } finally { busy.value = 0 }
 }
 // 预览统一只读：已上架看真实公开页；草稿无公开 URL，进编辑器的 ?preview=1 只读模式（全页可滑、无 dock 无手势）
 function preview(p) {

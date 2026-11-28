@@ -227,7 +227,7 @@
       </div>
     </BottomSheet>
 
-    <!-- 套用官方模板弹层：整页内容被替换（confirm 确认），替换后从第 1 页继续单页编辑 -->
+    <!-- 套用官方模板弹层：整页内容被替换（项目统一确认弹层二次确认），替换后从第 1 页继续单页编辑 -->
     <BottomSheet :show="tplOpen" @update:show="tplOpen = $event">
       <div class="he-form">
         <div class="he-f-head"><b>套用官方模板</b><button class="he-mini" @click="tplOpen = false">关闭</button></div>
@@ -241,6 +241,9 @@
         </div>
       </div>
     </BottomSheet>
+
+    <!-- 覆盖确认（项目统一弹层，替代浏览器原生 confirm） -->
+    <ConfirmDialog :show="!!tplConfirm" title="套用模板" :text="`套用「${tplConfirm?.name}」会覆盖当前全部页面内容，确定？`" confirm-text="套用" @confirm="confirmApplyTpl" @cancel="tplConfirm = null" />
 
     <!-- 换图弹层（2026-11-27 画布直操化）：快捷条「▣ 换图」直达，不进通用表单 -->
     <BottomSheet :show="imgOpen" @update:show="imgOpen = $event">
@@ -371,6 +374,7 @@ import H5Render from '../components/H5Render.vue'
 import ImageField from '../components/ImageField.vue'
 import BottomSheet from '../components/BottomSheet.vue'
 import BottomSelect from '../components/BottomSelect.vue'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -752,12 +756,19 @@ async function openTpls() {
   }
   tplOpen.value = true
 }
+// 套用模板：先经项目统一确认弹层（2026-11-28 用户定稿「所有提示样式一定要与项目搭配」，不用原生 confirm）
+const tplConfirm = ref(null)
 function applyTpl(t) {
   if (applying.value) return
-  if (!confirm(`套用「${t.name}」会覆盖当前全部页面内容，确定？`)) return
+  tplConfirm.value = t
+}
+function confirmApplyTpl() {
+  const t = tplConfirm.value
+  if (!t || applying.value) return
+  tplConfirm.value = null
   // 模板是 blocks 格式：套用即转自由画布 els（估高堆叠初稿），一屏放不下自动分页，保持同一编辑形态
   const pages = JSON.parse(JSON.stringify(t.pages || [])).flatMap(p => splitOverflowPages(pageToEls(p)).map(els => ({ bg: { ...(p.bg || { color: '', image: '' }) }, els })))
-  schema.value = { accent: t.accent, transition: t.transition || 'slide', pages }
+  schema.value = { accent: t.accent, transition: t.transition || 'auto', pages }
   selPage.value = 0; selBlock.value = 0
   tplOpen.value = false; dockMode.value = 'main'
   markDirty()
