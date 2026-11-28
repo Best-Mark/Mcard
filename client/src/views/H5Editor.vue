@@ -103,7 +103,7 @@
               <button v-for="(p, i) in schema.pages" :key="i" :class="['he-chip', { on: i === selPage }]" @click="selPage = i; selBlock = 0">第{{ i + 1 }}页·{{ elsCount(p) }}元素</button>
               <button v-if="pagesCount < maxPages" class="he-chip on" @click="addPage">＋ 加一页</button>
               <button v-else class="he-chip" @click="showToast(paid ? `最多 ${maxPages} 页` : `免费版最多 ${maxPages} 页，开通套餐解锁`, 'error')">已达上限</button>
-              <button v-if="pagesCount > 1" class="he-chip warn" @click="removePage">✕ 删本页</button>
+              <button v-if="pagesCount > 1" class="he-chip warn" @click="pageDelConfirm = true">✕ 删本页</button>
               <span class="he-grp">本页</span>
               <button class="he-chip" @click="openBg">◧ 页面背景</button>
               <span class="he-grp">整页模板</span>
@@ -254,6 +254,9 @@
     <!-- 覆盖确认（项目统一弹层，替代浏览器原生 confirm） -->
     <ConfirmDialog :show="!!tplConfirm" title="套用模板" :text="`套用「${tplConfirm?.name}」会覆盖当前全部页面内容，确定？`" confirm-text="套用" @confirm="confirmApplyTpl" @cancel="tplConfirm = null" />
 
+    <!-- 删本页确认（整页级破坏性操作不静默） -->
+    <ConfirmDialog :show="pageDelConfirm" title="删除本页" :text="`删除第 ${selPage + 1} 页的全部内容？删除后可用顶栏 ↶ 撤销。`" confirm-text="删除" danger @confirm="confirmRemovePage" @cancel="pageDelConfirm = false" />
+
     <!-- 换图弹层（2026-11-27 画布直操化）：快捷条「▣ 换图」直达，不进通用表单 -->
     <BottomSheet :show="imgOpen" @update:show="imgOpen = $event">
       <div class="he-form" v-if="block && imgField">
@@ -394,7 +397,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, defineAsyncComponent } from 'vue'
+import { ref, computed, onMounted, watch, defineAsyncComponent, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
 import { showToast } from '../store'
@@ -673,6 +676,13 @@ function addBlock(type) {
   arr.splice(at, 0, blankEl(type))
   selBlock.value = at
   markDirty()
+  // 加组件就是为了填内容：组件元素加完直接开内容表单，不用再去找元素点编辑（自由元素画布直调，不弹）。
+  // 同时把画布滚到新元素——它落在现有内容下方，可能超出首屏。
+  if (!FREE_TYPES.includes(type)) openEdit()
+  nextTick(() => {
+    const el = document.querySelector('.hp-sel')
+    if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  })
 }
 function duplicateBlock() {
   const src = block.value
@@ -796,6 +806,13 @@ function removePage() {
   schema.value.pages.splice(selPage.value, 1)
   selPage.value = Math.max(0, selPage.value - 1); selBlock.value = 0
   markDirty()
+}
+// 删本页是整页级破坏性操作：先确认再删（撤销栈兜底，但大动作不静默）
+const pageDelConfirm = ref(false)
+function confirmRemovePage() {
+  pageDelConfirm.value = false
+  removePage()
+  showToast('已删除本页，顶栏 ↶ 可撤销', 'success')
 }
 function setAccent(c) { schema.value.accent = c; markDirty() }
 async function openTpls() {
