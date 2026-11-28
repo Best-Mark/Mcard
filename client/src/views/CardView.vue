@@ -13,10 +13,8 @@
   -->
   <div class="cv-page" :class="['cv-tpl-' + template, { 'cv-clean': isCleanTpl, 'cv-embed': embed, 'cv-owner': owner }]" :style="vars">
     <!-- 返回签（2026-11-28 用户定稿）：卡片外左上角透明吸附的竖向圆角矩形，不再嵌在封面里；
-         现为「名片集市」固定入口（公开页访客的统一 upstream，不再做 history 返回） -->
+         现为「名片集市」固定入口（公开页访客的统一 upstream），纯竖排文字不带图标 -->
     <button v-if="!owner && full" class="cv-back" @click="goMarket" :aria-label="backAria">
-      <!-- SVG 细箭头：裸 ‹ 字形各系统渲染粗细不一，统一细线条观感 -->
-      <svg class="cv-back-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <!-- 竖排四字「名片集市」，逐字堆叠不依赖 writing-mode，老 WebView 稳 -->
       <span class="cv-back-v" aria-hidden="true"><i v-for="ch in backChars" :key="ch">{{ ch }}</i></span>
     </button>

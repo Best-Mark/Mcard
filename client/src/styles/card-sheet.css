@@ -156,12 +156,12 @@
 .cv-cover > * { position: relative; z-index: 1; }
 @media (prefers-reduced-motion: reduce) { .cv-cover::before { animation: none; opacity: .7; } }
 /* 返回签（2026-11-28 用户定稿）：卡片外左上角透明吸附的竖向圆角矩形——不再嵌在封面里
-   （贴卡片圆角被裁切很局促）。毛玻璃半透明吸附屏幕左上角，SVG 细箭头 + 竖排四字「名片集市」
-   （公开页固定回集市的入口），安全区两级兜底，按压微缩反馈；宽屏贴到居中卡片栏左侧，不飘在视口角落 */
+   （贴卡片圆角被裁切很局促）。毛玻璃半透明吸附屏幕左上角，竖排四字「名片集市」（无图标），
+   安全区两级兜底，按压微缩反馈；宽屏贴到居中卡片栏左侧，不飘在视口角落 */
 .cv-back {
   position: fixed; left: 0; z-index: 60;
   top: 8px; top: calc(8px + env(safe-area-inset-top));
-  width: 38px; min-height: 104px; padding: 10px 0 12px;
+  width: 38px; min-height: 84px; padding: 10px 0 12px;
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   border: 0; border-radius: 0 14px 14px 0; color: #26221c;
   background: rgba(255,255,255,.50);
@@ -175,7 +175,6 @@
   transform: scale(.95);
   box-shadow: 3px 6px 18px rgba(31,27,22,.14), inset -1px 1px 0 rgba(255,255,255,.40);
 }
-.cv-back .cv-back-i { width: 16px; height: 16px; display: block; }
 .cv-back .cv-back-v { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; line-height: 1; }
 .cv-back .cv-back-v i { font-style: normal; }
 @media (min-width: 900px) { .cv-back { left: calc(50% - 245px); } }
@@ -316,7 +315,7 @@
 .cv-dock { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 5px; padding: 10px 10px calc(10px + env(safe-area-inset-bottom)); background: rgba(255,255,255,.50); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-top: 1px solid rgba(255,255,255,.45); z-index: 60; color: #26221c; }
 .cv-dock .btn { flex: 1; min-width: 0; padding: 0 2px; font-size: 12.5px; white-space: nowrap; }
 .cv-dock .btn-primary { background: var(--t-accent, #2563eb); color: #fff; border-color: transparent; }
-.cv-dock .btn-ghost { background: rgba(255,255,255,.55); color: #26221c; border-color: rgba(38,34,28,.10); }
+.cv-dock .btn-ghost { background: rgba(255,255,255,.18); color: #26221c; border-color: rgba(38,34,28,.10); }
 /* ===== 主题毛玻璃底栏（2026-11-25 用户定稿：底栏与四个按钮都跟名片配色走；
    2026-11-28 改版：底栏背景与左上角返回签完全一致——毛玻璃白，主题色只留在主按钮上）=====
    色相唯一真相源 = .cv-page 内联的 --t-accent / --glow-rgb（由名片主题算出），
@@ -328,18 +327,18 @@
   gap: 8px; padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
   background: rgba(255,255,255,.50);
   border-top: 1px solid rgba(255,255,255,.45);
-  box-shadow: 0 -8px 30px -18px rgba(31,27,22,.18);
+  box-shadow: 0 -8px 30px -18px rgba(31,27,22,.18), inset -1px 1px 0 rgba(255,255,255,.45);
   -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
 }
 /* 微光粒子已移除（2026-11-26 用户实锤）：主题色亮点在 34% 处正好落在「编辑/配色」两按钮缝隙里，
    被当成一个蓝色小圆点、像 bug；毛玻璃底色足够表达质感，粒子纯装饰无功能，整体删掉。 */
-/* 四个主操作按钮：白瓷片 + 深墨字（与返回签文字同色），第一枚用主题色加深强调 */
+/* 四个主操作按钮：淡透玻璃片 + 深墨字——底透出来，整条 dock 与返回签同一质感（2026-11-28 用户定稿） */
 .cv-page .cv-dock.cv-dock-glass .dock-btn {
   position: relative; min-height: 50px; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 3px;
   font-size: 12px; font-weight: 600; letter-spacing: .02em;
-  border-radius: 16px; border: 1px solid rgba(38,34,28,.10); padding: 6px 2px;
-  background: rgba(255,255,255,.55); color: #26221c;
+  border-radius: 16px; border: 1px solid rgba(38,34,28,.12); padding: 6px 2px;
+  background: rgba(255,255,255,.18); color: #26221c;
   -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.16);
   transition: transform .16s ease, filter .16s ease;
@@ -363,7 +362,7 @@
   box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 10px 24px -12px rgba(var(--glow-rgb, 37,99,235), .95);
 }
 .cv-page .cv-dock.cv-dock-glass .btn-ghost {
-  background: rgba(255,255,255,.55); color: #26221c;
+  background: rgba(255,255,255,.18); color: #26221c;
   box-shadow: inset 0 0 0 1px rgba(38,34,28,.08);
 }
 /* 极简白 / 纸白模板：底栏与全站统一毛玻璃白，描边/阴影仍带主题色微染 */
@@ -956,8 +955,8 @@
 
 /* ===== 底栏浅色化兜底（2026-11-28）：dock 背景统一为返回签同款毛玻璃白后，
    凡按深底设计的 ghost 按钮（elite/旧 6 套里的白字透明底）在浅底上会整体隐身
-   （2026-11-26 翻转行同类实锤），统一压成「白瓷片 + 深墨字」；主按钮保持各模板强调色 */
+   （2026-11-26 翻转行同类实锤），统一压成「淡透玻璃片 + 深墨字」；主按钮保持各模板强调色 */
 .cv-page .cv-dock.cv-dock-glass .btn.dock-btn:not(.btn-primary) {
-  background: rgba(255,255,255,.55); color: #26221c;
+  background: rgba(255,255,255,.18); color: #26221c;
   border-color: transparent; box-shadow: inset 0 0 0 1px rgba(38,34,28,.10);
 }
