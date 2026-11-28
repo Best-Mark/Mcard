@@ -103,7 +103,7 @@
             </template>
             <!-- 页面行（页面结构层）：切页 / 加删页 / 本页背景 / 背景音乐 / 整套模板 / 翻页动效——
                  整页级设置统一收在这行（2026-11-28 用户定稿「音乐和翻页这些应该放一起」），
-                 不与全局配色混放；背景音乐走本页 music 元素（选曲即建、「不用音乐」即移除） -->
+                 不与全局配色混放；背景音乐是整套唯一的整页组件（选曲跨页收敛，「不用音乐」全清） -->
             <template v-else-if="dockMode === 'pages'">
               <button v-for="(p, i) in schema.pages" :key="i" :class="['he-chip', { on: i === selPage }]" @click="selPage = i; selBlock = 0">第{{ i + 1 }}页·{{ elsCount(p) }}元素</button>
               <button v-if="pagesCount < maxPages" class="he-chip on" @click="pageAddOpen = true">＋ 加一页</button>
@@ -112,7 +112,7 @@
               <span class="he-grp">本页</span>
               <button class="he-chip" @click="openBg">◧ 页面背景</button>
               <span class="he-grp">背景音乐</span>
-              <BottomSelect :model-value="musicModel" :options="MUSIC_PRESETS" title="背景音乐" @update:modelValue="onMusicPick" />
+              <BottomSelect :model-value="musicModel" :options="MUSIC_PRESETS" title="背景音乐（整套宣传页同一首）" @update:modelValue="onMusicPick" />
               <span class="he-grp">整页模板</span>
               <button class="he-chip" @click="openTpls">套用官方模板…</button>
               <span class="he-grp">整页动效</span>
@@ -542,22 +542,40 @@ const dockMode = ref('main')
 const formOpen = ref(false)
 const styleOpen = ref(false) // 自由元素属性面板（2026-11-27 自由画布）
 const bgOpen = ref(false) // 页面背景弹层
-// 背景音乐（整页级，2026-11-28 用户定稿「音乐和翻页这些整页设置放一起」）：由页面行统一管理，
-// 落在本页 music 元素上——选曲即建（右上角小卡，编辑画布的可视占位；公开页是右下浮动 ♪），
-// 「不用音乐」即移除本页音乐元素；音乐不再出现在「加元素」清单里（渲染层取全页首个带 url 的 music）。
-const pageMusic = computed(() => curEls.value.find(e => e.type === 'music') || null)
+// 背景音乐（整页级组件，2026-11-28 用户定稿「音乐和翻页这些整页设置放一起」+
+// 「整页组件元素整套只能设一个，不能每页都设」）：整套宣传页唯一——选曲跨页收敛，
+// 音乐元素挂在哪一页都只算同一个 BGM（改它的 url、多余的清掉），没有才新建在当前页右上角
+// （编辑画布的可视占位；公开页是右下浮动 ♪）；「不用音乐」全部移除。
+// 模板智能配曲本来就是整套一首，不受影响。音乐不在「加元素」清单里。
+const pageMusic = computed(() => {
+  for (const p of schema.value.pages) for (const e of (p.els || [])) if (e.type === 'music') return e
+  return null
+})
 const musicModel = computed(() => {
   const u = pageMusic.value?.url || ''
   return MUSIC_PRESETS.some(p => p.value === u) ? u : ''
 })
 function onMusicPick(v) {
-  const arr = curEls.value
-  const at = arr.findIndex(e => e.type === 'music')
+  // 跨页收集全部 music 元素（历史数据/误操作可能多页各挂一个）
+  const found = []
+  schema.value.pages.forEach((p, pi) => (p.els || []).forEach((e, ei) => {
+    if (e.type === 'music') found.push({ p, ei })
+  }))
   if (v === '') {
-    if (at >= 0) { arr.splice(at, 1); markDirty() }
+    if (found.length) {
+      for (let i = found.length - 1; i >= 0; i--) found[i].p.els.splice(found[i].ei, 1)
+      markDirty()
+    }
     return
   }
-  if (at >= 0) { arr[at].url = v; markDirty(); return }
+  if (found.length) {
+    found[0].p.els[found[0].ei].url = v
+    // 整套唯一：多余的音乐元素清掉
+    for (let i = found.length - 1; i >= 1; i--) found[i].p.els.splice(found[i].ei, 1)
+    markDirty()
+    return
+  }
+  const arr = curEls.value
   let maxZ = 0
   for (const e of arr) maxZ = Math.max(maxZ, Number(e.g?.z) || 0)
   arr.push({ type: 'music', url: v, autoplay: true, anim: '', g: { x: 470, y: 30, w: 256, h: 74, rot: 0, opacity: 1, z: maxZ + 1 } })
