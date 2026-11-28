@@ -801,8 +801,9 @@ watch(() => route.params.id, () => { if (route.name === 'h5-editor') location.re
    原 sticky bottom:0 在老微信 X5 WebView 上可能不贴视口底、且会被全局 tabbar 盖住；
    页面留 76px 空位，画布与提示行不会被操作条遮住。 */
 .he { min-height: 100vh; padding-bottom: 76px; padding-bottom: calc(76px + env(safe-area-inset-bottom)); background: var(--bg-page, #f4f6fb); display: flex; flex-direction: column; }
-/* 只读预览：无 dock，不预留底栏空位 */
-.he.he-preview { padding-bottom: 16px; }
+/* 只读预览：无 dock，不预留底栏空位；⚠️ 必须锁一屏确定高度（height 而非 min-height）——
+   翻页模式下页面是绝对定位叠放，渲染树逐级 height:100%，根容器高度随内容时整个画布塌成 0 = 黑屏（实锤） */
+.he.he-preview { height: 100svh; padding-bottom: 16px; }
 .he-title-plain { border-color: transparent; background: transparent; }
 .he-top { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 8px; padding: calc(10px + var(--safe-top, 0px)) 12px 10px; background: rgba(255,255,255,.95); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
 .he-back { width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 9px; background: #fff; font-size: 19px; color: #374151; cursor: pointer; flex: 0 0 34px; }
