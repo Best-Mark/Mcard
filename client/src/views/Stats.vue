@@ -91,6 +91,48 @@
         </div>
       </div>
 
+      <!-- 宣传页统计与线索（2026-11-28 用户定稿：从宣传页列表行收进这里统一看） -->
+      <div class="section-title">宣传页 <span class="small muted">· 浏览与线索</span></div>
+      <div class="kpi-row">
+        <div class="kpi">
+          <div class="kpi-ico i-teal">◈</div>
+          <div class="kpi-num"><CountUp :value="h5.views" :duration="1000" /></div>
+          <div class="kpi-label">宣传页浏览</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-ico i-blue">✎</div>
+          <div class="kpi-num"><CountUp :value="h5.leads_total" :duration="1000" :delay="100" /></div>
+          <div class="kpi-label">留资线索</div>
+        </div>
+      </div>
+      <div class="card card-pad promo-card">
+        <h4>各宣传页</h4>
+        <div v-if="!h5.promos.length" class="empty small">还没有宣传页，去「宣传页制作」创建并上架</div>
+        <div v-else v-for="p in h5.promos" :key="p.id" class="promo-row">
+          <span class="promo-name">{{ p.title }}</span>
+          <span class="promo-badge" :class="{ on: p.status === 'published' }">{{ p.status === 'published' ? '已上架' : '草稿' }}</span>
+          <span class="promo-cell"><b>{{ p.views }}</b> 浏览</span>
+          <span class="promo-cell"><b>{{ p.leads }}</b> 线索</span>
+        </div>
+      </div>
+      <div class="card card-pad promo-card">
+        <h4>线索明细</h4>
+        <p v-if="!h5.leads.length" class="empty small">还没有线索。宣传页带「表单留资」模块时，访客提交后会出现在这里。</p>
+        <div v-for="l in h5.leads" :key="l.id" class="lead-row">
+          <div class="lead-main">
+            <b>{{ l.name || '（未填姓名）' }}</b>
+            <a v-if="l.phone" class="lead-phone" :href="'tel:' + l.phone">{{ l.phone }}</a>
+            <span v-else class="small muted">未填电话</span>
+            <p v-if="l.message" class="lead-msg">{{ l.message }}</p>
+            <span class="small muted">{{ l.page_title }} · {{ fmtTime(l.created_at) }}</span>
+          </div>
+          <div class="lead-ops">
+            <button v-if="l.phone" class="btn btn-sm btn-ghost" @click="copyLeadPhone(l)">复制电话</button>
+            <button class="btn btn-sm btn-ghost lead-del" :disabled="leadBusy === l.id" @click="removeLead(l)">{{ leadBusy === l.id ? '…' : '删除' }}</button>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </template>
@@ -99,7 +141,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
-import { toggleDrawer } from '../store'
+import { toggleDrawer, showToast } from '../store'
 import CountUp from '../components/CountUp.vue'
 
 const router = useRouter()
@@ -138,6 +180,32 @@ async function load() {
   } catch (e) { error.value = e.message || '网络异常' } finally { loading.value = false }
 }
 onMounted(load)
+
+// ---- 宣传页统计与线索（2026-11-28 从宣传页列表行收进本页）：失败不拖垮名片统计主流程 ----
+const h5 = ref({ promos: [], views: 0, leads_total: 0, leads: [] })
+const leadBusy = ref(0)
+async function loadH5() {
+  try {
+    const { data } = await api.get('/api/h5/mine/stats')
+    h5.value = { promos: [], views: 0, leads_total: 0, leads: [], ...(data?.data || {}) }
+  } catch { /* 宣传页统计失败不影响本页名片统计展示 */ }
+}
+function fmtTime(s) { return String(s || '').replace('T', ' ').slice(5, 16) }
+async function copyLeadPhone(l) {
+  try { await navigator.clipboard.writeText(l.phone); showToast('电话已复制', 'success') } catch { showToast(l.phone) }
+}
+async function removeLead(l) {
+  if (leadBusy.value) return
+  leadBusy.value = l.id
+  try {
+    await api.delete(`/api/h5/${l.page_id}/leads/${l.id}`)
+    h5.value = { ...h5.value, leads: h5.value.leads.filter(x => x.id !== l.id), leads_total: Math.max(0, h5.value.leads_total - 1) }
+    const p = h5.value.promos.find(x => x.id === l.page_id)
+    if (p) p.leads = Math.max(0, p.leads - 1)
+    showToast('已删除', 'success')
+  } catch (e) { showToast(e.message || '删除失败', 'error') } finally { leadBusy.value = 0 }
+}
+onMounted(loadH5)
 </script>
 
 <style scoped>
@@ -192,6 +260,25 @@ onMounted(load)
 .hour-bar { width: 100%; background: linear-gradient(180deg, #93c5fd, #2563eb); border-radius: 3px 3px 0 0; min-height: 3px; }
 .hour-axis { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10px; color: var(--muted, #6b7688); }
 .empty { padding: 10px 0; }
+
+/* 宣传页统计与线索 */
+.promo-card { margin-top: 10px; }
+.promo-card h4 { font-size: 13px; margin: 0 0 8px; }
+.promo-row { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-bottom: 1px solid var(--line, #eef2f7); font-size: 13px; }
+.promo-row:last-child { border-bottom: 0; }
+.promo-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.promo-badge { flex: 0 0 auto; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; color: #92400e; background: #fef3c7; }
+.promo-badge.on { color: #15803d; background: #dcfce7; }
+.promo-cell { flex: 0 0 auto; color: var(--muted, #6b7688); font-size: 12px; }
+.promo-cell b { color: var(--text, #0f172a); font-variant-numeric: tabular-nums; }
+.lead-row { display: flex; align-items: flex-start; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--line, #eef2f7); }
+.lead-row:last-child { border-bottom: 0; }
+.lead-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.lead-main b { font-size: 14px; }
+.lead-phone { font-size: 14px; color: var(--primary, #a62b2b); font-weight: 700; text-decoration: none; }
+.lead-msg { margin: 2px 0 0; font-size: 13px; line-height: 1.6; color: #374151; white-space: pre-line; word-break: break-all; }
+.lead-ops { flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px; }
+.lead-del { color: #b91c1c !important; }
 
 @keyframes barFill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @keyframes barGrow { from { transform: scaleY(0); } to { transform: scaleY(1); } }

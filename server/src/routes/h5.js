@@ -148,6 +148,21 @@ router.get('/mine', authRequired, (req, res) => {
   })
 })
 
+// 宣传页统计聚合（2026-11-28 用户定稿：统计与线索收进个人中心「浏览统计」页，列表行不再承载）
+// 一次带回：各宣传页浏览/线索概览 + 线索明细（近 100 条，最新在前）；线索删除复用单页端点 /:id/leads/:leadId
+router.get('/mine/stats', authRequired, (req, res) => {
+  const pages = db.prepare('SELECT id, title, status, view_count FROM h5_pages WHERE user_id = ? ORDER BY id DESC').all(req.user.id)
+  const ids = pages.map(p => p.id)
+  const leadCount = db.prepare('SELECT COUNT(*) n FROM h5_leads WHERE page_id = ?')
+  const promos = pages.map(p => ({ id: p.id, title: p.title, status: p.status, views: p.view_count || 0, leads: leadCount.get(p.id).n }))
+  const leads = ids.length
+    ? db.prepare(`SELECT l.id, l.page_id, l.name, l.phone, l.message, l.created_at, p.title AS page_title
+                  FROM h5_leads l JOIN h5_pages p ON p.id = l.page_id
+                  WHERE l.page_id IN (${ids.map(() => '?').join(',')}) ORDER BY l.id DESC LIMIT 100`).all(...ids)
+    : []
+  ok(res, { promos, views: promos.reduce((s, p) => s + p.views, 0), leads_total: leads.length, leads })
+})
+
 // 新建：template_key 套官方模板 / schema 自带；闸门（数量）在创建前判
 router.post('/', authRequired, (req, res) => {
   const lim = limitsOf(req.user.id)
