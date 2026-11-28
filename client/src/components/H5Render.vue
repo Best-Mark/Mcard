@@ -86,14 +86,15 @@
               <div v-for="(img, gi) in galImgs(b)" :key="gi" class="hp-img" :style="bgStyle(img)"></div>
             </div>
           </div>
-          <!-- 联系方式：拨号 / 复制微信 / 地址 -->
-          <div v-else-if="b.type === 'contact'" :class="blkCls(pi, bi, b)" :style="[geoStyle(pi, bi, b), dragStyle(bi)]" @click="pick(pi, bi)">
+          <!-- 联系方式：拨号 / 复制微信 / 地址；名片资料没填对应项时访客侧整块隐藏（不渲染空白盒） -->
+          <div v-else-if="b.type === 'contact' && (editable || contactHas(b))" :class="blkCls(pi, bi, b)" :style="[geoStyle(pi, bi, b), dragStyle(bi)]" @click="pick(pi, bi)">
             <button v-if="b.showMobile && tel" class="hp-act" @click="call(tel)"><span class="hp-act-ico">☎</span>{{ tel }}<small>拨打电话</small></button>
             <button v-if="b.showWechat && wechat" class="hp-act" @click="copyWechat"><span class="hp-act-ico">◌</span>微信号：{{ wechat }}<small>{{ copied ? '已复制' : '点击复制' }}</small></button>
             <p v-if="b.showAddress && (card?.address || card?.company)" class="hp-addr">◉ {{ card?.address || card?.company }}</p>
+            <p v-if="editable && !contactHas(b)" class="hp-empty-hint">名片资料里还没填电话 / 微信号，填好后这里会显示</p>
           </div>
-          <!-- 地图：有坐标跳高德坐标点，无坐标按关键字搜索 -->
-          <div v-else-if="b.type === 'map'" :class="blkCls(pi, bi, b)" :style="[geoStyle(pi, bi, b), dragStyle(bi)]" @click="pick(pi, bi)">
+          <!-- 地图：有坐标跳高德坐标点，无坐标按关键字搜索；没填位置时访客侧整块隐藏 -->
+          <div v-else-if="b.type === 'map' && (editable || b.label || (b.lat && b.lng))" :class="blkCls(pi, bi, b)" :style="[geoStyle(pi, bi, b), dragStyle(bi)]" @click="pick(pi, bi)">
             <p class="hp-map-label">◉ {{ b.label || '位置待完善' }}</p>
             <a v-if="b.label || (b.lat && b.lng)" class="hp-act" :href="editable ? 'javascript:;' : mapHref(b)" target="_blank" rel="noopener">导航到这里</a>
           </div>
@@ -101,9 +102,10 @@
           <div v-else-if="b.type === 'buttons'" :class="blkCls(pi, bi, b)" :style="[geoStyle(pi, bi, b), dragStyle(bi)]" @click="pick(pi, bi)">
             <button v-for="(it, ii) in (b.items || [])" :key="ii" class="hp-btn" @click="runAction(it)">{{ it.label || '按钮' }}</button>
           </div>
-          <!-- 视频 -->
-          <div v-else-if="b.type === 'video'" :class="blkCls(pi, bi, b)" :style="[geoStyle(pi, bi, b), dragStyle(bi)]" @click="pick(pi, bi)">
+          <!-- 视频：未填地址时访客侧整块隐藏（不渲染空白盒） -->
+          <div v-else-if="b.type === 'video' && (editable || b.url)" :class="blkCls(pi, bi, b)" :style="[geoStyle(pi, bi, b), dragStyle(bi)]" @click="pick(pi, bi)">
             <video v-if="b.url" :src="b.url" :poster="b.poster" controls playsinline preload="metadata"></video>
+            <p v-else class="hp-empty-hint">在「编辑」里填视频地址（mp4 链接）</p>
           </div>
           <!-- 表单留资（2026-11-27）：姓名/电话/留言收集线索；提交成功换成功态，操作全在块内表单层 -->
           <div v-else-if="b.type === 'form'" :class="blkCls(pi, bi, b)" :style="[geoStyle(pi, bi, b), dragStyle(bi)]" @click="pick(pi, bi)">
@@ -651,6 +653,8 @@ const pageSlug = computed(() => props.data?.page?.slug || props.data?.slug || ''
 const tel = computed(() => card.value.mobile || card.value.phone || '')
 const wechat = computed(() => card.value.wechat || '')
 const cardQr = computed(() => card.value.slug ? scanQrUrl(card.value.slug, 'qr.png', 240) : '')
+// contact 块是否有任何可展示项（电话/微信/地址）：没有则访客侧整块隐藏，不留空白盒
+const contactHas = b => !!(b && ((b.showMobile && tel.value) || (b.showWechat && wechat.value) || (b.showAddress && (card.value?.address || card.value?.company))))
 
 // 图片统一 object-fit cover 呈现；空图走 accent 渐变占位（不出现破图，也提示「这里该上传图」）
 const isImg = u => /\.(png|jpe?g|gif|webp)(\?|$)/i.test(String(u || '')) || String(u || '').startsWith('/uploads/') || /^https?:\/\//.test(String(u || ''))
@@ -1055,6 +1059,8 @@ function armMusic() {
 .hp-act small { margin-left: auto; font-size: 12px; color: var(--hp-accent); font-weight: 700; }
 .hp-act-ico { font-size: 17px; color: var(--hp-accent); }
 .hp-addr { margin: 0; font-size: 13px; color: #9ca3af; line-height: 1.6; }
+/* 编辑画布空块占位提示（仅 editable 渲染，公开页该块整体隐藏） */
+.hp-empty-hint { margin: 4px 0 0; font-size: 12.5px; color: #9ca3af; }
 
 .hp-map { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
 .hp-map-label { margin: 0; font-size: 14px; color: #d1d5db; }

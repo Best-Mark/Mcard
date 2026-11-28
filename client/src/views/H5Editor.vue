@@ -178,7 +178,12 @@
         </template>
         <template v-else-if="block.type === 'map'">
           <label>位置名称<input v-model="block.label" maxlength="80" @input="markDirty" placeholder="如：XX市XX区XX路XX号" /></label>
-          <p class="small muted" style="margin:4px 0 0">访客点「导航到这里」按名称搜索。</p>
+          <div class="he-row" style="gap:8px">
+            <button class="he-btn ghost" @click="mapOpen = true">📍 地图选点</button>
+            <button v-if="Number.isFinite(+block.lat) && Number.isFinite(+block.lng)" class="he-btn ghost" @click="block.lat = null; block.lng = null; markDirty()">清除坐标</button>
+          </div>
+          <p v-if="Number.isFinite(+block.lat) && Number.isFinite(+block.lng)" class="small" style="margin:4px 0 0;color:#16a34a">已选坐标：{{ (+block.lat).toFixed(5) }}, {{ (+block.lng).toFixed(5) }} · 访客导航直达此点</p>
+          <p v-else class="small muted" style="margin:4px 0 0">未选点时，访客点「导航到这里」按位置名称搜索。建议选点，导航更精准。</p>
         </template>
         <template v-else-if="block.type === 'buttons'">
           <div v-for="(it, ii) in block.items" :key="ii" class="he-btn-edit">
@@ -362,18 +367,32 @@
         <p class="small muted" style="margin:10px 0 0">不设置时使用默认深色背景。背景图建议 750×1334 以上竖图。</p>
       </div>
     </BottomSheet>
+
+    <!-- 地图选点（复用名片编辑同款 MapPicker，懒加载；确认后坐标落 map 块，导航直达坐标点） -->
+    <div v-if="mapOpen" class="map-mask" @click.self="mapOpen = false">
+      <div class="map-modal">
+        <div class="map-modal-head">
+          <b>地图选点</b>
+          <button class="he-mini" @click="mapOpen = false">关闭</button>
+        </div>
+        <MapPicker :lat="Number.isFinite(+block?.lat) ? +block.lat : null" :lng="Number.isFinite(+block?.lng) ? +block.lng : null" @confirm="onMapPicked" />
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
 import { showToast } from '../store'
+import { reverseGeocode } from '../utils/geo'
 import H5Render from '../components/H5Render.vue'
 import ImageField from '../components/ImageField.vue'
 import BottomSheet from '../components/BottomSheet.vue'
 import BottomSelect from '../components/BottomSelect.vue'
+// 地图选点懒加载（与名片编辑同口径）：打开选点弹层才下载 leaflet
+const MapPicker = defineAsyncComponent(() => import('../components/MapPicker.vue'))
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 
 const route = useRoute()
@@ -691,6 +710,22 @@ function setBg(field, v) {
   markDirty()
 }
 
+// ---- 地图选点（map 块）：确认后坐标落块，位置名称为空时用逆地理地址回填 ----
+const mapOpen = ref(false)
+async function onMapPicked(p) {
+  block.value.lat = p.lat
+  block.value.lng = p.lng
+  mapOpen.value = false
+  if (!block.value.label) {
+    try {
+      const addr = await reverseGeocode(p.lat, p.lng)
+      const text = [addr?.province, addr?.district, addr?.street].filter(Boolean).join('')
+      if (text) block.value.label = text
+    } catch { /* 逆地理失败不阻塞，位置名称留空由用户手填 */ }
+  }
+  markDirty()
+}
+
 // ---- 撤销/重做（时间线快照，MAKA 同款顶栏 ↶↷）：变更停 600ms 落一档，undo 前先冲掉未落档的改动 ----
 const hist = ref([])
 const histIdx = ref(-1)
@@ -906,4 +941,8 @@ watch(() => route.params.id, () => { if (route.name === 'h5-editor') location.re
 .he-tpl-dot { width: 14px; height: 14px; flex: 0 0 14px; border-radius: 50%; }
 .he-tpl-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
 .he-tpl i { font-style: normal; color: #9ca3af; }
+/* 地图选点弹层（复用名片编辑形态；遮罩四边定位，老 WebView 不认 inset 简写） */
+.map-mask { position: fixed; top: 0; right: 0; bottom: 0; left: 0; background: rgba(15,23,42,.55); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.map-modal { width: 100%; max-width: 680px; background: #fff; border-radius: 14px; padding: 14px; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+.map-modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 </style>
