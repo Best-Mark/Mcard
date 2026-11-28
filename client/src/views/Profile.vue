@@ -116,12 +116,12 @@
     </div>
     <div v-else-if="loading" class="card card-pad center">加载中…</div>
 
-    <!-- 快捷入口（2026-11-27 用户定稿）：四项白卡单向横排——一行等分、不换行不折行。
-         四项 = 名片夹 / 我的套餐 / 宣传页 / 展会连扫（2026-11-27 宣传页取代实体版式进快捷位）；
-         实体版式等其余功能收进齿轮底部菜单，页面更简洁。 -->
+    <!-- 快捷入口（2026-11-27 用户定稿，2026-11-28 调整）：四项白卡单向横排——一行等分、不换行不折行。
+         四项 = 名片夹 / 浏览统计 / 宣传页 / 展会连扫；我的套餐不进快捷格——上方套餐玻璃条
+         （续期/终身会员按钮）就是它的显眼入口；实体版式等其余功能收进齿轮底部菜单。 -->
     <div class="pf-quick">
       <router-link to="/me/contacts" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="grid" :size="22" /></i><span>名片夹</span></router-link>
-      <router-link to="/me/plans" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="yen" :size="22" /></i><span>我的套餐</span></router-link>
+      <router-link to="/me/stats" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="chart" :size="22" /></i><span>浏览统计</span></router-link>
       <router-link to="/me/h5" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="file" :size="22" /></i><span>宣传页</span></router-link>
       <router-link to="/me/batch-scan" class="pf-quick-item"><i class="pf-qi-ico"><AppIcon name="scan" :size="22" /></i><span>展会连扫</span></router-link>
     </div>
