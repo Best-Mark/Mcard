@@ -173,8 +173,9 @@ async function done() {
 .sheet-grab span { width: 36px; height: 4px; border-radius: 2px; background: var(--line); }
 .tab-ico { width: 14px; height: 14px; border-radius: 50%; background: currentColor; opacity: .75; flex: 0 0 14px; }
 .control-panel { margin: 0; border-radius: 0; border: 0; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
-/* tabbar 在本页已隐藏，功能条贴底：现在只有一个「上架设置」入口 */
-.bottom-launcher { position: fixed; left: 0; right: 0; bottom: 0; z-index: 105; display: flex; padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid var(--line); box-shadow: 0 -4px 16px rgba(0,0,0,.06); }
+/* tabbar 在本页已隐藏，功能条贴底：现在只有一个「上架设置」入口。
+   背景与名片页返回签同质感：毛玻璃白（2026-11-28 全站底栏统一） */
+.bottom-launcher { position: fixed; left: 0; right: 0; bottom: 0; z-index: 105; display: flex; padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); background: rgba(255,255,255,.50); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-top: 1px solid rgba(255,255,255,.45); box-shadow: 0 -4px 16px rgba(0,0,0,.06); }
 .bottom-launcher button { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 8px 0; border-radius: 8px; color: var(--muted); font-size: 13px; }
 .bottom-launcher button.on { color: var(--primary); background: #eef4ff; background: color-mix(in srgb, var(--primary) 10%, transparent); }
 @media (min-width: 900px) { .bottom-launcher { max-width: 560px; left: 50%; right: auto; transform: translateX(-50%); border-radius: 14px 14px 0 0; } }

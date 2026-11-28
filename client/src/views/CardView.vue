@@ -12,11 +12,12 @@
     7. 配色/质感跟随主题强调色，不写死白色；尊重 prefers-reduced-motion。
   -->
   <div class="cv-page" :class="['cv-tpl-' + template, { 'cv-clean': isCleanTpl, 'cv-embed': embed, 'cv-owner': owner }]" :style="vars">
-    <!-- 返回签（2026-11-28 用户定稿）：卡片外左上角透明吸附的竖向圆角矩形，不再嵌在封面里 -->
-    <button v-if="!owner && full" class="cv-back" @click="goBack" :aria-label="backAria">
+    <!-- 返回签（2026-11-28 用户定稿）：卡片外左上角透明吸附的竖向圆角矩形，不再嵌在封面里；
+         现为「名片集市」固定入口（公开页访客的统一 upstream，不再做 history 返回） -->
+    <button v-if="!owner && full" class="cv-back" @click="goMarket" :aria-label="backAria">
       <!-- SVG 细箭头：裸 ‹ 字形各系统渲染粗细不一，统一细线条观感 -->
       <svg class="cv-back-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <!-- 竖排两字（集市=回集市 / 返回=回上一页），逐字堆叠不依赖 writing-mode，老 WebView 稳 -->
+      <!-- 竖排四字「名片集市」，逐字堆叠不依赖 writing-mode，老 WebView 稳 -->
       <span class="cv-back-v" aria-hidden="true"><i v-for="ch in backChars" :key="ch">{{ ch }}</i></span>
     </button>
     <div class="cv-cover">
@@ -452,17 +453,12 @@ import CardSheet from '../components/CardSheet.vue'
 import ImageField from '../components/ImageField.vue'
 
 const route = useRoute(); const router = useRouter()
-// 返回要「回到来源」而不是盲调 history.back：从集市点进来的名片必须回集市；
-// 直接打开/分享链接没有上一页时回首页，避免点了没反应被当成没有返回入口。
-function goBack() {
-  if (String(route.query.src || '') === 'market') return router.push('/market')
-  if (window.history.state?.back) return router.back()
-  router.replace('/')
-}
-// 返回签文案：从集市来 → 竖排「集市」（aria「返回集市」）；其余 → 竖排「返回」
-const backFromMarket = computed(() => String(route.query.src || '') === 'market')
-const backChars = computed(() => (backFromMarket.value ? ['集', '市'] : ['返', '回']))
-const backAria = computed(() => (backFromMarket.value ? '返回集市' : '返回'))
+// 返回签 = 名片集市固定入口（2026-11-28 用户定稿）：公开页左上角一律回集市，
+// 不再做 history 返回——分享/扫码直接打开的名片没有「上一页」语境，集市是固定 upstream。
+function goMarket() { router.push('/market') }
+// 竖排四字「名片集市」
+const backChars = ['名', '片', '集', '市']
+const backAria = '名片集市'
 const embed = props.embed
 const owner = props.owner
 // 是否渲染公开页整页内容：owner 模式与公开页完全一致，只有 embed 才裁成头部

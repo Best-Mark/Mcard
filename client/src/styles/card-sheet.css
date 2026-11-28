@@ -84,8 +84,8 @@
 .cv-dock.cv-dock-flip .dock-mk-btn.busy { opacity: .55; }
 .cv-dock.cv-dock-flip .dock-mk-chip { flex: 0 0 auto; height: 40px; padding: 0 12px; display: inline-flex; align-items: center; border: 1px solid rgba(255,255,255,.28); border-radius: 999px; background: rgba(15,23,42,.55); color: #fff; font-size: 11.5px; white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .cv-dock.cv-dock-flip .dock-mk-chip.on { background: rgba(15,23,42,.88); box-shadow: inset 0 0 0 1.5px var(--t-accent, #a62b2b); font-weight: 700; }
-.cv-dock.cv-dock-flip .dock-mk-chip.warn { color: #fde68a; }
-.cv-dock.cv-dock-flip .dock-mk-status { flex: 0 0 auto; align-self: center; padding: 0 8px; font-size: 10.5px; color: #fff; opacity: .85; white-space: nowrap; }
+.cv-dock.cv-dock-flip .dock-mk-chip.warn { color: #b45309; }
+.cv-dock.cv-dock-flip .dock-mk-status { flex: 0 0 auto; align-self: center; padding: 0 8px; font-size: 10.5px; color: rgba(38,34,28,.75); white-space: nowrap; }
 /* 宣传页挂钩入口（2026-11-27）：持有者发布的宣传页自动出现在名片公开页（访客视图），
    白卡一行式，通用深浅主题都成立；点击进 /h5/:slug 公开宣传页 */
 .cv-promo-entry { display: flex; align-items: center; gap: 12px; width: calc(100% - 24px); max-width: 560px; margin: 12px auto; padding: 13px 15px; border: 1px solid var(--line, #e5e7eb); border-radius: 14px; background: #fff; box-shadow: 0 6px 18px rgba(15,23,42,.08); color: var(--text, #0f172a); text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
@@ -156,12 +156,12 @@
 .cv-cover > * { position: relative; z-index: 1; }
 @media (prefers-reduced-motion: reduce) { .cv-cover::before { animation: none; opacity: .7; } }
 /* 返回签（2026-11-28 用户定稿）：卡片外左上角透明吸附的竖向圆角矩形——不再嵌在封面里
-   （贴卡片圆角被裁切很局促）。毛玻璃半透明吸附屏幕左上角，SVG 细箭头 + 竖排两字（集市/返回），
-   安全区两级兜底，按压微缩反馈；宽屏贴到居中卡片栏左侧，不飘在视口角落 */
+   （贴卡片圆角被裁切很局促）。毛玻璃半透明吸附屏幕左上角，SVG 细箭头 + 竖排四字「名片集市」
+   （公开页固定回集市的入口），安全区两级兜底，按压微缩反馈；宽屏贴到居中卡片栏左侧，不飘在视口角落 */
 .cv-back {
   position: fixed; left: 0; z-index: 60;
   top: 8px; top: calc(8px + env(safe-area-inset-top));
-  width: 38px; min-height: 70px; padding: 10px 0 12px;
+  width: 38px; min-height: 104px; padding: 10px 0 12px;
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   border: 0; border-radius: 0 14px 14px 0; color: #26221c;
   background: rgba(255,255,255,.50);
@@ -311,35 +311,35 @@
 .map-ico { flex: 0 0 34px; width: 34px; height: 34px; display: block; object-fit: contain; border-radius: 8px; }
 .map-arrow { margin-left: auto; color: #94a3b8; font-size: 16px; }
 .cv-footer { text-align: center; color: var(--t-muted); font-size: 11px; padding: 26px 0 10px; }
-/* 高档深灰底栏：四个主操作单排铺满，窄屏也不换行 */
-.cv-dock { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 5px; padding: 10px 10px calc(10px + env(safe-area-inset-bottom)); background: #252a33; border-top: 1px solid rgba(255,255,255,.08); z-index: 60; color: #e2e8f0; }
+/* 底部 dock（2026-11-28 用户定稿：背景与左上角返回签同质感——毛玻璃白）：
+   四个主操作单排铺满，窄屏也不换行；按钮文字走深墨色，浅底上自带对比（勿写回白字） */
+.cv-dock { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 5px; padding: 10px 10px calc(10px + env(safe-area-inset-bottom)); background: rgba(255,255,255,.50); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-top: 1px solid rgba(255,255,255,.45); z-index: 60; color: #26221c; }
 .cv-dock .btn { flex: 1; min-width: 0; padding: 0 2px; font-size: 12.5px; white-space: nowrap; }
 .cv-dock .btn-primary { background: var(--t-accent, #2563eb); color: #fff; border-color: transparent; }
-.cv-dock .btn-ghost { background: rgba(255,255,255,.12); color: #e2e8f0; border-color: transparent; }
-/* ===== 主题毛玻璃底栏（2026-11-25 用户定稿：底栏与四个按钮都跟名片配色走）=====
+.cv-dock .btn-ghost { background: rgba(255,255,255,.55); color: #26221c; border-color: rgba(38,34,28,.10); }
+/* ===== 主题毛玻璃底栏（2026-11-25 用户定稿：底栏与四个按钮都跟名片配色走；
+   2026-11-28 改版：底栏背景与左上角返回签完全一致——毛玻璃白，主题色只留在主按钮上）=====
    色相唯一真相源 = .cv-page 内联的 --t-accent / --glow-rgb（由名片主题算出），
-   不再写死深灰 + 香槟金，任何主题（皇家紫/翡翠绿/黑金）都自动匹配。
-   半透明渐变 + backdrop-filter 做毛玻璃；不支持滤镜的老 WebView 由第一层不透明底色兜底。
-   粒子用 radial-gradient 字面量，无 canvas 开销。 */
+   主按钮跟主题强调色走，底栏不再随主题染色。半透明白 + backdrop-filter 做毛玻璃，
+   与 .cv-back 同参（rgba(255,255,255,.5) + blur 14px）；不支持滤镜的老 WebView 由半透明白兜底。 */
 .cv-page .cv-dock.cv-dock-glass {
   /* ⚠️ 必须保持 fixed 贴底：这里若写 position:relative 会让 dock 掉进内容流悬在半空（2026-11-25 实锤）。 */
   overflow: hidden;
   gap: 8px; padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
-  background: rgba(18,22,36,.7);
-  background: linear-gradient(180deg, rgba(var(--glow-rgb, 37,99,235), .36), rgba(var(--glow-rgb, 37,99,235), .56));
-  border-top: 1px solid rgba(255,255,255,.26);
-  box-shadow: 0 -8px 30px -14px rgba(var(--glow-rgb, 37,99,235), .75);
-  -webkit-backdrop-filter: blur(18px) saturate(1.35); backdrop-filter: blur(18px) saturate(1.35);
+  background: rgba(255,255,255,.50);
+  border-top: 1px solid rgba(255,255,255,.45);
+  box-shadow: 0 -8px 30px -18px rgba(31,27,22,.18);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
 }
 /* 微光粒子已移除（2026-11-26 用户实锤）：主题色亮点在 34% 处正好落在「编辑/配色」两按钮缝隙里，
-   被当成一个蓝色小圆点、像 bug；毛玻璃渐变底色足够表达主题，粒子纯装饰无功能，整体删掉。 */
-/* 四个主操作按钮本身就是毛玻璃：淡透明白底 + 主题色描边，第一枚用主题色加深强调 */
+   被当成一个蓝色小圆点、像 bug；毛玻璃底色足够表达质感，粒子纯装饰无功能，整体删掉。 */
+/* 四个主操作按钮：白瓷片 + 深墨字（与返回签文字同色），第一枚用主题色加深强调 */
 .cv-page .cv-dock.cv-dock-glass .dock-btn {
   position: relative; min-height: 50px; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 3px;
   font-size: 12px; font-weight: 600; letter-spacing: .02em;
-  border-radius: 16px; border: 1px solid rgba(255,255,255,.24); padding: 6px 2px;
-  background: rgba(255,255,255,.12); color: #fff;
+  border-radius: 16px; border: 1px solid rgba(38,34,28,.10); padding: 6px 2px;
+  background: rgba(255,255,255,.55); color: #26221c;
   -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.16);
   transition: transform .16s ease, filter .16s ease;
@@ -363,14 +363,13 @@
   box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 10px 24px -12px rgba(var(--glow-rgb, 37,99,235), .95);
 }
 .cv-page .cv-dock.cv-dock-glass .btn-ghost {
-  background: rgba(255,255,255,.10); color: #fff;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.10);
+  background: rgba(255,255,255,.55); color: #26221c;
+  box-shadow: inset 0 0 0 1px rgba(38,34,28,.08);
 }
-/* 极简白 / 纸白模板：换成浅色毛玻璃，按钮文字走名片深色，底与描边仍带主题色 */
+/* 极简白 / 纸白模板：底栏与全站统一毛玻璃白，描边/阴影仍带主题色微染 */
 .cv-page.cv-tpl-minimal .cv-dock.cv-dock-glass,
 .cv-page.cv-clean.cv-tpl-paper .cv-dock.cv-dock-glass {
-  background: rgba(255,255,255,.88);
-  background: linear-gradient(180deg, rgba(255,255,255,.88), rgba(var(--glow-rgb, 37,99,235), .16));
+  background: rgba(255,255,255,.50);
   border-top-color: rgba(var(--glow-rgb, 37,99,235), .30);
   box-shadow: 0 -6px 22px -14px rgba(var(--glow-rgb, 37,99,235), .35);
 }
@@ -954,3 +953,11 @@
 /* 地址作为联系方式卡内一行时，省市区与详细地址分两行显示（2026-11-26 用户定：地址属于联系信息） */
 .cv-contact-row .cv-contact-value > span { display: block; }
 .cv-contact-row .cv-contact-value > span + span { margin-top: 2px; }
+
+/* ===== 底栏浅色化兜底（2026-11-28）：dock 背景统一为返回签同款毛玻璃白后，
+   凡按深底设计的 ghost 按钮（elite/旧 6 套里的白字透明底）在浅底上会整体隐身
+   （2026-11-26 翻转行同类实锤），统一压成「白瓷片 + 深墨字」；主按钮保持各模板强调色 */
+.cv-page .cv-dock.cv-dock-glass .btn.dock-btn:not(.btn-primary) {
+  background: rgba(255,255,255,.55); color: #26221c;
+  border-color: transparent; box-shadow: inset 0 0 0 1px rgba(38,34,28,.10);
+}

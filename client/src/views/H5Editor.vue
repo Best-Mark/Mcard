@@ -805,23 +805,24 @@ watch(() => route.params.id, () => { if (route.name === 'h5-editor') location.re
 .he-hint { text-align: center; padding: 8px 0 4px; flex: 0 0 auto; }
 .he-loading { flex: 1; display: grid; place-items: center; color: #6b7280; }
 
-/* dock：底部固定操作条，四态翻转（与名片工作台同款交互语言） */
-.he-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 105; width: min(560px, 100%); margin: 0 auto; display: flex; align-items: center; gap: 8px; padding: 10px 12px calc(10px + var(--safe-bottom, 0px)); background: rgba(15,23,42,.92); backdrop-filter: blur(10px); border-radius: 16px 16px 0 0; }
+/* dock：底部固定操作条，四态翻转（与名片工作台同款交互语言）。
+   背景与名片页返回签同质感：毛玻璃白（2026-11-28 全站底栏统一），按钮白瓷片深墨字 */
+.he-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 105; width: min(560px, 100%); margin: 0 auto; display: flex; align-items: center; gap: 8px; padding: 10px 12px calc(10px + var(--safe-bottom, 0px)); background: rgba(255,255,255,.50); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-top: 1px solid rgba(255,255,255,.45); border-radius: 16px 16px 0 0; }
 @media (min-width: 900px) { .he-dock { left: 50%; right: auto; transform: translateX(-50%); border-radius: 14px 14px 0 0; } }
-.he-dock-flip { background: rgba(15,23,42,.96); }
-.he-dock-btn { flex: 1; padding: 12px 4px; border: 1px solid rgba(255,255,255,.22); border-radius: 11px; background: rgba(255,255,255,.08); color: #fff; font-size: 13.5px; font-weight: 700; cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
-.he-dock-btn.primary { background: var(--primary, #a62b2b); border-color: transparent; }
-.he-dock-back { flex: 0 0 36px; height: 44px; border: 1px solid rgba(255,255,255,.28); border-radius: 11px; background: rgba(255,255,255,.08); color: #fff; font-size: 17px; cursor: pointer; }
+.he-dock-flip { background: rgba(255,255,255,.58); }
+.he-dock-btn { flex: 1; padding: 12px 4px; border: 1px solid rgba(38,34,28,.12); border-radius: 11px; background: rgba(255,255,255,.55); color: #26221c; font-size: 13.5px; font-weight: 700; cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
+.he-dock-btn.primary { background: var(--primary, #a62b2b); border-color: transparent; color: #fff; }
+.he-dock-back { flex: 0 0 36px; height: 44px; border: 1px solid rgba(38,34,28,.12); border-radius: 11px; background: rgba(255,255,255,.55); color: #26221c; font-size: 17px; cursor: pointer; }
 .he-dock-scroll { flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
 .he-dock-scroll::-webkit-scrollbar { display: none; }
 .he-dock-flow { display: flex; align-items: center; gap: 8px; width: max-content; padding: 2px; }
-.he-chip { height: 44px; padding: 0 14px; border: 1px solid rgba(255,255,255,.28); border-radius: 999px; background: rgba(255,255,255,.08); color: #fff; font-size: 12.5px; white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.he-chip.on { background: var(--primary, #a62b2b); border-color: transparent; font-weight: 700; }
-.he-chip.warn { color: #fde68a; }
+.he-chip { height: 44px; padding: 0 14px; border: 1px solid rgba(38,34,28,.12); border-radius: 999px; background: rgba(255,255,255,.55); color: #26221c; font-size: 12.5px; white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.he-chip.on { background: var(--primary, #a62b2b); border-color: transparent; color: #fff; font-weight: 700; }
+.he-chip.warn { color: #b45309; }
 .he-chip:disabled { opacity: .45; cursor: default; }
-.he-grp { flex: 0 0 auto; font-size: 10.5px; letter-spacing: .12em; color: #9ca3af; background: rgba(255,255,255,.06); padding: 4px 9px; border-radius: 7px; white-space: nowrap; }
-.he-dot { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.he-dot.on { box-shadow: 0 0 0 3px #fff; }
+.he-grp { flex: 0 0 auto; font-size: 10.5px; letter-spacing: .12em; color: #6b7280; background: rgba(38,34,28,.06); padding: 4px 9px; border-radius: 7px; white-space: nowrap; }
+.he-dot { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; border: 2px solid rgba(38,34,28,.25); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.he-dot.on { box-shadow: 0 0 0 3px rgba(38,34,28,.45); }
 /* dock 上下文调节行的小号色点（2026-11-27 选中元素即调） */
 .he-dot-sm { width: 28px; height: 28px; flex: 0 0 28px; }
 /* 属性面板（自由画布）：色板行 + 滑杆（覆盖 .he-form input 的输入框样式） */
@@ -831,13 +832,13 @@ watch(() => route.params.id, () => { if (route.name === 'h5-editor') location.re
 .he-dot-none { background: #fff; position: relative; overflow: hidden; }
 .he-dot-none:after { content: ''; position: absolute; top: 50%; left: 6px; right: 6px; height: 2px; background: #dc2626; transform: rotate(-45deg); }
 .he-form input.he-range { display: inline-block; width: auto; flex: 1; min-width: 130px; margin: 0 0 0 12px; padding: 0; border: 0; background: transparent; accent-color: var(--primary, #a62b2b); }
-.he-status { flex: 0 0 auto; font-size: 11.5px; color: #9ca3af; white-space: nowrap; padding: 0 2px; }
-.he-status.on { color: #4ade80; font-weight: 700; }
-/* dock 行里的 BottomSelect（切换动效）：触发项压成深色胶囊，与 chips 同语言（浅字浅描边，深底自带对比） */
+.he-status { flex: 0 0 auto; font-size: 11.5px; color: #6b7280; white-space: nowrap; padding: 0 2px; }
+.he-status.on { color: #16a34a; font-weight: 700; }
+/* dock 行里的 BottomSelect（切换动效）：触发项压成白瓷片胶囊，与 chips 同语言（深字细描边，浅底自带对比） */
 .he-dock-flow .bsel { display: inline-block; flex: 0 0 auto; }
-.he-dock-flow :deep(.bsel-trigger) { height: 44px; width: auto; padding: 0 14px; border: 1px solid rgba(255,255,255,.28); border-radius: 999px; background: rgba(255,255,255,.08); color: #fff; font-size: 12.5px; white-space: nowrap; }
+.he-dock-flow :deep(.bsel-trigger) { height: 44px; width: auto; padding: 0 14px; border: 1px solid rgba(38,34,28,.12); border-radius: 999px; background: rgba(255,255,255,.55); color: #26221c; font-size: 12.5px; white-space: nowrap; }
 .he-dock-flow :deep(.bsel-label) { max-width: 110px; }
-.he-dock-flow :deep(.bsel-arrow) { color: rgba(255,255,255,.6); }
+.he-dock-flow :deep(.bsel-arrow) { color: rgba(38,34,28,.55); }
 /* 背景音乐块表单试听 */
 .he-audio { width: 100%; margin-top: 6px; }
 
