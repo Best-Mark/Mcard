@@ -445,7 +445,7 @@ const cardData = ref(null)
 // 自由画布：页内元素一律 els（打开旧 blocks 页时已自动转换），curEls 是当前页元素数组
 const curPage = computed(() => schema.value.pages[selPage.value] || { els: [] })
 const curEls = computed(() => curPage.value.els || [])
-const curPageData = computed(() => ({ schema: { accent: schema.value.accent || '', transition: schema.value.transition || 'slide', pages: [curPage.value] }, card: cardData.value, watermark: watermark.value }))
+const curPageData = computed(() => ({ schema: { accent: schema.value.accent || '', transition: schema.value.transition || 'auto', pages: [curPage.value] }, card: cardData.value, watermark: watermark.value }))
 // 只读预览（?preview=1）：全页可滑、无编辑手势与 dock，画布行为与公开页一致（2026-11-28 用户定稿「预览不改」）
 const previewMode = route.query.preview === '1'
 const previewData = computed(() => ({ schema: schema.value, card: cardData.value, watermark: watermark.value }))
@@ -782,15 +782,14 @@ onMounted(async () => {
     title.value = page.value.title
     // 自由画布唯一编辑形态：旧 blocks 页打开即自动转 els（估高堆叠初稿），已是 els 的页原样
     const raw = page.value.schema || {}
-    const hadBlocks = (raw.pages || []).some(p => p && p.blocks && p.blocks.length && !(p.els && p.els.length))
     const rawPages = (raw.pages && raw.pages.length) ? raw.pages : [{ blocks: [{ type: 'cover', title: '', subtitle: '', cover: '' }] }]
     schema.value = {
       accent: raw.accent || '',
-      transition: raw.transition || 'slide',
+      transition: raw.transition || 'auto',
       pages: rawPages.flatMap(p => splitOverflowPages(pageToEls(p)).map(els => ({ bg: p.bg || { color: '', image: '' }, els })))
     }
     loaded.value = true
-    if (hadBlocks) showToast('旧版内容已自动转为自由画布，可自由拖动、缩放、旋转', 'success')
+    // 旧 blocks 页已就地转 els（管线细节不提示，编辑体验口径由顶部 he-hint 承载）
     snapNow() // 撤销栈初始档：此后每次改动停顿落一档
     // 预览数据：名片公开资料 + 套餐闸门口径（服务端实测，含水印开关）
     try {
