@@ -43,8 +43,8 @@
         v-else
         :card="card" :tags="card.tags || []" :materials="materialsList" :site-name="siteConfig.site_name"
         :qr-url="full ? (qrApi + '/qr.png?size=200&v=' + qrStamp) : ''"
-        :full="full" :interactive="full && !embed" :show-edit="!!owner" :quick-edit="!!owner && !embed"
-        @edit="router.push('/me/card')" @qr="qrModal = true" @edit-field="openQuickEdit"
+        :full="full" :interactive="full && !embed" :quick-edit="!!owner && !embed"
+        @qr="qrModal = true" @edit-field="openQuickEdit"
         @copy="copy" @tel="tel" @sms="sms" @mailto="mailto"
         @open-gallery="openGallery" @open-material="openMaterial" @map="openMapSheet"
       >
@@ -206,6 +206,27 @@
         @confirm="onQeRegionPicked"
         @close="qeRegionOpen = false"
       />
+    </BottomSheet>
+
+    <!-- 快捷编辑·更多链接管理弹层（2026-11-28）：集合型数据不走单字段表单，独立管理弹层。
+         与相册同口径：整组增删改，保存整组替换 PUT /api/cards/mine { links }，空行过滤、上限 20 条。 -->
+    <BottomSheet :show="qeLinksOpen" @update:show="qeLinksOpen = $event">
+      <div class="qe-sheet">
+        <div class="qe-head"><b>管理更多链接</b><button type="button" @click="qeLinksOpen = false">×</button></div>
+        <div class="qe-gal-wrap">
+          <p class="small muted" style="margin:0 0 8px">作品集 / 公众号 / 任意主页都行，访客点开直达。</p>
+          <div v-for="(l, i) in qeLinksList" :key="i" class="qe-link-row">
+            <input v-model.trim="l.label" maxlength="40" placeholder="标题，如 我的作品集" />
+            <input v-model.trim="l.url" maxlength="200" placeholder="https://…" />
+            <button type="button" class="qe-link-del" aria-label="删除此链接" @click="removeLinkRow(i)">✕</button>
+          </div>
+          <button v-if="qeLinksList.length < LINKS_MAX" type="button" class="qe-link-add" @click="addLinkRow">＋ 添加链接</button>
+        </div>
+        <div class="qe-actions">
+          <button class="btn btn-ghost" type="button" @click="qeLinksOpen = false">取消</button>
+          <button class="btn btn-primary" type="button" :disabled="qeLinksSaving" @click="saveLinksEdit">{{ qeLinksSaving ? '保存中…' : '保存' }}</button>
+        </div>
+      </div>
     </BottomSheet>
 
     <!-- 快捷编辑·公司相册管理弹层（2026-11-27）：集合型数据不走单字段表单，独立管理弹层。
@@ -599,8 +620,9 @@ function onQeRegionPicked(r) {
 }
 function openQuickEdit(key) {
   const k = key === 'shop' ? 'shop_url' : key // CardSheet 的 siteLinks 用 'shop' 短名
-  // 公司相册：集合型数据走独立管理弹层（上传网格 + 整份替换保存），不进单字段表单
+  // 公司相册/更多链接：集合型数据走独立管理弹层（整组增删改 + 整份替换保存），不进单字段表单
   if (k === 'gallery') { openGalleryEdit(); return }
+  if (k === 'links') { openLinksEdit(); return }
   const conf = QE_CONF[k]
   if (!conf) return
   qeKey.value = k
@@ -641,6 +663,33 @@ async function saveQuickEdit() {
     qeOpen.value = false
     showToast(`已保存${conf.label}`, 'success')
   } catch (e) { showToast(e.message, 'error') } finally { qeSaving.value = false }
+}
+
+// 快捷编辑·更多链接管理（2026-11-28）：与相册同口径——集合型数据独立管理弹层，
+// 保存整组替换 PUT /api/cards/mine { links }（服务端白名单上限 20 条），空行保存时过滤。
+const LINKS_MAX = 20
+const qeLinksOpen = ref(false)
+const qeLinksList = ref([]) // [{ label, url }]
+const qeLinksSaving = ref(false)
+function openLinksEdit() {
+  qeLinksList.value = (card.value?.links || []).map(l => ({ label: String(l?.label || ''), url: String(l?.url || '') }))
+  qeLinksOpen.value = true
+}
+function addLinkRow() { if (qeLinksList.value.length < LINKS_MAX) qeLinksList.value.push({ label: '', url: '' }) }
+function removeLinkRow(i) { qeLinksList.value.splice(i, 1) }
+async function saveLinksEdit() {
+  if (qeLinksSaving.value) return
+  const links = qeLinksList.value
+    .map(l => ({ label: String(l.label || '').trim().slice(0, 40), url: String(l.url || '').trim().slice(0, 200) }))
+    .filter(l => l.label || l.url)
+    .slice(0, LINKS_MAX)
+  qeLinksSaving.value = true
+  try {
+    await api.put('/api/cards/mine', { links })
+    card.value = { ...card.value, links } // 就地合并 → 「更多链接」区块立即刷新
+    qeLinksOpen.value = false
+    showToast('已保存更多链接', 'success')
+  } catch (e) { showToast(e.message, 'error') } finally { qeLinksSaving.value = false }
 }
 
 // 快捷编辑·公司相册管理（2026-11-27）：与 CardEdit「公司相册」同口径——独立上传（/api/upload）、

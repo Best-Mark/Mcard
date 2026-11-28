@@ -148,9 +148,11 @@
 @media (prefers-reduced-motion: reduce) { .cv-cover::before { animation: none; opacity: .7; } }
 /* 返回键：主题毛玻璃圆钮（不是裸字符），任何模板都清晰可见、与名片同色系 */
 .cv-back { position: absolute; left: 14px; top: calc(12px + var(--safe-top)); width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; font-size: 26px; line-height: 1; color: #fff; background: rgba(var(--glow-rgb, 37,99,235), .30); border: 1px solid rgba(255,255,255,.30); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); box-shadow: inset 0 1px 0 rgba(255,255,255,.18); }
-/* 持有者预览：编辑入口收进名片卡的姓名行（卡片右上角是二维码，不再在封面上放铅笔） */
-.cv-inline-edit { flex: 0 0 auto; width: 26px; height: 26px; margin-left: 2px; display: grid; place-items: center; border-radius: 50%; font-size: 15px; line-height: 1; color: var(--t-accent, var(--primary)); background: rgba(var(--glow-rgb, 37,99,235), .10); border: 1px solid rgba(var(--glow-rgb, 37,99,235), .22); cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.cv-inline-edit:active { transform: scale(.92); }
+/* 快捷编辑·更多链接管理行（2026-11-28）：标题 + 网址两行输入 + 行尾移除，表单区 16px 边距与 qe-field 同口径 */
+.qe-link-row { display: grid; grid-template-columns: 1fr 28px; grid-template-rows: auto auto; gap: 8px; margin-bottom: 10px; }
+.qe-link-row input { grid-column: 1; width: 100%; box-sizing: border-box; min-height: 44px; padding: 11px 12px; border: 1px solid var(--line, #e8edf4); border-radius: 10px; background: #f8fafc; color: var(--text, #0f172a); font-size: 15px; }
+.qe-link-del { grid-column: 2; grid-row: 1 / 3; align-self: center; width: 28px; height: 28px; border: 0; border-radius: 50%; background: rgba(15,23,42,.72); color: #fff; font-size: 12px; line-height: 1; cursor: pointer; }
+.qe-link-add { display: block; width: 100%; padding: 12px; border: 1.5px dashed var(--line, #d9dde6); border-radius: 10px; background: #f8fafc; color: var(--primary, #2563eb); font-size: 13px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 /* owner 页已有蓝色工作台顶栏：封面白条不再需要，名片卡直接贴近顶栏（不影响公开页的模板封面） */
 .cv-owner .cv-cover { display: none; }
 .cv-owner .cv-main { margin-top: 0 !important; }
@@ -878,7 +880,6 @@
   background: var(--cv-header-tag-bg); color: var(--cv-header-accent);
   box-shadow: inset 0 0 0 1px var(--cv-header-line);
 }
-.cv-page.cv-clean .cv-inline-edit { color: var(--cv-header-accent); background: var(--cv-header-tag-bg); border-color: var(--cv-header-line); }
 .cv-page.cv-clean .cv-qr-entry { border-color: var(--cv-header-line); box-shadow: 0 6px 20px rgba(0,0,0,.28); }
 .cv-page.cv-clean .cv-avatar:not(.is-logo) { box-shadow: inset 0 0 0 2px var(--cv-header-line), 0 8px 18px -8px rgba(0,0,0,.65); }
 

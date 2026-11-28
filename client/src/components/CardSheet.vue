@@ -24,7 +24,6 @@
           </div>
           <button v-if="qeOn('name')" class="cv-qe-tag" type="button" @click.stop="editField('name')">✎ 改姓名</button>
           <button v-if="qeOn('name_en')" class="cv-qe-tag" type="button" @click.stop="editField('name_en')">✎ 改英文名</button>
-          <button v-if="showEdit" class="cv-inline-edit" type="button" @click="$emit('edit')" title="编辑名片资料" aria-label="编辑名片资料">✎</button>
         </div>
         <div :class="['cv-title', { 'cv-qe-on': qeOn('title') }]" @click="qeTap($event,'title')">{{ displayTitle || '点击进入编辑，完善你的职业信息' }}</div>
         <button v-if="qeOn('title')" class="cv-qe-tag" type="button" @click.stop="editField('title')">✎ 改职位 / 部门</button>
@@ -88,13 +87,17 @@
         <button v-else class="cv-qe-ghost cv-qe-ghost-block" type="button" @click.stop="editField('bio')">＋ 简介</button>
       </div>
 
-      <div v-if="card.links?.length" class="card card-pad cv-block" data-sec="links">
-        <h3>更多链接</h3>
+      <!-- 更多链接（自定义链接多条）：集合型数据与相册同口径——快捷编辑弹「管理链接」整组增删改 -->
+      <div v-if="(card.links && card.links.length) || quickEdit" class="card card-pad cv-block" data-sec="links">
+        <h3>更多链接 <span v-if="quickEdit" class="small muted">· 点「管理链接」增删改</span>
+          <button v-if="quickEdit" class="cv-qe-tag" type="button" @click.stop="editField('links')">✎ 管理链接</button>
+        </h3>
         <div class="cv-links">
-          <a v-for="(l, i) in card.links" :key="i" :href="safeUrl(l.url)" target="_blank" rel="noopener">
+          <a v-for="(l, i) in (card.links || [])" :key="i" :href="safeUrl(l.url)" target="_blank" rel="noopener">
             <b>{{ l.label || '链接' }}</b><span>{{ shortUrl(l.url) }} ↗</span>
           </a>
         </div>
+        <button v-if="quickEdit && !(card.links && card.links.length)" class="cv-qe-ghost cv-qe-ghost-block" type="button" @click.stop="editField('links')">＋ 添加链接（作品集 / 公众号 等）</button>
       </div>
 
       <div v-if="siteLinks.length || quickEdit" class="card card-pad cv-block" data-sec="links">
@@ -158,12 +161,12 @@ const props = defineProps({
   qrUrl: { type: String, default: '' },
   full: { type: Boolean, default: true },
   interactive: { type: Boolean, default: false },
-  showEdit: { type: Boolean, default: false },
-  // 快捷编辑（2026-11-27 用户定稿）：仅 owner 工作台开启。两段式——点字段只选中并浮出编辑标，
-  // 点标才 emit('edit-field') 弹层改这一项；公开页/编辑预览/配色预览默认 false，行为零变化。
+  // 快捷编辑（2026-11-27 用户定稿；2026-11-28 起封面 ✎ 完整表单入口一并撤掉，编辑全走快捷编辑）：
+  // 仅 owner 工作台开启。两段式——点字段只选中并浮出编辑标，点标才 emit('edit-field') 弹层改这一项；
+  // 集合型数据（更多链接/相册）走独立管理弹层。公开页/编辑预览/配色预览默认 false，行为零变化。
   quickEdit: { type: Boolean, default: false }
 })
-const emit = defineEmits(['copy', 'tel', 'sms', 'mailto', 'edit', 'qr', 'open-gallery', 'open-material', 'map', 'edit-field'])
+const emit = defineEmits(['copy', 'tel', 'sms', 'mailto', 'qr', 'open-gallery', 'open-material', 'map', 'edit-field'])
 
 const quickField = ref('')
 const qeOn = key => props.quickEdit && quickField.value === key
