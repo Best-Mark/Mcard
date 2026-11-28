@@ -242,4 +242,31 @@ function getTemplate(key) { return TEMPLATES.find(t => t.key === key) || null }
   }
 })()
 
+// 模板 DEMO 内容注入（2026-11-28 用户定稿「虽然是模板，但最好带上内容……模板带 DEMO 也包括音乐」）：
+// 空图位填站内示例图（client/public/h5demo/demo-1..4.svg，轻渐变+「示例图片·点按替换」标签），
+// 每套模板挂一首站内免版权合成曲（client/public/music/bgm-*.wav，无缝循环），套用即成稿；
+// 用户点图即换、音乐块可在编辑器里换链接/删除。图用相对路径——随当前部署域名走，绝不写死域名。
+;(() => {
+  const DEMOS = ['/h5demo/demo-1.svg', '/h5demo/demo-2.svg', '/h5demo/demo-3.svg', '/h5demo/demo-4.svg']
+  const MUSICS = ['/music/bgm-light.wav', '/music/bgm-warm.wav', '/music/bgm-business.wav', '/music/bgm-fresh.wav']
+  TEMPLATES.forEach((t, ti) => {
+    let di = ti % DEMOS.length
+    for (const p of t.pages || []) for (const b of (p.blocks || [])) {
+      if (b.type === 'cover' && !b.cover) b.cover = DEMOS[di++ % DEMOS.length]
+      else if (b.type === 'hero' && !b.image) b.image = DEMOS[di++ % DEMOS.length]
+      else if (b.type === 'gallery' && Array.isArray(b.images)) {
+        if (b.source === 'card') continue // showcase 展播取公司相册，不填示例图
+        b.images = b.images.map(im => im || DEMOS[di++ % DEMOS.length])
+      }
+    }
+    // 音乐：模板自带 music 块（如婚礼摄影）只补 url；其余套在倒数第二页末尾（不新增页，防免费 3 页被截断）
+    if ((t.pages || []).some(p => (p.blocks || []).some(b => b.type === 'music'))) {
+      for (const p of t.pages || []) for (const b of (p.blocks || [])) if (b.type === 'music' && !b.url) b.url = MUSICS[ti % MUSICS.length]
+    } else {
+      const page = t.pages[Math.max(0, (t.pages || []).length - 2)]
+      if (page) page.blocks.push(B('music', { url: MUSICS[ti % MUSICS.length], autoplay: true }))
+    }
+  })
+})()
+
 module.exports = { TEMPLATES, getTemplate }

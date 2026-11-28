@@ -5,7 +5,7 @@
     <div v-if="loading" class="h5p-state">加载中…</div>
     <div v-else-if="error" class="h5p-state">
       <b>{{ error }}</b>
-      <p class="small">链接可能已失效，或该宣传页尚未发布。</p>
+      <p class="small">链接可能已失效，或该宣传页尚未上架。</p>
     </div>
     <H5Render v-else-if="data" :data="data" class="h5p-render" />
     <!-- 本人查看未上架页的提示条（server 对属主放行草稿，访客仍 404） -->

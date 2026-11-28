@@ -38,7 +38,7 @@
         <button class="he-dock-btn primary" @click="dockMode = 'edit'">✎ 编辑块</button>
         <button class="he-dock-btn" @click="dockMode = 'pages'">▦ 页面</button>
         <button class="he-dock-btn" @click="dockMode = 'theme'">◑ 配色</button>
-        <button class="he-dock-btn" @click="dockMode = 'pub'">⇪ 发布</button>
+        <button class="he-dock-btn" @click="dockMode = 'pub'">⇪ 上架</button>
       </template>
       <template v-else>
         <button class="he-dock-back" @click="dockMode = 'main'" aria-label="收起，返回主操作条">↙</button>
@@ -112,10 +112,12 @@
               <span class="he-grp">切换动效</span>
               <BottomSelect :model-value="schema.transition || 'slide'" :options="TRANSITION_OPTS" title="页面切换动效" @update:modelValue="schema.transition = $event; markDirty()" />
             </template>
-            <!-- 发布行：状态 + 发布/更新 + 关联名片开关（一对多，2026-11-27）+ 复制链接 + 下架 -->
+            <!-- 发布行：上架状态（草稿/线上双版本，编辑只存草稿、点上架才同步到线上）+ 关联名片开关 + 复制链接 + 下架 -->
             <template v-else>
-              <span :class="['he-status', { on: page?.status === 'published' }]">{{ page?.status === 'published' ? '✓ 已发布·名片页可跳转' : '○ 未发布' }}</span>
-              <button class="he-chip on" :disabled="publishing" @click="publish">{{ page?.status === 'published' ? '⇪ 更新发布' : '⇪ 发布' }}</button>
+              <span :class="['he-status', { on: page?.status === 'published' }]">
+                {{ page?.status === 'published' ? (page?.pending ? '✓ 已上架 · 有改动待同步' : '✓ 已上架') : '○ 未上架' }}
+              </span>
+              <button class="he-chip on" :disabled="publishing" @click="publish">{{ page?.status === 'published' ? '⇪ 更新上架' : '⇪ 上架' }}</button>
               <button class="he-chip" :class="{ on: page?.card_linked }" :disabled="publishing" @click="toggleCardLink">{{ page?.card_linked ? '✓ 已关联名片' : '＋ 关联名片' }}</button>
               <button v-if="page?.status === 'published'" class="he-chip" @click="copyLink">⧉ 复制链接</button>
               <button v-if="page?.status === 'published'" class="he-chip warn" @click="unpublish">下架</button>
@@ -521,8 +523,10 @@ function markDirty() {
 async function save(silent = true) {
   clearTimeout(saveTimer)
   try {
-    await api.put(`/api/h5/${route.params.id}`, { title: title.value, schema: schema.value })
+    const { data } = await api.put(`/api/h5/${route.params.id}`, { title: title.value, schema: schema.value })
     saveState.value = '✓ 已自动保存'
+    // 服务端回带 pending（已上架且草稿≠线上）：保存后即时刷新「待同步」徽标
+    if (data?.data && typeof data.data.pending === 'boolean' && page.value) page.value.pending = data.data.pending
   } catch (e) {
     saveState.value = '保存失败：' + (e?.message || '网络异常')
     if (!silent) showToast(saveState.value, 'error')
@@ -534,10 +538,11 @@ async function publish() {
   try {
     const { data } = await api.post(`/api/h5/${route.params.id}/publish`)
     page.value.status = 'published'
+    if (page.value) page.value.pending = false
     if (data?.data) page.value.card_linked = !!data.data.card_linked
-    showToast(page.value.card_linked ? '已发布！入口已挂到你的名片页' : '已发布！点「关联名片」可挂到名片页', 'success')
+    showToast(page.value.card_linked ? '已上架！访客打开你的名片即可看到' : '已上架！点「关联名片」可挂到名片页', 'success')
     copyLink()
-  } catch (e) { showToast(e?.message || '发布失败', 'error') } finally { publishing.value = false }
+  } catch (e) { showToast(e?.message || '上架失败', 'error') } finally { publishing.value = false }
 }
 // 关联名片开关（2026-11-27 一对多定稿）：状态在宣传页侧维护（防名片侧指定变乱），
 // 已发布且已关联的宣传页在名片公开页列多条入口；首次发布自动关联，更新发布不覆盖取消。
@@ -591,12 +596,15 @@ function nextG(h) {
 function blankEl(type) {
   const anim = ''
   if (type === 'text') return { type, text: '点我编辑文字', size: 32, color: '#ffffff', align: 'left', bold: false, font: '', lh: 1.5, anim, g: nextG(60) }
-  if (type === 'image') return { type, url: '', radius: 12, fit: 'cover', anim, g: nextG(260) }
+  if (type === 'image') return { type, url: '', radius: 20, fit: 'cover', anim, g: nextG(260) }
   if (type === 'shape') return { type, shape: 'round', color: '#ffffff', radius: 16, anim, g: nextG(120) }
   if (type === 'button') return { type, label: '按钮', action: 'tel', value: '', color: '#ffffff', bg: '#a62b2b', radius: 22, anim, g: nextG(56) }
   return { ...blank(type), anim, g: nextG(EST_H[type] || 240) }
 }
-// 老 blocks 页 → els 转换（打开旧页/套模板自动执行）：估高堆叠成自由画布初稿，用户再自由调整
+// 老 blocks 页 → els 转换（打开旧页/套模板自动执行）：估高堆叠成自由画布初稿，用户再自由调整。
+// 几何按「成稿美感」给基准参数（2026-11-28 用户定稿「元素都要有相应美感的参数」）：
+// 封面全幅铺满整屏、标题压在下三分之一留白带；正文 48px 边距留白；图片 20px 圆角；
+// 封面后续内容 y 从 1360 起，超出一屏由 splitOverflowPages 自动切到下一页。
 function pageToEls(p) {
   if (p && Array.isArray(p.els) && p.els.length) return p.els
   const els = []
@@ -605,23 +613,23 @@ function pageToEls(p) {
   for (const b of ((p && p.blocks) || [])) {
     const anim = b.anim || ''
     if (b.type === 'cover') {
-      els.push({ type: 'image', url: b.cover || '', radius: 0, fit: 'cover', anim: anim || 'zoom', g: G(0, 0, 750, 820) })
-      if (b.title) els.push({ type: 'text', text: b.title, size: 60, color: '#ffffff', align: 'left', bold: true, font: '', lh: 1.25, anim: 'up', g: G(48, 560, 654, 90) })
-      if (b.subtitle) els.push({ type: 'text', text: b.subtitle, size: 26, color: '#ffffff', align: 'left', bold: false, font: '', lh: 1.5, anim: 'up', g: G(48, 668, 654, 50) })
-      y = 900
+      els.push({ type: 'image', url: b.cover || '', radius: 0, fit: 'cover', anim: anim || 'zoom', g: G(0, 0, 750, 1334) })
+      if (b.title) els.push({ type: 'text', text: b.title, size: 58, color: '#ffffff', align: 'left', bold: true, font: '', lh: 1.25, anim: 'up', g: G(48, 940, 654, 90) })
+      if (b.subtitle) els.push({ type: 'text', text: b.subtitle, size: 26, color: 'rgba(255,255,255,.85)', align: 'left', bold: false, font: '', lh: 1.5, anim: 'up', g: G(48, 1058, 654, 50) })
+      y = 1360
     } else if (b.type === 'hero') {
-      els.push({ type: 'image', url: b.image || '', radius: 18, fit: 'cover', anim: anim || 'up', g: G(22, y, 706, 440) })
-      y += 470
-      if (b.title) { els.push({ type: 'text', text: b.title, size: 38, color: '#ffffff', align: 'left', bold: true, font: '', lh: 1.3, anim: '', g: G(22, y, 706, 56) }); y += 76 }
-      if (b.desc) { els.push({ type: 'text', text: b.desc, size: 26, color: '#d1d5db', align: 'left', bold: false, font: '', lh: 1.7, anim: '', g: G(22, y, 706, 96) }); y += 120 }
+      els.push({ type: 'image', url: b.image || '', radius: 20, fit: 'cover', anim: anim || 'up', g: G(48, y, 654, 420) })
+      y += 450
+      if (b.title) { els.push({ type: 'text', text: b.title, size: 40, color: '#ffffff', align: 'left', bold: true, font: '', lh: 1.3, anim: '', g: G(48, y, 654, 56) }); y += 78 }
+      if (b.desc) { els.push({ type: 'text', text: b.desc, size: 26, color: '#cbd5e1', align: 'left', bold: false, font: '', lh: 1.7, anim: '', g: G(48, y, 654, 96) }); y += 122 }
     } else if (b.type === 'text') {
       const align = ['left', 'center', 'right'].includes(b.align) ? b.align : 'left'
-      if (b.heading) { els.push({ type: 'text', text: b.heading, size: 40, color: '#ffffff', align, bold: true, font: '', lh: 1.3, anim: anim || 'up', g: G(22, y, 706, 58) }); y += 80 }
+      if (b.heading) { els.push({ type: 'text', text: b.heading, size: 42, color: '#ffffff', align, bold: true, font: '', lh: 1.3, anim: anim || 'up', g: G(48, y, 654, 60) }); y += 84 }
       if (b.body) {
         const s = String(b.body || '')
-        const h = Math.round(Math.max(s.split('\n').length, Math.ceil(s.length / 22)) * 26 * 1.8)
-        els.push({ type: 'text', text: s, size: 26, color: '#d1d5db', align, bold: false, font: '', lh: 1.8, anim: anim || 'up', g: G(22, y, 706, h) })
-        y += h + 26
+        const h = Math.round(Math.max(s.split('\n').length, Math.ceil(s.length / 20)) * 26 * 1.8)
+        els.push({ type: 'text', text: s, size: 26, color: '#cbd5e1', align, bold: false, font: '', lh: 1.8, anim: anim || 'up', g: G(48, y, 654, h) })
+        y += h + 30
       }
     } else {
       const h = EST_H[b.type] || 240
@@ -629,7 +637,7 @@ function pageToEls(p) {
       y += h + 26
     }
   }
-  if (!els.length) els.push({ type: 'text', text: '点我编辑文字', size: 32, color: '#ffffff', align: 'left', bold: false, font: '', lh: 1.5, anim: '', g: G(22, 60, 706, 60) })
+  if (!els.length) els.push({ type: 'text', text: '点我编辑文字', size: 32, color: '#ffffff', align: 'left', bold: false, font: '', lh: 1.5, anim: '', g: G(48, 60, 654, 60) })
   return els
 }
 // 估高堆叠 → 按一屏（750×1334）切分成多页：放不下的元素整块搬到下一页并上移对齐（2026-11-28 用户定稿

@@ -841,7 +841,7 @@ async function submitForm(pi, bi, b) {
   const phone = String(v.phone || '').trim().slice(0, 30)
   const message = String(v.message || '').trim().slice(0, 300)
   if (!name && !phone) { showToast('请至少填写姓名或电话', 'error'); return }
-  if (!pageSlug.value) { showToast('页面未发布，暂不能提交', 'error'); return }
+  if (!pageSlug.value) { showToast('页面未上架，暂不能提交', 'error'); return }
   formBusyMap.value = { ...formBusyMap.value, [k]: true }
   try {
     await api.post(`/api/h5/public/${encodeURIComponent(pageSlug.value)}/leads`, { name, phone, message })

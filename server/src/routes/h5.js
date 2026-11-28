@@ -124,6 +124,8 @@ const pageCount = s => Array.isArray(s?.pages) ? s.pages.length : 0
 const listView = r => ({
   id: r.id, title: r.title, slug: r.slug, status: r.status, view_count: r.view_count,
   card_linked: !!r.card_linked,
+  // pending = 已上架但草稿与线上版本不一致（有改动待同步）：编辑只写草稿，公开页仍走 live_schema
+  pending: r.status === 'published' && !!(r.live_schema && r.live_schema !== r.schema),
   pages: pageCount(JSON.parse(r.schema || '{}')), updated_at: r.updated_at,
   leads: db.prepare('SELECT COUNT(*) n FROM h5_leads WHERE page_id = ?').get(r.id).n
 })
@@ -201,14 +203,16 @@ router.put('/:id', authRequired, (req, res) => {
   }
   const schema = req.body?.schema ? sanitizeSchema(req.body.schema, lim.maxPages) : JSON.parse(row.schema || '{}')
   db.prepare("UPDATE h5_pages SET title = ?, schema = ?, updated_at = datetime('now') WHERE id = ?").run(title, JSON.stringify(schema), row.id)
-  ok(res, {})
+  // 回带 pending：前端保存后即时刷新「有改动待同步」徽标（草稿文本与线上文本比，同口径同清洗→字符串可比）
+  ok(res, { pending: row.status === 'published' && !!(row.live_schema && row.live_schema !== JSON.stringify(schema)) })
 })
 
 router.post('/:id/publish', authRequired, (req, res) => {
   const row = owned(req, res); if (!row) return
-  // 首次发布（draft→published）自动关联名片（card_linked=1，延续「发布即挂入口」体验）；
-  // 再次「更新发布」不覆盖用户在宣传页侧做的取消关联。
-  db.prepare("UPDATE h5_pages SET status = 'published', card_linked = CASE WHEN status = 'draft' THEN 1 ELSE card_linked END, updated_at = datetime('now') WHERE id = ?").run(row.id)
+  // 上架 = 草稿发布到线上双版本（2026-11-28 用户定稿）：live_schema ← 当前草稿，公开页从此读线上版；
+  // 编辑只落草稿不自动同步，再次「更新上架」才把改动推到线上。首次上架自动关联名片，
+  // 再次更新不覆盖用户在宣传页侧做的取消关联。
+  db.prepare("UPDATE h5_pages SET status = 'published', live_schema = schema, card_linked = CASE WHEN status = 'draft' THEN 1 ELSE card_linked END, updated_at = datetime('now') WHERE id = ?").run(row.id)
   const after = db.prepare('SELECT card_linked FROM h5_pages WHERE id = ?').get(row.id)
   ok(res, { card_linked: !!after?.card_linked })
 })
@@ -256,7 +260,11 @@ router.get('/public/:slug', (req, res) => {
   }
   ok(res, {
     page: {
-      title: row.title, schema: JSON.parse(row.schema || '{}'), slug: row.slug, view_count: row.view_count,
+      title: row.title,
+      // 线上双版本（2026-11-28）：已上架读 live_schema（编辑草稿不外泄，点上架才同步）；
+      // live_schema 为空的存量行回落 schema 兼容。未上架（属主预览）仍读草稿。
+      schema: JSON.parse(row.status === 'published' ? (row.live_schema || row.schema) : row.schema || '{}'),
+      slug: row.slug, view_count: row.view_count,
       updated_at: row.updated_at,
       draft: row.status !== 'published',
       watermark: !planActiveOf(row.user_id)

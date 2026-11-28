@@ -18,7 +18,7 @@
       <div v-else-if="!list.length" class="card card-pad center" style="padding:44px 20px">
         <div style="font-size:44px;opacity:.28">◈</div>
         <h3 style="margin:10px 0 4px">还没有宣传页</h3>
-        <p class="small muted">从官方模板一键创建，改改文字就能发布，访客看完直接跳你的名片。</p>
+        <p class="small muted">从官方模板一键创建，改改文字就能上架，访客看完直接跳你的名片。</p>
         <button class="btn btn-primary" style="margin-top:14px" @click="newOpen = true">从模板创建 →</button>
       </div>
       <div v-else class="h5l-list">
@@ -117,7 +117,7 @@ async function toggleLink(p) {
   } catch (e) { showToast(e.message || '操作失败', 'error') } finally { busy.value = 0 }
 }
 async function remove(p) {
-  if (!confirm(`删除「${p.title}」？发布中的链接也会失效，不可恢复。`)) return
+  if (!confirm(`删除「${p.title}」？上架中的链接也会失效，不可恢复。`)) return
   busy.value = p.id
   try { await api.delete(`/api/h5/${p.id}`); await load() } catch (e) { showToast(e.message, 'error') } finally { busy.value = 0 }
 }

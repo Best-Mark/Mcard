@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f472b6"/><stop offset=".55" stop-color="#db2777"/><stop offset="1" stop-color="#831843"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#g)"/>
+  <circle cx="660" cy="460" r="190" fill="#ffffff" opacity=".10"/>
+  <circle cx="130" cy="110" r="150" fill="#ffffff" opacity=".10"/>
+  <rect x="120" y="380" width="120" height="120" rx="24" fill="#ffffff" opacity=".08"/>
+  <rect x="300" y="268" width="200" height="44" rx="22" fill="#ffffff" opacity=".85"/>
+  <text x="400" y="297" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#831843">示例图片 · 点按替换</text>
+</svg>
