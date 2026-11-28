@@ -207,10 +207,13 @@
           <p class="small muted" style="margin:0">访客提交后自动存入线索，可在宣传页列表「线索」里查看、复制电话回访。</p>
         </template>
         <template v-else-if="block.type === 'music'">
-          <label>音频地址<input v-model="block.url" @input="markDirty" placeholder="mp3 链接（需可公开访问）" /></label>
+          <label>常用曲目
+            <BottomSelect :model-value="MUSIC_PRESETS.some(p => p.value === block.url) ? block.url : ''" :options="MUSIC_PRESETS" title="选择背景音乐" @update:modelValue="block.url = $event; markDirty()" />
+          </label>
+          <label>音频地址<input v-model="block.url" @input="markDirty" placeholder="mp3 链接（需可公开访问），也可不填" /></label>
           <label class="he-switch"><input type="checkbox" v-model="block.autoplay" @change="markDirty" />访客打开页面自动播放</label>
-          <p class="small muted" style="margin:0 0 8px">音乐在公开页以右下角 ♪ 按钮承载播放/暂停。手机浏览器禁止带声自动播放时，访客首次触摸页面后自动起播、循环播放。</p>
           <audio v-if="block.url" :src="block.url" controls class="he-audio"></audio>
+          <p class="small muted" style="margin:0 0 8px">音乐在公开页以右下角 ♪ 按钮承载播放/暂停。手机浏览器禁止带声自动播放时，访客首次触摸页面后自动起播、循环播放。</p>
         </template>
         <template v-else-if="block.type === 'endcard'">
           <p class="small muted" style="margin:0">尾页自动展示你的名片卡与二维码，访客看完直接跳名片。{{ watermark ? '免费版尾页带品牌水印，开通套餐后自动去除。' : '当前套餐：无水印。' }}</p>
@@ -380,6 +383,14 @@ const ADDABLE = ['text', 'image', 'shape', 'button', 'gallery', 'contact', 'map'
 // 页面切换过渡动效（2026-11-28 用户定稿「每页全屏 + 翻页动效」）：滑动翻页为默认，旧「上下滚动」已并入默认不再单列
 const TRANSITION_OPTS = [
   { value: 'slide', label: '滑动翻页（默认）' }, { value: 'fade', label: '淡入淡出' }, { value: 'flip', label: '翻页动效' }
+]
+// 常用背景音乐（2026-11-28 用户要求）：站内自产免版权合成曲，循环无缝；选中的直接当 block.url
+const MUSIC_PRESETS = [
+  { value: '/music/bgm-light.wav', label: '轻快明亮' },
+  { value: '/music/bgm-warm.wav', label: '舒缓温暖' },
+  { value: '/music/bgm-business.wav', label: '商务大气' },
+  { value: '/music/bgm-fresh.wav', label: '清新灵动' },
+  { value: '', label: '不用预设' }
 ]
 // 入场动效选项（'' = 智能默认，与渲染层 animOf 的类型默认一致；none = 关闭）
 const ANIM_OPTS = [

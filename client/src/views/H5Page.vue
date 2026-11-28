@@ -8,6 +8,8 @@
       <p class="small">链接可能已失效，或该宣传页尚未发布。</p>
     </div>
     <H5Render v-else-if="data" :data="data" class="h5p-render" />
+    <!-- 本人查看未上架页的提示条（server 对属主放行草稿，访客仍 404） -->
+    <div v-if="data?.page?.draft" class="h5p-draft-tip">未上架 · 仅自己可见</div>
   </div>
 </template>
 
@@ -33,7 +35,7 @@ onMounted(async () => {
     const firstImg = (s.pages || []).flatMap(p => p.blocks || [])
       .map(b => b.cover || b.image || (Array.isArray(b.images) ? b.images[0] : ''))
       .find(u => u && /^https?:|^\/uploads\//.test(u))
-    setupWechatShare(api, {
+    if (!data.value?.page?.draft) setupWechatShare(api, {
       title: data.value?.page?.title || '宣传页',
       desc: data.value?.card?.company || '',
       link: `${window.location.origin}/h5/${route.params.slug}`,
@@ -51,4 +53,5 @@ onMounted(async () => {
 .h5p-state { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #d1d5db; padding: 24px; text-align: center; }
 .h5p-state b { font-size: 17px; }
 .h5p-state .small { color: #6b7280; }
+.h5p-draft-tip { position: fixed; top: 10px; top: calc(10px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 30; padding: 5px 14px; border-radius: 999px; background: rgba(15,23,42,.72); color: #fbbf24; font-size: 12px; font-weight: 700; pointer-events: none; white-space: nowrap; }
 </style>

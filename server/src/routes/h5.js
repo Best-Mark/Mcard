@@ -5,7 +5,7 @@
 const express = require('express')
 const db = require('../db')
 const { ok, fail } = require('../utils/response')
-const { authRequired } = require('../utils/auth')
+const { authRequired, parseToken } = require('../utils/auth')
 const { makeSlug } = require('../utils/slug')
 const { TEMPLATES, getTemplate } = require('../utils/h5Templates')
 
@@ -237,8 +237,12 @@ router.delete('/:id', authRequired, (req, res) => {
 // ---------- 公开端（免登录） ----------
 // 公开渲染数据：published 才可访问；watermark 按创建者当前套餐实时算（过期自动带水印，续费即消失）
 router.get('/public/:slug', (req, res) => {
-  const row = db.prepare("SELECT * FROM h5_pages WHERE slug = ? AND status = 'published'").get(req.params.slug)
-  if (!row) return fail(res, 404, '宣传页不存在或未发布')
+  // 2026-11-28 用户定稿：未上架/已下架的宣传页本人也能打开看——软鉴权 parseToken 判属主，
+  // 非属主仍 404（访客零感知）；属主浏览草稿不计入浏览量、不带分享卡
+  const row = db.prepare('SELECT * FROM h5_pages WHERE slug = ?').get(req.params.slug)
+  const owner = parseToken(req)
+  const isOwner = !!(owner && row && row.user_id === owner.id)
+  if (!row || (row.status !== 'published' && !isOwner)) return fail(res, 404, '宣传页不存在或未发布')
   const card = db.prepare('SELECT id, user_id, slug, name, title, company, avatar, logo, mobile, phone, wechat, address FROM cards WHERE id = ?').get(row.card_id)
   // 公司相册图（2026-11-27）：图集块 source='card' 的图片源——与名片页同一份 card_materials，
   // 图片 URL 列表挂到 card.gallery，前端 H5Render galImgs 消费；无相册时为 []，块渲染占位。
@@ -254,6 +258,7 @@ router.get('/public/:slug', (req, res) => {
     page: {
       title: row.title, schema: JSON.parse(row.schema || '{}'), slug: row.slug, view_count: row.view_count,
       updated_at: row.updated_at,
+      draft: row.status !== 'published',
       watermark: !planActiveOf(row.user_id)
     },
     card: card ? {
@@ -262,7 +267,7 @@ router.get('/public/:slug', (req, res) => {
       gallery
     } : null
   })
-  db.prepare('UPDATE h5_pages SET view_count = view_count + 1 WHERE id = ?').run(row.id)
+  if (row.status === 'published') db.prepare('UPDATE h5_pages SET view_count = view_count + 1 WHERE id = ?').run(row.id)
 })
 
 // ---------- 表单留资（2026-11-27）：访客匿名提交 → h5_leads；页主查看/删除 ----------
