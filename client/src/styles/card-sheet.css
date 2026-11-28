@@ -155,22 +155,29 @@
 }
 .cv-cover > * { position: relative; z-index: 1; }
 @media (prefers-reduced-motion: reduce) { .cv-cover::before { animation: none; opacity: .7; } }
-/* 返回键：轻奢浮钮（2026-11-28 美化）——毛玻璃圆钮 + 柔和悬浮投影定形（去描边线条，
-   边缘只留一道发丝高光），SVG 细箭头见模板，按压微缩反馈；颜色跟模板变量，任何模板都清晰可见 */
+/* 返回签（2026-11-28 用户定稿）：卡片外左上角透明吸附的竖向圆角矩形——不再嵌在封面里
+   （贴卡片圆角被裁切很局促）。毛玻璃半透明吸附屏幕左上角，SVG 细箭头 + 竖排两字（集市/返回），
+   安全区两级兜底，按压微缩反馈；宽屏贴到居中卡片栏左侧，不飘在视口角落 */
 .cv-back {
-  position: absolute; left: 14px; top: calc(12px + var(--safe-top));
-  width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%;
-  color: #fff; background: rgba(var(--glow-rgb, 37,99,235), .30); border: 0;
-  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-  box-shadow: 0 6px 18px rgba(15,23,42,.18), 0 0 0 1px rgba(255,255,255,.12), inset 0 1px 0 rgba(255,255,255,.22);
+  position: fixed; left: 6px; z-index: 60;
+  top: 8px; top: calc(8px + env(safe-area-inset-top));
+  width: 38px; min-height: 70px; padding: 10px 0 12px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  border: 0; border-radius: 14px; color: #26221c;
+  background: rgba(255,255,255,.50);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  box-shadow: 0 10px 28px rgba(31,27,22,.16), inset 0 1px 0 rgba(255,255,255,.45);
   cursor: pointer; -webkit-tap-highlight-color: transparent;
   transition: transform .15s ease, box-shadow .15s ease;
 }
 .cv-back:active {
-  transform: scale(.92);
-  box-shadow: 0 3px 10px rgba(15,23,42,.14), 0 0 0 1px rgba(255,255,255,.10), inset 0 1px 0 rgba(255,255,255,.16);
+  transform: scale(.95);
+  box-shadow: 0 6px 18px rgba(31,27,22,.14), inset 0 1px 0 rgba(255,255,255,.40);
 }
-.cv-back .cv-back-i { width: 19px; height: 19px; display: block; }
+.cv-back .cv-back-i { width: 16px; height: 16px; display: block; }
+.cv-back .cv-back-v { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; line-height: 1; }
+.cv-back .cv-back-v i { font-style: normal; }
+@media (min-width: 900px) { .cv-back { left: calc(50% - 245px); } }
 /* 快捷编辑·更多链接管理行（2026-11-28）：标题 + 网址两行输入 + 行尾移除，表单区 16px 边距与 qe-field 同口径 */
 .qe-link-row { display: grid; grid-template-columns: 1fr 28px; grid-template-rows: auto auto; gap: 8px; margin-bottom: 10px; }
 .qe-link-row input { grid-column: 1; width: 100%; box-sizing: border-box; min-height: 44px; padding: 11px 12px; border: 1px solid var(--line, #e8edf4); border-radius: 10px; background: #f8fafc; color: var(--text, #0f172a); font-size: 15px; }
@@ -390,7 +397,6 @@
 /* 极简素雅 minimal：去掉彩色封面改为浅色细条、细分割线、无卡片阴影、克制留白 */
 .cv-tpl-minimal .cv-cover { height: 76px; border-radius: 0; background: var(--t-surface); border-bottom: 1px solid var(--line); }
 .cv-tpl-minimal .cv-brand { color: var(--t-accent); opacity: 1; }
-.cv-tpl-minimal .cv-back { color: var(--t-text); }
 .cv-tpl-minimal .cv-main { margin-top: 0; }
 .cv-tpl-minimal .card { box-shadow: none; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; }
 .cv-tpl-minimal .cv-profile { padding: 24px 18px; }
@@ -440,7 +446,7 @@
   border: 3px solid rgba(147,197,253,.5); border-radius: 2px;
   box-shadow: inset 0 0 0 5px #12213c, inset 0 0 0 8px rgba(147,197,253,.35);
 }
-.cv-tpl-seal .cv-back, .cv-tpl-seal .cv-brand { color: #fff; }
+.cv-tpl-seal .cv-brand { color: #fff; }
 .cv-tpl-seal .cv-main { margin-top: -44px; }
 .cv-tpl-seal .card { border-radius: 4px; border: 1px solid #cbd5e1; box-shadow: 4px 4px 0 rgba(30,58,138,.12); }
 .cv-tpl-seal .cv-profile { border-top: 3px solid #1e3a8a; padding: 20px 16px; }
@@ -485,7 +491,6 @@
 .cv-tpl-minimal { background: #fff; }
 .cv-tpl-minimal .cv-cover { height: 54px; border-radius: 0; background: #fff; border-bottom: 1px solid #e5e7eb; }
 .cv-tpl-minimal .cv-brand { color: #111827; opacity: 1; top: calc(16px + var(--safe-top)); }
-.cv-tpl-minimal .cv-back { color: #111827; }
 .cv-tpl-minimal .cv-main { margin-top: 0; }
 .cv-tpl-minimal .card { border: 0; border-bottom: 1px solid #eef0f3; border-radius: 0; box-shadow: none; background: transparent; }
 .cv-tpl-minimal .cv-profile { padding: 26px 18px 22px; align-items: flex-start; gap: 16px; }
@@ -544,7 +549,6 @@
 .cv-tpl-seal .cv-cover { height: 96px; border-radius: 0; background: #111827; border-bottom: 5px solid var(--t-accent); }
 .cv-tpl-seal .cv-cover::after { display: none; }
 .cv-tpl-seal .cv-brand { color: #fff; letter-spacing: 3px; }
-.cv-tpl-seal .cv-back { color: #fff; }
 .cv-tpl-seal .cv-main { margin-top: -20px; }
 .cv-tpl-seal .card { border-radius: 0; border: 2px solid #111827; box-shadow: 4px 4px 0 rgba(17,24,39,.12); background: #fff; }
 .cv-tpl-seal .cv-profile { border-top: 6px solid #111827; padding: 18px 16px; align-items: flex-end; }
@@ -641,7 +645,6 @@
 .cv-tpl-sidebar .cv-contact-value, .cv-tpl-sidebar .cv-block { text-align: right; }
 /* 无封面模板：封面高度为 0，必须放开 overflow，否则 absolute 的返回键/品牌字被裁掉（截图实锤「没有返回的地方」） */
 .cv-clean .cv-cover { height: 0; border-radius: 0; background: transparent; overflow: visible; }
-.cv-clean .cv-back { top: calc(10px + var(--safe-top)); left: 14px; color: var(--cv-back-color); background: var(--cv-back-bg); }
 .cv-clean .cv-brand { top: calc(18px + var(--safe-top)); color: var(--cv-brand-color); }
 .cv-clean .cv-main { max-width: 430px; margin: 30px auto 0; }
 .cv-clean .cv-main > .card, .cv-clean .cv-main > .cv-profile { border-radius: 0; border: 0; box-shadow: none; background: transparent; margin-top: 0; }

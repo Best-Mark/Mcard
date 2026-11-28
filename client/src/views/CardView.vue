@@ -12,11 +12,14 @@
     7. 配色/质感跟随主题强调色，不写死白色；尊重 prefers-reduced-motion。
   -->
   <div class="cv-page" :class="['cv-tpl-' + template, { 'cv-clean': isCleanTpl, 'cv-embed': embed, 'cv-owner': owner }]" :style="vars">
+    <!-- 返回签（2026-11-28 用户定稿）：卡片外左上角透明吸附的竖向圆角矩形，不再嵌在封面里 -->
+    <button v-if="!owner && full" class="cv-back" @click="goBack" :aria-label="backAria">
+      <!-- SVG 细箭头：裸 ‹ 字形各系统渲染粗细不一，统一细线条观感 -->
+      <svg class="cv-back-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <!-- 竖排两字（集市=回集市 / 返回=回上一页），逐字堆叠不依赖 writing-mode，老 WebView 稳 -->
+      <span class="cv-back-v" aria-hidden="true"><i v-for="ch in backChars" :key="ch">{{ ch }}</i></span>
+    </button>
     <div class="cv-cover">
-      <button v-if="!owner && full" class="cv-back" @click="goBack" aria-label="返回">
-        <!-- SVG 细箭头：裸 ‹ 字形各系统渲染粗细不一，统一细线条观感（2026-11-28 美化） -->
-        <svg class="cv-back-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
       <!-- 硬编码 MCard 品牌角标已移除（2026-11-26）：封面高度收窄后与右上角二维码重叠，
            只露出「rd」半截字（用户实际把它误认为二维码水印）。中心品牌字统一走后台「二维码水印」设置 -->
     </div>
@@ -445,6 +448,10 @@ function goBack() {
   if (window.history.state?.back) return router.back()
   router.replace('/')
 }
+// 返回签文案：从集市来 → 竖排「集市」（aria「返回集市」）；其余 → 竖排「返回」
+const backFromMarket = computed(() => String(route.query.src || '') === 'market')
+const backChars = computed(() => (backFromMarket.value ? ['集', '市'] : ['返', '回']))
+const backAria = computed(() => (backFromMarket.value ? '返回集市' : '返回'))
 const embed = props.embed
 const owner = props.owner
 // 是否渲染公开页整页内容：owner 模式与公开页完全一致，只有 embed 才裁成头部
