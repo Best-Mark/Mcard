@@ -243,11 +243,14 @@ function getTemplate(key) { return TEMPLATES.find(t => t.key === key) || null }
 })()
 
 // 模板 DEMO 内容注入（2026-11-28 用户定稿「虽然是模板，但最好带上内容……模板带 DEMO 也包括音乐」）：
-// 空图位填站内示例图（client/public/h5demo/demo-1..4.svg，轻渐变+「示例图片·点按替换」标签），
+// 每套模板用专属气质的示例图（client/public/h5demo/{key}-1/-2/-3.svg，各模板不同配色+不同几何构成，
+// 2026-11-28 用户反馈「模板不要过于雷同，有些颜色要用图片，这样才能给用户正确引导」——4 张通用图轮换
+// 让所有模板长得一样，图上也只是笼统的「示例图片」，用户不知道该放什么图）；
+// 非封面页默认深色底改用同气质深色图片底（{key}-bg.svg，无文字不抢正文），顺带示范「页面背景可以换图」。
 // 每套模板挂一首站内免版权合成曲（client/public/music/bgm-*.wav，无缝循环），套用即成稿；
 // 用户点图即换、音乐块可在编辑器里换链接/删除。图用相对路径——随当前部署域名走，绝不写死域名。
 ;(() => {
-  const DEMOS = ['/h5demo/demo-1.svg', '/h5demo/demo-2.svg', '/h5demo/demo-3.svg', '/h5demo/demo-4.svg']
+  const demo = (t, kind) => `/h5demo/${t.key}-${kind}.svg`
   const MUSICS = ['/music/bgm-light.wav', '/music/bgm-warm.wav', '/music/bgm-business.wav', '/music/bgm-fresh.wav']
   // 曲子按模板气质配（2026-11-28 用户反馈「音乐有些奇怪」：轮流乱配听着突兀）——
   // light 清亮 / warm 温暖 / business 沉稳 / fresh 轻快；未列入的模板不挂音乐（宁缺毋滥）
@@ -257,15 +260,18 @@ function getTemplate(key) { return TEMPLATES.find(t => t.key === key) || null }
     retail: MUSICS[3], team: MUSICS[3],
     course: MUSICS[0], home: MUSICS[0]
   }
-  TEMPLATES.forEach((t, ti) => {
-    let di = ti % DEMOS.length
+  TEMPLATES.forEach((t) => {
     for (const p of t.pages || []) for (const b of (p.blocks || [])) {
-      if (b.type === 'cover' && !b.cover) b.cover = DEMOS[di++ % DEMOS.length]
-      else if (b.type === 'hero' && !b.image) b.image = DEMOS[di++ % DEMOS.length]
+      if (b.type === 'cover' && !b.cover) b.cover = demo(t, 1)
+      else if (b.type === 'hero' && !b.image) b.image = demo(t, 2)
       else if (b.type === 'gallery' && Array.isArray(b.images)) {
         if (b.source === 'card') continue // showcase 展播取公司相册，不填示例图
-        b.images = b.images.map(im => im || DEMOS[di++ % DEMOS.length])
+        b.images = b.images.map((im, i) => im || demo(t, 2 + (i % 2)))
       }
+    }
+    // 非封面页：纯色深底 → 同气质深色图片底（封面页有满幅封面图，不需要 bg）
+    for (let i = 1; i < (t.pages || []).length; i++) {
+      if (!t.pages[i].bg) t.pages[i].bg = { color: '', image: demo(t, 'bg') }
     }
     const music = MUSIC_BY_KEY[t.key]
     if (!music) return

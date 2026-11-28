@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2b5bb5"/><stop offset=".55" stop-color="#1a3a7d"/><stop offset="1" stop-color="#0c1f4a"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#g)"/>
+  <path d="M0 432 Q 240 330 496 444 T 800 420 L 800 600 L 0 600 Z" fill="#ffffff" opacity=".07"/>
+  <path d="M0 504 Q 280 408.00000000000006 560 522 T 800 498 L 800 600 L 0 600 Z" fill="#2b5bb5" opacity=".22"/>
+  <rect x="290" y="273" width="220" height="42" rx="21" fill="#ffffff" opacity=".85"/>
+  <text x="400" y="301" text-anchor="middle" font-family="sans-serif" font-size="19" fill="#0c1f4a">示例图片 · 点按替换</text>
+</svg>
