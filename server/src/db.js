@@ -122,8 +122,11 @@ for (const [col, def] of [
   ['wx_unionid', "TEXT NOT NULL DEFAULT ''"],
   ['avatar', "TEXT NOT NULL DEFAULT ''"],
   ['auth_source', "TEXT NOT NULL DEFAULT 'password'"],
-  // 微信头像原值单独留存：用户自定义上传头像后仍可随时切回微信头像（不被覆盖）
+  // 微信头像原值留存：作「是否仍是默认」判定基准（avatar 仍等于 wx_avatar 即未自定义，登录时刷新默认头像）
   ['wx_avatar', "TEXT NOT NULL DEFAULT ''"],
+  // 微信昵称原值留存：同作默认判定（nickname 等于 wx_nickname 或「微信用户」占位即未自定义）；
+  // NULL = 已自定义（PUT /profile 保存后置 NULL）或历史未知，登录不再跟随微信昵称。
+  ['wx_nickname', 'TEXT'],
   // 收款账户（JSON，唯一真相源）：wechat/alipay/bank 各自一份，defaultType 记默认账户。
   // 微信账户只存服务端授权拿到的 openid，绝不信任前端传值。
   ['withdraw_accounts', "TEXT NOT NULL DEFAULT ''"]

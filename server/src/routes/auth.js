@@ -348,12 +348,14 @@ router.get('/wechat/callback', wrap(async (req, res) => {
     if (!user && unionid) user = db.prepare('SELECT * FROM users WHERE wx_unionid = ? AND wx_unionid IS NOT NULL').get(unionid) // unionid 兜底：同开放平台下换公众号仍认同一人
     if (user) {
       if (user.status !== 'active') return failBack('disabled')
-      // 静默登录只补微信身份：snsapi_base 拿不到头像，绝不把空串写进 users.avatar（账户层唯一真相源）
+      // 静默登录只补微信身份：snsapi_base 拿不到昵称头像，绝不把空串写进 users（账户层唯一真相源）
       if (autoTarget) db.prepare("UPDATE users SET auth_source='wechat', wx_openid=COALESCE(wx_openid,?), updated_at=datetime('now') WHERE id=?").run(openid, user.id)
-      // 显式授权拿到头像（2026-11-28 定稿）：微信头像只作「默认头像」——users.avatar 为空或仍等于旧
-      // wx_avatar（还没自定义）时才写入；自定义头像永久生效，后续登录绝不覆盖。wx_avatar 始终留存微信原值。
-      else if (avatar) db.prepare("UPDATE users SET avatar=CASE WHEN avatar IS NULL OR avatar='' OR avatar=wx_avatar THEN ? ELSE avatar END, wx_avatar=?, auth_source='wechat', wx_openid=COALESCE(wx_openid,?), updated_at=datetime('now') WHERE id=?").run(avatar, avatar, openid, user.id)
-      else db.prepare("UPDATE users SET auth_source='wechat', wx_openid=COALESCE(wx_openid,?), updated_at=datetime('now') WHERE id=?").run(openid, user.id)
+      // 显式授权拿到昵称/头像（2026-11-28 定稿）：微信昵称/头像只作「默认值」——未自定义才写入，
+      // 自定义永久生效、后续登录绝不覆盖（判定与写入统一走 fillWechatDefaults）
+      else {
+        fillWechatDefaults(user.id, nickname, avatar)
+        db.prepare("UPDATE users SET auth_source='wechat', wx_openid=COALESCE(wx_openid,?), updated_at=datetime('now') WHERE id=?").run(openid, user.id)
+      }
       user = db.prepare('SELECT id, phone, nickname, role, status, avatar, wx_avatar, is_promoter FROM users WHERE id = ?').get(user.id)
       const jwt = sign(user)
       const pub = publicUser(user)
@@ -379,8 +381,9 @@ router.get('/wechat/callback', wrap(async (req, res) => {
         ? res.redirect(`${requestUrl(req, '/wechat/qr-result')}?bind=${encodeURIComponent(ticket)}&sid=${encodeURIComponent(qrSid)}&nickname=${encodeURIComponent(nickname)}&avatar=${encodeURIComponent(avatar)}`)
         : res.redirect(`${requestUrl(req, '/login')}#bind=${encodeURIComponent(ticket)}&nickname=${encodeURIComponent(nickname)}&avatar=${encodeURIComponent(avatar)}`)
     }
-    const r = db.prepare("INSERT INTO users (phone, password_hash, nickname, avatar, wx_avatar, wx_openid, wx_unionid, auth_source) VALUES (?,?,?,?,?,?,?, 'wechat')")
-      .run(null, bcrypt.hashSync(crypto.randomBytes(24).toString('hex'), 10), autoTarget ? '微信用户' : (nickname || '微信用户'), avatar, avatar, openid, unionid)
+    // wx_nickname 记录微信昵称原值（拿不到为 NULL）：此后登录按「未自定义才刷新默认」处理（fillWechatDefaults）
+    const r = db.prepare("INSERT INTO users (phone, password_hash, nickname, avatar, wx_avatar, wx_nickname, wx_openid, wx_unionid, auth_source) VALUES (?,?,?,?,?,?,?,?, 'wechat')")
+      .run(null, bcrypt.hashSync(crypto.randomBytes(24).toString('hex'), 10), autoTarget ? '微信用户' : (nickname || '微信用户'), avatar, avatar, nickname || null, openid, unionid)
     user = db.prepare('SELECT id, phone, nickname, role, status, avatar, wx_avatar, is_promoter FROM users WHERE id = ?').get(r.lastInsertRowid)
     const jwt = sign(user)
     const pub = publicUser(user)
@@ -425,18 +428,13 @@ router.post('/wechat/bind', wrap((req, res) => {
     // 老账号：密码校验通过则把微信身份绑上去（用密码证明是本人）
     if (!bcrypt.compareSync(String(password), user.password_hash)) return fail(res, 400, '手机号或密码不正确')
     if (user.status !== 'active') return fail(res, 403, '账号已被停用')
-    // 微信头像只作默认头像（2026-11-28 定稿）：users.avatar 为空或仍等于旧 wx_avatar 时才写入，
-    // 自定义头像永久生效不被覆盖；wx_avatar 始终留存微信原值。
-    if (avatar) {
-      db.prepare("UPDATE users SET wx_openid=?, wx_unionid=?, avatar=CASE WHEN avatar IS NULL OR avatar='' OR avatar=wx_avatar THEN ? ELSE avatar END, wx_avatar=?, auth_source='wechat', updated_at=datetime('now') WHERE id=?")
-        .run(openid, unionid, avatar, avatar, user.id)
-    } else {
-      db.prepare("UPDATE users SET wx_openid=?, wx_unionid=?, auth_source='wechat', updated_at=datetime('now') WHERE id=?")
-        .run(openid, unionid, user.id)
-    }
+    // 微信昵称/头像只作默认值（2026-11-28 定稿）：未自定义才写入，自定义永久生效（见 fillWechatDefaults）
+    fillWechatDefaults(user.id, String(payload.nickname || '').slice(0, 30), avatar)
+    db.prepare("UPDATE users SET wx_openid=?, wx_unionid=?, auth_source='wechat', updated_at=datetime('now') WHERE id=?")
+      .run(openid, unionid, user.id)
   } else {
-    const r = db.prepare("INSERT INTO users (phone, password_hash, nickname, avatar, wx_avatar, wx_openid, wx_unionid, auth_source) VALUES (?,?,?,?,?,?,?, 'wechat')")
-      .run(phone, bcrypt.hashSync(String(password), 10), String(payload.nickname || '微信用户').slice(0, 30) || '微信用户', avatar, avatar, openid, unionid)
+    const r = db.prepare("INSERT INTO users (phone, password_hash, nickname, avatar, wx_avatar, wx_nickname, wx_openid, wx_unionid, auth_source) VALUES (?,?,?,?,?,?,?,?, 'wechat')")
+      .run(phone, bcrypt.hashSync(String(password), 10), String(payload.nickname || '微信用户').slice(0, 30) || '微信用户', avatar, avatar, String(payload.nickname || '').slice(0, 30) || null, openid, unionid)
     user = db.prepare('SELECT * FROM users WHERE id = ?').get(r.lastInsertRowid)
   }
   const jwt = sign(user)
@@ -534,6 +532,22 @@ function normalizeAvatar(v) {
   if (!/^\/(uploads|media)\//.test(s) && !/^https?:\/\//.test(s)) return null
   return s.slice(0, 500)
 }
+
+// 微信昵称/头像只在登录/绑定时取来当「默认值」（2026-11-28 定稿）：
+// ① 仅当未自定义才写入——昵称为空/「微信用户」占位/仍等于 wx_nickname；头像为空/仍等于 wx_avatar；
+// ② 自定义永久生效，此后任何登录/绑定绝不覆盖；
+// ③ wx_nickname/wx_avatar 留存微信原值作「仍是默认」判定基准，wx_nickname 为 NULL = 已自定义
+//    （PUT /profile 保存后置 NULL）或历史未知，此后不再跟随微信昵称。
+function fillWechatDefaults(userId, nickname, avatar) {
+  const cur = db.prepare('SELECT avatar, wx_avatar, nickname, wx_nickname FROM users WHERE id = ?').get(userId)
+  if (!cur) return
+  const fillAvatar = !!(avatar && (!cur.avatar || cur.avatar === cur.wx_avatar))
+  const fillNick = !!(nickname && (!cur.nickname || cur.nickname === '微信用户' || (cur.wx_nickname != null && cur.nickname === cur.wx_nickname)))
+  // 跟随基准：未自定义则记住最新微信昵称；已自定义/历史未知保持 NULL（锁定不再跟随）
+  const wxNick = (cur.wx_nickname == null && cur.nickname && cur.nickname !== '微信用户') ? null : (nickname || cur.wx_nickname || '')
+  db.prepare("UPDATE users SET avatar=COALESCE(?,avatar), wx_avatar=COALESCE(?,wx_avatar), nickname=COALESCE(?,nickname), wx_nickname=?, updated_at=datetime('now') WHERE id=?")
+    .run(fillAvatar ? avatar : null, avatar || null, fillNick ? nickname : null, wxNick, userId)
+}
 router.get('/avatar', authRequired, wrap((req, res) => {
   const u = db.prepare('SELECT avatar, wx_avatar FROM users WHERE id = ?').get(req.user.id)
   ok(res, { avatar: u?.avatar || '', wxAvatar: u?.wx_avatar || '' })
@@ -553,7 +567,8 @@ router.put('/avatar', authRequired, wrap((req, res) => {
 router.put('/profile', authRequired, wrap((req, res) => {
   const nickname = String(req.body?.nickname ?? '').trim().slice(0, 30)
   if (!nickname) return fail(res, 400, '昵称不能为空')
-  db.prepare('UPDATE users SET nickname = ? WHERE id = ?').run(nickname, req.user.id)
+  // 保存即标记「已自定义」：wx_nickname 置 NULL，此后微信登录不再拿微信昵称覆盖（2026-11-28 定稿）
+  db.prepare('UPDATE users SET nickname = ?, wx_nickname = NULL WHERE id = ?').run(nickname, req.user.id)
   const u = db.prepare('SELECT id, phone, nickname, role, status, avatar, is_promoter FROM users WHERE id = ?').get(req.user.id)
   ok(res, { user: publicUser(u) })
 }))
