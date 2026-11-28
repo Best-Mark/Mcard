@@ -182,6 +182,7 @@
     <BottomSheet :show="qeOpen" @update:show="qeOpen = $event">
       <div class="qe-sheet" v-if="qeConf">
         <div class="qe-head"><b>修改{{ qeConf.label }}</b><button type="button" @click="qeOpen = false">×</button></div>
+        <p v-if="qeConf.hint" class="small muted" style="margin:0 0 8px">{{ qeConf.hint }}</p>
         <label v-if="qeKey === 'address'" class="qe-field">
           <span>省 / 市 / 区（三联选择）</span>
           <button type="button" class="qe-region-btn" @click="qeRegionOpen = true">{{ qeRegionPath }}</button>
@@ -628,6 +629,11 @@ const QE_CONF = {
   wechat: { label: '微信号', fields: [{ key: 'wechat', label: '微信号', max: 60 }] },
   alipay: { label: '支付宝', fields: [{ key: 'alipay', label: '支付宝', max: 60 }] },
   whatsapp: { label: 'WhatsApp', fields: [{ key: 'whatsapp', label: 'WhatsApp', max: 60 }] },
+  pay_qr: {
+    label: '收款码',
+    hint: '上传微信 / 支付宝「收付款 → 收款」里的收款码截图，保存时自动核对是不是收款码、有没有放对位置。',
+    fields: [{ key: 'wechat_pay_qr', label: '微信收款码', type: 'image' }, { key: 'alipay_pay_qr', label: '支付宝收款码', type: 'image' }]
+  },
   address: { label: '地址', fields: [{ key: 'address', label: '详细地址', max: 120 }, { key: 'address_detail', label: '门牌 / 楼层（选填）', max: 80 }] },
   website: { label: '公司主页', fields: [{ key: 'website', label: '网址', max: 200, ph: 'https://…' }] },
   shop_url: { label: '店铺主页', fields: [{ key: 'shop_url', label: '网址', max: 200, ph: 'https://…' }] }

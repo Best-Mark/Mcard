@@ -70,10 +70,11 @@
         </div>
         <button v-if="qeOn('address')" class="cv-qe-tag" type="button" @click.stop="editField('address')">✎ 改地址</button>
       </div>
-      <!-- 未填的联系方式/地址占位胶囊 -->
-      <div v-if="ghostFields('contact').length || !hasAddress" class="cv-qe-ghosts">
+      <!-- 未填的联系方式/地址占位胶囊；收款码已传时给「✎ 改收款码」入口（上传在快捷编辑弹层里） -->
+      <div v-if="ghostFields('contact').length || !hasAddress || (quickEdit && payQrSet)" class="cv-qe-ghosts">
         <button v-for="g in ghostFields('contact')" :key="g.key" class="cv-qe-ghost" type="button" @click.stop="editField(g.key)">＋ {{ g.label }}</button>
         <button v-if="!hasAddress" class="cv-qe-ghost" type="button" @click.stop="editField('address')">＋ 地址</button>
+        <button v-if="quickEdit && payQrSet" class="cv-qe-ghost" type="button" @click.stop="editField('pay_qr')">✎ 改收款码</button>
       </div>
     </div>
 
@@ -230,7 +231,8 @@ const QE_GHOSTS = {
     { key: 'email', label: '邮箱', test: c => !c.email },
     { key: 'wechat', label: '微信号', test: c => !c.wechat },
     { key: 'alipay', label: '支付宝', test: c => !c.alipay },
-    { key: 'whatsapp', label: 'WhatsApp', test: c => !c.whatsapp }
+    { key: 'whatsapp', label: 'WhatsApp', test: c => !c.whatsapp },
+    { key: 'pay_qr', label: '收款码', test: c => !c.wechat_pay_qr && !c.alipay_pay_qr }
   ],
   links: [
     { key: 'website', label: '公司主页', test: c => !c.website },
@@ -239,6 +241,7 @@ const QE_GHOSTS = {
 }
 const ghostFields = grp => (props.quickEdit ? QE_GHOSTS[grp].filter(g => g.test(props.card || {})) : [])
 const hasAddress = computed(() => !!(regionLine.value || detailAddress.value))
+const payQrSet = computed(() => !!(props.card?.wechat_pay_qr || props.card?.alipay_pay_qr))
 const regionLine = computed(() => {
   const c = props.card || {}
   return [c.province, c.city, c.district, c.street].filter(Boolean).join(' · ')
