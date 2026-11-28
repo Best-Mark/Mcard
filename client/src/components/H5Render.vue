@@ -788,7 +788,7 @@ function onPgTouchEnd() {
   dragging.value = false
   dragDy.value = 0
   pg.active = false; pg.hold = false; pg.axis = ''; pg.dy = 0
-  const need = transition.value === 'slide' ? 60 : 36 // slide 有跟手反馈阈值可大些；fade/flip 无跟手，小些
+  const need = transition.value === 'slide' ? 44 : 24 // slide 有跟手反馈阈值可大些；fade/flip 无跟手，小些（2026-11-28 用户反馈手势过长，收紧）
   if (!moved || Math.abs(dy) < need) return
   goPage(cur.value + (dy < 0 ? 1 : -1))
 }
@@ -978,11 +978,14 @@ function armMusic() {
 /* 宣传页动效是产品功能本身（翻页过渡 + 元素入场），不跟随系统「减少动态效果」设置——
    手机开了动画减速/关闭的用户此前全程无动效（实测实锤），与 MAKA 等平台口径一致 */
 
-/* 入场动效：进入视口加 .in 播放一次；prefers-reduced-motion 用户直接显示 */
+/* 入场动效：进入视口加 .in 播放一次；prefers-reduced-motion 用户直接显示。
+   2026-11-28 用户反馈「动效过快」：时长 .55s→.8s（fade .7s→1s），并按序错峰——
+   同页第 2 个元素起每个顺延 90ms（封顶 600ms），animation-fill-mode:both 让延迟期保持
+   from 态（透明），元素逐个浮现而非一齐蹦出；离页复位后回翻重播，节奏不变。 */
 .hp-anim { opacity: 0; }
-.hp-anim.in { opacity: 1; animation: hp-anim-up .55s cubic-bezier(.22, .8, .3, 1) both; }
+.hp-anim.in { opacity: 1; animation: hp-anim-up .8s cubic-bezier(.22, .8, .3, 1) both; }
 @keyframes hp-anim-up { from { opacity: 0; transform: translateY(26px); } }
-.hp-anim-fade.in { animation-name: hp-anim-fade; animation-duration: .7s; }
+.hp-anim-fade.in { animation-name: hp-anim-fade; animation-duration: 1s; }
 @keyframes hp-anim-fade { from { opacity: 0; } }
 .hp-anim-zoom.in { animation-name: hp-anim-zoom; }
 @keyframes hp-anim-zoom { from { opacity: 0; transform: scale(.92); } }
@@ -990,6 +993,20 @@ function armMusic() {
 @keyframes hp-anim-left { from { opacity: 0; transform: translateX(-32px); } }
 .hp-anim-right.in { animation-name: hp-anim-right; }
 @keyframes hp-anim-right { from { opacity: 0; transform: translateX(32px); } }
+.hp-flow .hp-anim.in:nth-child(n+2) { animation-delay: .09s; }
+.hp-flow .hp-anim.in:nth-child(n+3) { animation-delay: .18s; }
+.hp-flow .hp-anim.in:nth-child(n+4) { animation-delay: .27s; }
+.hp-flow .hp-anim.in:nth-child(n+5) { animation-delay: .36s; }
+.hp-flow .hp-anim.in:nth-child(n+6) { animation-delay: .45s; }
+.hp-flow .hp-anim.in:nth-child(n+7) { animation-delay: .54s; }
+.hp-flow .hp-anim.in:nth-child(n+8) { animation-delay: .6s; }
+.hp-canvas .hp-anim.in:nth-child(n+2) { animation-delay: .09s; }
+.hp-canvas .hp-anim.in:nth-child(n+3) { animation-delay: .18s; }
+.hp-canvas .hp-anim.in:nth-child(n+4) { animation-delay: .27s; }
+.hp-canvas .hp-anim.in:nth-child(n+5) { animation-delay: .36s; }
+.hp-canvas .hp-anim.in:nth-child(n+6) { animation-delay: .45s; }
+.hp-canvas .hp-anim.in:nth-child(n+7) { animation-delay: .54s; }
+.hp-canvas .hp-anim.in:nth-child(n+8) { animation-delay: .6s; }
 /* 元素入场动效同上：不跟随系统「减少动态效果」（动效即产品功能） */
 
 .hp-cover { min-height: 78svh; display: flex; align-items: flex-end; border-radius: 16px; background-size: cover; background-position: center; padding: 30px 24px; box-sizing: border-box; }
