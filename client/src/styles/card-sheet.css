@@ -381,8 +381,9 @@
 .cv-page.cv-clean.cv-tpl-paper .cv-dock.cv-dock-glass .btn-ghost { background: rgba(var(--glow-rgb, 37,99,235), .10); color: var(--t-text, #374151); box-shadow: inset 0 0 0 1px rgba(var(--glow-rgb, 37,99,235), .14); }
 .cv-page.cv-tpl-minimal .cv-dock.cv-dock-glass .btn-primary,
 .cv-page.cv-clean.cv-tpl-paper .cv-dock.cv-dock-glass .btn-primary { background: var(--t-accent, #2563eb); color: #fff; border-color: transparent; box-shadow: none; }
-/* 悬浮次级入口：导航/收藏/交换名片收进这里；菜单用中性白底，任何主题都清晰 */
-.cv-fab { position: fixed; right: 14px; bottom: calc(72px + env(safe-area-inset-bottom)); z-index: 64; width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--t-accent, #2563eb); color: #fff; font-size: 24px; line-height: 1; box-shadow: 0 8px 24px rgba(15,23,42,.3); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+/* 悬浮次级入口：导航/收藏/交换名片收进这里；2026-11-28 改与底栏/返回签同族毛玻璃（白 .50 + blur + 内高光，
+   深墨色符号，无外投影），不再用实心主题色圆球 */
+.cv-fab { position: fixed; right: 14px; bottom: calc(72px + env(safe-area-inset-bottom)); z-index: 64; width: 44px; height: 44px; border: 1px solid rgba(255,255,255,.55); border-radius: 50%; background: rgba(255,255,255,.50); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); color: #26221c; font-size: 24px; line-height: 1; box-shadow: inset 0 1px 0 rgba(255,255,255,.65); cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .cv-fab.on { transform: scale(.94); }
 .cv-fab-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 63; background: rgba(15,23,42,.28); }
 .cv-fab-menu { position: absolute; right: 14px; bottom: calc(124px + env(safe-area-inset-bottom)); width: 168px; padding: 6px; border-radius: 14px; background: #fff; box-shadow: 0 18px 44px rgba(15,23,42,.28); }
