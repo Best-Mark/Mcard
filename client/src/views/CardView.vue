@@ -182,18 +182,24 @@
     <BottomSheet :show="qeOpen" @update:show="qeOpen = $event">
       <div class="qe-sheet" v-if="qeConf">
         <div class="qe-head"><b>修改{{ qeConf.label }}</b><button type="button" @click="qeOpen = false">×</button></div>
-        <p v-if="qeConf.hint" class="small muted" style="margin:0 0 8px">{{ qeConf.hint }}</p>
+        <p v-if="qeConf.hint" class="small muted qe-hint">{{ qeConf.hint }}</p>
         <label v-if="qeKey === 'address'" class="qe-field">
           <span>省 / 市 / 区（三联选择）</span>
           <button type="button" class="qe-region-btn" @click="qeRegionOpen = true">{{ qeRegionPath }}</button>
         </label>
-        <label v-for="f in qeConf.fields" :key="f.key" class="qe-field">
+        <!-- 图片字段：点图即换、右上角 × 移除（无旁挂按钮），多图并排一行——弹层能小就不大 -->
+        <div v-if="qeImgFields.length" class="qe-img-row">
+          <div v-for="f in qeImgFields" :key="f.key" class="qe-img-cell">
+            <span>{{ f.label }}</span>
+            <ImageField :model-value="qeForm[f.key]" @update:modelValue="onQeImageInput(f.key, $event)" />
+          </div>
+        </div>
+        <label v-for="f in qeTextFields" :key="f.key" class="qe-field">
           <span>{{ f.label }}</span>
-          <ImageField v-if="f.type === 'image'" :model-value="qeForm[f.key]" @update:modelValue="onQeImageInput(f.key, $event)" />
-          <textarea v-else-if="f.type === 'textarea'" v-model="qeForm[f.key]" rows="4" :maxlength="f.max || 1000" :placeholder="f.ph || ''"></textarea>
+          <textarea v-if="f.type === 'textarea'" v-model="qeForm[f.key]" rows="4" :maxlength="f.max || 1000" :placeholder="f.ph || ''"></textarea>
           <input v-else v-model="qeForm[f.key]" :maxlength="f.max || 100" :placeholder="f.ph || ''" :inputmode="f.inputmode || 'text'" />
         </label>
-        <p v-if="payInspecting" class="small muted" style="margin:6px 0 0">识别中…</p>
+        <p v-if="payInspecting" class="small muted" style="margin:6px 16px 0">识别中…</p>
         <div class="qe-actions">
           <button class="btn btn-ghost" type="button" @click="qeOpen = false">取消</button>
           <button class="btn btn-primary" type="button" :disabled="qeSaving || payInspecting" @click="saveQuickEdit">{{ qeSaving ? '保存中…' : '保存' }}</button>
@@ -660,6 +666,9 @@ const qeForm = ref({})
 const qeSaving = ref(false)
 const payInspecting = ref(false)
 const qeConf = computed(() => QE_CONF[qeKey.value] || null)
+// 图片字段与文本字段分开排版：图片点图即换并排一行（弹层能小就不大），文本字段保持逐行
+const qeImgFields = computed(() => (qeConf.value?.fields || []).filter(f => f.type === 'image'))
+const qeTextFields = computed(() => (qeConf.value?.fields || []).filter(f => f.type !== 'image'))
 // 快捷编辑图片字段（2026-11-28 用户定稿「上传不分先后」）：收款码上传后先送服务端识别归属，
 // 自动归位到对应格（跨格归位、同格即更换），识别不出/不是收款码直接拦截不落值让用户重传；
 // logo 等其它图片字段不识别直接赋值。放错平台的严格分格拦截只保留在完整编辑表单（CardEdit）。
