@@ -11,7 +11,7 @@
       <div class="mk-locate">
         <span class="mk-locate-ico">⌖</span>
         <div class="mk-locate-text">
-          <b>按距离发现附近伙伴 <span v-if="positionMeta.label" class="mk-quality" :class="positionMeta.level">{{ positionMeta.label }}</span></b>
+          <b>发现更多商业机会 <span v-if="positionMeta.label" class="mk-quality" :class="positionMeta.level">{{ positionMeta.label }}</span></b>
           <span class="small">{{ locateHint }}</span>
         </div>
         <div class="mk-locate-right">
@@ -100,7 +100,7 @@
         <button @click="mapPickerOpen = false">×</button>
       </div>
       <div v-if="mapPickerOpen" class="mp-sheet-body">
-        <MapPicker :lat="coords?.lat" :lng="coords?.lng" :origin-lat="originCoords?.lat" :origin-lng="originCoords?.lng" @confirm="onMapPicked" />
+        <MapPicker :lat="coords?.lat" :lng="coords?.lng" :region="mapRegion" :origin-lat="originCoords?.lat" :origin-lng="originCoords?.lng" @confirm="onMapPicked" />
       </div>
     </BottomSheet>
     <CityPicker v-model:show="cityPickerOpen" :current="city || currentCity" :located-city="currentCity" :cities="meta.cities" :relocating="locating" @select="onCitySelected" @relocate="relocate" />
@@ -159,6 +159,9 @@ const originLabel = computed(() => {
 
 // 蓝卡始终显示一个城市：手动选择 > 定位城市 > 城市中心兜底
 const displayCity = computed(() => city.value || currentCity.value || '全国')
+// 传给地图选点弹层的地区：无精确坐标时用所选城市名正解定位，避免弹层回落到「当前定位」。
+// 有坐标（城市中心/地图选点/GPS）时不传——MapPicker 里 region 优先级高于坐标，会把精确定位冲掉。
+const mapRegion = computed(() => (coords.value ? '' : (city.value || '')))
 const locateHint = computed(() => {
   if (city.value) return `以 ${city.value} 为中心，按距离发现伙伴`
   if (coords.value) return '正在按到你的实际距离排序'
@@ -191,15 +194,29 @@ function cityOf(name) {
 function openCityPicker() { cityPickerOpen.value = true }
 // 城市选择弹层选中：设为原点（城市中心坐标），立即按距离排序
 function onCitySelected(c) {
-  city.value = c.name
+  const hit = cityOf(c.name) || c // 统一经 cityOf：名称模糊匹配（带「市」后缀也能命中）+ 兜底表 WGS84→GCJ02
+  city.value = hit.name || c.name
   originSource.value = 'city'
   originPlace.value = ''  // 切城市后显示城市名，清掉上一次选点的具体地名
   // 常用城市有精确坐标→按距离排序；其余城市无坐标→服务端按城市名筛选+热度排序
-  coords.value = (Number.isFinite(c.lat) && Number.isFinite(c.lng)) ? { lat: c.lat, lng: c.lng } : null
+  coords.value = (Number.isFinite(hit.lat) && Number.isFinite(hit.lng)) ? { lat: hit.lat, lng: hit.lng } : null
   if (coords.value) originCoords.value = { ...coords.value } // 切城市即换原点
+  else { originCoords.value = null; geocodeCityOrigin(city.value) } // 无坐标城市：先清旧原点（防「回到原点」跳回上个城市），再静默正解补上
   if (coords.value && sort.value === 'views') sort.value = 'distance'
-  showToast(`已切换到 ${c.name}`, 'success')
+  showToast(`已切换到 ${city.value}`, 'success')
   load()
+}
+// 无坐标城市的原点补齐：正解城市中心填入 coords/originCoords，失败保持现状不拖垮主流程（地图侧另有 region 兜底）
+async function geocodeCityOrigin(name) {
+  if (!name) return
+  try {
+    const { data } = await api.get('/api/geo/geocode', { params: { address: name }, timeout: 5000 })
+    const lat = Number(data?.data?.lat), lng = Number(data?.data?.lng)
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
+    if (city.value !== name || coords.value) return // 期间切了城市/换了原点：丢弃过期结果
+    coords.value = { lat, lng }
+    originCoords.value = { lat, lng }
+  } catch { /* 正解失败：地图侧还有 region 兜底，列表走服务端城市名匹配 */ }
 }
 function setSort(s) {
   if (s === 'distance' && !distanceMode.value) return

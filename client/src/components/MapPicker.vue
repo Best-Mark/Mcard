@@ -114,13 +114,13 @@ async function resolveStartCenter() {
       const { data } = await api.get('/api/geo/geocode', { params: { address: region }, timeout: 5000 })
       const g = data?.data
       if (g && Number.isFinite(Number(g.lat)) && Number.isFinite(Number(g.lng))) {
-        return { lat: Number(g.lat), lng: Number(g.lng), zoom: 15, hint: `已按「${region}」定位（已有坐标不作为初始位置），请拖动微调`, fromSaved: false }
+        return { lat: Number(g.lat), lng: Number(g.lng), zoom: 15, hint: `已按「${region}」定位，请拖动微调`, fromSaved: false }
       }
     } catch { /* 正解失败退回已有坐标 */ }
   }
   // 2) 已有坐标（库里 GCJ-02，高德瓦片同坐标系，直接用）
   if (Number.isFinite(props.lat) && Number.isFinite(props.lng)) {
-    return { lat: props.lat, lng: props.lng, zoom: 15, hint: '已用名片原有位置，可拖动微调', fromSaved: true }
+    return { lat: props.lat, lng: props.lng, zoom: 15, hint: '已在原点位置，可拖动微调', fromSaved: true }
   }
   // 3) 当前定位（geo.js 四级降级，统一 GCJ-02，带超时兜底）
   try {
@@ -187,7 +187,9 @@ function onInput() {
     searching.value = true
     suggestOpen.value = true
     try {
-      const { data } = await api.get('/api/geo/poi/search', { params: { keyword: q, city: '' }, timeout: 5000 })
+      // POI 联想带地区偏置：region 是纯城市名（集市传入）时限定城市搜索；省/市/区/街 复合文本不传，避免干扰
+      const cityHint = /[/、·]/.test(props.region) ? '' : (props.region || '')
+      const { data } = await api.get('/api/geo/poi/search', { params: { keyword: q, city: cityHint }, timeout: 5000 })
       if (seq !== suggestSeq) return // 过期响应丢弃
       suggestions.value = data?.data?.list || []
       if (!suggestions.value.length) error.value = '未找到相关地点，可直接拖动地图选点'

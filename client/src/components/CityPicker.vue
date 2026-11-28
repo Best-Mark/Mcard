@@ -77,7 +77,10 @@ function choose(c) {
   emit('update:show', false)
 }
 function chooseByName(name) {
-  const hit = source.value.find(c => c.name === name) || { name }
+  // 模糊匹配：定位城市名可能带「市」后缀（如「濮阳市」vs 表里的「濮阳」），精确匹配不到会丢坐标
+  const hit = source.value.find(c => c.name === name)
+    || source.value.find(c => c.name.includes(name) || String(name).includes(c.name))
+    || { name }
   choose(hit)
 }
 function jumpTo(letter) {
