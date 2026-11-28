@@ -97,7 +97,7 @@ for (const col of ['alipay', 'wechat_qr', 'alipay_qr', 'wechat_pay_qr', 'alipay_
   addColumnIfMissing('cards', col, "TEXT NOT NULL DEFAULT ''")
 }
 // 收款码图内解码出的原始付款链接（派生列）：只由保存收款码时与启动自愈回填写入，接口不接受用户直写；
-// 扫合一码落地页按支付环境拿它直接调起支付（wxp://、qr.alipay.com 等），跳不起来回落长按识别收款码图。
+// 扫合一码落地页按支付环境拿它直接调起支付（wxp://、qr.alipay.com 等），跳不起来回落收款码图「保存 → 扫一扫」。
 for (const col of ['wechat_pay_link', 'alipay_pay_link']) {
   addColumnIfMissing('cards', col, "TEXT NOT NULL DEFAULT ''")
 }
@@ -411,7 +411,7 @@ if (!seeded('h5_card_linked_backfill_v1')) {
 
 // 一次性自愈（2026-11-28）：收款码付款链接派生列回填。该列上线前已传码的存量图在链空，
 // 启动后异步解码补齐（不阻塞启动）。逐行幂等：已回填的行自动跳过；任一行失败就不打标记，
-// 下次启动重试，最坏情况留空也只是回落「长按识别收款码」手动付款，不影响主流程。
+// 下次启动重试，最坏情况留空也只是回落收款码原图「保存 → 扫一扫」手动付款，不影响主流程。
 if (!seeded('pay_link_backfill_v1')) {
   ;(async () => {
     try {

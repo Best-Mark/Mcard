@@ -81,7 +81,7 @@
               <div class="field"><label>WhatsApp</label><input v-model="form.whatsapp" class="input" /></div>
             </div>
             <!-- 收款码：上传微信/支付宝收款码，自动生成一张聚合收款码（内容=支付网关 URL）；
-                 付款方扫一扫由服务端按扫码环境分流——支付宝直唤收银台、微信出干净码长按直付。 -->
+                 付款方扫一扫由服务端按扫码环境分流——支付宝直唤收银台、微信出干净码保存后扫一扫。 -->
             <div class="identity-block divided">
               <div class="block-title">💳 收款码（选填）</div>
               <div class="grid2">

@@ -5,7 +5,7 @@
 //   ③ 是收款码且放对了平台：微信收款码内容为 wxp:// 等微信支付协议，支付宝为 qr.alipay.com 等——
 //      放错平台给「这张是 xx 的码」类指引，别的二维码（名片码/网址码）按「不是收款码」拒绝。
 // 校验通过后，图内解码出的原始付款链接（safePayLink 白名单过滤）落到 cards.*_pay_link 派生列，
-// 扫合一码落地页按支付环境拿它 location.href 直接调起支付（跳不起来回落长按识别收款码图）。
+// 扫合一码落地页按支付环境拿它 location.href 直接调起支付（跳不起来回落收款码图「保存 → 扫一扫」）。
 // 备注：若日后遇到合法但未覆盖的商家码形态，在 MARKERS 补一种即可（单点维护）。
 const sharp = require('sharp')
 const jsQR = require('jsqr')
@@ -114,7 +114,7 @@ async function readPayQr(kind, url) {
   return { ok: false, text: '', msg: r.msg }
 }
 
-// 可跳转的付款链接：协议白名单 + 平台归属一致才返回，否则 ''（只回落长按识别，绝不把可疑文本塞进 location）
+// 可跳转的付款链接：协议白名单 + 平台归属一致才返回，否则 ''（只回落收款码图「保存 → 扫一扫」，绝不把可疑文本塞进 location）
 function safePayLink(kind, text) {
   const s = String(text || '').trim()
   if (!LINK_SCHEME_RE.test(s)) return ''

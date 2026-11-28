@@ -382,9 +382,9 @@ const payQrText = req => requestUrl(req, `/api/cards/public/${req.params.slug}/p
 //   支付宝(AlipayClient) → 302 直跳解码出的支付宝付款链接（qr.alipay.com / alipays://），直接唤起收银台，
 //     零中间页零感知（scheme 链接部分容器不认 302 Location 的非 http 跳转，改走极简跳转页 + 兜底按钮）；
 //   微信(MicroMessenger) → 微信内置浏览器拦 wxp:// 等 scheme 跳转（真机实锤「点了也没唤起」），
-//     落地即出干净微信收款码（pay-link.png 重渲染纯黑白码，1:1 像素渲染下长按必出「识别图中二维码」）长按直付——
-//     微信内个人收款最短路径；
-//   其他（相机 / QQ / 浏览器）→ 轻量选择页：打开支付宝按钮 + 微信码长按。
+//     且收款码图片的长按识别被微信刻意收敛（真机实锤：网页 img / previewImage 长按都不出「识别图中二维码」）——
+//     主路径 = 保存图片 → 微信扫一扫 → 相册选图（相机管线实测必唤起支付），点码图放大便于保存；
+//   其他（相机 / QQ / 浏览器）→ 轻量选择页：打开支付宝按钮 + 微信码保存后扫一扫。
 // 付款链接来自上传收款码图内解码（safePayLink 白名单过滤），用户不填任何商户号。
 // ⚠️ 分流结果随 UA 变化，响应恒 Cache-Control: no-store——CDN / 浏览器绝不能按 URL 缓存本页，
 // 否则支付宝可能收到微信版页面（串页）。
@@ -398,21 +398,22 @@ const jsAttr = s => `'${String(s || '').replace(/\\/g, '\\\\').replace(/'/g, "\\
 const bust = s => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36) }
 // 码图卡：白底圆角只做外层装饰，绝不裁剪码图本身（圆角会啃静音区/定位角，本地 QR 检测直接废）。
 // 码图固定 264px 整数 CSS 宽：264×DPR 在常见 DPR（2/2.25/2.625/3/3.5）恒为整数物理像素，
-// 配合 PAY_HIDPI 取 1:1 源图 → 浏览器零重采样、码点细缝不糊——微信长按「识别图中二维码」的生命线
-// （2026-11-28 真机实锤：72vw 分数像素 + 固定 720 源图被重采样糊掉后，长按菜单只剩转发/收藏/保存）。
+// 配合 PAY_HIDPI 取 1:1 源图 → 浏览器零重采样、码点细缝不糊，保存/扫一扫识别始终干净
+// （2026-11-28 真机实锤：72vw 分数像素 + 固定 720 源图会被重采样糊掉）。
 const codeImg = (src, alt, fb) => `<div class="code"><img class="code-img" src="${escHtml(src)}" alt="${escHtml(alt)}"${fb || ''}></div>`
-// 按设备 DPR 请求 1:1 尺寸码图（CardView 弹层大码 264px×528/792 同款解法，真机长按识别 100%）
+// 按设备 DPR 请求 1:1 尺寸码图（CardView 弹层大码 264px×528/792 同款解法，屏幕零重采样、保存即原图）
 const PAY_HIDPI = `<script>(function(){var d=Math.min(1600,Math.max(256,Math.round(264*(window.devicePixelRatio||2))));var a=document.querySelectorAll('img.code-img');for(var i=0;i<a.length;i++){if(!/[?&]size=\\d+/.test(a[i].src))continue;a[i].src=a[i].src.replace(/([?&]size=)\\d+/,'$1'+d);}})();</script>`
-// 微信内成熟付款路径（2026-11-28 真机定稿）：网页 img 长按的「识别图中二维码」在微信 webview 里
-// 检测极不稳定——1:1 像素渲染后真机依旧不出识别菜单（实锤网页层长按识别不可依赖）。
-// wx.previewImage 打开的是微信原生图片查看器：与聊天图片同一个识别检测器，长按必出
-// 「识别图中二维码」，识别 wxp:// 直达微信支付收银台（微信内个人付款最短路径）。
-// 落地自动放大一次（扫码即见大码），点码图可再次放大；config 失败静默降级，页面提示仍兜底扫一扫。
+// 微信内付款路径（2026-11-28 真机三轮定稿）：wxp:// 收款码图片的长按识别是微信黑盒且实测不出
+// 「识别图中二维码」——1:1 像素渲染不出、连 previewImage 原生查看器长按也只有分享菜单（真机实锤），
+// 而同一台设备上 URL 链接码长按识别 100% 正常、同一张收款码相机/扫一扫即刻唤起支付 →
+// 微信对收款码图片的长按识别被刻意收敛（防诈骗），与清晰度/渲染无关，别再往识别入口修。
+// 成熟路径 = 保存图片 → 微信扫一扫 → 相册选图（相机管线，实测必唤起支付）；
+// wx.previewImage 只作「点图放大」便利（原生查看器里保存图片最顺手），不承诺识别。
 const PAY_PREVIEW = `<script src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
 <script>(function(){
 var img=document.querySelector('img.code-img');if(!img)return;
 function abs(){var s=img.getAttribute('src')||'';return s.charAt(0)==='/'?location.origin+s:s;}
-var busy=false,wxok=false,auto=false;
+var busy=false,wxok=false;
 function open(){if(busy||!window.wx||!wx.previewImage||!wxok)return;busy=true;
 try{var u=abs();wx.previewImage({current:u,urls:[u],fail:function(){}});}catch(e){}
 setTimeout(function(){busy=false;},400);}
@@ -425,7 +426,7 @@ var d=null;try{d=JSON.parse(xhr.responseText);}catch(e){}
 if(!d||d.code!==0||!d.data||!d.data.signature)return;
 try{
 wx.config({appId:d.data.appId,timestamp:d.data.timestamp,nonceStr:d.data.nonceStr,signature:d.data.signature,jsApiList:['previewImage'],debug:false});
-wx.ready(function(){wxok=true;if(!auto){auto=true;setTimeout(open,300);}});
+wx.ready(function(){wxok=true;});
 wx.error(function(){});
 }catch(e){}};
 xhr.send();
@@ -463,7 +464,7 @@ router.get('/public/:slug/pay', wrap((req, res) => {
   const backTop = `<div class="topbar"><a class="back-top" href="${cardUrl}"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" aria-hidden="true"><path d="M6 1 1 6l5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>返回名片</a></div>`
   const back = `<a class="back" href="${cardUrl}">返回名片</a>`
   // 干净码（图内付款链接重渲染纯黑白）优先；无链接的存量异形码回落上传原图。
-  // 长按识别的前提是 1:1 像素渲染（见 codeImg/PAY_HIDPI 注释），URL 带 size= 供按 DPR 改写、v= 换码击穿缓存
+  // 1:1 像素渲染保证码图干净（见 codeImg/PAY_HIDPI 注释），URL 带 size= 供按 DPR 改写、v= 换码击穿缓存
   const wxImg = row.wechat_pay_link ? `/api/cards/public/${row.slug}/pay-link.png?platform=wechat&size=720&v=${bust(row.wechat_pay_link)}` : (row.wechat_pay_qr || '')
   const aliImg = row.alipay_pay_link ? `/api/cards/public/${row.slug}/pay-link.png?platform=alipay&size=720&v=${bust(row.alipay_pay_link)}` : (row.alipay_pay_qr || '')
   const aliLink = safePayLink('alipay', row.alipay_pay_link)
@@ -496,13 +497,13 @@ router.get('/public/:slug/pay', wrap((req, res) => {
     return res.type('html').send(payGateShell({ title: `向 ${name} 付款`, body: `${backTop}<h1>向 ${name} 付款</h1><p class="sub">对方还没上传收款码</p>${back}` }))
   }
 
-  // 微信：scheme 跳转被微信内置浏览器拦截。成熟付款路径 = 落地自动弹原生图片查看器
-  // （PAY_PREVIEW，长按识别 wxp:// 直达收银台）；网页层长按识别不可依赖（真机实锤），只作兜底
+  // 微信：scheme 跳转被微信内置浏览器拦截；收款码图片长按识别被微信收敛（不出识别菜单），
+  // 主路径 = 保存图片 → 微信扫一扫 → 相册选图（相机管线实测必唤起支付）；点码图放大便于保存
   if (/MicroMessenger/i.test(ua)) {
     if (wxImg) {
       return res.type('html').send(payGateShell({
         title: `向 ${name} 付款`,
-        body: `${backTop}<h1>向 ${name} 付款</h1><p class="sub">微信支付</p>${codeImg(wxImg, '微信收款码', wxFallback)}<p class="tip">点图片放大，长按识别二维码，直达微信支付</p><p class="tip-sub">也可保存图片后用微信扫一扫</p>${back}${PAY_PREVIEW}`
+        body: `${backTop}<h1>向 ${name} 付款</h1><p class="sub">微信支付</p>${codeImg(wxImg, '微信收款码', wxFallback)}<p class="tip">长按图片保存后，用微信扫一扫识别，直达微信支付</p><p class="tip-sub">扫一扫 → 右下角「相册」选图，自动识别</p>${back}${PAY_PREVIEW}`
       }))
     }
     if (aliImg) {
@@ -514,11 +515,11 @@ router.get('/public/:slug/pay', wrap((req, res) => {
     return res.type('html').send(payGateShell({ title: `向 ${name} 付款`, body: `${backTop}<h1>向 ${name} 付款</h1><p class="sub">对方还没上传收款码</p>${back}` }))
   }
 
-  // 其他扫码器 / 浏览器：选择页——支付宝走链接直唤，微信给码长按
+  // 其他扫码器 / 浏览器：选择页——支付宝走链接直唤，双方码图都给「保存 → 扫一扫」路径（长按识别不可依赖）
   const blocks = []
   if (aliLink) blocks.push(`<a class="btn" href="${escHtml(aliLink)}">打开支付宝付款</a>`)
-  else if (aliImg) blocks.push(`<p class="sub">支付宝</p>${codeImg(aliImg, '支付宝收款码', aliFallback)}<p class="tip">支付宝 · 长按识别二维码付款</p>`)
-  if (wxImg) blocks.push(`<p class="sub">微信</p>${codeImg(wxImg, '微信收款码', wxFallback)}<p class="tip">微信 · 长按识别二维码付款</p>`)
+  else if (aliImg) blocks.push(`<p class="sub">支付宝</p>${codeImg(aliImg, '支付宝收款码', aliFallback)}<p class="tip">支付宝 · 保存图片后用支付宝扫一扫</p>`)
+  if (wxImg) blocks.push(`<p class="sub">微信</p>${codeImg(wxImg, '微信收款码', wxFallback)}<p class="tip">微信 · 保存图片后用微信扫一扫</p>`)
   if (!blocks.length) blocks.push('<p class="sub">对方还没上传收款码</p>')
   res.type('html').send(payGateShell({ title: `向 ${name} 付款`, body: `${backTop}<h1>向 ${name} 付款</h1>${blocks.join('')}${back}` }))
 }))
@@ -532,9 +533,9 @@ router.get('/public/:slug/pay.png', wrap(async (req, res) => {
 }))
 
 // 干净付款码（2026-11-28 真机修正）：把上传收款码图内解码出的原始付款链接（wxp://、qr.alipay.com 等）
-// 重新渲染成纯黑白标准码。用户上传的收款码截图常带装饰边框/文字，微信长按识别不出码（真机实锤：
-// 长按菜单里根本没有「识别图中二维码」）；重渲染的干净码在 1:1 像素渲染下长按必出识别菜单，识别 wxp:// 微信直达付款
-// 页——微信内置浏览器拦 wxp:// 跳转，长按识别是个人收款在微信内最顺的路径。无链接（存量未回填/
+// 重新渲染成纯黑白标准码。用户上传的收款码截图常带装饰边框/文字，干扰扫码识别；
+// 重渲染的干净码保证「保存 → 扫一扫 → 相册」识别稳定——微信对收款码图片的长按识别被刻意收敛
+// （网页/previewImage 长按都不出识别菜单，别再走长按识别）。无链接（存量未回填/
 // 异形码）回 404，前端回落用户上传的原图。
 router.get('/public/:slug/pay-link.png', wrap(async (req, res) => {
   const row = db.prepare('SELECT slug, wechat_pay_link, alipay_pay_link FROM cards WHERE slug = ?').get(req.params.slug)
