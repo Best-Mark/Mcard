@@ -93,8 +93,10 @@
                 <button class="he-chip warn" @click="removeBlock">✕ 删除</button>
               </template>
               <template v-else>
-                <span class="he-grp">加元素</span>
-                <button v-for="t in ADDABLE" :key="t" class="he-chip" @click="addBlock(t)">＋{{ TYPE_LABEL[t] }}</button>
+                <span class="he-grp">自由元素</span>
+                <button v-for="t in ADDABLE_FREE" :key="t" class="he-chip" @click="addBlock(t)">＋{{ TYPE_LABEL[t] }}</button>
+                <span class="he-grp">功能组件</span>
+                <button v-for="t in ADDABLE_COMP" :key="t" class="he-chip" @click="addBlock(t)">＋{{ TYPE_LABEL[t] }}</button>
               </template>
             </template>
             <!-- 页面行（页面结构层）：切页 / 加删页 / 本页背景 / 背景音乐 / 整套模板 / 翻页动效——
@@ -164,6 +166,7 @@
           <label>描述<textarea v-model="block.desc" rows="3" maxlength="300" @input="markDirty"></textarea></label>
         </template>
         <template v-else-if="block.type === 'gallery'">
+          <div class="he-sec">排列与来源</div>
           <div class="he-row"><span class="small muted">排列方式</span>
             <BottomSelect v-model="block.layout" :options="GAL_LAYOUT_OPTS" title="图集排列方式" @update:modelValue="markDirty" />
           </div>
@@ -172,6 +175,7 @@
           </div>
           <p v-if="block.source === 'card'" class="small muted" style="margin:0 0 8px">图片自动来自名片页「公司相册」，在名片里上传一次，这里与名片页两处同步展示、无需重复传图。</p>
           <template v-else>
+            <div class="he-sec">图片位</div>
             <div v-for="(img, gi) in block.images" :key="gi" class="he-gal-row">
               <ImageField v-model="block.images[gi]" @update:modelValue="markDirty" />
               <button class="he-mini danger" @click="block.images.splice(gi, 1); markDirty()">✕</button>
@@ -210,23 +214,27 @@
           <label>视频地址<input v-model="block.url" @input="markDirty" placeholder="mp4 链接" /></label>
         </template>
         <template v-else-if="block.type === 'form'">
+          <div class="he-sec">引导文案</div>
           <label>小标题<input v-model="block.heading" maxlength="40" @input="markDirty" placeholder="如：预约到店 / 留下您的需求" /></label>
           <label>说明文字<input v-model="block.desc" maxlength="120" @input="markDirty" placeholder="一句引导文案（选填）" /></label>
+          <div class="he-sec">收集项</div>
           <label class="he-switch"><input type="checkbox" v-model="block.showName" @change="markDirty" />收集姓名</label>
           <label class="he-switch"><input type="checkbox" v-model="block.showPhone" @change="markDirty" />收集电话</label>
           <label class="he-switch"><input type="checkbox" v-model="block.showMessage" @change="markDirty" />收集留言</label>
+          <div class="he-sec">提交设置</div>
           <label>按钮文字<input v-model="block.buttonText" maxlength="12" @input="markDirty" placeholder="提交" /></label>
           <label>提交成功提示<input v-model="block.successText" maxlength="60" @input="markDirty" placeholder="已收到，我们会尽快联系你" /></label>
           <p class="small muted" style="margin:0">访客提交后自动存入线索，可在宣传页列表「线索」里查看、复制电话回访。</p>
         </template>
         <template v-else-if="block.type === 'music'">
-          <label>常用曲目
-            <BottomSelect :model-value="MUSIC_PRESETS.some(p => p.value === block.url) ? block.url : ''" :options="MUSIC_PRESETS" title="选择背景音乐" @update:modelValue="block.url = $event; markDirty()" />
-          </label>
-          <label>音频地址<input v-model="block.url" @input="markDirty" placeholder="mp3 链接（需可公开访问），也可不填" /></label>
+          <!-- 常用曲目统一在底部操作条「页面 → 背景音乐」选择（2026-11-28 用户定稿整页设置收拢页面行），
+               这里只管自定义音频与播放方式，避免双入口口径不一致 -->
+          <div class="he-sec">自定义音频</div>
+          <label>音频地址<input v-model="block.url" @input="markDirty" placeholder="mp3 链接（需可公开访问）" /></label>
+          <div class="he-sec">播放</div>
           <label class="he-switch"><input type="checkbox" v-model="block.autoplay" @change="markDirty" />访客打开页面自动播放</label>
           <audio v-if="block.url" :src="block.url" controls class="he-audio"></audio>
-          <p class="small muted" style="margin:0 0 8px">音乐在公开页以右下角 ♪ 按钮承载播放/暂停。手机浏览器禁止带声自动播放时，访客首次触摸页面后自动起播、循环播放。</p>
+          <p class="small muted" style="margin:0 0 8px">常用曲目在底部操作条「页面 → 背景音乐」里选择。公开页以右下角 ♪ 按钮播放/暂停，手机浏览器禁止带声自动播放时，访客首次触摸页面后自动起播、循环播放。</p>
         </template>
         <template v-else-if="block.type === 'endcard'">
           <p class="small muted" style="margin:0">尾页自动展示你的名片卡与二维码，访客看完直接跳名片。{{ watermark ? '免费版尾页带品牌水印，开通套餐后自动去除。' : '当前套餐：无水印。' }}</p>
@@ -453,7 +461,10 @@ const router = useRouter()
 const TYPE_LABEL = { cover: '封面', text: '文本', hero: '图文', image: '图片', shape: '形状', button: '按钮', gallery: '图集', contact: '联系方式', map: '位置', buttons: '按钮组', video: '视频', form: '表单留资', music: '背景音乐', endcard: '名片尾页' }
 // 自由画布（2026-11-27 用户定稿上 MAKA 同款）：文本/图片/形状/按钮为自由元素，其余为组件元素（绝对定位复用原表单）
 const FREE_TYPES = ['text', 'image', 'shape', 'button']
-const ADDABLE = ['text', 'image', 'shape', 'button', 'gallery', 'contact', 'map', 'buttons', 'video', 'form', 'endcard']
+// 加元素清单分两组（2026-11-28 用户定稿「归类清晰、不能乱」）：自由元素=画布上直接摆的，
+// 功能组件=带业务能力的块；音乐是整页级设置，在「页面 → 背景音乐」管理，不在清单里
+const ADDABLE_FREE = ['text', 'image', 'shape', 'button']
+const ADDABLE_COMP = ['gallery', 'contact', 'map', 'buttons', 'video', 'form', 'endcard']
 // 加页版式（2026-11-28 取百家之长：竞品加页都给版式选择，不再是光秃秃一行标题）
 const PAGE_LAYOUTS = [
   { key: 'title', name: '标题页', desc: '大字标题居中，适合开场 / 口号' },
