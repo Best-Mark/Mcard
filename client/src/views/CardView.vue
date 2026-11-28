@@ -87,7 +87,8 @@
           <i>›</i>
         </button>
       </template>
-      <!-- dock 四态翻转（2026-11-27 用户定稿）：main=编辑/配色/二维码/上架；
+      <!-- dock 三态翻转（2026-11-27 用户定稿；2026-11-28 去掉「编辑」键——逐项修改走快捷编辑
+           （点字段/＋号弹单项弹层），完整表单从封面 ✎ 进）：main=配色/二维码/上架；
            点「配色」整行翻转成模板缩略行（点中即换、页面实时预览、可连着试）；
            点「二维码」名片本体让位给顶部二维码大图，dock 二级=码色选项行（点中即改、面板不关可连试）；
            点「上架」整行翻转成上架操作行（开关/行业 chips 点中即保存、状态实时反映）——
@@ -96,7 +97,6 @@
            公开页 dock 不变：打电话 / 复制号码 / 存入通讯录 / 分享 -->
       <div v-if="full && owner" :class="['cv-dock cv-dock-glass', { 'cv-dock-flip': dockMode !== 'main' }]">
         <template v-if="dockMode === 'main'">
-          <button class="btn btn-primary dock-btn" @click="router.push('/me/card')"><span class="dock-ico">✎</span>编辑</button>
           <button class="btn btn-ghost dock-btn" @click="toggleDock('tpl')"><span class="dock-ico">▦</span>配色</button>
           <button class="btn btn-ghost dock-btn" @click="toggleDock('qr')"><span class="dock-ico">▣</span>二维码</button>
           <!-- 上架集市：底部 tab 的「集市」是逛别人的名片，这里管「让别人找到我」；
