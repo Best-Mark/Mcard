@@ -3,7 +3,9 @@
 //   ① 读得到：本地 /uploads/（含 OSS 上传后留下的本地副本）直接读盘，外链 http(s) 带超时拉取；
 //   ② 有码：sharp 解出像素 → jsQR 解码，图里没有二维码直接拒；
 //   ③ 是收款码且放对了平台：微信收款码内容为 wxp:// 等微信支付协议，支付宝为 qr.alipay.com 等——
-//      放错平台给「这张是支付宝的码」类指引，别的二维码（名片码/网址码）按「不是收款码」拒绝。
+//      放错平台给「这张是 xx 的码」类指引，别的二维码（名片码/网址码）按「不是收款码」拒绝。
+// 校验通过后，图内解码出的原始付款链接（safePayLink 白名单过滤）落到 cards.*_pay_link 派生列，
+// 扫合一码落地页按支付环境拿它 location.href 直接调起支付（跳不起来回落长按识别收款码图）。
 // 备注：若日后遇到合法但未覆盖的商家码形态，在 MARKERS 补一种即可（单点维护）。
 const sharp = require('sharp')
 const jsQR = require('jsqr')
@@ -15,11 +17,16 @@ const MAX_BYTES = 5 * 1024 * 1024
 const FETCH_TIMEOUT_MS = 6000
 const DECODE_EDGE = 1200
 
-// 平台归属特征（收款码内容）。微信：个人收款码 wxp://、商户码走微信支付域名/协议；支付宝：二维码域名/跳转协议。
+// 平台归属特征（收款码内容）。协议段锚定字符串开头（防「javascript:…wxp:」这类伪装文本骗过子串匹配），
+// https 码按域名特征认。微信：个人收款码 wxp://、商户码走微信支付域名/协议；支付宝：二维码域名/跳转协议。
 const MARKERS = {
-  wechat: /(wxp:|weixin:\/\/|tenpay\.com|payapp\.weixin|pay\.weixin\.qq\.com)/i,
-  alipay: /(alipays?:\/\/|[a-z0-9.-]*alipay\.com)/i
+  wechat: /^(wxp:|weixin:\/\/)/i,
+  wechatUrl: /^https?:\/\/[^\s]*(tenpay\.com|payapp\.weixin|pay\.weixin\.qq\.com)/i,
+  alipay: /^alipays?:\/\//i,
+  alipayUrl: /^https?:\/\/[^\s]*([a-z0-9-]+\.)*alipay\.com/i
 }
+// 可跳转付款链接的协议白名单：只放行 wxp/weixin/alipays/http(s)，javascript: 等一律不进 location.href
+const LINK_SCHEME_RE = /^(wxp:|weixin:\/\/|alipays:|https?:)/i
 
 const MSG = {
   unread: '收款码图片读取失败，请重新上传',
@@ -66,36 +73,44 @@ async function decodeQr(input) {
 }
 
 function classify(text) {
-  const w = MARKERS.wechat.test(text)
-  const a = MARKERS.alipay.test(text)
+  const w = MARKERS.wechat.test(text) || MARKERS.wechatUrl.test(text)
+  const a = MARKERS.alipay.test(text) || MARKERS.alipayUrl.test(text)
   if (w && !a) return 'wechat'
   if (a && !w) return 'alipay'
   return 'other'
 }
 
-// kind: 'wechat' | 'alipay'。返回 '' 表示通过，否则返回给用户看的拒绝理由。
-async function verifyPayQr(kind, url) {
-  const local = localUploadPath(url)
+// kind: 'wechat' | 'alipay'。返回 { ok, text, msg }：ok 时 text 为图内解码内容，msg 恒空；
+// 不通过时 msg 为给用户看的拒绝理由。
+async function readPayQr(kind, url) {
   try {
     let text
+    const local = localUploadPath(url)
     if (local) {
       text = await decodeQr(local)
     } else {
       const buf = await fetchImage(url)
-      if (!buf) return MSG.unread
+      if (!buf) return { ok: false, text: '', msg: MSG.unread }
       text = await decodeQr(buf)
     }
-    if (text === null) return MSG.unread
-    if (!text) return MSG.noQr
+    if (text === null) return { ok: false, text: '', msg: MSG.unread }
+    if (!text) return { ok: false, text: '', msg: MSG.noQr }
     const platform = classify(text)
-    if (platform === kind) return ''
-    if (platform === 'wechat') return MSG.alipaySlot
-    if (platform === 'alipay') return MSG.wechatSlot
-    return MSG.notPay
+    if (platform === kind) return { ok: true, text, msg: '' }
+    if (platform === 'wechat') return { ok: false, text: '', msg: MSG.alipaySlot }
+    if (platform === 'alipay') return { ok: false, text: '', msg: MSG.wechatSlot }
+    return { ok: false, text: '', msg: MSG.notPay }
   } catch {
     // 图损坏/解码异常都按「读不了」处理，绝不静默放行
-    return MSG.unread
+    return { ok: false, text: '', msg: MSG.unread }
   }
 }
 
-module.exports = { verifyPayQr }
+// 可跳转的付款链接：协议白名单 + 平台归属一致才返回，否则 ''（只回落长按识别，绝不把可疑文本塞进 location）
+function safePayLink(kind, text) {
+  const s = String(text || '').trim()
+  if (!LINK_SCHEME_RE.test(s)) return ''
+  return classify(s) === kind ? s : ''
+}
+
+module.exports = { readPayQr, safePayLink }

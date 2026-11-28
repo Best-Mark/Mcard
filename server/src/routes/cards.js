@@ -5,7 +5,7 @@ const { ok, fail, wrap } = require('../utils/response')
 const { authRequired, parseToken } = require('../utils/auth')
 const { makeSlug, normalizeSlug } = require('../utils/slug')
 const qr = require('../services/qrcode')
-const { verifyPayQr } = require('../services/payQr')
+const { readPayQr, safePayLink } = require('../services/payQr')
 const { normalizeStyle } = qr
 const vcard = require('../services/vcard')
 const { CARD_TEMPLATES, isTemplate, DEFAULT_TEMPLATE } = require('../utils/cardTemplates')
@@ -76,6 +76,9 @@ function publicView(row, origin) {
     wechat: row.wechat, alipay: row.alipay, whatsapp: row.whatsapp,
     wechat_qr: row.wechat_qr, alipay_qr: row.alipay_qr,
     wechat_pay_qr: row.wechat_pay_qr, alipay_pay_qr: row.alipay_pay_qr,
+    // 收款码图内解码出的付款链接（派生列）：与收款码图同级公开（本就是付款入口），
+    // 扫合一码落地页按支付环境拿它直接调起支付
+    wechat_pay_link: row.wechat_pay_link || '', alipay_pay_link: row.alipay_pay_link || '',
     address: row.address, address_detail: row.address_detail,
     province: row.province || '', city: row.city || '', district: row.district || '', street: row.street || '',
     website: row.website, shop_url: row.shop_url,
@@ -675,10 +678,19 @@ router.put('/mine', authRequired, wrap(async (req, res) => {
     if (formatError) return fail(res, 400, formatError)
     const valueChanged = String(row[key] ?? '') !== String(v ?? '')
     // 收款码图内容核验：解码有成本，只在值真正变化时做（旧值不重复解码、不拖累常规保存）。
-    // 判断「图里有没有二维码、是不是收款码、放没放对平台」，理由见 services/payQr.js。
-    if (valueChanged && v && (key === 'wechat_pay_qr' || key === 'alipay_pay_qr')) {
-      const qrErr = await verifyPayQr(key === 'wechat_pay_qr' ? 'wechat' : 'alipay', v)
-      if (qrErr) return fail(res, 400, qrErr)
+    // 判断「图里有没有二维码、是不是收款码、放没放对平台」，理由见 services/payQr.js；
+    // 校验通过后把图内原始付款链接（safePayLink 白名单过滤）落到派生列，供扫码落地自动调起支付。
+    if (valueChanged && (key === 'wechat_pay_qr' || key === 'alipay_pay_qr')) {
+      const kind = key === 'wechat_pay_qr' ? 'wechat' : 'alipay'
+      const linkCol = kind === 'wechat' ? 'wechat_pay_link' : 'alipay_pay_link'
+      if (!v) {
+        sets.push(`${linkCol} = ?`); values.push('')
+      } else {
+        const r = await readPayQr(kind, v)
+        if (!r.ok) return fail(res, 400, r.msg)
+        sets.push(`${linkCol} = ?`)
+        values.push(safePayLink(kind, r.text))
+      }
     }
     // 套餐闸门：配色方案 + 上架集市需要套餐有效。传同值（编辑页保存全表单带原值）不拦。
     // 上架 market_opt_in 只在「开启」时拦，关闭（下架）永远放行——过期用户应能主动下架。

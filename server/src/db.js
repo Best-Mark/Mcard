@@ -94,6 +94,11 @@ addColumnIfMissing('cards', 'company_intro', "TEXT NOT NULL DEFAULT ''")
 for (const col of ['alipay', 'wechat_qr', 'alipay_qr', 'wechat_pay_qr', 'alipay_pay_qr', 'shop_url']) {
   addColumnIfMissing('cards', col, "TEXT NOT NULL DEFAULT ''")
 }
+// 收款码图内解码出的原始付款链接（派生列）：只由保存收款码时与启动自愈回填写入，接口不接受用户直写；
+// 扫合一码落地页按支付环境拿它直接调起支付（wxp://、qr.alipay.com 等），跳不起来回落长按识别收款码图。
+for (const col of ['wechat_pay_link', 'alipay_pay_link']) {
+  addColumnIfMissing('cards', col, "TEXT NOT NULL DEFAULT ''")
+}
 // 布局模板（与配色 theme 分离）：存量库补列默认简洁联络卡 contact
 addColumnIfMissing('cards', 'template', "TEXT NOT NULL DEFAULT 'contact'")
 // 名片集市：存量名片默认不上架、无坐标（保护隐私，需用户主动 opt-in）
@@ -399,6 +404,37 @@ if (!seeded('h5_card_linked_backfill_v1')) {
   db.transaction(() => {
     db.prepare("UPDATE h5_pages SET card_linked = 1 WHERE status = 'published'").run()
     insertSeedFlag.run('h5_card_linked_backfill_v1', '1')
+  })()
+}
+
+// 一次性自愈（2026-11-28）：收款码付款链接派生列回填。该列上线前已传码的存量图在链空，
+// 启动后异步解码补齐（不阻塞启动）。逐行幂等：已回填的行自动跳过；任一行失败就不打标记，
+// 下次启动重试，最坏情况留空也只是回落「长按识别收款码」手动付款，不影响主流程。
+if (!seeded('pay_link_backfill_v1')) {
+  ;(async () => {
+    try {
+      const { readPayQr, safePayLink } = require('./services/payQr')
+      const rows = db.prepare(`SELECT id, wechat_pay_qr, alipay_pay_qr, wechat_pay_link, alipay_pay_link FROM cards
+        WHERE (wechat_pay_qr <> '' AND wechat_pay_link = '') OR (alipay_pay_qr <> '' AND alipay_pay_link = '')`).all()
+      const upd = db.prepare('UPDATE cards SET wechat_pay_link = ?, alipay_pay_link = ? WHERE id = ?')
+      let failed = 0
+      for (const r of rows) {
+        let wl = r.wechat_pay_link || ''
+        let al = r.alipay_pay_link || ''
+        try {
+          if (r.wechat_pay_qr && !wl) {
+            const x = await readPayQr('wechat', r.wechat_pay_qr)
+            wl = x.ok ? safePayLink('wechat', x.text) : ''
+          }
+          if (r.alipay_pay_qr && !al) {
+            const x = await readPayQr('alipay', r.alipay_pay_qr)
+            al = x.ok ? safePayLink('alipay', x.text) : ''
+          }
+          upd.run(wl, al, r.id)
+        } catch (e) { failed++; console.error('[DB] 收款码付款链接回填单行失败', r.id, e.message) }
+      }
+      if (!failed) insertSeedFlag.run('pay_link_backfill_v1', '1')
+    } catch (e) { console.error('[DB] 收款码付款链接回填失败（下次启动重试）', e.message) }
   })()
 }
 
