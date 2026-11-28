@@ -632,6 +632,22 @@ function pageToEls(p) {
   if (!els.length) els.push({ type: 'text', text: '点我编辑文字', size: 32, color: '#ffffff', align: 'left', bold: false, font: '', lh: 1.5, anim: '', g: G(22, 60, 706, 60) })
   return els
 }
+// 估高堆叠 → 按一屏（750×1334）切分成多页：放不下的元素整块搬到下一页并上移对齐（2026-11-28 用户定稿
+// 「不允许长页，可以多页」）。元素按 y 升序（堆叠顺序天然有序）；存量长 els 页走同一条路，打开编辑器即迁移。
+function splitOverflowPages(els) {
+  const out = []
+  let cur = [], base = 0
+  for (const e of els) {
+    const g = e.g || {}
+    const y0 = Number(g.y) || 0
+    const h = Math.min(Number(g.h) || 120, 1334)
+    if (cur.length && y0 - base + h > 1334) { out.push(cur); cur = []; base = y0 - 60 }
+    e.g = { ...g, y: Math.max(0, y0 - base) }
+    cur.push(e)
+  }
+  if (cur.length) out.push(cur)
+  return out
+}
 // 插入位置：选中元素之后（跟编辑焦点走），否则排末尾
 function insertAt() {
   const arr = curEls.value
@@ -761,8 +777,8 @@ async function openTpls() {
 function applyTpl(t) {
   if (applying.value) return
   if (!confirm(`套用「${t.name}」会覆盖当前全部页面内容，确定？`)) return
-  // 模板是 blocks 格式：套用即转自由画布 els（估高堆叠初稿），保持同一编辑形态
-  const pages = JSON.parse(JSON.stringify(t.pages || [])).map(p => ({ bg: p.bg || { color: '', image: '' }, els: pageToEls(p) }))
+  // 模板是 blocks 格式：套用即转自由画布 els（估高堆叠初稿），一屏放不下自动分页，保持同一编辑形态
+  const pages = JSON.parse(JSON.stringify(t.pages || [])).flatMap(p => splitOverflowPages(pageToEls(p)).map(els => ({ bg: { ...(p.bg || { color: '', image: '' }) }, els })))
   schema.value = { accent: t.accent, transition: t.transition || 'slide', pages }
   selPage.value = 0; selBlock.value = 0
   tplOpen.value = false; dockMode.value = 'main'
@@ -782,7 +798,7 @@ onMounted(async () => {
     schema.value = {
       accent: raw.accent || '',
       transition: raw.transition || 'slide',
-      pages: rawPages.map(p => ({ bg: p.bg || { color: '', image: '' }, els: pageToEls(p) }))
+      pages: rawPages.flatMap(p => splitOverflowPages(pageToEls(p)).map(els => ({ bg: p.bg || { color: '', image: '' }, els })))
     }
     loaded.value = true
     if (hadBlocks) showToast('旧版内容已自动转为自由画布，可自由拖动、缩放、旋转', 'success')
