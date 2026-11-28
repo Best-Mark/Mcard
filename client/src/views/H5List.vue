@@ -32,8 +32,7 @@
           <div class="small muted h5l-meta">{{ p.pages }} 页 · 更新于 {{ fmt(p.updated_at) }}</div>
           <div class="h5l-ops">
             <button class="btn btn-sm btn-primary" @click="router.push(`/me/h5/${p.id}`)">编辑</button>
-            <button v-if="p.status === 'published'" class="btn btn-sm btn-ghost" @click="preview(p)">预览</button>
-            <button v-else class="btn btn-sm btn-ghost" @click="router.push(`/me/h5/${p.id}`)">预览</button>
+            <button class="btn btn-sm btn-ghost" @click="preview(p)">预览</button>
             <button v-if="p.status === 'draft'" class="btn btn-sm btn-ghost" :disabled="busy === p.id" @click="toggle(p, 'publish')">{{ busy === p.id ? '…' : '上架' }}</button>
             <button v-else class="btn btn-sm btn-ghost" :disabled="busy === p.id" @click="toggle(p, 'unpublish')">下架</button>
             <button class="btn btn-sm btn-ghost h5l-del" @click="remove(p)">删除</button>
@@ -122,7 +121,16 @@ async function remove(p) {
   busy.value = p.id
   try { await api.delete(`/api/h5/${p.id}`); await load() } catch (e) { showToast(e.message, 'error') } finally { busy.value = 0 }
 }
-function preview(p) { window.open(`/h5/${p.slug}`, '_blank') }
+// 预览统一只读：已上架看真实公开页；草稿无公开 URL，进编辑器的 ?preview=1 只读模式（全页可滑、无 dock 无手势）
+function preview(p) {
+  if (p.status === 'published') {
+    const url = `/h5/${p.slug}`
+    const w = window.open(url, '_blank')
+    if (!w) window.location.href = url // 老内核/微信内 window.open 可能被拦，兜底当前页打开
+  } else {
+    router.push(`/me/h5/${p.id}?preview=1`)
+  }
+}
 function fmt(s) { return String(s || '').replace('T', ' ').slice(5, 16) }
 </script>
 

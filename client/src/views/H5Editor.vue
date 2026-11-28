@@ -10,27 +10,29 @@
        ② 块入场动效可选（BottomSelect，公开页进入视口自动播放）；
        ③ 加块插到选中块之后（不再固定尾部）、新增复制块；
        ④ 按钮动作原 <select> 违规改 BottomSelect（H5 下拉必须 BottomSelect 约束），动作新增「复制文本」。 -->
-  <div class="he">
+  <div class="he" :class="{ 'he-preview': previewMode }">
     <header class="he-top">
       <button class="he-back" @click="router.push('/me/h5')">‹</button>
-      <input v-model="title" class="he-title" placeholder="宣传页标题" @input="markDirty" />
-      <button class="he-back" :disabled="!canUndo" @click="undo" aria-label="撤销">↶</button>
-      <button class="he-back" :disabled="!canRedo" @click="redo" aria-label="重做">↷</button>
-      <span class="he-save small muted">{{ saveState }}</span>
+      <input v-if="!previewMode" v-model="title" class="he-title" placeholder="宣传页标题" @input="markDirty" />
+      <b v-else class="he-title he-title-plain">{{ title || '宣传页预览' }}</b>
+      <button v-if="!previewMode" class="he-back" :disabled="!canUndo" @click="undo" aria-label="撤销">↶</button>
+      <button v-if="!previewMode" class="he-back" :disabled="!canRedo" @click="redo" aria-label="重做">↷</button>
+      <span v-if="!previewMode" class="he-save small muted">{{ saveState }}</span>
     </header>
 
-    <!-- 画布：只渲染当前编辑页（自由画布，点选/拖动/四角缩放/旋转） -->
+    <!-- 画布：编辑模式只渲染当前编辑页（点选/拖动/四角缩放/旋转）；预览模式（?preview=1，2026-11-28 用户定稿
+         「预览不改」）渲染全部页面、可滑动翻页、无编辑手势与 dock -->
     <div class="he-canvas" v-if="loaded">
       <div class="he-canvas-in">
         <!-- page-offset：画布只渲染当前页，offset 让块的 key 与真实页号对齐（选中态/拖动不串页） -->
-        <H5Render :data="curPageData" editable :page-offset="selPage" :sel-key="selKey" @pick="onPick" @reorder="onReorder" @quick="onQuick" @inplace="markDirty" @geom="markDirty" />
+        <H5Render :data="previewMode ? previewData : curPageData" :editable="!previewMode" :page-offset="selPage" :sel-key="selKey" @pick="onPick" @reorder="onReorder" @quick="onQuick" @inplace="markDirty" @geom="markDirty" />
       </div>
-      <div class="he-hint small muted">点选元素 · 拖动移动 · 四角缩放 · 顶部 ⟳ 旋转 · 再点改内容{{ block ? ` · 当前：第 ${selPage + 1} 页 ${TYPE_LABEL[block.type]}` : '' }}</div>
+      <div v-if="!previewMode" class="he-hint small muted">点选元素 · 拖动移动 · 四角缩放 · 顶部 ⟳ 旋转 · 再点改内容{{ block ? ` · 当前：第 ${selPage + 1} 页 ${TYPE_LABEL[block.type]}` : '' }}</div>
     </div>
     <div v-else class="he-loading">加载中…</div>
 
-    <!-- dock 四态翻转（与名片工作台同款交互） -->
-    <div :class="['he-dock', { 'he-dock-flip': dockMode !== 'main' }]">
+    <!-- dock 四态翻转（与名片工作台同款交互）；预览模式整条隐藏 -->
+    <div v-if="!previewMode" :class="['he-dock', { 'he-dock-flip': dockMode !== 'main' }]">
       <template v-if="dockMode === 'main'">
         <button class="he-dock-btn primary" @click="dockMode = 'edit'">✎ 编辑块</button>
         <button class="he-dock-btn" @click="dockMode = 'pages'">▦ 页面</button>
@@ -429,6 +431,9 @@ const cardData = ref(null)
 const curPage = computed(() => schema.value.pages[selPage.value] || { els: [] })
 const curEls = computed(() => curPage.value.els || [])
 const curPageData = computed(() => ({ schema: { accent: schema.value.accent || '', transition: schema.value.transition || 'scroll', pages: [curPage.value] }, card: cardData.value, watermark: watermark.value }))
+// 只读预览（?preview=1）：全页可滑、无编辑手势与 dock，画布行为与公开页一致（2026-11-28 用户定稿「预览不改」）
+const previewMode = route.query.preview === '1'
+const previewData = computed(() => ({ schema: schema.value, card: cardData.value, watermark: watermark.value }))
 const selKey = computed(() => (selBlock.value >= 0 ? `${selPage.value}-${selBlock.value}` : ''))
 const block = computed(() => curEls.value[selBlock.value] || null)
 const pagesCount = computed(() => schema.value.pages.length)
@@ -796,6 +801,9 @@ watch(() => route.params.id, () => { if (route.name === 'h5-editor') location.re
    原 sticky bottom:0 在老微信 X5 WebView 上可能不贴视口底、且会被全局 tabbar 盖住；
    页面留 76px 空位，画布与提示行不会被操作条遮住。 */
 .he { min-height: 100vh; padding-bottom: 76px; padding-bottom: calc(76px + env(safe-area-inset-bottom)); background: var(--bg-page, #f4f6fb); display: flex; flex-direction: column; }
+/* 只读预览：无 dock，不预留底栏空位 */
+.he.he-preview { padding-bottom: 16px; }
+.he-title-plain { border-color: transparent; background: transparent; }
 .he-top { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 8px; padding: calc(10px + var(--safe-top, 0px)) 12px 10px; background: rgba(255,255,255,.95); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
 .he-back { width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 9px; background: #fff; font-size: 19px; color: #374151; cursor: pointer; flex: 0 0 34px; }
 .he-back:disabled { opacity: .35; cursor: default; }
