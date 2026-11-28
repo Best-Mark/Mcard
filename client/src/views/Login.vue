@@ -115,7 +115,8 @@ const ERR_TEXT = {
   denied: '你取消了微信授权',
   disabled: '账号已被停用，请联系管理员',
   oauth: '微信授权失败，请稍后重试或改用手机号登录',
-  expired: '微信授权已过期，请重新发起登录'
+  expired: '微信授权已过期，请重新发起登录',
+  snapshot: '微信授权未完成（当前仅浏览快照），请重新点击微信登录并允许获取头像昵称'
 }
 const QR_FAIL_TEXT = {
   cancelled: '你已取消本次扫码登录，请重新扫码',

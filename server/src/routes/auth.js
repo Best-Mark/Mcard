@@ -332,6 +332,13 @@ router.get('/wechat/callback', wrap(async (req, res) => {
     const nickname = String(info.nickname || '').slice(0, 30)
     const avatar = String(info.headimgurl || '').slice(0, 500)
 
+    // 快照模式（is_snapshotuser=1）：微信对「未完成完整授权」的会话只给虚拟数据——随机 openid、
+    // 昵称「微信用户」、灰头像。拿它建号会造出永远登不回的幽灵账号、写昵称会污染账户层，
+    // 一律拒绝并引导重新完整授权（用户在微信快照页点「使用完整服务」再授权即为完整数据）。
+    if (Number(info.is_snapshotuser) === 1 || Number(token.is_snapshotuser) === 1) {
+      return valid?.kind === 'bind' ? bindBack('snapshot') : failBack('snapshot')
+    }
+
     // 提现账户绑定：只给 state 里记录的当前账号补微信身份，不签新 token、不新建账号。
     if (valid?.kind === 'bind') {
       const uid = Number(valid.userId)

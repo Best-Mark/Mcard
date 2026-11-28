@@ -38,7 +38,7 @@ import api from '../api'
 const route = useRoute()
 const bindTicket = ref(''); const sid = ref(''); const wxNickname = ref(''); const wxAvatar = ref('')
 const phone = ref(''); const password = ref(''); const busy = ref(false); const errMsg = ref(''); const errText = ref('')
-const ERR_TEXT = { state: '授权状态校验失败，请重新扫码', denied: '你取消了微信授权', disabled: '账号已被停用', oauth: '微信授权失败，请重新扫码', expired: '登录会话已过期，请在电脑端重新扫码' }
+const ERR_TEXT = { state: '授权状态校验失败，请重新扫码', denied: '你取消了微信授权', disabled: '账号已被停用', oauth: '微信授权失败，请重新扫码', expired: '登录会话已过期，请在电脑端重新扫码', snapshot: '微信授权未完成（当前仅浏览快照），请重新扫码并允许获取头像昵称' }
 
 onMounted(() => {
   bindTicket.value = String(route.query.bind || '')
