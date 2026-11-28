@@ -380,6 +380,21 @@ addColumnIfMissing('h5_pages', 'live_schema', 'TEXT')
 // 索引依赖补列后的字段，必须放在 addColumnIfMissing 之后（存量库 source 列此时才存在）
 db.exec('CREATE INDEX IF NOT EXISTS idx_views_source ON card_views(card_id, source);')
 
+// ---------------- 素材库（2026-11-28 用户拍板恢复）----------------
+// user_assets 是历史素材库表（结构完好但停用多年），原地复活不再新建；补分组维度：
+// asset_groups = 用户自定义分组；user_assets.group_id = NULL 表示「未分组」（删组自动回落，素材记录不丢）。
+db.exec(`
+CREATE TABLE IF NOT EXISTS asset_groups (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_asset_groups_user ON asset_groups(user_id, id);
+`)
+addColumnIfMissing('user_assets', 'group_id', 'INTEGER')
+db.exec('CREATE INDEX IF NOT EXISTS idx_user_assets_group ON user_assets(user_id, group_id, created_at);')
+
 // ---------------- 种子数据 ----------------
 const seedPackages = [
   { name: '体验卡', description: '7 天试用，完整功能', price_cents: 100, duration_days: 7, features: JSON.stringify(['全部模板', '永久二维码', '一键存通讯录', '实体名片版式下载']), sort: 1 },

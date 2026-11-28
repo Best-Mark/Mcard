@@ -196,7 +196,7 @@
         <div v-if="qeImgFields.length" class="qe-img-row">
           <div v-for="f in qeImgFields" :key="f.key" class="qe-img-cell">
             <span>{{ f.label }}</span>
-            <ImageField :model-value="qeForm[f.key]" @update:modelValue="onQeImageInput(f.key, $event)" />
+            <ImageField :model-value="qeForm[f.key]" :library="f.key !== 'wechat_pay_qr' && f.key !== 'alipay_pay_qr'" @update:modelValue="onQeImageInput(f.key, $event)" />
           </div>
         </div>
         <label v-for="f in qeTextFields" :key="f.key" class="qe-field">

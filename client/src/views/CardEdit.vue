@@ -85,8 +85,8 @@
             <div class="identity-block divided">
               <div class="block-title">💳 收款码（选填）</div>
               <div class="grid2">
-                <ImageField v-model="form.wechat_pay_qr" label="微信收款码" />
-                <ImageField v-model="form.alipay_pay_qr" label="支付宝收款码" />
+                <ImageField v-model="form.wechat_pay_qr" label="微信收款码" :library="false" />
+                <ImageField v-model="form.alipay_pay_qr" label="支付宝收款码" :library="false" />
               </div>
               <p class="small muted" style="margin:8px 0 0">上传微信 / 支付宝「收付款 → 收款」里的收款码截图，保存时会自动核对是不是收款码、有没有放对位置。名片收款页分别生成微信收款码和支付宝收款码：微信扫微信码、支付宝扫支付宝码，扫码直接打开付款界面。点名片右上角二维码，「收款码」里可查看和保存。</p>
             </div>

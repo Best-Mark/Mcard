@@ -1,7 +1,8 @@
 <template>
   <!-- 通用图片字段（2026-11-28 用户定稿「点图即换、去按钮、弹层能小就不大」）：
-       点缩略图/＋占位直接选图上传，右上角 × 移除；不再放「更换图片/移除」旁挂按钮。
-       上传走 /api/upload（服务端统一压 WebP）。 -->
+       点缩略图/＋占位弹出底部「素材库」弹窗（上传 + 已传图片即点即用，自定义分组）；
+       右上角 × 移除。上传走 /api/upload（服务端统一压 WebP），上传成功自动选用。
+       library=false 的字段（如收款码）保持点图直接选文件上传，不进素材库。 -->
   <div class="if">
     <span v-if="label" class="if-label">{{ label }}</span>
     <div class="if-box" :class="{ busy }" @click="pick">
@@ -11,6 +12,7 @@
       <button v-else-if="modelValue" type="button" class="if-del" aria-label="移除" @click.stop="$emit('update:modelValue', '')">×</button>
     </div>
     <input ref="fileEl" type="file" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none" @change="onFile" />
+    <AssetLibrarySheet v-if="library" :show="libOpen" @update:show="libOpen = $event" @select="onLibPick" />
   </div>
 </template>
 
@@ -18,16 +20,24 @@
 import { ref } from 'vue'
 import api from '../api'
 import { showToast } from '../store'
+import AssetLibrarySheet from './AssetLibrarySheet.vue'
 
-defineProps({
+const props = defineProps({
   modelValue: { type: String, default: '' },
-  label: { type: String, default: '' }
+  label: { type: String, default: '' },
+  library: { type: Boolean, default: true }
 })
 const emit = defineEmits(['update:modelValue'])
 const fileEl = ref(null)
 const busy = ref(false)
+const libOpen = ref(false)
 
-function pick() { if (!busy.value) fileEl.value?.click() }
+function pick() {
+  if (busy.value) return
+  if (props.library) { libOpen.value = true; return }
+  fileEl.value?.click()
+}
+function onLibPick(url) { emit('update:modelValue', url) }
 async function onFile(e) {
   const file = e.target.files?.[0]
   e.target.value = ''
