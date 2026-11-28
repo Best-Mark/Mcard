@@ -101,7 +101,7 @@
                  不与全局配色混放（2026-11-28 用户定稿「层次一定要清楚，不要都扔一起」） -->
             <template v-else-if="dockMode === 'pages'">
               <button v-for="(p, i) in schema.pages" :key="i" :class="['he-chip', { on: i === selPage }]" @click="selPage = i; selBlock = 0">第{{ i + 1 }}页·{{ elsCount(p) }}元素</button>
-              <button v-if="pagesCount < maxPages" class="he-chip on" @click="addPage">＋ 加一页</button>
+              <button v-if="pagesCount < maxPages" class="he-chip on" @click="pageAddOpen = true">＋ 加一页</button>
               <button v-else class="he-chip" @click="showToast(paid ? `最多 ${maxPages} 页` : `免费版最多 ${maxPages} 页，开通套餐解锁`, 'error')">已达上限</button>
               <button v-if="pagesCount > 1" class="he-chip warn" @click="pageDelConfirm = true">✕ 删本页</button>
               <span class="he-grp">本页</span>
@@ -256,6 +256,19 @@
 
     <!-- 删本页确认（整页级破坏性操作不静默） -->
     <ConfirmDialog :show="pageDelConfirm" title="删除本页" :text="`删除第 ${selPage + 1} 页的全部内容？删除后可用顶栏 ↶ 撤销。`" confirm-text="删除" danger @confirm="confirmRemovePage" @cancel="pageDelConfirm = false" />
+
+    <!-- 加页选版式：预置成稿骨架，选完即切到新页 -->
+    <BottomSheet :show="pageAddOpen" @update:show="pageAddOpen = $event">
+      <div class="he-form">
+        <div class="he-f-head"><b>添加页面</b><button class="he-mini" @click="pageAddOpen = false">关闭</button></div>
+        <div class="he-tpl-list">
+          <button v-for="l in PAGE_LAYOUTS" :key="l.key" class="he-tpl" @click="addPage(l.key); pageAddOpen = false">
+            <span class="he-tpl-t"><b>{{ l.name }}</b><span class="small muted">{{ l.desc }}</span></span>
+            <i>›</i>
+          </button>
+        </div>
+      </div>
+    </BottomSheet>
 
     <!-- 换图弹层（2026-11-27 画布直操化）：快捷条「▣ 换图」直达，不进通用表单 -->
     <BottomSheet :show="imgOpen" @update:show="imgOpen = $event">
@@ -417,6 +430,15 @@ const TYPE_LABEL = { cover: '封面', text: '文本', hero: '图文', image: '�
 // 自由画布（2026-11-27 用户定稿上 MAKA 同款）：文本/图片/形状/按钮为自由元素，其余为组件元素（绝对定位复用原表单）
 const FREE_TYPES = ['text', 'image', 'shape', 'button']
 const ADDABLE = ['text', 'image', 'shape', 'button', 'gallery', 'contact', 'map', 'buttons', 'video', 'form', 'music', 'endcard']
+// 加页版式（2026-11-28 取百家之长：竞品加页都给版式选择，不再是光秃秃一行标题）
+const PAGE_LAYOUTS = [
+  { key: 'title', name: '标题页', desc: '大字标题居中，适合开场 / 口号' },
+  { key: 'image', name: '大图页', desc: '满幅图片 + 底部标题，视觉冲击' },
+  { key: 'pic', name: '图文页', desc: '标题 + 图片 + 正文说明' },
+  { key: 'gallery', name: '图集页', desc: '两列图集，适合案例 / 环境展示' },
+  { key: 'form', name: '留资页', desc: '表单收集姓名电话，适合预约报名' },
+  { key: 'blank', name: '空白页', desc: '什么都不放，自由发挥' }
+]
 // 页面切换过渡动效（2026-11-28 用户定稿「动效可设置 + 智能选型」）：智能为默认（渲染层按落点页内容挑最合适的过渡），旧「上下滚动」已并入智能不再单列
 const TRANSITION_OPTS = [
   { value: 'auto', label: '智能（推荐）' },
@@ -796,8 +818,28 @@ function layerOp(op) {
   else b.g.z = Math.max(0, (Number(b.g.z) || 0) - 1)
   markDirty()
 }
-function addPage() {
-  schema.value.pages.push({ bg: { color: '', image: '' }, els: [{ type: 'text', text: '输入标题', size: 40, color: '#ffffff', align: 'left', bold: true, font: '', lh: 1.3, anim: '', g: { x: 48, y: 80, w: 654, h: 64, rot: 0, opacity: 1, z: 1 } }] })
+// 按版式加页：预置成稿骨架（字段结构与 pageToEls 产物一致），用户在骨架上改内容
+const pageAddOpen = ref(false)
+function addPage(kind) {
+  const T = over => ({ type: 'text', color: '#ffffff', align: 'center', bold: true, font: '', lh: 1.3, anim: '', ...over })
+  const G = (x, y, w, h, z) => ({ x, y, w, h, rot: 0, opacity: 1, z })
+  const layouts = {
+    title: { els: [T({ text: '输入标题', size: 44, g: G(48, 560, 654, 90, 1) })] },
+    image: { els: [
+      { type: 'image', url: '', radius: 0, fit: 'cover', anim: '', g: G(0, 0, 750, 900, 1) },
+      T({ text: '输入标题', size: 40, g: G(48, 950, 654, 80, 2) })
+    ] },
+    pic: { els: [
+      T({ text: '输入标题', size: 40, align: 'left', g: G(48, 80, 654, 80, 1) }),
+      { type: 'image', url: '', radius: 20, fit: 'cover', anim: '', g: G(48, 200, 654, 620, 2) },
+      T({ text: '输入正文说明', size: 26, align: 'left', bold: false, g: G(48, 860, 654, 120, 3) })
+    ] },
+    gallery: { els: [{ type: 'gallery', images: ['', '', ''], layout: 'grid', source: 'upload', anim: '', g: G(22, 80, 706, 520, 1) }] },
+    form: { els: [{ type: 'form', heading: '预约报名', desc: '留下电话，我们尽快联系你', showName: true, showPhone: true, showMessage: false, buttonText: '提交', successText: '', anim: '', g: G(22, 80, 706, 620, 1) }] },
+    blank: { els: [] }
+  }
+  const l = layouts[kind] || layouts.title
+  schema.value.pages.push({ bg: { color: '', image: '' }, els: JSON.parse(JSON.stringify(l.els)) })
   selPage.value = schema.value.pages.length - 1; selBlock.value = 0
   markDirty()
 }

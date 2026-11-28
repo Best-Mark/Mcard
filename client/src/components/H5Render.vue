@@ -150,6 +150,9 @@
             <p v-if="watermark" class="hp-watermark">免费版由 MCard 制作 · 开通会员可去水印</p>
           </div>
         </template>
+        <!-- 对齐参考线（仅编辑拖移时出现，吸附后跟手） -->
+        <div v-if="editable && guides.v >= 0" class="hp-guide" :style="{ left: (guides.v * u) + 'px' }"></div>
+        <div v-if="editable && guides.h >= 0" class="hp-guide hp-guide-h" :style="{ top: (guides.h * u) + 'px' }"></div>
         </div>
         <!-- 自由画布选中手柄（2026-11-27，仅编辑画布 free 页）：四角缩放 + 顶部旋转，
              位置由选中元素布局矩形（measureSel）换算、rotate 跟随元素角度；手柄自身收触摸手势 -->
@@ -531,6 +534,18 @@ const hdStyle = computed(() => {
 //      抬起＝点选，激活时震动反馈并自动选中）；鼠标拖拽即时（指针精准无滚动冲突）；
 //      缩放/旋转手柄专用无歧义，保持即时 ----
 const fd = { on: false, mode: '', pi: -1, bi: -1, startX: 0, startY: 0, g0: null, moved: false, dragged: false, timer: 0, mouse: false }
+// 拖移对齐参考线：v=竖线画布x / h=横线画布y，-1 不显示（仅编辑拖移时短暂出现）
+const guides = ref({ v: -1, h: -1 })
+function snapAxis(raw, size, targets, canvasPts) {
+  const TH = 8
+  let delta = 0, guide = -1
+  const pts = [raw, raw + size / 2, raw + size]
+  for (const p of pts) for (const c of targets.concat(canvasPts)) {
+    const d = Math.abs(p - c)
+    if (d <= TH) { delta = c - p; guide = c }
+  }
+  return { v: Math.round(raw + delta), guide }
+}
 const evtPoint = e => (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || (typeof e.clientX === 'number' ? e : null)
 function onFdStart(pi, e) {
   if (!props.editable || !isFreePage(pi)) return
@@ -594,8 +609,14 @@ function onFdMove(e) {
   const g = b.g, g0 = fd.g0
   const DX = dx / (u.value || 1), DY = dy / (u.value || 1)
   if (fd.mode === 'move') {
-    g.x = Math.round(Math.max(-750, Math.min(2250, g0.x + DX)))
-    g.y = Math.round(Math.max(-400, Math.min(PAGE_H - Math.min(PAGE_H, Number(g.h) || 120), g0.y + DY)))
+    const rawX = Math.max(-750, Math.min(2250, g0.x + DX))
+    const rawY = Math.max(-400, Math.min(PAGE_H - Math.min(PAGE_H, Number(g.h) || 120), g0.y + DY))
+    // 对齐吸附（MAKA 同款）：元素左/中/右、上/中/下与画布边/中心、其他元素边/中心 8 设计px 内吸附，并画参考线
+    const others = renderList(pages.value[fd.pi] || {}).filter(e => e !== b && e.g)
+    const sv = snapAxis(rawX, g.w, others.map(o => [o.g.x, o.g.x + o.g.w / 2, o.g.x + o.g.w]), [0, 375, 750])
+    const sh = snapAxis(rawY, g.h, others.map(o => [o.g.y, o.g.y + o.g.h / 2, o.g.y + o.g.h]), [0, PAGE_H / 2, PAGE_H])
+    g.x = sv.v; g.y = sh.v
+    guides.value = { v: sv.guide, h: sh.guide }
   } else if (fd.mode === 'rot') {
     const el = pagesEl.value ? pagesEl.value.querySelector('.hp-sel') : null
     if (el) {
@@ -624,6 +645,7 @@ function onFdMove(e) {
 }
 function onFdEnd() {
   clearTimeout(fd.timer)
+  guides.value = { v: -1, h: -1 }
   if (!fd.on) { fd.moved = false; return } // 已被判为滚动画布的手势，抬手无事发生
   const mode = fd.mode
   fd.on = false; fd.mode = ''; fd.g0 = null
@@ -976,6 +998,9 @@ function armMusic() {
 .hp-flow { display: flex; flex-direction: column; gap: 22px; width: 100%; }
 .hp-page-free { padding: 0; justify-content: flex-start; gap: 0; }
 .hp-canvas { position: relative; width: 100%; background-color: #101319; overflow: hidden; }
+/* 拖移对齐参考线：竖/横两条玫红细线，只在你拖到吸附位时出现 */
+.hp-guide { position: absolute; top: 0; bottom: 0; width: 1px; background: #f43f5e; z-index: 60; pointer-events: none; }
+.hp-guide-h { top: auto; left: 0; right: 0; width: auto; height: 1px; }
 .hp-canvas .hp-block { max-width: none; margin: 0; }
 .hp-txt { width: 100%; }
 .hp-el-btn { display: block; width: 100%; height: 100%; border: 0; padding: 0 8px; font-weight: 700; font-size: 15px; cursor: pointer; -webkit-tap-highlight-color: transparent; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
