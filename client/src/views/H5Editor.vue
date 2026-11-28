@@ -85,9 +85,10 @@
                   <button class="he-chip" @click="stepRadius(-8)" :disabled="Number(block.radius) <= 0">圆角−</button>
                   <button class="he-chip" @click="stepRadius(8)" :disabled="Number(block.radius) >= 400">圆角＋</button>
                 </template>
-                <!-- 通用：入场动效循环 + 完整面板 + 复制/删除 -->
+                <!-- 通用：入场动效循环 + 完整面板 + 复制/删除（行尾加「操作」组标签，样式调节与结构操作分开） -->
                 <button class="he-chip" @click="cycleAnim">动·{{ animLabel }} ›</button>
                 <button class="he-chip on" @click="openEdit">{{ FREE_TYPES.includes(block.type) ? '⋯ 属性' : '✎ 编辑内容' }}</button>
+                <span class="he-grp">操作</span>
                 <button class="he-chip" @click="duplicateBlock" :disabled="curEls.length >= 40">⧉ 复制</button>
                 <button class="he-chip warn" @click="removeBlock">✕ 删除</button>
               </template>
@@ -96,19 +97,22 @@
                 <button v-for="t in ADDABLE" :key="t" class="he-chip" @click="addBlock(t)">＋{{ TYPE_LABEL[t] }}</button>
               </template>
             </template>
-            <!-- 页面行：切页 / 加页 / 删本页（单页单页做） -->
+            <!-- 页面行（页面结构层）：切页 / 加删页 / 本页背景 / 整套模板——背景与模板都是页面级操作，
+                 不与全局配色混放（2026-11-28 用户定稿「层次一定要清楚，不要都扔一起」） -->
             <template v-else-if="dockMode === 'pages'">
               <button v-for="(p, i) in schema.pages" :key="i" :class="['he-chip', { on: i === selPage }]" @click="selPage = i; selBlock = 0">第{{ i + 1 }}页·{{ elsCount(p) }}元素</button>
               <button v-if="pagesCount < maxPages" class="he-chip on" @click="addPage">＋ 加一页</button>
               <button v-else class="he-chip" @click="showToast(paid ? `最多 ${maxPages} 页` : `免费版最多 ${maxPages} 页，开通套餐解锁`, 'error')">已达上限</button>
               <button v-if="pagesCount > 1" class="he-chip warn" @click="removePage">✕ 删本页</button>
-            </template>
-            <!-- 配色行：主题色点中即改 + 套用官方模板 + 页面切换过渡动效 -->
-            <template v-else-if="dockMode === 'theme'">
-              <button v-for="c in COLORS" :key="c" :class="['he-dot', { on: (schema.accent || '') === c }]" :style="{ background: c }" @click="setAccent(c)"></button>
-              <span class="he-grp">页面</span>
+              <span class="he-grp">本页</span>
               <button class="he-chip" @click="openBg">◧ 页面背景</button>
+              <span class="he-grp">整页模板</span>
               <button class="he-chip" @click="openTpls">套用官方模板…</button>
+            </template>
+            <!-- 配色行（全局视觉层）：只放作用于全站的主题色与页面切换动效 -->
+            <template v-else-if="dockMode === 'theme'">
+              <span class="he-grp">主题色</span>
+              <button v-for="c in COLORS" :key="c" :class="['he-dot', { on: (schema.accent || '') === c }]" :style="{ background: c }" @click="setAccent(c)"></button>
               <span class="he-grp">切换动效</span>
               <BottomSelect :model-value="schema.transition || 'auto'" :options="TRANSITION_OPTS" title="页面切换动效" @update:modelValue="schema.transition = $event; markDirty()" />
             </template>
@@ -272,7 +276,9 @@
         </div>
         <!-- 文本 -->
         <template v-if="block.type === 'text'">
+          <div class="he-sec">内容</div>
           <label>文字内容<textarea v-model="block.text" rows="4" maxlength="300" @input="markDirty" placeholder="支持换行"></textarea></label>
+          <div class="he-sec">样式</div>
           <div class="he-row"><span class="small muted">字体</span>
             <BottomSelect :model-value="block.font || ''" :options="FONT_OPTS" title="字体" @update:modelValue="block.font = $event; markDirty()" />
           </div>
@@ -293,7 +299,9 @@
         </template>
         <!-- 图片 -->
         <template v-else-if="block.type === 'image'">
+          <div class="he-sec">图片</div>
           <ImageField v-model="block.url" label="图片" @update:modelValue="markDirty" />
+          <div class="he-sec">呈现</div>
           <div class="he-row"><span class="small muted">适配方式</span>
             <BottomSelect :model-value="block.fit || 'cover'" :options="FIT_OPTS" title="图片适配" @update:modelValue="block.fit = $event; markDirty()" />
           </div>
@@ -303,6 +311,7 @@
         </template>
         <!-- 形状 -->
         <template v-else-if="block.type === 'shape'">
+          <div class="he-sec">形状与填充</div>
           <div class="he-row"><span class="small muted">形状</span>
             <BottomSelect :model-value="block.shape || 'rect'" :options="SHAPE_OPTS" title="形状" @update:modelValue="block.shape = $event; markDirty()" />
           </div>
@@ -316,11 +325,13 @@
         </template>
         <!-- 按钮 -->
         <template v-else-if="block.type === 'button'">
+          <div class="he-sec">内容</div>
           <label>按钮文字<input v-model="block.label" maxlength="12" @input="markDirty" /></label>
           <label>动作
             <BottomSelect v-model="block.action" :options="ACTION_OPTS" title="按钮动作" @update:modelValue="markDirty" />
           </label>
           <label>{{ ACTION_VALUE_LABEL[block.action] || '内容' }}<input v-model="block.value" @input="markDirty" /></label>
+          <div class="he-sec">样式</div>
           <div class="he-row"><span class="small muted">填充色</span></div>
           <div class="he-colors">
             <button v-for="c in EL_COLORS" :key="c" :class="['he-dot', { on: block.bg === c }]" :style="{ background: c }" @click="block.bg = c; markDirty()"></button>
@@ -333,7 +344,8 @@
             <input class="he-range" type="range" min="0" max="400" step="1" :value="block.radius" @input="block.radius = Number($event.target.value); markDirty()" />
           </div>
         </template>
-        <!-- 通用：入场动效 / 透明度 / 层级 -->
+        <!-- 通用（所有元素都有）：动效与层级单独成组，不与内容/样式混排 -->
+        <div class="he-sec">动效与层级</div>
         <div class="he-anim-row">
           <label>入场动效
             <BottomSelect :model-value="block.anim || ''" :options="ANIM_OPTS" title="入场动效" @update:modelValue="block.anim = $event; markDirty()" />
@@ -889,6 +901,9 @@ watch(() => route.params.id, () => { if (route.name === 'h5-editor') location.re
 .he-chip.warn { color: #b45309; }
 .he-chip:disabled { opacity: .45; cursor: default; }
 .he-grp { flex: 0 0 auto; font-size: 10.5px; letter-spacing: .12em; color: #6b7280; background: rgba(38,34,28,.06); padding: 4px 9px; border-radius: 7px; white-space: nowrap; }
+/* 属性面板分组标题：留白+小节字标分层（不画分割线，轻奢去线条），组与组之间拉开 */
+.he-sec { margin: 20px 0 10px; font-size: 11px; font-weight: 700; letter-spacing: .18em; color: #9ca3af; }
+.he-sec:first-of-type { margin-top: 4px; }
 .he-dot { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; border: 2px solid rgba(38,34,28,.25); cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .he-dot.on { box-shadow: 0 0 0 3px rgba(38,34,28,.45); }
 /* dock 上下文调节行的小号色点（2026-11-27 选中元素即调） */
