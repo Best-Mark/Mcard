@@ -74,7 +74,7 @@
         <div class="cv-fab-menu" @click.stop>
           <button v-if="fullAddress && maps.length" @click="moreOpen = false; openMapSheet()">导航到此处</button>
           <button @click="moreOpen = false; toggleFavorite()">{{ favorite ? '已收藏' : '收藏名片' }}</button>
-          <button @click="moreOpen = false; openExchange()">交换名片</button>
+          <button :disabled="exchanging" @click="moreOpen = false; openExchange()">{{ exchanging ? '交换中…' : '交换名片' }}</button>
         </div>
       </div>
       <!-- 宣传页挂钩（2026-11-27 一对多定稿）：关联开关在宣传页侧（card_linked），
@@ -366,15 +366,16 @@
       </div>
     </div>
 
-    <!-- 交换名片 -->
+    <!-- 交换名片引导：登录即身份，点菜单一键互换；未登录/还没有自己的名片只给引导，不进表单 -->
     <div v-if="exchangeOpen" class="modal-mask" @click.self="exchangeOpen = false">
       <div class="modal">
         <h3>交换名片</h3>
-        <p>填入你的名片短码（例如名片链接 /c/ 后面的部分），双方即建立互换记录。</p>
-        <input v-model.trim="mySlug" class="input" placeholder="你的名片短码" />
+        <p v-if="exchangeGuide === 'login'">登录后即可与对方交换名片，双方名片夹里都能找到彼此。</p>
+        <p v-else>创建自己的名片后，才能与对方交换。</p>
         <div class="btn-row" style="margin-top:14px;justify-content:flex-end">
           <button class="btn btn-ghost" @click="exchangeOpen = false">取消</button>
-          <button class="btn btn-primary" :disabled="exchanging" @click="doExchange">{{ exchanging ? '提交中…' : '确认交换' }}</button>
+          <router-link v-if="exchangeGuide === 'login'" :to="{ path: '/login', query: { redirect: route.fullPath } }" class="btn btn-primary" @click="exchangeOpen = false">去登录</router-link>
+          <router-link v-else to="/me/card" class="btn btn-primary" @click="exchangeOpen = false">免费创建名片</router-link>
         </div>
       </div>
     </div>
@@ -762,7 +763,7 @@ async function onContactAutoSave() {
 }
 const contactFallbackOpen = ref(false) // 安卓 intent 拉不起通讯录时的兜底：复制基本信息卡片（全程不下载）
 const mapOpen = ref(false); const moreOpen = ref(false)
-const mySlug = ref(''); const exchanging = ref(false)
+const exchangeGuide = ref(''); const exchanging = ref(false) // exchangeGuide：'login' | 'create'，交换名片只给引导不填短码
 const favorite = ref(false); const favBusy = ref(false)
 const materialsList = ref([])
 const galleryIndex = ref(-1)
@@ -1103,7 +1104,7 @@ watch(slug, () => {
   qrModal.value = false; guide.value = ''; exchangeOpen.value = false
   mapOpen.value = false; moreOpen.value = false; galleryIndex.value = -1
   dockMode.value = 'main'
-  favorite.value = false; isOwner.value = false; hasOwnCard.value = false; mySlug.value = ''
+  favorite.value = false; isOwner.value = false; hasOwnCard.value = false; exchangeGuide.value = ''
   windowRef.scrollTo?.(0, 0)
   load()
 })
@@ -1200,17 +1201,25 @@ async function doShare() {
   else if (r === 'failed') showToast('复制失败，请手动复制地址栏链接', 'error')
 }
 function openExchange() {
-  if (isOwner.value && card.value) mySlug.value = slug.value
-  exchangeOpen.value = true
+  if (exchanging.value) return
+  // 登录身份即「我的名片」：不填短码，一键互换；未登录/没有名片只弹引导
+  if (!auth.token) { exchangeGuide.value = 'login'; exchangeOpen.value = true; return }
+  doExchange()
 }
 async function doExchange() {
-  if (!mySlug.value) return showToast('请填写你的名片短码')
+  if (exchanging.value) return
   exchanging.value = true
   try {
-    await api.post(`${qrApi.value}/exchange`, { slug: mySlug.value })
-    showToast('交换成功，已在双方记录中留存', 'success')
+    await api.post(`${qrApi.value}/exchange`, {})
     exchangeOpen.value = false
-  } catch (e) { showToast(e.message, 'error') } finally { exchanging.value = false }
+    showToast(`已与「${card.value?.name || '对方'}」交换名片`, 'success')
+  } catch (e) {
+    // 服务端按登录身份找「我的名片」，没有名片时给创建引导；其余错误直接提示
+    if (String(e.message || '').includes('还没有自己的名片')) {
+      exchangeGuide.value = 'create'; exchangeOpen.value = true; return
+    }
+    showToast(e.message, 'error')
+  } finally { exchanging.value = false }
 }
 async function toggleFavorite() {
   if (favBusy.value) return

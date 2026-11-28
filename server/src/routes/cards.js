@@ -393,16 +393,22 @@ router.get('/public/:slug/card.vcf', wrap((req, res) => {
   res.send(text)
 }))
 
+// 交换名片：「我的名片」以登录身份为准（2026-11-28 去掉手填短码，登录即身份）；
+// body.slug 仅作旧小程序客户端（手填短码）的兼容回落，H5 传 {} 即可。
 router.post('/public/:slug/exchange', wrap((req, res) => {
   const from = db.prepare('SELECT * FROM cards WHERE slug = ?').get(req.params.slug)
-  const to = db.prepare('SELECT * FROM cards WHERE slug = ?').get(String(req.body?.slug || '').toLowerCase())
-  if (!from || !to || from.id === to.id) return fail(res, 400, '交换失败：请确认对方名片链接')
+  if (!from) return fail(res, 404, '名片不存在')
+  const payload = parseToken(req)
+  let to = payload ? db.prepare('SELECT * FROM cards WHERE user_id = ?').get(payload.id) : null
+  if (!to) to = db.prepare('SELECT * FROM cards WHERE slug = ?').get(String(req.body?.slug || '').toLowerCase())
+  if (!to) return fail(res, 400, '还没有自己的名片，创建后才能交换')
+  if (from.id === to.id) return fail(res, 400, '不能和自己交换名片')
   const r = db.prepare('INSERT OR IGNORE INTO card_exchanges (from_card_id, to_card_id) VALUES (?,?)').run(from.id, to.id)
   // 仅首次建立互换时提醒对方名片主人（UNIQUE 去重），失败不影响主流程
   if (r.changes) {
     try { notify.notifyOwner(to, NOTIFY_TYPES.NEW_EXCHANGE, from.name || '一位名片用户') } catch (e) { console.error('[Notify] 交换提醒失败', e.message) }
   }
-  ok(res, { exchanged: true, with: req.body.slug })
+  ok(res, { exchanged: true, with: to.slug })
 }))
 
 // 收藏 / 取消收藏（需登录）；返回当前收藏状态，前端据此切按钮
