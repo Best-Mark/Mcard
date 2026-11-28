@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3f9e5d"/><stop offset=".55" stop-color="#22713c"/><stop offset="1" stop-color="#0f3d1e"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#g)"/>
+  <circle cx="112.00000000000001" cy="360" r="6" fill="#ffffff" opacity=".09"/>
+  <circle cx="228" cy="360" r="9" fill="#ffffff" opacity=".09"/>
+  <circle cx="344" cy="360" r="12" fill="#ffffff" opacity=".09"/>
+  <circle cx="460" cy="360" r="6" fill="#ffffff" opacity=".09"/>
+  <circle cx="576" cy="360" r="9" fill="#ffffff" opacity=".09"/>
+  <circle cx="692" cy="360" r="12" fill="#ffffff" opacity=".09"/>
+  <circle cx="112.00000000000001" cy="420" r="9" fill="#ffffff" opacity=".09"/>
+  <circle cx="228" cy="420" r="12" fill="#ffffff" opacity=".09"/>
+  <circle cx="344" cy="420" r="6" fill="#ffffff" opacity=".09"/>
+  <circle cx="460" cy="420" r="9" fill="#ffffff" opacity=".09"/>
+  <circle cx="576" cy="420" r="12" fill="#ffffff" opacity=".09"/>
+  <circle cx="692" cy="420" r="6" fill="#ffffff" opacity=".09"/>
+  <circle cx="112.00000000000001" cy="480" r="12" fill="#ffffff" opacity=".09"/>
+  <circle cx="228" cy="480" r="6" fill="#ffffff" opacity=".09"/>
+  <circle cx="344" cy="480" r="9" fill="#ffffff" opacity=".09"/>
+  <circle cx="460" cy="480" r="12" fill="#ffffff" opacity=".09"/>
+  <circle cx="576" cy="480" r="6" fill="#ffffff" opacity=".09"/>
+  <circle cx="692" cy="480" r="9" fill="#ffffff" opacity=".09"/>
+  <circle cx="112.00000000000001" cy="540" r="6" fill="#ffffff" opacity=".09"/>
+  <circle cx="228" cy="540" r="9" fill="#ffffff" opacity=".09"/>
+  <circle cx="344" cy="540" r="12" fill="#ffffff" opacity=".09"/>
+  <circle cx="460" cy="540" r="6" fill="#ffffff" opacity=".09"/>
+  <circle cx="576" cy="540" r="9" fill="#ffffff" opacity=".09"/>
+  <circle cx="692" cy="540" r="12" fill="#ffffff" opacity=".09"/>
+  <circle cx="640" cy="144" r="112.00000000000001" fill="#3f9e5d" opacity=".3"/>
+  <rect x="290" y="273" width="220" height="42" rx="21" fill="#ffffff" opacity=".85"/>
+  <text x="400" y="301" text-anchor="middle" font-family="sans-serif" font-size="19" fill="#0f3d1e">示例图片 · 点按替换</text>
+</svg>

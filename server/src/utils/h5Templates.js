@@ -2,6 +2,8 @@
 // 结构 = h5_pages.schema 同构：{ accent, transition?, pages: [{ blocks: [...] }] }，块类型白名单见 routes/h5.js BLOCK_TYPES。
 // 2026-11-27 路线④扩充：11 套（原 5 + 新 6：零售/教育/家居/招聘/婚礼/顾问），新模板各带一处新能力演示点
 // （stagger 错落 / showcase 展播 / form 留资 / music 背景音乐 / transition 切换动效 / 文字对齐字号）。
+// 2026-11-28 场景扩充（用户「行业挺全，但场景也要丰富」）+9 套：开业/限时特惠/社群团购/宴请请柬/
+// 周年庆答谢/招商加盟/新品发布/体验课引流/民宿度假，共 20 套；每套 3 页不超免费页数上限。
 // 图一律空串：渲染层对空图有渐变占位（accent 驱动），用户上传后即替换；文案是「可直接用」的成稿示例，
 // 用户改字即可发布——模板质量决定「30 秒出片」体验，改文案时保持口语化、避免营销八股。
 const P = (...blocks) => ({ blocks })
@@ -220,6 +222,183 @@ const TEMPLATES = [
         B('endcard')
       )
     ]
+  },
+  // ---- 2026-11-28 场景扩充（用户「行业挺全，但场景也要丰富」）：行业之外的营销/生活场景，
+  //      9 套新增（开业/限时特惠/社群团购/宴请请柬/周年庆/招商加盟/新品发布/体验课/民宿），
+  //      各 3 页不超免费页数，示例图与音乐按各自气质另行注入 ----
+  {
+    key: 'opening', name: '开业庆典', industry: '通用', accent: '#d97706', theme: 'tang',
+    desc: '开业盛况 + 到店礼，聚人气促进店',
+    transition: 'auto',
+    pages: [
+      P(
+        B('cover', { title: '开业大吉 · 全场有礼', subtitle: 'XX店 · X月X日盛大开业', cover: '' }),
+        B('text', { heading: '开业三重礼', body: '进店有礼：前 100 名送定制伴手礼\n消费满减：全场满 100 减 30\n抽奖互动：大额代金券等你来抽', align: 'center', size: 'md' })
+      ),
+      P(
+        B('gallery', { images: ['', '', '', ''], layout: 'swipe' }),
+        B('text', { heading: '店里有什么', body: '环境实拍先睹为快，开业当天还有舞狮表演和下午茶，带孩子来也不无聊。', align: 'left', size: 'md' })
+      ),
+      P(
+        B('map', { lat: null, lng: null, label: 'XX市XX区XX路XX号（新店）' }),
+        B('buttons', { items: [{ label: '电话咨询', action: 'tel', value: '' }, { label: '加微信探店', action: 'wechat', value: '' }] }),
+        B('endcard')
+      )
+    ]
+  },
+  {
+    key: 'flash', name: '限时特惠', industry: '零售', accent: '#dc2626', theme: 'classic',
+    desc: '爆款特价 + 库存紧迫感，直接促单',
+    transition: 'slide',
+    pages: [
+      P(
+        B('cover', { title: '限时特惠 · 手慢无', subtitle: 'XX优选 · 仅 3 天', cover: '' }),
+        B('text', { heading: '为什么便宜', body: '厂家直供清库存，不搞虚假原价。每一件都实拍实测，收到货和看到的一样。卖完即止，不补货。', align: 'center', size: 'md' })
+      ),
+      P(
+        B('hero', { image: '', title: '今日爆款', desc: '回购榜第一名，这批尾单价格比平时低三成，喜欢的直接拍。' }),
+        B('gallery', { images: ['', '', '', ''], layout: 'stagger' })
+      ),
+      P(
+        B('buttons', { items: [{ label: '微信下单', action: 'wechat', value: '' }, { label: '电话咨询', action: 'tel', value: '' }] }),
+        B('contact', { showMobile: true, showWechat: true, showAddress: false }),
+        B('endcard')
+      )
+    ]
+  },
+  {
+    key: 'groupbuy', name: '社群团购', industry: '零售', accent: '#15803d', theme: 'vanna',
+    desc: '接龙下单 + 售后承诺，私域复购',
+    pages: [
+      P(
+        B('cover', { title: '本周团购 · 产地直发', subtitle: 'XX社群 · 团长甄选', cover: '' }),
+        B('text', { heading: '这周团什么', body: '高山沃柑 5 斤装 19.9 元\n智利车厘子 2 斤 89 元\n数量有限，满 30 份截单发货', align: 'center', size: 'md' })
+      ),
+      P(
+        B('gallery', { images: ['', '', ''], layout: 'grid' }),
+        B('text', { heading: '团长承诺', body: '坏果包赔，拍照就补发；产地现摘现发，48 小时到手；群里晒单返 2 元红包。', align: 'left', size: 'md' })
+      ),
+      P(
+        B('buttons', { items: [{ label: '微信接龙下单', action: 'wechat', value: '' }, { label: '电话找团长', action: 'tel', value: '' }] }),
+        B('endcard')
+      )
+    ]
+  },
+  {
+    key: 'banquet', name: '宴请请柬', industry: '通用', accent: '#9f1239', theme: 'classic',
+    desc: '满月宴/生日宴/寿宴一页请柬，扫码即达',
+    transition: 'auto',
+    pages: [
+      P(
+        B('cover', { title: '诚邀您来赴宴', subtitle: 'XX宝宝满月宴 · 恭候光临', cover: '' }),
+        B('text', { heading: '宴请详情', body: '时间：X月X日（周X）中午 12:00\n地点：XX酒店 2F 宴会厅\n迎宾：11:30 开始入席', align: 'center', size: 'md' })
+      ),
+      P(
+        B('gallery', { images: ['', '', '', ''], layout: 'swipe' }),
+        B('text', { heading: '一点小心意', body: '席间备了茶点和节目，家人们远道而来，请一定吃好喝好。', align: 'center', size: 'md' })
+      ),
+      P(
+        B('map', { lat: null, lng: null, label: 'XX酒店（导航直达）' }),
+        B('buttons', { items: [{ label: '电话确认出席', action: 'tel', value: '' }, { label: '微信回执', action: 'wechat', value: '' }] }),
+        B('endcard')
+      )
+    ]
+  },
+  {
+    key: 'anniversary', name: '周年庆答谢', industry: '通用', accent: '#92400e', theme: 'tang',
+    desc: '老客专享 + 储值回馈，唤醒复购',
+    pages: [
+      P(
+        B('cover', { title: '五周年 · 谢谢你还在', subtitle: 'XX店 · 老客答谢月', cover: '' }),
+        B('text', { heading: '答谢三重礼', body: '到店即领周年礼包，数量有限\n储值满 1000 送 200，当次可用\n老带新，双方各得 50 元代金券', align: 'center', size: 'md' })
+      ),
+      P(
+        B('hero', { image: '', title: '五年来的一些瞬间', desc: '从第一家小店到现在，感谢每一位回头客的照顾。' }),
+        B('gallery', { images: ['', '', ''], layout: 'swipe' })
+      ),
+      P(
+        B('buttons', { items: [{ label: '电话预约', action: 'tel', value: '' }] }),
+        B('contact', { showMobile: true, showWechat: true, showAddress: true }),
+        B('endcard')
+      )
+    ]
+  },
+  {
+    key: 'franchise', name: '招商加盟', industry: '企业', accent: '#1e40af', theme: 'vanna',
+    desc: '加盟政策 + 扶持体系，B 端洽谈留资',
+    transition: 'auto',
+    pages: [
+      P(
+        B('cover', { title: '小成本，开一家稳的店', subtitle: 'XX品牌 · 全国招商中', cover: '' }),
+        B('text', { heading: '为什么跟着我们做', body: '供应链直供，进货价就是优势；选址、装修、培训、开业全程扶持；区域保护，一区一家。', align: 'center', size: 'md' })
+      ),
+      P(
+        B('gallery', { images: ['', '', '', ''], layout: 'grid' }),
+        B('text', { heading: '加盟条件', body: '认同品牌理念，亲自参与经营\n启动资金 15-30 万\n有门面或愿意实地选址', align: 'left', size: 'md' })
+      ),
+      P(
+        B('form', { heading: '预约考察', desc: '留下电话，招商经理 1 个工作日内联系您', showName: true, showPhone: true, showMessage: true, buttonText: '提交预约', successText: '已收到，招商经理马上联系您' }),
+        B('endcard')
+      )
+    ]
+  },
+  {
+    key: 'launch', name: '新品发布', industry: '通用', accent: '#0e7490', theme: 'classic',
+    desc: '新品卖点 + 首发权益，制造期待',
+    transition: 'slide',
+    pages: [
+      P(
+        B('cover', { title: '新品首发 · 今天见', subtitle: 'XX · 第三代全新升级', cover: '' }),
+        B('text', { heading: '升级了什么', body: '续航提升 40%，充电快一倍\n整机轻了 18%，携带无感\n首发限享：赠一年延保', align: 'center', size: 'md' })
+      ),
+      P(
+        B('hero', { image: '', title: '实拍细节', desc: '每一处改动都为了更好用，实拍无滤镜，所见即所得。' }),
+        B('gallery', { images: ['', '', ''], layout: 'stagger' })
+      ),
+      P(
+        B('buttons', { items: [{ label: '微信咨询', action: 'wechat', value: '' }, { label: '电话订购', action: 'tel', value: '' }] }),
+        B('contact', { showMobile: true, showWechat: true, showAddress: false }),
+        B('endcard')
+      )
+    ]
+  },
+  {
+    key: 'trial', name: '体验课引流', industry: '教育', accent: '#0d9488', theme: 'vanna',
+    desc: '免费体验课预约，到店转化（健身/舞蹈/艺培通用）',
+    pages: [
+      P(
+        B('cover', { title: '第一节，免费体验', subtitle: 'XX健身工作室 · 私教体验课', cover: '' }),
+        B('text', { heading: '体验课包含', body: '体测：体脂 / 体态 / 运动习惯评估\n训练：40 分钟一对一定制课\n方案：一份属于你的训练计划', align: 'center', size: 'md' })
+      ),
+      P(
+        B('gallery', { images: ['', '', '', ''], layout: 'swipe' }),
+        B('text', { heading: '适合谁来', body: '想减脂没方向的、产后恢复的、久坐肩颈腰背不舒服的——第一次来，先从一节体验课开始。', align: 'left', size: 'md' })
+      ),
+      P(
+        B('form', { heading: '预约体验', desc: '留下电话，教练跟你约时间', showName: true, showPhone: true, showMessage: false, buttonText: '提交预约', successText: '已收到，教练马上联系你' }),
+        B('endcard')
+      )
+    ]
+  },
+  {
+    key: 'homestay', name: '民宿度假', industry: '文旅', accent: '#b7791f', theme: 'vanna',
+    desc: '房型环境 + 预订方式，度假感拉满',
+    transition: 'auto',
+    pages: [
+      P(
+        B('cover', { title: '山里的日子，慢一点', subtitle: 'XX民宿 · XX景区旁', cover: '' }),
+        B('text', { heading: '这里有', body: '独栋小院 / 山景大床房 / 亲子套房\n早餐用本地食材现做\n晚上可以烧烤、看星星', align: 'center', size: 'md' })
+      ),
+      P(
+        B('gallery', { images: ['', '', '', ''], layout: 'stagger' }),
+        B('text', { heading: '住客说', body: '「推开窗就是山，孩子不想走。」周末和节假日房态紧，建议提前一周订。', align: 'left', size: 'md' })
+      ),
+      P(
+        B('map', { lat: null, lng: null, label: 'XX民宿（导航直达）' }),
+        B('buttons', { items: [{ label: '电话订房', action: 'tel', value: '' }, { label: '加微信看房态', action: 'wechat', value: '' }] }),
+        B('endcard')
+      )
+    ]
   }
 ]
 
@@ -258,7 +437,12 @@ function getTemplate(key) { return TEMPLATES.find(t => t.key === key) || null }
     company: MUSICS[2], building: MUSICS[2], event: MUSICS[2], advisor: MUSICS[2],
     restaurant: MUSICS[1], beauty: MUSICS[1], wedding: MUSICS[1],
     retail: MUSICS[3], team: MUSICS[3],
-    course: MUSICS[0], home: MUSICS[0]
+    course: MUSICS[0], home: MUSICS[0],
+    // 场景扩充 9 套：开业/特惠热闹 → fresh；团购/体验课清新 → light；请柬/民宿度假 → warm；
+    // 周年庆/加盟/新品商务感 → business
+    opening: MUSICS[3], flash: MUSICS[3], groupbuy: MUSICS[0], trial: MUSICS[0],
+    banquet: MUSICS[1], homestay: MUSICS[1],
+    anniversary: MUSICS[2], franchise: MUSICS[2], launch: MUSICS[2]
   }
   TEMPLATES.forEach((t) => {
     for (const p of t.pages || []) for (const b of (p.blocks || [])) {
