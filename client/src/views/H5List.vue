@@ -28,13 +28,17 @@
             <!-- 关联状态只在已上架时显示：下架/草稿入口未挂到名片上，不摆关联徽标（2026-11-28 用户定稿） -->
             <button v-if="p.status === 'published'" type="button" class="badge small h5l-link" :class="{ on: p.card_linked }" :disabled="busy === p.id" @click="toggleLink(p)">{{ p.card_linked ? '✓ 已关联名片' : '＋ 关联名片' }}</button>
             <span class="badge small" :class="{ on: p.status === 'published' }">{{ p.status === 'published' ? '已上架' : '草稿' }}</span>
+            <!-- 待同步徽标（2026-11-28 发布≠上架定稿）：已上架但草稿改过、还没更新上架 -->
+            <span v-if="p.status === 'published' && p.pending" class="badge small h5l-pending">有改动待同步</span>
           </div>
           <div class="small muted h5l-meta">{{ p.pages }} 页 · 更新于 {{ fmt(p.updated_at) }}</div>
           <div class="h5l-ops">
             <button class="btn btn-sm btn-primary" @click="router.push(`/me/h5/${p.id}`)">编辑</button>
             <button class="btn btn-sm btn-ghost" @click="preview(p)">预览</button>
+            <!-- 上架操作收在这里（2026-11-28 定稿：编辑器只发布保存，不承担上架） -->
             <button v-if="p.status === 'draft'" class="btn btn-sm btn-ghost" :disabled="busy === p.id" @click="toggle(p, 'publish')">{{ busy === p.id ? '…' : '上架' }}</button>
-            <button v-else class="btn btn-sm btn-ghost" :disabled="busy === p.id" @click="toggle(p, 'unpublish')">下架</button>
+            <button v-if="p.status === 'published' && p.pending" class="btn btn-sm btn-primary" :disabled="busy === p.id" @click="toggle(p, 'publish')">{{ busy === p.id ? '…' : '⇪ 更新上架' }}</button>
+            <button v-if="p.status === 'published'" class="btn btn-sm btn-ghost" :disabled="busy === p.id" @click="toggle(p, 'unpublish')">下架</button>
             <button class="btn btn-sm btn-ghost h5l-del" @click="remove(p)">删除</button>
           </div>
         </div>
@@ -101,7 +105,7 @@ async function create(tpl) {
 }
 async function toggle(p, action) {
   busy.value = p.id
-  try { await api.post(`/api/h5/${p.id}/${action}`); await load(); showToast(action === 'publish' ? '已上架，链接已生效' : '已下架', 'success') }
+  try { await api.post(`/api/h5/${p.id}/${action}`); await load(); showToast(action === 'publish' ? '已上架，当前内容已生效' : '已下架', 'success') }
   catch (e) { showToast(e.message, 'error') } finally { busy.value = 0 }
 }
 // 关联名片开关（2026-11-27 一对多定稿）：宣传页侧显式状态（不在名片侧指定，防乱）；
@@ -151,6 +155,8 @@ function fmt(s) { return String(s || '').replace('T', ' ').slice(5, 16) }
 .h5l-link { border: 0; cursor: pointer; background: #eef2f7; color: #64748b; -webkit-tap-highlight-color: transparent; }
 .h5l-link.on { color: #fff; background: var(--primary, #a62b2b); }
 .h5l-link:disabled { opacity: .6; cursor: default; }
+/* 待同步徽标：已上架但草稿改过、还没更新上架（琥珀警示，与默认 badge 同色系加重） */
+.h5l-pending { color: #92400e; background: #fde68a; }
 .h5l-meta { margin-top: 4px; }
 .h5l-ops { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .h5l-del { color: #b91c1c !important; }

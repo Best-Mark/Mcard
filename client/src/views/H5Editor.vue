@@ -4,7 +4,7 @@
        琥珀虚线描边、块内动作短路），内容表单在底部弹层里改、画布实时刷新；
        底部操作条与名片工作台 dock 同款四态翻转：main=编辑块/页面/配色/发布，
        点任一键整行翻转出选项行（点中即改、面板不关可连试），↙ 收起回主行。
-       发布后自动挂到名片公开页（访客看名片可跳宣传页），宣传页尾页也带名片二维码——双向挂钩。
+       发布仅等同保存草稿（2026-11-28 用户定稿：发布≠上架，编辑器无上架菜单）；上架/下架/关联名片/复制链接在宣传页列表页管理。
        2026-11-27 编辑体验一流化（用户反馈「要自由拖动、一些动作」）：
        ① 画布长按块 350ms 拖动排序（跟手 + 命中即重排，H5Render emit reorder 落数组）；
        ② 块入场动效可选（BottomSelect，公开页进入视口自动播放）；
@@ -38,7 +38,7 @@
         <button class="he-dock-btn primary" @click="dockMode = 'edit'">✎ 编辑块</button>
         <button class="he-dock-btn" @click="dockMode = 'pages'">▦ 页面</button>
         <button class="he-dock-btn" @click="dockMode = 'theme'">◑ 配色</button>
-        <button class="he-dock-btn" @click="dockMode = 'pub'">⇪ 上架</button>
+        <button class="he-dock-btn" @click="dockMode = 'pub'">⇪ 发布</button>
       </template>
       <template v-else>
         <button class="he-dock-back" @click="dockMode = 'main'" aria-label="收起，返回主操作条">↙</button>
@@ -112,15 +112,11 @@
               <span class="he-grp">切换动效</span>
               <BottomSelect :model-value="schema.transition || 'auto'" :options="TRANSITION_OPTS" title="页面切换动效" @update:modelValue="schema.transition = $event; markDirty()" />
             </template>
-            <!-- 发布行：上架状态（草稿/线上双版本，编辑只存草稿、点上架才同步到线上）+ 关联名片开关 + 复制链接 + 下架 -->
+            <!-- 发布行（2026-11-28 用户定稿）：编辑器只有「发布」=保存草稿，不承担上架；
+                 上架/更新上架/下架/关联名片/复制链接都在宣传页列表页管理 -->
             <template v-else>
-              <span :class="['he-status', { on: page?.status === 'published' }]">
-                {{ page?.status === 'published' ? (page?.pending ? '✓ 已上架 · 有改动待同步' : '✓ 已上架') : '○ 未上架' }}
-              </span>
-              <button class="he-chip on" :disabled="publishing" @click="publish">{{ page?.status === 'published' ? '⇪ 更新上架' : '⇪ 上架' }}</button>
-              <button class="he-chip" :class="{ on: page?.card_linked }" :disabled="publishing" @click="toggleCardLink">{{ page?.card_linked ? '✓ 已关联名片' : '＋ 关联名片' }}</button>
-              <button v-if="page?.status === 'published'" class="he-chip" @click="copyLink">⧉ 复制链接</button>
-              <button v-if="page?.status === 'published'" class="he-chip warn" @click="unpublish">下架</button>
+              <span :class="['he-status', { on: saveState.startsWith('✓') }]">{{ saveState || '改动会自动保存' }}</span>
+              <button class="he-chip on" :disabled="publishing" @click="publish">{{ publishing ? '发布中…' : '⇪ 发布' }}</button>
             </template>
           </div>
         </div>
@@ -524,49 +520,22 @@ function markDirty() {
 async function save(silent = true) {
   clearTimeout(saveTimer)
   try {
-    const { data } = await api.put(`/api/h5/${route.params.id}`, { title: title.value, schema: schema.value })
+    await api.put(`/api/h5/${route.params.id}`, { title: title.value, schema: schema.value })
     saveState.value = '✓ 已自动保存'
-    // 服务端回带 pending（已上架且草稿≠线上）：保存后即时刷新「待同步」徽标
-    if (data?.data && typeof data.data.pending === 'boolean' && page.value) page.value.pending = data.data.pending
   } catch (e) {
     saveState.value = '保存失败：' + (e?.message || '网络异常')
     if (!silent) showToast(saveState.value, 'error')
   }
 }
+// 发布 = 保存草稿（2026-11-28 用户定稿：发布不等于上架，编辑器不承担上架；上架在宣传页列表页）
 async function publish() {
-  clearTimeout(saveTimer); await save()
+  if (publishing.value) return
+  clearTimeout(saveTimer)
   publishing.value = true
   try {
-    const { data } = await api.post(`/api/h5/${route.params.id}/publish`)
-    page.value.status = 'published'
-    if (page.value) page.value.pending = false
-    if (data?.data) page.value.card_linked = !!data.data.card_linked
-    showToast(page.value.card_linked ? '已上架！访客打开你的名片即可看到' : '已上架！点「关联名片」可挂到名片页', 'success')
-    copyLink()
-  } catch (e) { showToast(e?.message || '上架失败', 'error') } finally { publishing.value = false }
-}
-// 关联名片开关（2026-11-27 一对多定稿）：状态在宣传页侧维护（防名片侧指定变乱），
-// 已发布且已关联的宣传页在名片公开页列多条入口；首次发布自动关联，更新发布不覆盖取消。
-async function toggleCardLink() {
-  if (!page.value || publishing.value) return
-  const linked = !page.value.card_linked
-  publishing.value = true
-  try {
-    await api.post(`/api/h5/${route.params.id}/card-link`, { linked })
-    page.value.card_linked = linked
-    showToast(linked ? '已关联：访客看你的名片可直达这个宣传页' : '已取消关联，名片页不再显示这个宣传页入口', 'success')
-  } catch (e) { showToast(e?.message || '操作失败', 'error') } finally { publishing.value = false }
-}
-async function unpublish() {
-  try {
-    await api.post(`/api/h5/${route.params.id}/unpublish`)
-    page.value.status = 'draft'
-    showToast('已下架，名片页入口同步隐藏', 'success')
-  } catch (e) { showToast(e?.message || '操作失败', 'error') }
-}
-async function copyLink() {
-  const link = `${window.location.origin}/h5/${page.value.slug}`
-  try { await navigator.clipboard.writeText(link); showToast('链接已复制，可直接发给客户', 'success') } catch { showToast(link) }
+    await save()
+    showToast('已发布，内容已保存', 'success')
+  } finally { publishing.value = false }
 }
 
 // ---- 结构编辑（自由画布） ----
