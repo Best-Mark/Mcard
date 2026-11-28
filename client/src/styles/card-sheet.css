@@ -159,20 +159,21 @@
    （贴卡片圆角被裁切很局促）。毛玻璃半透明吸附屏幕左上角，SVG 细箭头 + 竖排两字（集市/返回），
    安全区两级兜底，按压微缩反馈；宽屏贴到居中卡片栏左侧，不飘在视口角落 */
 .cv-back {
-  position: fixed; left: 6px; z-index: 60;
+  position: fixed; left: 0; z-index: 60;
   top: 8px; top: calc(8px + env(safe-area-inset-top));
   width: 38px; min-height: 70px; padding: 10px 0 12px;
   display: flex; flex-direction: column; align-items: center; gap: 6px;
-  border: 0; border-radius: 14px; color: #26221c;
+  border: 0; border-radius: 0 14px 14px 0; color: #26221c;
   background: rgba(255,255,255,.50);
   -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
-  box-shadow: 0 10px 28px rgba(31,27,22,.16), inset 0 1px 0 rgba(255,255,255,.45);
+  box-shadow: 6px 10px 28px rgba(31,27,22,.16), inset -1px 1px 0 rgba(255,255,255,.45);
   cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transform-origin: left center;
   transition: transform .15s ease, box-shadow .15s ease;
 }
 .cv-back:active {
   transform: scale(.95);
-  box-shadow: 0 6px 18px rgba(31,27,22,.14), inset 0 1px 0 rgba(255,255,255,.40);
+  box-shadow: 3px 6px 18px rgba(31,27,22,.14), inset -1px 1px 0 rgba(255,255,255,.40);
 }
 .cv-back .cv-back-i { width: 16px; height: 16px; display: block; }
 .cv-back .cv-back-v { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; line-height: 1; }

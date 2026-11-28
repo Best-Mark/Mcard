@@ -403,6 +403,33 @@ const bust = s => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + 
 const codeImg = (src, alt, fb) => `<div class="code"><img class="code-img" src="${escHtml(src)}" alt="${escHtml(alt)}"${fb || ''}></div>`
 // 按设备 DPR 请求 1:1 尺寸码图（CardView 弹层大码 264px×528/792 同款解法，真机长按识别 100%）
 const PAY_HIDPI = `<script>(function(){var d=Math.min(1600,Math.max(256,Math.round(264*(window.devicePixelRatio||2))));var a=document.querySelectorAll('img.code-img');for(var i=0;i<a.length;i++){if(!/[?&]size=\\d+/.test(a[i].src))continue;a[i].src=a[i].src.replace(/([?&]size=)\\d+/,'$1'+d);}})();</script>`
+// 微信内成熟付款路径（2026-11-28 真机定稿）：网页 img 长按的「识别图中二维码」在微信 webview 里
+// 检测极不稳定——1:1 像素渲染后真机依旧不出识别菜单（实锤网页层长按识别不可依赖）。
+// wx.previewImage 打开的是微信原生图片查看器：与聊天图片同一个识别检测器，长按必出
+// 「识别图中二维码」，识别 wxp:// 直达微信支付收银台（微信内个人付款最短路径）。
+// 落地自动放大一次（扫码即见大码），点码图可再次放大；config 失败静默降级，页面提示仍兜底扫一扫。
+const PAY_PREVIEW = `<script src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
+<script>(function(){
+var img=document.querySelector('img.code-img');if(!img)return;
+function abs(){var s=img.getAttribute('src')||'';return s.charAt(0)==='/'?location.origin+s:s;}
+var busy=false,wxok=false,auto=false;
+function open(){if(busy||!window.wx||!wx.previewImage||!wxok)return;busy=true;
+try{var u=abs();wx.previewImage({current:u,urls:[u],fail:function(){}});}catch(e){}
+setTimeout(function(){busy=false;},400);}
+img.parentNode.addEventListener('click',open);
+var xhr=new XMLHttpRequest();
+xhr.open('GET','/api/auth/wechat/jssdk-sign?url='+encodeURIComponent(location.href.split('#')[0]),true);
+xhr.onreadystatechange=function(){
+if(xhr.readyState!==4)return;
+var d=null;try{d=JSON.parse(xhr.responseText);}catch(e){}
+if(!d||d.code!==0||!d.data||!d.data.signature)return;
+try{
+wx.config({appId:d.data.appId,timestamp:d.data.timestamp,nonceStr:d.data.nonceStr,signature:d.data.signature,jsApiList:['previewImage'],debug:false});
+wx.ready(function(){wxok=true;if(!auto){auto=true;setTimeout(open,300);}});
+wx.error(function(){});
+}catch(e){}};
+xhr.send();
+})();</script>`
 
 const payGateShell = ({ title, body }) => `<!doctype html>
 <html lang="zh-CN"><head>
@@ -415,7 +442,7 @@ const payGateShell = ({ title, body }) => `<!doctype html>
   .wrap { max-width: 420px; margin: 0 auto; text-align: center; padding: 28px 20px 40px; padding: calc(28px + env(safe-area-inset-top)) 20px calc(40px + env(safe-area-inset-bottom)); }
   h1 { font-size: 18px; font-weight: 600; letter-spacing: 2px; }
   .sub { margin: 8px 0 20px; color: #8a8378; font-size: 13px; letter-spacing: 1px; }
-  .code { display: inline-block; width: 292px; max-width: 100%; padding: 14px; background: #ffffff; border-radius: 16px; box-shadow: 0 10px 30px rgba(31, 27, 22, .08); }
+  .code { display: inline-block; width: 292px; max-width: 100%; padding: 14px; background: #ffffff; border-radius: 16px; box-shadow: 0 10px 30px rgba(31, 27, 22, .08); cursor: pointer; }
   .code-img { display: block; width: 100%; height: auto; image-rendering: -webkit-optimize-contrast; image-rendering: pixelated; }
   .tip { margin: 16px 0 0; color: #6b6459; font-size: 14px; letter-spacing: 1px; }
   .tip-sub { margin: 6px 0 0; color: #a09a90; font-size: 12px; letter-spacing: 1px; }
@@ -469,12 +496,13 @@ router.get('/public/:slug/pay', wrap((req, res) => {
     return res.type('html').send(payGateShell({ title: `向 ${name} 付款`, body: `${backTop}<h1>向 ${name} 付款</h1><p class="sub">对方还没上传收款码</p>${back}` }))
   }
 
-  // 微信：scheme 跳转被微信内置浏览器拦截，落地即出干净微信收款码，长按直付
+  // 微信：scheme 跳转被微信内置浏览器拦截。成熟付款路径 = 落地自动弹原生图片查看器
+  // （PAY_PREVIEW，长按识别 wxp:// 直达收银台）；网页层长按识别不可依赖（真机实锤），只作兜底
   if (/MicroMessenger/i.test(ua)) {
     if (wxImg) {
       return res.type('html').send(payGateShell({
         title: `向 ${name} 付款`,
-        body: `${backTop}<h1>向 ${name} 付款</h1><p class="sub">微信支付</p>${codeImg(wxImg, '微信收款码', wxFallback)}<p class="tip">长按识别二维码，立即支付</p><p class="tip-sub">长按不出识别菜单时，可保存图片后用微信扫一扫</p>${back}`
+        body: `${backTop}<h1>向 ${name} 付款</h1><p class="sub">微信支付</p>${codeImg(wxImg, '微信收款码', wxFallback)}<p class="tip">点图片放大，长按识别二维码，直达微信支付</p><p class="tip-sub">也可保存图片后用微信扫一扫</p>${back}${PAY_PREVIEW}`
       }))
     }
     if (aliImg) {
